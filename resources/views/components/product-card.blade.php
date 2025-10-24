@@ -46,7 +46,7 @@
         </div>
         
         <div class="flex items-center space-x-2">
-            <button onclick="addToCart({{ $product->id }})" 
+            <button onclick="addToCart({{ $product->id }}, 1, {{ $product->price }})" 
                     class="flex-1 bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-all duration-200 hover:scale-105 active:scale-95 font-medium">
                 <i class="fas fa-plus mr-2"></i>
                 Adicionar

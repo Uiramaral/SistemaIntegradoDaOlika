@@ -87,10 +87,10 @@
 @push('scripts')
 <script>
     // Adicionar ao carrinho
-    function addToCart(productId, quantity = 1) {
+    function addToCart(productId, quantity = 1, price = 0) {
         // Usar função melhorada se disponível
         if (typeof window.addToCartImproved === 'function') {
-            window.addToCartImproved(productId, quantity);
+            window.addToCartImproved(productId, quantity, price);
             return;
         }
         

@@ -615,8 +615,8 @@
         }
 
         // Função melhorada para adicionar ao carrinho
-        window.addToCartImproved = function(productId, quantity = 1) {
-            console.log('Adicionando ao carrinho:', productId, quantity);
+        window.addToCartImproved = function(productId, quantity = 1, price = 0) {
+            console.log('Adicionando ao carrinho:', productId, quantity, price);
             
             // Primeiro, tentar a API normal
             fetch(`${window.location.origin}/cart/add`, {
@@ -627,7 +627,8 @@
                 },
                 body: JSON.stringify({
                     product_id: productId,
-                    quantity: quantity
+                    qty: quantity,
+                    price: price
                 })
             })
             .then(response => response.json())

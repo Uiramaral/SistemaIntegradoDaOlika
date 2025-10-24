@@ -65,7 +65,7 @@ class OrderController extends Controller
         $availableCoupons = $this->getAvailableCoupons($customerData['phone'] ?? null);
 
         return view('checkout.steps.index', compact(
-            'cart', 
+            'cartItems', 
             'total', 
             'settings', 
             'customerData', 

@@ -332,7 +332,7 @@
                         </h3>
                         
                         <div class="space-y-3 mb-6">
-                            @foreach($cart as $item)
+                            @foreach($cartItems as $item)
                             <div class="flex justify-between items-center">
                                 <div>
                                     <div class="font-medium">{{ $item['product']->name }}</div>

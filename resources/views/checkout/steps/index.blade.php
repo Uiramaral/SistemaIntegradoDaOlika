@@ -114,28 +114,39 @@
                             <form id="address-form">
                                 @csrf
                                 <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                            Endereço Completo *
-                                        </label>
-                                        <textarea name="address" 
-                                                  id="delivery_address"
-                                                  rows="3"
-                                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                                                  placeholder="Rua, número, bairro..."
-                                                  required>{{ $customerData['address'] }}</textarea>
-                                    </div>
-                                    
-                                    <div class="grid md:grid-cols-2 gap-4">
+                                    <!-- CEP e Número -->
+                                    <div class="grid md:grid-cols-3 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                Bairro
+                                                CEP *
+                                            </label>
+                                            <div class="relative">
+                                                <input type="text" 
+                                                       name="zipcode" 
+                                                       id="delivery_zipcode"
+                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                       placeholder="00000-000"
+                                                       maxlength="9"
+                                                       required>
+                                                <button type="button" 
+                                                        id="search_zipcode_btn"
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                                                        onclick="searchZipcode()">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                Número *
                                             </label>
                                             <input type="text" 
-                                                   name="neighborhood" 
-                                                   id="delivery_neighborhood"
-                                                   value="{{ $customerData['neighborhood'] }}"
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                                   name="number" 
+                                                   id="delivery_number"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                   placeholder="123"
+                                                   required>
                                         </div>
                                         
                                         <div>
@@ -146,8 +157,60 @@
                                                    name="complement" 
                                                    id="delivery_complement"
                                                    value="{{ $customerData['complement'] }}"
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                   placeholder="Apto, casa, etc.">
                                         </div>
+                                    </div>
+                                    
+                                    <!-- Endereço (preenchido automaticamente) -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Rua/Logradouro *
+                                        </label>
+                                        <input type="text" 
+                                               name="street" 
+                                               id="delivery_street"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                               placeholder="Nome da rua"
+                                               required>
+                                    </div>
+                                    
+                                    <div class="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                Bairro *
+                                            </label>
+                                            <input type="text" 
+                                                   name="neighborhood" 
+                                                   id="delivery_neighborhood"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                   placeholder="Nome do bairro"
+                                                   required>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                Cidade/UF *
+                                            </label>
+                                            <input type="text" 
+                                                   name="city_state" 
+                                                   id="delivery_city_state"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                   placeholder="Cidade - UF"
+                                                   required>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Endereço completo (para referência) -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Endereço Completo (gerado automaticamente)
+                                        </label>
+                                        <textarea name="address" 
+                                                  id="delivery_address"
+                                                  rows="2"
+                                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
+                                                  readonly>{{ $customerData['address'] }}</textarea>
                                     </div>
                                     
                                     <div>
@@ -640,6 +703,106 @@
             notification.remove();
         }, 3000);
     }
+
+    // CEP Functions
+    function formatZipcode(value) {
+        // Remove tudo que não é dígito
+        const numbers = value.replace(/\D/g, '');
+        // Aplica a máscara 00000-000
+        return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
+    }
+
+    function searchZipcode() {
+        const zipcode = document.getElementById('delivery_zipcode').value.replace(/\D/g, '');
+        
+        if (zipcode.length !== 8) {
+            showNotification('CEP deve ter 8 dígitos', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('search_zipcode_btn');
+        const originalContent = btn.innerHTML;
+        
+        // Mostrar loading
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        // Usar API ViaCEP
+        fetch(`https://viacep.com.br/ws/${zipcode}/json/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.erro) {
+                    showNotification('CEP não encontrado', 'error');
+                    return;
+                }
+
+                // Preencher campos automaticamente
+                document.getElementById('delivery_street').value = data.logradouro || '';
+                document.getElementById('delivery_neighborhood').value = data.bairro || '';
+                document.getElementById('delivery_city_state').value = `${data.localidade || ''} - ${data.uf || ''}`;
+                
+                // Gerar endereço completo
+                updateFullAddress();
+                
+                showNotification('Endereço encontrado!', 'success');
+            })
+            .catch(error => {
+                console.error('Erro ao buscar CEP:', error);
+                showNotification('Erro ao buscar CEP. Tente novamente.', 'error');
+            })
+            .finally(() => {
+                // Restaurar botão
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            });
+    }
+
+    function updateFullAddress() {
+        const zipcode = document.getElementById('delivery_zipcode').value;
+        const number = document.getElementById('delivery_number').value;
+        const complement = document.getElementById('delivery_complement').value;
+        const street = document.getElementById('delivery_street').value;
+        const neighborhood = document.getElementById('delivery_neighborhood').value;
+        const cityState = document.getElementById('delivery_city_state').value;
+
+        let fullAddress = '';
+        
+        if (street) {
+            fullAddress += street;
+            if (number) fullAddress += `, ${number}`;
+            if (complement) fullAddress += `, ${complement}`;
+            if (neighborhood) fullAddress += `, ${neighborhood}`;
+            if (cityState) fullAddress += `, ${cityState}`;
+            if (zipcode) fullAddress += `, ${zipcode}`;
+        }
+
+        document.getElementById('delivery_address').value = fullAddress;
+    }
+
+    // Event listeners para CEP
+    document.addEventListener('DOMContentLoaded', function() {
+        const zipcodeInput = document.getElementById('delivery_zipcode');
+        const numberInput = document.getElementById('delivery_number');
+        const complementInput = document.getElementById('delivery_complement');
+
+        // Formatar CEP enquanto digita
+        zipcodeInput.addEventListener('input', function(e) {
+            e.target.value = formatZipcode(e.target.value);
+        });
+
+        // Buscar CEP quando completar 8 dígitos
+        zipcodeInput.addEventListener('input', function(e) {
+            const value = e.target.value.replace(/\D/g, '');
+            if (value.length === 8) {
+                setTimeout(() => searchZipcode(), 500); // Delay para evitar múltiplas chamadas
+            }
+        });
+
+        // Atualizar endereço completo quando outros campos mudarem
+        [numberInput, complementInput].forEach(input => {
+            input.addEventListener('input', updateFullAddress);
+        });
+    });
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {

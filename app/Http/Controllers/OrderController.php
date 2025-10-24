@@ -227,18 +227,32 @@ class OrderController extends Controller
             ->first();
 
         if ($coupon) {
-            $discount = $coupon->calculateDiscount($order->total_amount);
+            // Verificar se é cupom de frete grátis
+            $isFreeShippingCoupon = stripos($coupon->name, 'frete') !== false || 
+                                   stripos($coupon->description, 'frete') !== false;
             
-            if ($discount > 0) {
+            if ($isFreeShippingCoupon) {
+                // Cupom de frete grátis: desconto apenas no frete
                 $order->update([
                     'coupon_code' => $couponCode,
-                    'discount_amount' => $discount,
-                    'final_amount' => $order->final_amount - $discount,
+                    'discount_amount' => $order->delivery_fee,
+                    'final_amount' => $order->total_amount, // Sem frete
                 ]);
-
-                // Incrementa uso do cupom
-                $coupon->increment('used_count');
+            } else {
+                // Outros cupons: desconto apenas no valor do carrinho
+                $discount = $coupon->calculateDiscount($order->total_amount);
+                
+                if ($discount > 0) {
+                    $order->update([
+                        'coupon_code' => $couponCode,
+                        'discount_amount' => $discount,
+                        'final_amount' => ($order->total_amount - $discount) + $order->delivery_fee,
+                    ]);
+                }
             }
+
+            // Incrementa uso do cupom
+            $coupon->increment('used_count');
         }
     }
 

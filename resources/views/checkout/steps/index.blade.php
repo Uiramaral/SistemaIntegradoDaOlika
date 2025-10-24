@@ -666,15 +666,42 @@
     function updateTotal() {
         const subtotal = {{ $total }};
         const deliveryFee = 5.00;
-        const total = subtotal + deliveryFee - couponDiscount;
+        
+        // Aplicar desconto apenas no subtotal (valor do carrinho)
+        // Exceto se for cupom de frete grátis
+        let finalSubtotal = subtotal;
+        let finalDeliveryFee = deliveryFee;
+        
+        if (couponDiscount > 0) {
+            // Verificar se é cupom de frete grátis (assumindo que tem "frete" no nome)
+            const isFreeShippingCoupon = selectedCoupon && selectedCoupon.toLowerCase().includes('frete');
+            
+            if (isFreeShippingCoupon) {
+                // Cupom de frete grátis: desconto no frete
+                finalDeliveryFee = 0;
+            } else {
+                // Outros cupons: desconto apenas no subtotal
+                finalSubtotal = Math.max(0, subtotal - couponDiscount);
+            }
+        }
+        
+        const total = finalSubtotal + finalDeliveryFee;
         
         document.getElementById('final_total').textContent = 
             'R$ ' + total.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         
         if (couponDiscount > 0) {
             document.getElementById('coupon_discount').classList.remove('hidden');
-            document.getElementById('discount_value').textContent = 
-                '-R$ ' + couponDiscount.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            
+            if (isFreeShippingCoupon) {
+                document.getElementById('discount_value').textContent = 
+                    '-R$ ' + deliveryFee.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            } else {
+                document.getElementById('discount_value').textContent = 
+                    '-R$ ' + couponDiscount.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+        } else {
+            document.getElementById('coupon_discount').classList.add('hidden');
         }
     }
 

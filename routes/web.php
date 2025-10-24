@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 
 // Seus controllers (ajuste namespaces se necessário)
 use App\Http\Controllers\MenuController;
@@ -13,10 +14,12 @@ use App\Http\Controllers\DeliveryFeeController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\PaymentController;
 
-// ======================================================================
-// 1) DASHBOARD — subdomínio: dashboard.menuolika.com.br
-//    Rotas de administração ficam restritas a esse host.
-// ======================================================================
+/*
+|--------------------------------------------------------------------------
+| 1) DASHBOARD — subdomínio: dashboard.menuolika.com.br
+|    Rotas de administração ficam restritas a esse host.
+|--------------------------------------------------------------------------
+*/
 Route::domain('dashboard.menuolika.com.br')->group(function () {
 
     // Página inicial do subdomínio -> redireciona para o dashboard
@@ -30,54 +33,107 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/stats', [\App\Http\Controllers\Admin\DashboardController::class, 'getStats'])->name('dashboard.stats');
         Route::get('/dashboard/sales-chart', [\App\Http\Controllers\Admin\DashboardController::class, 'getSalesChart'])->name('dashboard.sales-chart');
-        
+
         // Payment Settings
         Route::get('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingsController::class, 'index'])->name('payment-settings');
         Route::post('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingsController::class, 'update'])->name('payment-settings.update');
         Route::get('/payment-settings/get', [\App\Http\Controllers\Admin\PaymentSettingsController::class, 'getSettings'])->name('payment-settings.get');
         Route::post('/payment-settings/test-connection', [\App\Http\Controllers\Admin\PaymentSettingsController::class, 'testConnection'])->name('payment-settings.test-connection');
         Route::post('/payment-settings/toggle-test-mode', [\App\Http\Controllers\Admin\PaymentSettingsController::class, 'toggleTestMode'])->name('payment-settings.toggle-test-mode');
-        
+
         // Health Check
         Route::get('/health', [\App\Http\Controllers\Admin\HealthCheckController::class, 'index'])->name('health');
     });
 });
 
-// ======================================================================
-// 2) LOJA — subdomínio: pedido.menuolika.com.br
-//    (Opcional) Duplicamos as rotas da loja com prefixo de nome "pedido.*"
-//    para você ter nomes distintos sem conflito com as globais.
-// ======================================================================
-Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| 2) LOJA — subdomínio: pedido.menuolika.com.br
+|    Rotas da loja pública sob esse host.
+|--------------------------------------------------------------------------
+*/
+Route::domain('pedido.menuolika.com.br')->group(function () {
 
-    // Página inicial - redireciona para o cardápio
-    Route::get('/', function () {
-        return redirect()->route('pedido.menu.index');
-    })->name('home');
+    // Home mostra o cardápio direto (sem /menu)
+    Route::get('/', [MenuController::class, 'index'])->name('menu.index');
 
-    // Rotas do cardápio
+    // Alias /menu (opcional), com nome diferente pra não duplicar
     Route::prefix('menu')->name('menu.')->group(function () {
-        Route::get('/', [MenuController::class, 'index'])->name('index');
+        Route::get('/', [MenuController::class, 'index'])->name('page');
         Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
         Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
     });
 
-    // Rotas do carrinho
-    Route::prefix('cart')->name('cart.')->group(function () {
-        Route::get('/', [CartController::class, 'index'])->name('index');
-        Route::get('/count', [CartController::class, 'getCount'])->name('count');
-        Route::post('/add', [CartController::class, 'add'])->name('add');
-        Route::put('/update', [CartController::class, 'update'])->name('update');
-        Route::delete('/remove', [CartController::class, 'remove'])->name('remove');
-        Route::delete('/clear', [CartController::class, 'clear'])->name('clear');
+    // API do carrinho (JSON)
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'show'])->name('cart.index');
+        Route::get('/count',  [CartController::class, 'count'])->name('cart.count');
+        Route::get('/items',  [CartController::class, 'items'])->name('cart.items');
+        Route::post('/add',    [CartController::class, 'add'])->name('cart.add');
+        Route::post('/update', [CartController::class, 'update'])->name('cart.update');
+        Route::post('/remove', [CartController::class, 'remove'])->name('cart.remove');
+        Route::post('/clear',  [CartController::class, 'clear'])->name('cart.clear');
     });
 
-    // Rotas do pedido
+    // Debug routes (temporário)
+    Route::get('/debug/routes', function () {
+        return collect(\Route::getRoutes())->map(fn($r) => [
+            'uri' => $r->uri(),
+            'methods' => $r->methods(),
+            'name' => $r->getName()
+        ])->filter(fn($r) => str_contains($r['uri'], 'cart'));
+    });
+
+    // Debug menu (temporário)
+    Route::get('/debug/menu', function () {
+        $controller = new \App\Http\Controllers\MenuController();
+        $reflection = new \ReflectionClass($controller);
+        $method = $reflection->getMethod('index');
+        $method->setAccessible(true);
+        $result = $method->invoke($controller);
+        
+        $featuredProducts = $result['featuredProducts'];
+        $categories = $result['categories'];
+        
+        return [
+            'featured_products' => $featuredProducts->pluck('id', 'name'),
+            'categories' => $categories->map(function($cat) {
+                return [
+                    'name' => $cat->name,
+                    'products' => $cat->products->pluck('id', 'name')
+                ];
+            })
+        ];
+    });
+
+    // Rota para limpar cache do sistema (somente neste subdomínio)
+    Route::match(['get', 'post'], '/cache/limpar', function() {
+        $commands = [];
+        $results = [];
+        try {
+            Artisan::call('cache:clear');      $commands[] = 'cache:clear';      $results['cache:clear'] = 'OK';
+            Artisan::call('config:clear');     $commands[] = 'config:clear';     $results['config:clear'] = 'OK';
+            Artisan::call('route:clear');      $commands[] = 'route:clear';      $results['route:clear'] = 'OK';
+            Artisan::call('view:clear');       $commands[] = 'view:clear';       $results['view:clear'] = 'OK';
+            Artisan::call('optimize:clear');   $commands[] = 'optimize:clear';   $results['optimize:clear'] = 'OK';
+        } catch (\Exception $e) {
+            $results['error'] = $e->getMessage();
+        }
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Cache do sistema limpo com sucesso!',
+            'commands'  => $commands,
+            'results'   => $results,
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+    })->name('cache.limpar');
+
+    // Rotas do pedido / checkout
     Route::prefix('checkout')->name('checkout.')->middleware('cart.not.empty')->group(function () {
         Route::get('/', [OrderController::class, 'checkout'])->name('index');
         Route::post('/', [OrderController::class, 'store'])->name('store');
-        
+
         // APIs para checkout por etapas
         Route::post('/save-customer-data', [OrderController::class, 'saveCustomerData'])->name('save-customer-data');
         Route::post('/save-delivery-address', [OrderController::class, 'saveDeliveryAddress'])->name('save-delivery-address');
@@ -127,39 +183,54 @@ Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
     });
 });
 
-// ======================================================================
-// 3) LOJA — rotas globais (domínio principal /sistema/public)
-//     -> são exatamente as SUAS rotas originais, intactas
-// ======================================================================
+/*
+|--------------------------------------------------------------------------
+| 3) LOJA — rotas globais (domínio principal /sistema/public)
+|     Mantém compatibilidade acessando pelo domínio raiz.
+|--------------------------------------------------------------------------
+*/
 
-// Página inicial - redireciona para o cardápio
-Route::get('/', function () {
-    return redirect()->route('menu.index');
-});
+// Home no domínio raiz
+Route::get('/', [MenuController::class, 'index'])->name('menu.index');
 
-// Rotas do cardápio
+// Alias /menu (opcional), com nome diferente pra não duplicar
 Route::prefix('menu')->name('menu.')->group(function () {
-    Route::get('/', [MenuController::class, 'index'])->name('index');
+    Route::get('/', [MenuController::class, 'index'])->name('page');
     Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
     Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
     Route::get('/buscar', [MenuController::class, 'search'])->name('search');
 });
 
-// Rotas do carrinho
-Route::prefix('cart')->name('cart.')->group(function () {
-    Route::get('/', [CartController::class, 'index'])->name('index');
-    Route::get('/count', [CartController::class, 'getCount'])->name('count');
-    Route::post('/add', [CartController::class, 'add'])->name('add');
-    Route::put('/update', [CartController::class, 'update'])->name('update');
-    Route::delete('/remove', [CartController::class, 'remove'])->name('remove');
-    Route::delete('/clear', [CartController::class, 'clear'])->name('clear');
-});
+// Página HTML do carrinho (usa o nome esperado pelo Blade)
+Route::get('/cart', [CartController::class, 'show'])->name('cart.index');
+
+// Rota para limpar cache do sistema (global)
+Route::match(['get', 'post'], '/cache/limpar', function() {
+    $commands = [];
+    $results  = [];
+    try {
+        Artisan::call('cache:clear');      $commands[] = 'cache:clear';      $results['cache:clear'] = 'OK';
+        Artisan::call('config:clear');     $commands[] = 'config:clear';     $results['config:clear'] = 'OK';
+        Artisan::call('route:clear');      $commands[] = 'route:clear';      $results['route:clear'] = 'OK';
+        Artisan::call('view:clear');       $commands[] = 'view:clear';       $results['view:clear'] = 'OK';
+        Artisan::call('optimize:clear');   $commands[] = 'optimize:clear';   $results['optimize:clear'] = 'OK';
+    } catch (\Exception $e) {
+        $results['error'] = $e->getMessage();
+    }
+    return response()->json([
+        'success'   => true,
+        'message'   => 'Cache do sistema limpo com sucesso!',
+        'commands'  => $commands,
+        'results'   => $results,
+        'timestamp' => now()->format('Y-m-d H:i:s')
+    ]);
+})->name('cache.limpar');
 
 // Rotas do pedido
 Route::prefix('checkout')->name('checkout.')->middleware('cart.not.empty')->group(function () {
     Route::get('/', [OrderController::class, 'checkout'])->name('index');
     Route::post('/', [OrderController::class, 'store'])->name('store');
-    
+
     // APIs para checkout por etapas
     Route::post('/save-customer-data', [OrderController::class, 'saveCustomerData'])->name('save-customer-data');
     Route::post('/save-delivery-address', [OrderController::class, 'saveDeliveryAddress'])->name('save-delivery-address');
@@ -208,10 +279,37 @@ Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/pending/{order}', [PaymentController::class, 'pending'])->name('pending');
 });
 
-// ======================================================================
-// 4) WEBHOOKS — globais (use a mesma URL configurada no provedor)
-// ======================================================================
+/*
+|--------------------------------------------------------------------------
+| 4) WEBHOOKS — globais (use a mesma URL configurada no provedor)
+|--------------------------------------------------------------------------
+*/
 Route::prefix('webhooks')->name('webhooks.')->group(function () {
     Route::post('/mercadopago', [WebhookController::class, 'mercadoPago'])->name('mercadopago');
     Route::post('/whatsapp', [WebhookController::class, 'whatsApp'])->name('whatsapp');
+});
+
+/*
+|--------------------------------------------------------------------------
+| 5) Utilitários globais (health + clear)
+|--------------------------------------------------------------------------
+*/
+Route::get('/health-sistema', fn() => 'ok-from-sistema');
+
+// Limpeza rápida via link: https://pedido.menuolika.com.br/_tools/clear?t=OLIKA2025_CLEAR
+Route::any('/_tools/clear', function () {
+    if (request('t') !== 'OLIKA2025_CLEAR') abort(403, 'Acesso não autorizado');
+
+    if (function_exists('opcache_reset')) { @opcache_reset(); }
+    Artisan::call('cache:clear');
+    Artisan::call('config:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+    Artisan::call('optimize:clear');
+
+    return response()->json([
+        'status'  => 'ok',
+        'time'    => now()->toDateTimeString(),
+        'actions' => ['cache:clear','config:clear','route:clear','view:clear','optimize:clear'],
+    ]);
 });

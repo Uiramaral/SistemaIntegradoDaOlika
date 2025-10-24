@@ -13,18 +13,39 @@ class MenuController extends Controller
      */
     public function index()
     {
-        $categories = Category::active()
-            ->ordered()
-            ->with(['products' => function ($query) {
-                $query->active()->available()->ordered();
-            }])
-            ->get();
-
+        // Buscar produtos em destaque primeiro
         $featuredProducts = Product::active()
             ->available()
             ->featured()
             ->ordered()
             ->get();
+
+        // Buscar categorias com todos os produtos
+        $categories = Category::active()
+            ->ordered()
+            ->with(['products' => function ($query) {
+                $query->active()
+                      ->available()
+                      ->ordered();
+            }])
+            ->get();
+
+        // Filtrar produtos em destaque das categorias após carregar
+        $featuredProductIds = $featuredProducts->pluck('id')->toArray();
+        
+        // Debug: verificar quantos produtos em destaque
+        \Log::info('Produtos em destaque IDs: ' . json_encode($featuredProductIds));
+        
+        $categories->each(function ($category) use ($featuredProductIds) {
+            $originalCount = $category->products->count();
+            $category->products = $category->products->reject(function ($product) use ($featuredProductIds) {
+                return in_array($product->id, $featuredProductIds);
+            });
+            $filteredCount = $category->products->count();
+            
+            // Debug: verificar se filtrou
+            \Log::info("Categoria {$category->name}: {$originalCount} -> {$filteredCount} produtos");
+        });
 
         return view('menu.index', compact('categories', 'featuredProducts'));
     }

@@ -86,7 +86,7 @@
                        class="relative bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
                         <i class="fas fa-shopping-cart mr-2"></i>
                         Carrinho
-                        <span id="cart-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center" style="display: none;">
+                        <span id="cart-badge" data-cart-badge class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">
                             0
                         </span>
                     </a>
@@ -619,7 +619,7 @@
             console.log('Adicionando ao carrinho:', productId, quantity);
             
             // Primeiro, tentar a API normal
-            fetch('/cart/add', {
+            fetch(`${window.location.origin}/cart/add`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -636,8 +636,10 @@
                     console.log('Produto adicionado via API:', data);
                     // ATUALIZAR localStorage com dados da API
                     updateLocalStorageFromAPI(data);
-                    // Atualizar contador
-                    window.updateCartCount();
+                    // Atualizar contador global
+                    if (typeof window.updateCartCount === 'function') {
+                        window.updateCartCount(data.cart_count);
+                    }
                     showNotification(data.message, 'success');
                 } else {
                     throw new Error('API retornou erro');
@@ -1094,6 +1096,53 @@
                 console.log('Elemento cart-count não encontrado');
             }
         };
+    </script>
+
+    <!-- Função global para atualizar contador do carrinho -->
+    <script>
+        (function () {
+            function setCartBadge(count) {
+                var n = Number(count || 0);
+
+                // 1) Atualiza todos os badges conhecidos
+                var selectors = ['#cart-badge', '[data-cart-badge]', '.js-cart-count'];
+                selectors.forEach(function (sel) {
+                    document.querySelectorAll(sel).forEach(function (el) {
+                        el.textContent = n;
+                        // mostra quando > 0; esconde quando 0
+                        if (n > 0) {
+                            el.classList.remove('hidden');
+                            el.style.display = '';
+                        } else {
+                            el.classList.add('hidden');
+                            el.style.display = 'none';
+                        }
+                    });
+                });
+
+                // 2) Persiste para outras abas (e para páginas que só leem do LS)
+                try { localStorage.setItem('olika_cart_count', String(n)); } catch(_) {}
+
+                // 3) (Opcional) Exponha para outros scripts
+                window.__cart_count__ = n;
+            }
+
+            // Torna público para qualquer página/arquivo JS chamar
+            window.updateCartCount = setCartBadge;
+
+            // Sincroniza entre abas
+            window.addEventListener('storage', function (e) {
+                if (e.key === 'olika_cart_count') {
+                    setCartBadge(e.newValue || 0);
+                }
+            });
+
+            // Inicializa com o que estiver no LS (melhor que nada)
+            try {
+                var boot = Number(localStorage.getItem('olika_cart_count') || 0);
+                setCartBadge(boot);
+            } catch(_) {}
+        })();
     </script>
     
     @stack('scripts')

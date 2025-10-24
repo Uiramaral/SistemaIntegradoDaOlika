@@ -2,181 +2,155 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
+use App\Models\Product;
 
 class CartController extends Controller
 {
-    /**
-     * Exibe o carrinho
-     */
-    public function index()
-    {
-        $cart = $this->getCart();
-        $total = $this->calculateTotal($cart);
+    // Helpers centralizados -----------------------------
 
-        return view('cart.index', compact('cart', 'total'));
+    private function getCartFromSession(): array
+    {
+        // ajuste conforme sua estrutura
+        return session('cart', []); // ex: [product_id => ['qty'=>..., 'price'=>...], ...]
     }
 
-    /**
-     * Adiciona produto ao carrinho
-     */
-    public function add(Request $request)
+    private function saveCartToSession(array $cart): void
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-        ]);
+        session(['cart' => $cart]);
+    }
 
-        $product = Product::active()->available()->findOrFail($request->product_id);
-        $cart = $this->getCart();
+    private function cartSummary(array $cart): array
+    {
+        $count = 0;
+        $total = 0.0;
+        $items = [];
 
-        $cartKey = $request->product_id;
-        
-        if (isset($cart[$cartKey])) {
-            $cart[$cartKey]['quantity'] += $request->quantity;
-        } else {
-            $cart[$cartKey] = [
-                'product' => $product,
-                'quantity' => $request->quantity,
-                'unit_price' => $product->price,
+        // Buscar produtos do banco para enriquecer os dados
+        $productIds = array_keys($cart);
+        $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+        foreach ($cart as $productId => $row) {
+            $qty   = (int)($row['qty']   ?? 0);
+            $price = (float)($row['price'] ?? 0);
+            $count += $qty;
+            $total += $qty * $price;
+
+            $product = $products->get($productId);
+
+            $items[] = [
+                'product_id' => (int)$productId,
+                'qty'        => $qty,
+                'price'      => $price,
+                'subtotal'   => $qty * $price,
+                'name'       => $product ? $product->name : "Produto #{$productId}",
+                'image_url'  => $product ? $product->image_url : null,
             ];
         }
 
-        $this->saveCart($cart);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Produto adicionado ao carrinho',
-            'cart_count' => $this->getCartCount(),
-        ]);
+        return [$count, round($total, 2), $items];
     }
 
-    /**
-     * Atualiza quantidade no carrinho
-     */
+    private function jsonCart(array $extra = [])
+    {
+        [$count, $total, $items] = $this->cartSummary($this->getCartFromSession());
+
+        return response()->json(array_merge([
+            'success'    => true,
+            'cart_count' => $count,
+            'total'      => $total,
+            'items'      => $items,
+        ], $extra));
+    }
+
+    // Endpoints de LEITURA ------------------------------
+
+    public function count(Request $request)
+    {
+        [$count] = $this->cartSummary($this->getCartFromSession());
+        return response()->json(['success' => true, 'count' => $count]);
+    }
+
+    public function items(Request $request)
+    {
+        return $this->jsonCart();
+    }
+
+    // Endpoints de ESCRITA ------------------------------
+
+    public function add(Request $request)
+    {
+        $productId = (int) $request->input('product_id');
+        $qty       = max(1, (int)$request->input('qty', 1));
+        $price     = (float) $request->input('price', 0);
+
+        $cart = $this->getCartFromSession();
+
+        if (!isset($cart[$productId])) {
+            $cart[$productId] = ['qty' => 0, 'price' => $price];
+        }
+
+        $cart[$productId]['qty'] += $qty;
+        if ($price > 0) { $cart[$productId]['price'] = $price; }
+
+        $this->saveCartToSession($cart);
+
+        return $this->jsonCart(['message' => 'Item adicionado']);
+    }
+
     public function update(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:0',
-        ]);
+        $productId = (int) $request->input('product_id');
+        $qty       = max(0, (int)$request->input('qty', 0));
 
-        $cart = $this->getCart();
-        $cartKey = $request->product_id;
+        $cart = $this->getCartFromSession();
 
-        if ($request->quantity == 0) {
-            unset($cart[$cartKey]);
+        if ($qty === 0) {
+            unset($cart[$productId]);
         } else {
-            if (isset($cart[$cartKey])) {
-                $cart[$cartKey]['quantity'] = $request->quantity;
+            if (!isset($cart[$productId])) {
+                // opcional: retornar erro
+                $cart[$productId] = ['qty' => 0, 'price' => (float)$request->input('price', 0)];
             }
+            $cart[$productId]['qty'] = $qty;
         }
 
-        $this->saveCart($cart);
+        $this->saveCartToSession($cart);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Carrinho atualizado',
-            'cart_count' => $this->getCartCount(),
-            'total' => $this->calculateTotal($cart),
-        ]);
+        return $this->jsonCart(['message' => 'Carrinho atualizado']);
     }
 
-    /**
-     * Remove produto do carrinho
-     */
     public function remove(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-        ]);
+        $productId = (int) $request->input('product_id');
+        $cart = $this->getCartFromSession();
 
-        $cart = $this->getCart();
-        $cartKey = $request->product_id;
+        unset($cart[$productId]);
 
-        if (isset($cart[$cartKey])) {
-            unset($cart[$cartKey]);
-            $this->saveCart($cart);
-        }
+        $this->saveCartToSession($cart);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Produto removido do carrinho',
-            'cart_count' => $this->getCartCount(),
-            'total' => $this->calculateTotal($cart),
-        ]);
+        return $this->jsonCart(['message' => 'Item removido']);
     }
 
-    /**
-     * Limpa o carrinho
-     */
-    public function clear()
+    public function clear(Request $request)
     {
-        Session::forget('cart');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Carrinho limpo',
-        ]);
+        $this->saveCartToSession([]);
+        return $this->jsonCart(['message' => 'Carrinho limpo']);
     }
 
-    /**
-     * Obtém o carrinho da sessão
-     */
-    private function getCart()
+    // Página HTML --------------------------------------
+
+    public function show(Request $request)
     {
-        return Session::get('cart', []);
+        // Renderiza a view SEM depender de $cart cru na sessão.
+        // A própria view pode consumir /cart/items via JS para hidratar.
+        return view('cart.index');
     }
 
-    /**
-     * Salva o carrinho na sessão
-     */
-    private function saveCart($cart)
+    // Compatibilidade com rotas antigas
+    public function index(Request $request)
     {
-        Session::put('cart', $cart);
-    }
-
-    /**
-     * Calcula o total do carrinho
-     */
-    private function calculateTotal($cart)
-    {
-        $total = 0;
-        
-        foreach ($cart as $item) {
-            $total += $item['quantity'] * $item['unit_price'];
-        }
-
-        return $total;
-    }
-
-    /**
-     * Obtém a quantidade de itens no carrinho
-     */
-    private function getCartCount()
-    {
-        $cart = $this->getCart();
-        $count = 0;
-        
-        foreach ($cart as $item) {
-            $count += $item['quantity'];
-        }
-
-        return $count;
-    }
-
-    /**
-     * API: Retorna apenas a contagem do carrinho
-     */
-    public function getCount()
-    {
-        $count = $this->getCartCount();
-        
-        return response()->json([
-            'count' => $count,
-            'formatted_count' => $count > 0 ? $count : '0'
-        ]);
+        // compat com rotas antigas: /cart -> index
+        return $this->show($request);
     }
 }

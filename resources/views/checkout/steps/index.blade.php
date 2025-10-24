@@ -706,6 +706,9 @@
     }
 
     function prepareFinalData() {
+        console.log('🔧 Preparando dados finais...');
+        console.log('Cupom selecionado:', selectedCoupon);
+        
         document.getElementById('final_customer_name').value = document.getElementById('customer_name').value;
         document.getElementById('final_customer_phone').value = document.getElementById('customer_phone').value;
         document.getElementById('final_customer_email').value = document.getElementById('customer_email').value;
@@ -714,6 +717,8 @@
         document.getElementById('final_delivery_complement').value = document.getElementById('delivery_complement').value;
         document.getElementById('final_delivery_instructions').value = document.getElementById('delivery_instructions').value;
         document.getElementById('final_coupon_code').value = selectedCoupon || '';
+        
+        console.log('Cupom no campo hidden:', document.getElementById('final_coupon_code').value);
     }
 
     function showNotification(message, type = 'info') {
@@ -834,6 +839,14 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         updateProgress(1);
+        
+        // Preparar dados antes do submit do formulário
+        const paymentForm = document.getElementById('payment-form');
+        if (paymentForm) {
+            paymentForm.addEventListener('submit', function(e) {
+                prepareFinalData();
+            });
+        }
     });
 </script>
 @endpush

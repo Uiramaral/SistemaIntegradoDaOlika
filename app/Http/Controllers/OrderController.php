@@ -78,10 +78,18 @@ class OrderController extends Controller
      */
     public function store(StoreOrderRequest $request)
     {
+        \Log::info('🛒 Processando pedido', [
+            'customer_name' => $request->customer_name,
+            'customer_phone' => $request->customer_phone,
+            'coupon_code' => $request->coupon_code,
+            'payment_method' => $request->payment_method,
+            'delivery_type' => $request->delivery_type
+        ]);
 
         $cart = Session::get('cart', []);
         
         if (empty($cart)) {
+            \Log::warning('❌ Carrinho vazio');
             return redirect()->route('menu.index')->with('error', 'Carrinho vazio');
         }
 
@@ -126,6 +134,12 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            \Log::error('❌ Erro ao processar pedido', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
             
             return redirect()->back()
                 ->with('error', 'Erro ao processar pedido: ' . $e->getMessage())
@@ -220,6 +234,8 @@ class OrderController extends Controller
      */
     private function applyCoupon(Order $order, string $couponCode)
     {
+        \Log::info('🎫 Aplicando cupom', ['code' => $couponCode, 'order_id' => $order->id]);
+        
         $coupon = Coupon::where('code', $couponCode)
             ->active()
             ->valid()
@@ -227,6 +243,7 @@ class OrderController extends Controller
             ->first();
 
         if ($coupon) {
+            \Log::info('✅ Cupom encontrado', ['coupon' => $coupon->toArray()]);
             // Verificar se é cupom de frete grátis
             $isFreeShippingCoupon = stripos($coupon->name, 'frete') !== false || 
                                    stripos($coupon->description, 'frete') !== false;

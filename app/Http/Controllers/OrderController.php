@@ -436,24 +436,40 @@ class OrderController extends Controller
      */
     public function saveCustomerData(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-        ]);
+        try {
+            \Log::info('💾 Salvando dados do cliente', $request->all());
+            
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'phone' => 'required|string|max:20',
+                'email' => 'nullable|email|max:255',
+            ]);
 
-        $customerData = [
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'email' => $request->email,
-        ];
+            $customerData = [
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'email' => $request->email,
+            ];
 
-        $cookies = $this->saveCustomerDataToCookies($customerData);
+            $cookies = $this->saveCustomerDataToCookies($customerData);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Dados salvos com sucesso',
-        ])->withCookies($cookies);
+            \Log::info('✅ Dados do cliente salvos com sucesso');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Dados salvos com sucesso',
+            ])->withCookies($cookies);
+        } catch (\Exception $e) {
+            \Log::error('❌ Erro ao salvar dados do cliente', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao salvar dados: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -461,24 +477,40 @@ class OrderController extends Controller
      */
     public function saveDeliveryAddress(Request $request)
     {
-        $request->validate([
-            'address' => 'required|string|max:500',
-            'neighborhood' => 'nullable|string|max:100',
-            'complement' => 'nullable|string|max:100',
-            'instructions' => 'nullable|string|max:500',
-        ]);
+        try {
+            \Log::info('🏠 Salvando endereço de entrega', $request->all());
+            
+            $request->validate([
+                'address' => 'required|string|max:500',
+                'neighborhood' => 'nullable|string|max:100',
+                'complement' => 'nullable|string|max:100',
+                'instructions' => 'nullable|string|max:500',
+            ]);
 
-        $addressData = [
-            'address' => $request->address,
-            'neighborhood' => $request->neighborhood,
-            'complement' => $request->complement,
-        ];
+            $addressData = [
+                'address' => $request->address,
+                'neighborhood' => $request->neighborhood,
+                'complement' => $request->complement,
+            ];
 
-        $cookies = $this->saveCustomerDataToCookies($addressData);
+            $cookies = $this->saveCustomerDataToCookies($addressData);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Endereço salvo com sucesso',
-        ])->withCookies($cookies);
+            \Log::info('✅ Endereço salvo com sucesso');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Endereço salvo com sucesso',
+            ])->withCookies($cookies);
+        } catch (\Exception $e) {
+            \Log::error('❌ Erro ao salvar endereço', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao salvar endereço: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

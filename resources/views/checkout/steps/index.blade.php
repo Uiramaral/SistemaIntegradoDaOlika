@@ -664,8 +664,15 @@
     }
 
     function updateTotal() {
+        console.log('💰 Atualizando total...');
+        console.log('Cupom selecionado:', selectedCoupon);
+        console.log('Desconto do cupom:', couponDiscount);
+        
         const subtotal = {{ $total }};
         const deliveryFee = 5.00;
+        
+        console.log('Subtotal:', subtotal);
+        console.log('Taxa de entrega:', deliveryFee);
         
         // Aplicar desconto apenas no subtotal (valor do carrinho)
         // Exceto se for cupom de frete grátis
@@ -676,16 +683,24 @@
             // Verificar se é cupom de frete grátis (assumindo que tem "frete" no nome)
             const isFreeShippingCoupon = selectedCoupon && selectedCoupon.toLowerCase().includes('frete');
             
+            console.log('É cupom de frete grátis?', isFreeShippingCoupon);
+            
             if (isFreeShippingCoupon) {
                 // Cupom de frete grátis: desconto no frete
                 finalDeliveryFee = 0;
+                console.log('Aplicando desconto no frete');
             } else {
                 // Outros cupons: desconto apenas no subtotal
                 finalSubtotal = Math.max(0, subtotal - couponDiscount);
+                console.log('Aplicando desconto no subtotal');
             }
         }
         
         const total = finalSubtotal + finalDeliveryFee;
+        
+        console.log('Total final:', total);
+        console.log('Subtotal final:', finalSubtotal);
+        console.log('Frete final:', finalDeliveryFee);
         
         document.getElementById('final_total').textContent = 
             'R$ ' + total.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');

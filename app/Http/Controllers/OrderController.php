@@ -39,6 +39,22 @@ class OrderController extends Controller
             return redirect()->route('menu.index')->with('error', 'Carrinho vazio');
         }
 
+        // Preparar dados do carrinho para a view
+        $cartItems = [];
+        $productIds = array_keys($cart);
+        $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+        
+        foreach ($cart as $productId => $item) {
+            $product = $products->get($productId);
+            if ($product) {
+                $cartItems[] = [
+                    'product' => $product,
+                    'quantity' => $item['qty'] ?? 0,
+                    'unit_price' => $item['price'] ?? 0,
+                ];
+            }
+        }
+
         $total = $this->calculateCartTotal($cart);
         $settings = Setting::getSettings();
         

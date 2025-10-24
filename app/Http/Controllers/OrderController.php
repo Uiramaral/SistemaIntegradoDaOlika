@@ -183,14 +183,19 @@ class OrderController extends Controller
      */
     private function createOrderItems(Order $order, array $cart)
     {
-        foreach ($cart as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['product']->id,
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'total_price' => $item['quantity'] * $item['unit_price'],
-            ]);
+        foreach ($cart as $productId => $item) {
+            // Buscar produto do banco para obter dados completos
+            $product = \App\Models\Product::find($productId);
+            
+            if ($product) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $productId,
+                    'quantity' => $item['qty'] ?? 0,
+                    'unit_price' => $item['price'] ?? 0,
+                    'total_price' => ($item['qty'] ?? 0) * ($item['price'] ?? 0),
+                ]);
+            }
         }
     }
 
@@ -245,7 +250,9 @@ class OrderController extends Controller
         $total = 0;
         
         foreach ($cart as $item) {
-            $total += $item['quantity'] * $item['unit_price'];
+            $qty = $item['qty'] ?? 0;
+            $price = $item['price'] ?? 0;
+            $total += $qty * $price;
         }
 
         return $total;

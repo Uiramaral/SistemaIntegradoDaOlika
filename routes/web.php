@@ -63,9 +63,10 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
         Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
         Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
+        Route::get('/download', [MenuController::class, 'download'])->name('download');
     });
 
-    // API do carrinho (JSON)
+    // API do carrinho (JSON) - URLs corretas para subdomínio pedido.menuolika.com.br
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'show'])->name('cart.index');
         Route::get('/count',  [CartController::class, 'count'])->name('cart.count');
@@ -75,14 +76,19 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
         Route::post('/remove', [CartController::class, 'remove'])->name('cart.remove');
         Route::post('/clear',  [CartController::class, 'clear'])->name('cart.clear');
     });
+    
+    // IMPORTANTE: No subdomínio pedido.menuolika.com.br, as rotas do carrinho são:
+    // POST /cart/add (não /pedido/cart/add)
+    // Use sempre {{ route('cart.add') }} no Blade/JS para evitar URLs hardcoded
 
-    // Debug routes (temporário)
+    // Debug routes (temporário) - melhorado
     Route::get('/debug/routes', function () {
         return collect(\Route::getRoutes())->map(fn($r) => [
-            'uri' => $r->uri(),
+            'host'    => $r->domain(),
+            'uri'     => $r->uri(),
             'methods' => $r->methods(),
-            'name' => $r->getName()
-        ])->filter(fn($r) => str_contains($r['uri'], 'cart'));
+            'name'    => $r->getName()
+        ])->values();
     });
 
     // Debug menu (temporário)
@@ -181,6 +187,8 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
         Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
         Route::get('/pending/{order}', [PaymentController::class, 'pending'])->name('pending');
     });
+
+    // Rota __flush removida - usar apenas a versão global securitizada
 });
 
 /*
@@ -199,6 +207,7 @@ Route::prefix('menu')->name('menu.')->group(function () {
     Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
     Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
     Route::get('/buscar', [MenuController::class, 'search'])->name('search');
+    Route::get('/download', [MenuController::class, 'download'])->name('download');
 });
 
 // Página HTML do carrinho (usa o nome esperado pelo Blade)
@@ -294,11 +303,148 @@ Route::prefix('webhooks')->name('webhooks.')->group(function () {
 | 5) Utilitários globais (health + clear)
 |--------------------------------------------------------------------------
 */
-Route::get('/health-sistema', fn() => 'ok-from-sistema');
+Route::get('/health-sistema', function() {
+    // Limpar cache automaticamente quando acessar health-sistema
+    try {
+        Artisan::call('route:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('config:clear');
+        Artisan::call('view:clear');
+        Artisan::call('optimize:clear');
+        
+        return response()->json([
+            'status' => 'ok-from-sistema',
+            'cache_cleared' => true,
+            'message' => 'Cache limpo automaticamente',
+            'time' => now(),
+            'layout_fixed' => true,
+            'routes_count' => count(\Route::getRoutes())
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Erro ao limpar cache: ' . $e->getMessage(),
+            'time' => now(),
+            'error_type' => get_class($e)
+        ]);
+    }
+});
 
-// Limpeza rápida via link: https://pedido.menuolika.com.br/_tools/clear?t=OLIKA2025_CLEAR
+// Rota de diagnóstico para RouteNotFoundException
+Route::get('/debug-route-error', function() {
+    try {
+        $routes = collect(\Route::getRoutes())->map(fn($r) => [
+            'name' => $r->getName(),
+            'uri' => $r->uri(),
+            'methods' => $r->methods(),
+            'domain' => $r->domain()
+        ])->values();
+        
+        return response()->json([
+            'status' => 'success',
+            'total_routes' => $routes->count(),
+            'routes' => $routes,
+            'time' => now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'error_type' => get_class($e),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'time' => now()
+        ]);
+    }
+});
+
+// Rotas de teste SEM middleware CSRF
+Route::get('/test-no-csrf', function() {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Rota sem CSRF funcionando',
+        'time' => now(),
+        'csrf_status' => 'disabled'
+    ]);
+})->withoutMiddleware(['web']);
+
+Route::post('/test-post-no-csrf', function() {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'POST sem CSRF funcionando',
+        'time' => now(),
+        'method' => request()->method()
+    ]);
+})->withoutMiddleware(['web']);
+
+// Teste de flush SEM CSRF e SEM token
+Route::match(['get','post'], '/flush-no-csrf', function () {
+    $results = []; $errors = [];
+    try {
+        Artisan::call('cache:clear');        $results['cache:clear']       = 'OK';
+        Artisan::call('config:clear');       $results['config:clear']      = 'OK';
+        Artisan::call('route:clear');        $results['route:clear']       = 'OK';
+        Artisan::call('view:clear');         $results['view:clear']        = 'OK';
+        Artisan::call('optimize:clear');     $results['optimize:clear']    = 'OK';
+        if (function_exists('opcache_reset')) { @opcache_reset(); $results['opcache:reset'] = 'OK'; }
+    } catch (\Throwable $e) {
+        $errors[] = $e->getMessage();
+        $results['error'] = $e->getMessage();
+    }
+
+    return response()->json([
+        'success'     => empty($errors),
+        'message'     => 'Flush sem CSRF realizado',
+        'timestamp'   => now()->toDateTimeString(),
+        'results'     => $results,
+        'errors'      => $errors,
+        'csrf_status' => 'disabled'
+    ]);
+})->withoutMiddleware(['web']);
+
+// Rota de limpeza de cache (sem token para teste)
+Route::get('/clear-cache-now', function () {
+    try {
+        Artisan::call('route:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('config:clear');
+        Artisan::call('view:clear');
+        Artisan::call('optimize:clear');
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cache limpo com sucesso',
+            'time' => now(),
+            'commands' => ['route:clear', 'cache:clear', 'config:clear', 'view:clear', 'optimize:clear']
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'time' => now()
+        ]);
+    }
+});
+
+// Rotas de teste para diagnóstico do 404
+Route::get('/test-simple', fn() => 'TESTE SIMPLES FUNCIONANDO');
+Route::get('/test-json', fn() => response()->json(['status' => 'ok', 'time' => now()]));
+Route::get('/test-phpinfo', fn() => phpinfo());
+
+// Debug routes global (para verificar todas as rotas)
+Route::get('/debug/routes', function () {
+    return collect(\Route::getRoutes())->map(fn($r) => [
+        'host'    => $r->domain(),
+        'uri'     => $r->uri(),
+        'methods' => $r->methods(),
+        'name'    => $r->getName()
+    ])->values();
+});
+
+// --- Utilitários globais (respondem em qualquer host, protegidos por token) ---
+
 Route::any('/_tools/clear', function () {
-    if (request('t') !== 'OLIKA2025_CLEAR') abort(403, 'Acesso não autorizado');
+    abort_unless(request('t') === env('SYSTEM_CLEAR_TOKEN'), 403, 'Acesso não autorizado');
 
     if (function_exists('opcache_reset')) { @opcache_reset(); }
     Artisan::call('cache:clear');
@@ -312,4 +458,31 @@ Route::any('/_tools/clear', function () {
         'time'    => now()->toDateTimeString(),
         'actions' => ['cache:clear','config:clear','route:clear','view:clear','optimize:clear'],
     ]);
-});
+})->name('tools.clear');
+
+Route::match(['get','post'], '/__flush', function () {
+    abort_unless(request('t') === env('SYSTEM_FLUSH_TOKEN'), 403, 'Acesso não autorizado');
+
+    $results = []; $errors = [];
+    try {
+        Artisan::call('cache:clear');        $results['cache:clear']       = 'OK';
+        Artisan::call('config:clear');       $results['config:clear']      = 'OK';
+        Artisan::call('route:clear');        $results['route:clear']       = 'OK';
+        Artisan::call('view:clear');         $results['view:clear']        = 'OK';
+        Artisan::call('optimize:clear');     $results['optimize:clear']    = 'OK';
+        Artisan::call('auth:clear-resets');  $results['auth:clear-resets'] = 'OK';
+        if (function_exists('opcache_reset')) { @opcache_reset(); $results['opcache:reset'] = 'OK'; }
+    } catch (\Throwable $e) {
+        $errors[] = $e->getMessage();
+        $results['error'] = $e->getMessage();
+    }
+
+    return response()->json([
+        'success'     => empty($errors),
+        'message'     => 'Flush completo realizado',
+        'timestamp'   => now()->toDateTimeString(),
+        'results'     => $results,
+        'errors'      => $errors,
+        'server_info' => ['php' => PHP_VERSION, 'laravel' => app()->version(), 'env' => app()->environment()],
+    ]);
+})->name('system.flush');

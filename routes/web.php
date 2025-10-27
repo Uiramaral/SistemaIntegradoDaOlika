@@ -441,6 +441,146 @@ Route::get('/debug/routes', function () {
     ])->values();
 });
 
+// ===== Checkout por Etapas (Novo Sistema) =====
+
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'index'])->name('cart.index');
+    Route::post('add', [CartController::class, 'add'])->name('cart.add');
+    Route::post('update', [CartController::class, 'update'])->name('cart.update');
+    Route::post('remove', [CartController::class, 'remove'])->name('cart.remove');
+});
+
+Route::prefix('checkout')->group(function () {
+    // Etapa 1: Cliente
+    Route::get('/', [\App\Http\Controllers\CheckoutController::class, 'stepCustomer'])->name('checkout.customer');
+    Route::post('customer', [\App\Http\Controllers\CheckoutController::class, 'storeCustomer'])->name('checkout.customer.store');
+    
+    // Etapa 2: Endereço
+    Route::get('address', [\App\Http\Controllers\CheckoutController::class, 'stepAddress'])->name('checkout.address');
+    Route::post('address', [\App\Http\Controllers\CheckoutController::class, 'storeAddress'])->name('checkout.address.store');
+    
+    // Etapa 3: Revisão + Cupons
+    Route::get('review', [\App\Http\Controllers\CheckoutController::class, 'stepReview'])->name('checkout.review');
+    Route::post('apply-coupon', [CouponController::class, 'apply'])->name('checkout.coupon.apply');
+    Route::post('remove-coupon', [CouponController::class, 'remove'])->name('checkout.coupon.remove');
+    
+    // Etapa 4: Pagamento
+    Route::get('payment', [\App\Http\Controllers\CheckoutController::class, 'stepPayment'])->name('checkout.payment');
+    Route::post('payment/pix', [\App\Http\Controllers\PaymentController::class, 'createPix'])->name('payment.pix');
+    Route::post('payment/mp', [\App\Http\Controllers\PaymentController::class, 'createMpPreference'])->name('payment.mercadopago');
+    
+    // Sucesso
+    Route::get('success/{order}', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+});
+
+// Webhook Mercado Pago
+Route::post('/payments/mercadopago/webhook', [\App\Http\Controllers\WebhookController::class, 'mercadoPago'])->name('webhook.mercadopago');
+
+// Dashboard (subdomínio)
+Route::domain('dashboard.menuolika.com.br')->group(function () {
+    // Home completo e compacto
+    Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
+    Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
+    
+    // Pedidos
+    Route::get('/orders', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orders'])->name('dashboard.orders');
+    Route::get('/orders/{order}', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderShow'])->name('dashboard.orders.show');
+    Route::post('/orders/{order}/status', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderChangeStatus'])->name('dashboard.orders.status');
+    
+    // Clientes (CRUD completo)
+    Route::resource('/customers', \App\Http\Controllers\Dashboard\CustomersController::class)->names([
+        'index' => 'dashboard.customers',
+        'create' => 'dashboard.customers.create',
+        'store' => 'dashboard.customers.store',
+        'show' => 'dashboard.customers.show',
+        'edit' => 'dashboard.customers.edit',
+        'update' => 'dashboard.customers.update',
+        'destroy' => 'dashboard.customers.destroy',
+    ]);
+    
+    // Produtos (CRUD completo)
+    Route::resource('/products', \App\Http\Controllers\Dashboard\ProductsController::class)->names([
+        'index' => 'dashboard.products',
+        'create' => 'dashboard.products.create',
+        'store' => 'dashboard.products.store',
+        'edit' => 'dashboard.products.edit',
+        'update' => 'dashboard.products.update',
+        'destroy' => 'dashboard.products.destroy',
+    ]);
+    Route::post('/products/{id}/toggle', [\App\Http\Controllers\Dashboard\ProductsController::class, 'toggleStatus'])->name('dashboard.products.toggle');
+    
+    // Categorias (CRUD completo)
+    Route::resource('/categories', \App\Http\Controllers\Dashboard\CategoriesController::class)->names([
+        'index' => 'dashboard.categories',
+        'create' => 'dashboard.categories.create',
+        'store' => 'dashboard.categories.store',
+        'edit' => 'dashboard.categories.edit',
+        'update' => 'dashboard.categories.update',
+        'destroy' => 'dashboard.categories.destroy',
+    ]);
+    Route::post('/categories/{id}/toggle', [\App\Http\Controllers\Dashboard\CategoriesController::class, 'toggleStatus'])->name('dashboard.categories.toggle');
+    
+    // Cupons (CRUD completo)
+    Route::resource('/coupons', \App\Http\Controllers\Dashboard\CouponsController::class)->names([
+        'index' => 'dashboard.coupons',
+        'create' => 'dashboard.coupons.create',
+        'store' => 'dashboard.coupons.store',
+        'edit' => 'dashboard.coupons.edit',
+        'update' => 'dashboard.coupons.update',
+        'destroy' => 'dashboard.coupons.destroy',
+    ]);
+    Route::post('/coupons/{id}/toggle', [\App\Http\Controllers\Dashboard\CouponsController::class, 'toggleStatus'])->name('dashboard.coupons.toggle');
+    
+    // Cashback (CRUD completo)
+    Route::resource('/cashback', \App\Http\Controllers\Dashboard\CashbackController::class)->names([
+        'index' => 'dashboard.cashback',
+        'create' => 'dashboard.cashback.create',
+        'store' => 'dashboard.cashback.store',
+        'edit' => 'dashboard.cashback.edit',
+        'update' => 'dashboard.cashback.update',
+        'destroy' => 'dashboard.cashback.destroy',
+    ]);
+    
+    // Fidelidade (somente visualização - mantém DashboardController)
+    Route::get('/loyalty', [\App\Http\Controllers\Dashboard\DashboardController::class, 'loyalty'])->name('dashboard.loyalty');
+    
+    // Relatórios
+    Route::get('/reports', [\App\Http\Controllers\Dashboard\DashboardController::class, 'reports'])->name('dashboard.reports');
+    
+        // Settings - WhatsApp e Mercado Pago
+        Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.whatsapp');
+        Route::post('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.whatsapp.save');
+        Route::post('/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'waConnect'])->name('dashboard.whatsapp.connect');
+        Route::post('/whatsapp/health', [\App\Http\Controllers\Dashboard\SettingsController::class, 'waHealth'])->name('dashboard.whatsapp.health');
+        Route::get('/mercadopago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.mp');
+        Route::post('/mercadopago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpSave'])->name('dashboard.mp.save');
+    
+    // Status de pedidos
+    Route::get('/statuses', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'index'])->name('dashboard.statuses');
+    Route::post('/statuses', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'store'])->name('dashboard.statuses.store');
+    Route::patch('/statuses/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'updateFlags'])->name('dashboard.statuses.update');
+    Route::delete('/statuses/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'destroy'])->name('dashboard.statuses.destroy');
+    
+    // PDV
+    Route::get('/pdv', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('dashboard.pdv');
+    Route::post('/pdv/calc', [\App\Http\Controllers\Dashboard\PDVController::class, 'calculate'])->name('dashboard.pdv.calculate');
+    Route::post('/pdv/order', [\App\Http\Controllers\Dashboard\PDVController::class, 'store'])->name('dashboard.pdv.store');
+    Route::get('/pdv/search/customers', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchCustomers'])->name('dashboard.pdv.search.customers');
+    Route::get('/pdv/search/products', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('dashboard.pdv.search.products');
+    Route::post('/pdv/validate-coupon', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('dashboard.pdv.validate.coupon');
+    Route::post('/pdv/address', [\App\Http\Controllers\Dashboard\PDVController::class, 'saveAddress'])->name('dashboard.pdv.address');
+    
+    // API auxiliar para endereços
+    Route::get('/api/addresses', function (\Illuminate\Http\Request $r) {
+        if (!$r->has('customer_id')) return response()->json([]);
+        return response()->json(
+            \Illuminate\Support\Facades\DB::table('addresses')
+                ->where('customer_id', $r->customer_id)
+                ->get()
+        );
+    });
+});
+
 // --- Utilitários globais (respondem em qualquer host, protegidos por token) ---
 
 Route::any('/_tools/clear', function () {

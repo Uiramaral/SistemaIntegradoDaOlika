@@ -45,6 +45,14 @@ class Customer extends Authenticatable
     ];
 
     /**
+     * Relacionamento com endereços
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    /**
      * Relacionamento com pedidos
      */
     public function orders(): HasMany

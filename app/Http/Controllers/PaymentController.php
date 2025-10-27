@@ -2,177 +2,94 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
-use App\Models\PaymentSetting;
-use App\Services\MercadoPagoApiService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
+use App\Services\AppSettings;
+use App\Services\MercadoPagoApi;
 
 class PaymentController extends Controller
 {
-    protected $mercadoPagoService;
-
-    public function __construct(MercadoPagoApiService $mercadoPagoService)
+    public function createPix(Request $r)
     {
-        $this->mercadoPagoService = $mercadoPagoService;
-    }
+        $order = Order::findOrFail(session('order_id'));
 
-    /**
-     * Exibe tela de pagamento PIX
-     */
-    public function pixPayment(Order $order)
-    {
-        // Verificar se o pedido já tem pagamento PIX
-        if ($order->payment_id && $order->payment_status === 'pending') {
-            return view('payment.pix', compact('order'));
-        }
+        $order->payment_method = 'pix';
+        $order->save();
 
-        // Criar nova cobrança PIX
-        $pixResult = $this->mercadoPagoService->createPixPayment($order);
+        $mp = new MercadoPagoApi();
 
-        if (!$pixResult['success']) {
-            return redirect()->route('checkout.index')
-                ->with('error', 'Erro ao gerar cobrança PIX: ' . ($pixResult['error'] ?? 'Erro desconhecido'));
-        }
+        $payload = [
+            "transaction_amount" => (float)$order->total_amount,
+            "description" => "Pedido #{$order->order_number}",
+            "payment_method_id" => "pix",
+            "notification_url"  => AppSettings::get('mercadopago_webhook_url', route('webhook.mercadopago')),
+            "payer" => [
+                "email" => optional($order->customer)->email ?: "noemail@dummy.com",
+                "first_name" => optional($order->customer)->name ?: "Cliente"
+            ],
+            "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
+        ];
 
-        // Atualizar dados do pedido com informações do PIX
-        $order->update([
-            'pix_qr_code_base64' => $pixResult['pix_qr_code_base64'] ?? null,
-            'pix_copy_paste' => $pixResult['pix_copy_paste'] ?? null,
-            'pix_expires_at' => $pixResult['expires_at'] ?? null,
-        ]);
+        $res = $mp->createPix($payload);
 
-        return view('payment.pix', compact('order'));
-    }
+        $qrBase64   = data_get($res, 'point_of_interaction.transaction_data.qr_code_base64');
+        $copiaCola  = data_get($res, 'point_of_interaction.transaction_data.qr_code');
+        $paymentId  = (string) data_get($res, 'id');
+        $status     = (string) data_get($res, 'status');
+        $expiresAt  = data_get($res, 'date_of_expiration');
 
-    /**
-     * Exibe tela de pagamento com cartão
-     */
-    public function cardPayment(Order $order)
-    {
-        // Verificar se o pedido já tem preferência
-        if ($order->preference_id) {
-            return view('payment.card', compact('order'));
-        }
-
-        // Criar nova preferência de pagamento
-        $preferenceResult = $this->mercadoPagoService->createPaymentPreference($order);
-
-        if (!$preferenceResult['success']) {
-            return redirect()->route('checkout.index')
-                ->with('error', 'Erro ao gerar preferência de pagamento: ' . ($preferenceResult['error'] ?? 'Erro desconhecido'));
-        }
-
-        return view('payment.card', compact('order'));
-    }
-
-    /**
-     * API: Criar cobrança PIX
-     */
-    public function createPix(Request $request, Order $order)
-    {
-        $pixResult = $this->mercadoPagoService->createPixPayment($order);
-
-        if ($pixResult['success']) {
-            return response()->json([
-                'success' => true,
-                'payment_id' => $pixResult['payment_id'],
-                'pix_qr_code' => $pixResult['pix_qr_code'],
-                'pix_qr_code_base64' => $pixResult['pix_qr_code_base64'],
-                'pix_copy_paste' => $pixResult['pix_copy_paste'],
-                'expires_at' => $pixResult['expires_at'],
-            ]);
-        }
+        $order->payment_id        = $paymentId;
+        $order->payment_status    = $status;
+        $order->pix_qr_base64     = $qrBase64;
+        $order->pix_copy_paste    = $copiaCola;
+        $order->pix_expires_at     = $expiresAt;
+        $order->payment_raw_response = json_encode($res);
+        $order->save();
 
         return response()->json([
-            'success' => false,
-            'error' => $pixResult['error'] ?? 'Erro ao criar cobrança PIX',
-        ], 400);
-    }
-
-    /**
-     * API: Criar preferência de pagamento
-     */
-    public function createPreference(Request $request, Order $order)
-    {
-        $preferenceResult = $this->mercadoPagoService->createPaymentPreference($order);
-
-        if ($preferenceResult['success']) {
-            return response()->json([
-                'success' => true,
-                'preference_id' => $preferenceResult['preference_id'],
-                'payment_link' => $preferenceResult['payment_link'],
-                'sandbox_init_point' => $preferenceResult['sandbox_init_point'],
-            ]);
-        }
-
-        return response()->json([
-            'success' => false,
-            'error' => $preferenceResult['error'] ?? 'Erro ao criar preferência',
-        ], 400);
-    }
-
-    /**
-     * API: Consultar status do pagamento
-     */
-    public function getPaymentStatus(Request $request, Order $order)
-    {
-        if (!$order->payment_id) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Pagamento não encontrado',
-            ], 404);
-        }
-
-        $statusResult = $this->mercadoPagoService->getPaymentStatus($order->payment_id);
-
-        if ($statusResult['success']) {
-            return response()->json([
-                'success' => true,
-                'payment' => $statusResult['payment'],
-            ]);
-        }
-
-        return response()->json([
-            'success' => false,
-            'error' => $statusResult['error'] ?? 'Erro ao consultar pagamento',
-        ], 400);
-    }
-
-    /**
-     * API: Obter configurações públicas
-     */
-    public function getPublicConfig()
-    {
-        $config = $this->mercadoPagoService->getPublicConfig();
-        
-        return response()->json([
-            'success' => true,
-            'config' => $config,
+            'ok' => true,
+            'qr_base64' => $qrBase64,
+            'copia_cola' => $copiaCola
         ]);
     }
 
-    /**
-     * Página de sucesso do pagamento
-     */
-    public function success(Order $order)
+    public function createMpPreference(Request $r)
     {
-        return view('payment.success', compact('order'));
-    }
+        $order = Order::findOrFail(session('order_id'));
 
-    /**
-     * Página de falha do pagamento
-     */
-    public function failure(Order $order)
-    {
-        return view('payment.failure', compact('order'));
-    }
+        $order->payment_method = 'mercadopago';
+        $order->save();
 
-    /**
-     * Página de pagamento pendente
-     */
-    public function pending(Order $order)
-    {
-        return view('payment.pending', compact('order'));
+        $items = $order->items->map(function($i) {
+            return [
+                "title" => $i->product_name,
+                "quantity" => (int)$i->qty,
+                "currency_id" => "BRL",
+                "unit_price" => (float)$i->price,
+            ];
+        })->values()->all();
+
+        $mp = new MercadoPagoApi();
+
+        $res = $mp->createPreference([
+            "items" => $items,
+            "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
+            "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhook.mercadopago')),
+            "back_urls" => [
+                "success" => route('checkout.success', $order),
+                "pending" => route('checkout.success', $order),
+                "failure" => route('checkout.success', $order),
+            ],
+            "auto_return" => "approved",
+        ]);
+
+        $order->preference_id = data_get($res, 'id');
+        $order->payment_link  = data_get($res, 'init_point');
+        $order->payment_raw_response = json_encode($res);
+        $order->save();
+
+        return response()->json(['ok' => true, 'init_point' => $order->payment_link]);
     }
 }

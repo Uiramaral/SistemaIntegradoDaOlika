@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Services\MercadoPagoApiService;
 use App\Services\WhatsAppService;
+use App\Services\MercadoPagoApi;
+use App\Services\OrderStatusService;
 use App\Models\Order;
+use App\Models\CouponUsage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -205,5 +208,53 @@ class WebhookController extends Controller
                   "Digite *ajuda* para ver as opções disponíveis.";
 
         $this->whatsAppService->sendMessage($phone, $message);
+    }
+
+    /**
+     * Webhook Mercado Pago simplificado (novo fluxo)
+     */
+    public function mercadoPagoSimple(Request $r)
+    {
+        $topic = $r->get('type') ?? $r->get('topic');
+        $paymentId = data_get($r->all(), 'data.id');
+
+        if ($topic === 'payment' && $paymentId) {
+            $mp = new MercadoPagoApi();
+            $payment = $mp->getPayment($paymentId);
+
+            $orderId = data_get($payment, 'metadata.order_id');
+            $status  = data_get($payment, 'status');
+
+            if ($orderId && ($order = Order::find($orderId))) {
+                // idempotência
+                if ($order->payment_status !== $status) {
+                    $order->payment_status = $status;
+                    $order->payment_id     = (string) data_get($payment, 'id');
+                    $order->payment_raw_response = json_encode($payment);
+                    
+                    if ($status === 'approved') {
+                        // Usa OrderStatusService para centralizar regras + WhatsApp
+                        app(OrderStatusService::class)
+                            ->changeStatus($order, 'paid', 'Pagamento aprovado (webhook MP)');
+
+                        // registra uso do cupom (se houver)
+                        if ($order->coupon_code && $order->customer_id) {
+                            $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
+                            if ($coupon) {
+                                CouponUsage::firstOrCreate([
+                                    'coupon_id'   => $coupon->id,
+                                    'customer_id' => $order->customer_id,
+                                    'order_id'    => $order->id,
+                                    'used_at'     => now(),
+                                ]);
+                            }
+                        }
+                    }
+                    $order->save();
+                }
+            }
+        }
+
+        return response()->json(['ok' => true]);
     }
 }

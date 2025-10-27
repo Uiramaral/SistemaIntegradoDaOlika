@@ -1,195 +1,177 @@
 <?php
-
 namespace App\Services;
 
-use App\Models\Order;
-use App\Models\Setting;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Order;
 
 class WhatsAppService
 {
-    protected $apiUrl;
-    protected $apiKey;
+    private string $baseUrl;
+    private string $apiKey;
+    private string $instance;
+    private string $senderName;
 
     public function __construct()
     {
-        $settings = Setting::getSettings();
+        $row = DB::table('whatsapp_settings')->where('active',1)->first();
+        if(!$row) throw new \Exception('Configuração do WhatsApp não encontrada');
         
-        $this->apiUrl = $settings->whatsapp_api_url;
-        $this->apiKey = $settings->whatsapp_api_key;
-    }
-
-    /**
-     * Envia mensagem de confirmação de pedido
-     */
-    public function sendOrderConfirmation(Order $order)
-    {
-        try {
-            $message = $this->buildOrderConfirmationMessage($order);
-            
-            return $this->sendMessage($order->customer->phone, $message);
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar confirmação WhatsApp: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Envia mensagem de pedido pronto
-     */
-    public function sendOrderReady(Order $order)
-    {
-        try {
-            $message = $this->buildOrderReadyMessage($order);
-            
-            return $this->sendMessage($order->customer->phone, $message);
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar pedido pronto WhatsApp: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Envia mensagem de pedido entregue
-     */
-    public function sendOrderDelivered(Order $order)
-    {
-        try {
-            $message = $this->buildOrderDeliveredMessage($order);
-            
-            return $this->sendMessage($order->customer->phone, $message);
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar pedido entregue WhatsApp: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Envia mensagem de pedido cancelado
-     */
-    public function sendOrderCancelled(Order $order)
-    {
-        try {
-            $message = $this->buildOrderCancelledMessage($order);
-            
-            return $this->sendMessage($order->customer->phone, $message);
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar pedido cancelado WhatsApp: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Envia mensagem personalizada
-     */
-    public function sendMessage(string $phone, string $message)
-    {
-        try {
-            if (!$this->apiUrl || !$this->apiKey) {
-                Log::warning('WhatsApp API não configurada');
-                return false;
-            }
-
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->post($this->apiUrl . '/send-message', [
-                'phone' => $this->formatPhone($phone),
-                'message' => $message,
-            ]);
-
-            if ($response->successful()) {
-                Log::info('Mensagem WhatsApp enviada com sucesso', [
-                    'phone' => $phone,
-                    'message' => $message,
-                ]);
-                return true;
-            }
-
-            Log::error('Erro ao enviar mensagem WhatsApp: ' . $response->body());
-            return false;
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar mensagem WhatsApp: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Constrói mensagem de confirmação
-     */
-    private function buildOrderConfirmationMessage(Order $order): string
-    {
-        $items = $order->items->map(function ($item) {
-            return "• {$item->product->name} x{$item->quantity} - R$ " . number_format($item->total_price, 2, ',', '.');
-        })->join("\n");
-
-        return "🍕 *Olika - Pedido Confirmado*\n\n" .
-               "Olá {$order->customer->name}!\n\n" .
-               "Seu pedido *#{$order->order_number}* foi confirmado e está sendo preparado.\n\n" .
-               "*Itens do pedido:*\n{$items}\n\n" .
-               "*Total:* R$ " . number_format($order->final_amount, 2, ',', '.') . "\n" .
-               "*Tipo de entrega:* {$order->delivery_type_label}\n\n" .
-               "Tempo estimado: 30-45 minutos\n\n" .
-               "Obrigado pela preferência! 🙏";
-    }
-
-    /**
-     * Constrói mensagem de pedido pronto
-     */
-    private function buildOrderReadyMessage(Order $order): string
-    {
-        return "✅ *Pedido Pronto!*\n\n" .
-               "Olá {$order->customer->name}!\n\n" .
-               "Seu pedido *#{$order->order_number}* está pronto!\n\n" .
-               ($order->delivery_type === 'pickup' 
-                   ? "Pode vir buscar no estabelecimento.\n\n"
-                   : "Aguarde a entrega em breve.\n\n") .
-               "Obrigado pela preferência! 🙏";
-    }
-
-    /**
-     * Constrói mensagem de pedido entregue
-     */
-    private function buildOrderDeliveredMessage(Order $order): string
-    {
-        return "🎉 *Pedido Entregue!*\n\n" .
-               "Olá {$order->customer->name}!\n\n" .
-               "Seu pedido *#{$order->order_number}* foi entregue com sucesso!\n\n" .
-               "Esperamos que tenha gostado da experiência.\n\n" .
-               "Até a próxima! 👋";
-    }
-
-    /**
-     * Constrói mensagem de pedido cancelado
-     */
-    private function buildOrderCancelledMessage(Order $order): string
-    {
-        return "❌ *Pedido Cancelado*\n\n" .
-               "Olá {$order->customer->name}!\n\n" .
-               "Seu pedido *#{$order->order_number}* foi cancelado.\n\n" .
-               "Entre em contato conosco se precisar de ajuda.\n\n" .
-               "Telefone: (71) 98701-9420";
-    }
-
-    /**
-     * Formata número de telefone
-     */
-    private function formatPhone(string $phone): string
-    {
-        // Remove caracteres não numéricos
-        $phone = preg_replace('/\D/', '', $phone);
+        $this->baseUrl  = rtrim($row->api_url, '/');              // ex.: http://127.0.0.1:8080
+        $this->apiKey   = trim($row->api_key);                    // AUTHENTICATION_API_KEY
+        $this->instance = trim($row->instance_name);              // ex.: olika_main
+        $this->senderName = $row->sender_name ?: 'Olika Bot';
         
-        // Adiciona código do país se necessário
-        if (strlen($phone) === 11 && substr($phone, 0, 2) === '71') {
-            $phone = '55' . $phone;
+        if(!$this->baseUrl || !$this->apiKey || !$this->instance){
+            throw new \Exception('Defina api_url, api_key e instance_name em whatsapp_settings.');
+        }
+    }
+
+    private function header(): array
+    {
+        return ["Content-Type: application/json","apikey: {$this->apiKey}"];
+    }
+
+    private function post(string $path, array $payload)
+    {
+        $url = "{$this->baseUrl}{$path}/{$this->instance}";
+        
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
+            CURLOPT_HTTPHEADER => $this->header(),
+            CURLOPT_TIMEOUT => 20
+        ]);
+        
+        $resp = curl_exec($ch);
+        if($resp === false){
+            Log::error('EvolutionAPI cURL: '.curl_error($ch));
+            return false;
         }
         
-        return $phone;
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if($code >= 300){
+            Log::error("EvolutionAPI HTTP {$code}: ".$resp);
+            return false;
+        }
+        
+        return json_decode($resp, true);
+    }
+
+    /** Envia texto simples */
+    public function sendText(string $phone, string $text)
+    {
+        $number = preg_replace('/\D/','',$phone); // 55DDDNXXXXXXXX
+        
+        return $this->post('/message/sendText', [
+            "number" => $number,
+            "text"   => $text
+        ]);
+    }
+
+    /** Template com placeholders {chave} */
+    public function sendTemplate(string $phone, string $template, array $vars = [])
+    {
+        $msg = $template;
+        foreach($vars as $k=>$v) $msg = str_replace('{'.$k.'}', $v, $msg);
+        return $this->sendText($phone, $msg);
+    }
+
+    /** Mídia/arquivo por URL (image/document/audio/video) */
+    public function sendMediaByUrl(string $phone, string $url, string $mediaType = 'image', ?string $fileName = null, ?string $caption = null)
+    {
+        $number = preg_replace('/\D/','',$phone);
+        
+        return $this->post('/message/sendMedia', [
+            "number" => $number,
+            "options" => [ "delay"=>0, "presence"=>"composing" ],
+            "mediaMessage" => [
+                "mediaType" => $mediaType,        // image|document|audio|video|sticker
+                "fileName"  => $fileName ?: basename(parse_url($url, PHP_URL_PATH)) ?: 'file',
+                "caption"   => $caption ?: '',
+                "media"     => $url               // URL pública
+            ]
+        ]);
+    }
+
+    /** Conectar instância - Evolution API: GET /instance/connect/{instance} */
+    public function connectInstance()
+    {
+        $url = "{$this->baseUrl}/instance/connect/{$this->instance}";
+        
+        $ch  = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ["apikey: {$this->apiKey}"],
+            CURLOPT_TIMEOUT => 20
+        ]);
+        
+        $resp = curl_exec($ch);
+        if($resp === false){ 
+            Log::error('EvolutionAPI connect cURL: '.curl_error($ch)); 
+            return false; 
+        }
+        
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if($code >= 300){ 
+            Log::error("EvolutionAPI connect HTTP {$code}: ".$resp); 
+            return false; 
+        }
+        
+        // a API costuma devolver campos como: code, pairingCode, qrCode, base64, etc (dependendo da versão)
+        return json_decode($resp, true);
+    }
+
+    /** Health da instância */
+    public function getInstanceHealth()
+    {
+        $url = "{$this->baseUrl}/instance/health/{$this->instance}";
+        
+        $ch  = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ["apikey: {$this->apiKey}"],
+            CURLOPT_TIMEOUT => 15
+        ]);
+        
+        $resp = curl_exec($ch);
+        if($resp === false) return false;
+        
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if($code >= 300) return false;
+        
+        return json_decode($resp, true);
+    }
+
+    // Métodos específicos para o fluxo de pedidos
+    public function sendPaymentConfirmed(Order $order)
+    {
+        $msgCliente = "✅ *Pagamento confirmado!*\n\n"
+                    ."Olá, {$order->customer->name}!\n"
+                    ."Seu pedido *#{$order->number}* foi confirmado com sucesso.\n\n"
+                    ."📦 Em breve entraremos em contato para entrega.\n\n"
+                    ."Atenciosamente,\nEquipe Olika Cozinha Artesanal 🥖";
+        return $this->sendText($order->customer->phone, $msgCliente);
+    }
+
+    public function notifyAdmin(string $orderNumber, string $customerName, float $total, string $paymentMethod)
+    {
+        $adminNumber = env('WHATSAPP_ADMIN_NUMBER', '55SEUNUMEROADMIN');
+        if ($adminNumber) {
+            $msgAdmin = "💰 Pedido *#{$orderNumber}* pago com sucesso.\n"
+                       ."Cliente: {$customerName}\n"
+                       ."Total: R$ ".number_format($total,2,',','.')
+                       ."\nForma: ".strtoupper($paymentMethod);
+            return $this->sendText($adminNumber, $msgAdmin);
+        }
+        return false;
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Coupon;
 use App\Services\CacheService;
+use App\Services\OrderStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -174,5 +175,20 @@ class DashboardController extends Controller
             'sales' => $sales,
             'days' => $days,
         ]);
+    }
+
+    /**
+     * Mudar status de um pedido
+     */
+    public function orderChangeStatus(Request $r, Order $order, OrderStatusService $oss)
+    {
+        $data = $r->validate([
+            'status_code' => 'required|exists:order_statuses,code',
+            'note'        => 'nullable|string|max:255',
+        ]);
+
+        $oss->changeStatus($order, $data['status_code'], $data['note'], optional($r->user())->id);
+
+        return back()->with('ok', 'Status atualizado e notificações enviadas (se configurado).');
     }
 }

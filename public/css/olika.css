@@ -1,0 +1,263 @@
+/* Garante que nada vaze horizontal */
+html, body { overflow-x: hidden; }
+
+/* ====== HERO cobre a tela toda, conteúdo centralizado ====== */
+.header-hero{
+  min-height:360px;
+  background-image:var(--hero, none);
+  background-size:cover!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.08);
+  position:relative;
+}
+
+.header-hero::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.18) 45%, rgba(0,0,0,0) 75%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* Full-bleed estável, sem overflow */
+.header-hero.full-bleed{
+  position:relative;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  border-radius: 0;
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.hero-inner{ max-width:1120px; margin:0 auto; padding:26px 24px 0; position:relative; z-index:1; }
+
+/* Se por acaso existir .cover no DOM, esconda */
+.header-hero .cover{ display:none !important; }
+
+/* ====== CARDS ====== */
+.store-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:90px;}
+@media (max-width:900px){.store-row{grid-template-columns:1fr;}}
+
+.coupons{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:700px){.coupons{grid-template-columns:1fr;}}
+
+.card,.card-soft{
+  background:#fff;border-radius:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.badge-soft{
+  display:inline-flex;gap:8px;align-items:center;
+  background:#fff7ed;color:#b45309;padding:7px 12px;border-radius:999px;
+  font-weight:700;font-size:.88rem;box-shadow:0 4px 14px rgba(245,158,11,.15);
+}
+
+/* ====== PILLS ====== */
+.pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.pill{
+  background:#fff;color:#6b7280;padding:8px 14px;border-radius:999px;
+  font-weight:700;text-decoration:none;box-shadow:0 6px 16px rgba(0,0,0,.06);
+  border:1px solid #f2e8da;
+}
+.pill.active{background:#fff7ed;color:#7c2d12;border-color:#f8e0bf;box-shadow:0 8px 18px rgba(245,158,11,.18);}
+
+/* ====== GRID E CARDS ====== */
+.products-grid{display:grid;gap:18px;grid-template-columns:repeat(4,1fr);}
+@media (max-width:1200px){.products-grid{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:900px){.products-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:560px){.products-grid{grid-template-columns:1fr;}}
+
+.product-card{position:relative;overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 12px 28px rgba(0,0,0,.08);border:1px solid #f4efe6;}
+.product-thumb{aspect-ratio:4/3;overflow:hidden;}
+.product-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.product-body{padding:12px 14px 16px;}
+.product-name{font-weight:800;font-size:1rem;line-height:1.2;}
+.product-price{color:#f59e0b;font-weight:900;font-size:1.05rem;margin-top:4px;}
+
+/* Botão + idêntico ao mock */
+.btn-add{
+  position:absolute;right:10px;bottom:10px;width:38px;height:38px;border-radius:999px;
+  background:#f59e0b;color:#fff;font-weight:900;border:none;cursor:pointer;
+  display:grid;place-items:center;line-height:1;box-shadow:0 10px 20px rgba(245,158,11,.28);
+}
+.btn-add:hover{filter:brightness(.97);}
+
+/* Cart link mais delicado */
+.cart-link{position:relative;display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#111;}
+.cart-badge{position:absolute;top:-6px;right:-10px;background:#f59e0b;color:#fff;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;font-size:.78rem;font-weight:800;}
+
+/* Utilities */
+.meta{color:#6b7280;font-size:.92rem;}
+.container-narrow{max-width:1120px;margin:0 auto;padding:24px;}
+
+/* ========= HERO: cabeça central, superfície suave, status verde ========= */
+
+/* bloco superior central (logo, nome, status) */
+.hero-head{
+  display:grid; place-items:center; row-gap:8px;
+  margin-top:10px; margin-bottom:16px; text-align:center; color:#fff;
+}
+
+.hero-logo{
+  width:72px; height:72px; border-radius:999px; overflow:hidden;
+  background:#fff; display:grid; place-items:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+
+.hero-title{ font-size:32px; font-weight:900; line-height:1; }
+
+.hero-sub{ opacity:.95; font-weight:600; }
+
+/* status verde (igual vibe do mock) */
+.status-green{
+  display:inline-flex; align-items:center; gap:8px;
+  background:#ecfdf5; color:#047857; font-weight:800;
+  padding:6px 10px; border-radius:999px; font-size:.85rem;
+  box-shadow:0 8px 20px rgba(4,120,87,.18);
+}
+
+/* "superfície" clarinha atrás dos dois cards (infos e cupons) */
+.soft-surface{
+  background:#fff8f0;  /* pêssego super claro */
+  border-radius:18px; padding:14px; margin-top:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 28px rgba(0,0,0,.08);
+}
+
+@media (max-width:900px){ .soft-surface{ padding:10px; }}
+
+/* cartões dentro do hero */
+.store-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media (max-width:900px){ .store-row{ grid-template-columns:1fr; }}
+
+/* toolbar de ações à direita */
+.toolbar{
+  display:flex; justify-content:flex-end; align-items:center; gap:8px;
+  margin-top:12px;
+}
+
+.tool-chip, .tool-btn{
+  background:#fff; border:1px solid #eee6d7; border-radius:999px;
+  padding:8px 12px; font-weight:700; color:#6b7280;
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+}
+
+.tool-btn{ padding:8px 10px; }
+
+.tool-btn.active{ background:#fff7ed; color:#7c2d12; border-color:#f8e0bf; box-shadow:0 8px 18px rgba(245,158,11,.18); }
+
+/* pills (já tinha) apenas garante espaçamento */
+.pills{ margin-top:12px; }
+
+/* Topbar dentro do banner (carrinho no canto direito) */
+.hero-topbar{
+  position:absolute; top:14px; right:24px;
+  display:flex; align-items:center; gap:10px;
+  z-index:2;
+}
+
+.hero-topbar .cart-link{
+  background:rgba(255,255,255,.9);
+  border:1px solid #eee6d7;
+  border-radius:999px; padding:8px 12px; text-decoration:none;
+  color:#111; font-weight:700;
+  box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+
+.hero-topbar .cart-badge{
+  position:absolute; top:-6px; right:-10px;
+  background:#f59e0b; color:#fff; border-radius:999px;
+  min-width:20px; height:20px; display:grid; place-items:center;
+  font-size:.78rem; font-weight:800;
+}
+
+/* Superfície clara com 1 coluna quando não há o card de informações */
+.soft-surface.single{
+  background:#fff8f0;
+  border-radius:18px; padding:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 28px rgba(0,0,0,.08);
+}
+
+.coupons-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+}
+
+@media (max-width:900px){ .coupons-grid{ grid-template-columns:1fr; } }
+
+/* ===== Modal de produto ===== */
+.pmask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:9990;}
+.pdialog{
+  width:min(820px, 94vw); background:#fff; border-radius:16px; overflow:hidden;
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  box-shadow:0 25px 80px rgba(0,0,0,.35);
+  display:grid; grid-template-columns:1.2fr 1fr;
+}
+@media (max-width:860px){ .pdialog{ grid-template-columns:1fr; width:min(560px, 94vw);} }
+.pmedia{ background:#000; }
+.pmedia img{ width:100%; height:100%; object-fit:cover; display:block; }
+.pbody{ padding:16px; }
+.pclose{
+  position:absolute; top:10px; right:12px; width:36px; height:36px; border-radius:999px;
+  border:none; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.2); font-size:20px; cursor:pointer; z-index:2;
+}
+.pm-price{ color:#f59e0b; font-weight:900; font-size:1.25rem; margin:8px 0 10px; }
+.pm-qty{ display:flex; align-items:center; gap:12px; margin:6px 0 14px; }
+.pm-qty button{
+  width:32px; height:32px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; cursor:pointer;
+}
+.pm-add{
+  width:100%; height:42px; border-radius:10px; border:none; cursor:pointer;
+  background:#f59e0b; color:#fff; font-weight:900;
+  box-shadow:0 10px 20px rgba(245,158,11,.28);
+}
+.pmask.show{ display:block; }
+
+/* cat-toolbar */
+.cat-toolbar{
+  margin-top:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap:wrap;
+}
+
+/* products-grid ajustado para usar variável */
+.products-grid{
+  display:grid; gap:18px; grid-template-columns:repeat(var(--cols, 4), 1fr);
+}
+.products-grid.list{
+  display:block;
+}
+.products-grid.list .product-card{
+  display:grid; grid-template-columns:180px 1fr; gap:14px; margin-bottom:14px;
+}
+.products-grid.list .product-thumb{ aspect-ratio:auto; height:140px; }
+
+/* cart-empty */
+.cart-empty{ min-height:50vh; display:grid; place-items:center; text-align:center; gap:10px; }
+.cart-empty .c-emoji{ font-size:48px; opacity:.8; }
+.btn-primary{
+  display:inline-block; background:#f59e0b; color:#fff; font-weight:900; padding:10px 16px;
+  border-radius:10px; text-decoration:none; box-shadow:0 10px 20px rgba(245,158,11,.28);
+}
+
+/* cart styles */
+.cart-wrap h1{ margin:8px 0 16px; }
+.cart-list{ display:grid; gap:12px; }
+.cart-row{
+  display:grid; grid-template-columns:120px 1fr auto; gap:12px; align-items:center;
+  background:#fff; border:1px solid #eee6d7; border-radius:12px; padding:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+.cart-row img{ width:120px; height:90px; object-fit:cover; border-radius:8px; }
+.cr-body{ display:grid; gap:6px; }
+.cr-name{ font-weight:800; }
+.cr-price{ color:#6b7280; }
+.cr-qty{ display:flex; align-items:center; gap:10px; }
+.cr-form button{
+  width:28px;height:28px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;
+}
+.cr-remove{ border:none;background:none;color:#ef4444;cursor:pointer;font-weight:700; }
+.cr-sub{ font-weight:900; }
+.cart-summary{
+  display:flex; justify-content:space-between; align-items:center; margin-top:16px;
+  background:#fff; border:1px solid #eee6d7; border-radius:12px; padding:12px 14px; font-weight:900;
+}
+.cart-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; }

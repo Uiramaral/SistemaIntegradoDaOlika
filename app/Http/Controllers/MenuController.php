@@ -50,26 +50,35 @@ class MenuController extends Controller
             ->select('products.*')
             ->whereIn('products.id', $nonFeaturedIds)
             ->active()
-            ->available()
+                      ->available()
             ->ordered()
             ->get();
 
         // 5) Combina: destaques no topo + demais; garante unicidade e reindexa
-        $allProducts = $featuredProducts
+        $products = $featuredProducts
             ->concat($categoryProducts)
             ->unique('id')
             ->values();
-
+        
         // Logs de diagnóstico (opcional)
         \Log::info('Featured IDs: ' . json_encode($featuredIds));
         \Log::info('NonFeatured IDs: ' . json_encode($nonFeaturedIds));
-        \Log::info('Totais => featured: ' . $featuredProducts->count() . ' | demais: ' . $categoryProducts->count() . ' | final: ' . $allProducts->count());
+        \Log::info('Totais => featured: ' . $featuredProducts->count() . ' | demais: ' . $categoryProducts->count() . ' | final: ' . $products->count());
 
-        return view('menu.index', [
-            'categories'       => $categories->unique('id')->values(), // evita duplicatas de categoria, se houver
-            'featuredProducts' => $featuredProducts,
-            'products'         => $allProducts,
-        ]);
+        // Criar objeto store com valores padrão
+        $store = (object) [
+            'name' => 'Olika',
+            'cover_url' => asset('images/hero-breads.jpg'),
+            'category_label' => 'Pães • Artesanais',
+            'reviews_count' => '250+',
+            'is_open' => true,
+            'hours' => 'Seg–Sex: 7h–19h · Sáb–Dom: 8h–14h',
+            'address' => 'Rua dos Pães Artesanais, 123 Bairro Gourmet – São Paulo, SP',
+            'phone' => '(11) 98765-4321',
+            'bio' => 'Pães artesanais com fermentação natural. Tradição e qualidade em cada fornada.'
+        ];
+
+        return view('menu.index', compact('store', 'categories', 'products'));
     }
 
     /**

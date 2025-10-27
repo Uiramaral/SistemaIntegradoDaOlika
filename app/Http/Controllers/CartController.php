@@ -95,7 +95,27 @@ class CartController extends Controller
 
         $this->saveCartToSession($cart);
 
-        return $this->jsonCart(['message' => 'Item adicionado']);
+        // Calcular total de itens para badge
+        $cartCount = $this->getCartFromSession();
+        $totalItems = 0;
+        foreach ($cartCount as $item) {
+            $totalItems += $item['qty'];
+        }
+
+        $payload = [
+            'ok' => true,
+            'message' => 'Item adicionado ao carrinho',
+            'cart_count' => $totalItems,
+        ];
+
+        // Persistir count em sessão para a badge no refresh
+        session(['cart_count' => $totalItems]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json($payload);
+        }
+
+        return redirect()->back()->with('success', $payload['message']);
     }
 
     public function update(Request $request)

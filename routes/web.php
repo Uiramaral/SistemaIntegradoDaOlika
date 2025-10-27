@@ -479,16 +479,26 @@ Route::prefix('checkout')->group(function () {
 // Webhook Mercado Pago
 Route::post('/payments/mercadopago/webhook', [\App\Http\Controllers\WebhookController::class, 'mercadoPago'])->name('webhook.mercadopago');
 
-// Dashboard (subdomínio)
-Route::domain('dashboard.menuolika.com.br')->group(function () {
+// ===== Espelho de debug (SEM binding de domínio): testa controller/view mesmo que o host não case) =====
+Route::get('/__orders_mirror', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orders'])
+    ->name('debug.orders.mirror');
+
+// ===== Dashboard em subdomínio: suporta com e sem www =====
+$dashboardHosts = ['dashboard.menuolika.com.br', 'www.dashboard.menuolika.com.br'];
+
+foreach ($dashboardHosts as $host) {
+    Route::domain($host)->group(function () {
     // Home completo e compacto
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
     
     // Pedidos
     Route::get('/orders', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orders'])->name('dashboard.orders');
-    Route::get('/orders/{order}', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderShow'])->name('dashboard.orders.show');
-    Route::post('/orders/{order}/status', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderChangeStatus'])->name('dashboard.orders.status');
+    // Rota duplicada: aceita tanto code quanto id (compatibilidade)
+    Route::get('/orders/{order}', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderShow'])
+        ->name('dashboard.orders.show');
+    Route::post('/orders/{order}/status', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderChangeStatus'])
+        ->name('dashboard.orders.status');
     Route::post('/pedidos/bulk', [PedidosBulkController::class, 'update'])->name('pedidos.bulk');
     
     // Clientes (CRUD completo)
@@ -594,7 +604,8 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
                 ->get()
         );
     });
-});
+    }); // fim do foreach $host
+} // fim do foreach $dashboardHosts
 
 // --- Utilitários globais (respondem em qualquer host, protegidos por token) ---
 

@@ -1,0 +1,28 @@
+﻿âœ… LOGS DE DIAGNÃ“STICO ADICIONADOS AO CONTROLLER:
+
+1. app/Http/Controllers/Dashboard/DashboardController.php:
+   - Log em orders() (host e URI)
+   - Log em orderShow() (order_id, code, host, URI)
+
+2. PRÃ“XIMOS PASSOS PARA DIAGNÃ“STICO:
+   
+   a) Acesse: https://dashboard.menuolika.com.br/orders
+   b) Verifique o log: storage/logs/laravel.log
+   c) Procure por: 'Host requisitado em orders()'
+   d) Anote o valor de 'host'
+
+3. O que procurar:
+   - Se host = 'dashboard.menuolika.com.br' â†’ OK
+   - Se host = 'www.dashboard.menuolika.com.br' â†’ ajuste routes/web.php
+   - Se host = 'dashboard.menuolika.com.br:443' â†’ ajuste APP_URL no .env
+
+4. Verificar rotas:
+   - Acesse: https://menuolika.com.br/debug/routes
+   - Filtre por: dashboard.orders
+   - Verifique o campo 'host'
+
+5. Ajustar .env (se necessÃ¡rio):
+   APP_URL=https://dashboard.menuolika.com.br
+   SESSION_DOMAIN=.menuolika.com.br
+
+ðŸ“ Envie o que aparece no log para ajuste final!

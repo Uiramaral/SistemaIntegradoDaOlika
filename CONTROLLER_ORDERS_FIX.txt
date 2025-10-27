@@ -1,0 +1,26 @@
+﻿âœ… CONTROLLER AJUSTADO PARA ACEITAR CODE OU ID:
+
+1. app/Http/Controllers/Dashboard/DashboardController.php:
+   - MÃ©todo orderShow() agora busca por 'code' OU 'id'
+   - Logs detalhados para debug
+   - Carrega relationships (customer, items)
+
+2. routes/web.php:
+   - Rotas para dashboard.menuolika.com.br e www.dashboard.menuolika.com.br
+   - Rota {order} aceita qualquer valor (code ou id)
+
+3. PRÃ“XIMOS PASSOS:
+   
+   a) Limpe o cache de rotas:
+      php artisan route:clear
+
+   b) Acesse: https://dashboard.menuolika.com.br/orders
+
+   c) Clique em qualquer pedido
+
+   d) Verifique o log: storage/logs/laravel.log
+      Procure por: 'orderShow called' e 'LOADING VIEW'
+
+   e) No HTML procure por: '{{-- DEBUG: ORDER-SHOW VIEW ATIVA --}}'
+
+ðŸ“ Se o comentÃ¡rio aparecer, estÃ¡ funcionando!

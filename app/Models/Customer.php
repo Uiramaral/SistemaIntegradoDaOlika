@@ -61,6 +61,14 @@ class Customer extends Authenticatable
     }
 
     /**
+     * Relacionamento com fiados
+     */
+    public function debts(): HasMany
+    {
+        return $this->hasMany(CustomerDebt::class);
+    }
+
+    /**
      * Relacionamento com transações de fidelidade
      */
     public function loyaltyTransactions(): HasMany

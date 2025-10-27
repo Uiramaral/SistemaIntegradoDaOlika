@@ -24,9 +24,14 @@
 a{ color:inherit; text-decoration:none; }
 
 /* ============ LAYOUT ============ */
+/* Layout antigo - mantido para compatibilidade */
 .layout{ display:grid; grid-template-columns: 260px 1fr; min-height:100dvh; }
 .sidebar{ background:#fff; border-right:1px solid var(--line); padding:16px; position:sticky; top:0; height:100dvh; overflow:auto; }
 .main{ display:flex; flex-direction:column; min-width:0; }
+/* Layout novo - Lovable responsive */
+.dashboard-wrapper{ display:flex; min-height:100vh; width:100%; overflow-x:hidden; }
+.dashboard-sidebar{ flex:0 0 240px; background:#fff; border-right:1px solid #eee; height:100vh; position:sticky; top:0; overflow-y:auto; transition:transform .3s ease; padding:16px; z-index:1000; }
+.dashboard-content{ flex:1 1 auto; min-width:0; background:#fafafa; padding:24px; }
 
 .topbar{
   display:flex; align-items:center; gap:16px;
@@ -131,6 +136,9 @@ a{ color:inherit; text-decoration:none; }
   .topbar{ gap:10px; }
   /* Força o hambúrguer a aparecer, caso alguma regra esconda */
   .topbar .hamb{ display:inline-flex !important; align-items:center; justify-content:center; width:40px; height:36px; }
+  
+  /* Dashboard wrapper responsivo */
+  .dashboard-wrapper{ grid-template-columns: 1fr; }
 }
 
 /* ===== TOKENS ===== */
@@ -452,3 +460,219 @@ p.page-sub{ color:var(--muted); margin:0 0 16px; }
 .order-page .empty-ico{font-size:28px;opacity:.55;margin-bottom:6px}
 .order-page .empty-text{color:#6b7280}
 
+
+/* ===== Pedidos (Lovable-like) ===== */
+.orders-page .op-header{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.orders-page .op-header h1{font-size:28px;font-weight:700;margin:0}
+.orders-page .op-header p{margin:0;color:#6b7280}
+.orders-page .op-header .op-actions{margin-left:auto}
+.orders-page .btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border:0;border-radius:12px;cursor:pointer}
+.orders-page .btn-primary{background:#ff7f2a;color:#fff}
+.orders-page .card{background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:16px}
+.orders-page .op-search{position:relative;margin-bottom:12px}
+.orders-page .op-search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.6}
+.orders-page .op-search .input{width:100%;height:42px;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px 10px 36px}
+.orders-page .table-wrapper{border:1px solid #eef2f7;border-radius:12px;overflow:hidden}
+.orders-page .table{width:100%;border-collapse:separate;border-spacing:0}
+.orders-page .table th,.orders-page .table td{padding:12px;border-bottom:1px solid #f3f4f6;background:#fff}
+.orders-page .table th{background:#fafafa;font-weight:600}
+.orders-page .t-right{text-align:right}
+.orders-page .badge{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600}
+.orders-page .badge-green{background:#e9f9ef;color:#128a41}
+.orders-page .badge-orange{background:#fff1e6;color:#b45309}
+.orders-page .badge-blue{background:#e8f1ff;color:#1e40af}
+.orders-page .badge-gray{background:#f3f4f6;color:#374151}
+.orders-page .link{font-weight:600;color:#111827;text-decoration:none}
+.orders-page .link:hover{text-decoration:underline}
+.orders-page .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;border:1px dashed #e5e7eb;border-radius:12px;background:#fafafa}
+.orders-page .empty-ico{font-size:28px;opacity:.55;margin-bottom:6px}
+.orders-page .empty-text{color:#6b7280}
+
+/* ===== Clientes — Lovable precise ===== */
+.clients-page .lp-header{display:flex;align-items:flex-end;justify-content:space-between;margin:8px 0 18px}
+.clients-page .lp-header h1{margin:0;font-size:28px;line-height:1.15;font-weight:800;letter-spacing:-0.01em}
+.clients-page .lp-header p{margin:4px 0 0;color:#6b7280}
+.clients-page .lp-actions{display:flex;gap:10px}
+
+
+
+.clients-page .btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border:0;border-radius:12px;cursor:pointer;font-weight:700}
+.clients-page .lp-primary{background:#ff7f2a;color:#fff}
+.clients-page .lp-soft{background:#f5f5f5;color:#111827}
+.clients-page .btn.mini{height:28px;padding:0 10px;border-radius:10px}
+
+
+
+.clients-page .lp-card{background:#fff;border:1px solid #eef2f7;border-radius:14px;padding:16px}
+.clients-page .lp-search{position:relative;margin-bottom:12px}
+.clients-page .lp-search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.55}
+.clients-page .lp-input{width:100%;height:42px;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px 10px 36px;outline:none}
+.clients-page .lp-input::placeholder{color:#9ca3af}
+
+
+
+.clients-page .lp-table-wrap{border:1px solid #eef2f7;border-radius:12px;overflow:hidden}
+.clients-page .lp-table{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
+.clients-page .lp-table th,
+
+.clients-page .lp-table td{padding:12px 14px;border-bottom:1px solid #f3f4f6;background:#fff;vertical-align:middle}
+.clients-page .lp-table th{background:#fafafa;font-weight:700;color:#111827}
+.clients-page .t-right{text-align:right}
+.clients-page .t-center{text-align:center}
+
+
+
+.clients-page .lp-client{display:flex;gap:12px;align-items:center}
+.clients-page .lp-avatar{width:36px;height:36px;border-radius:999px;background:#ff7f2a;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.clients-page .lp-info .lp-name{font-weight:800}
+.clients-page .lp-sub{color:#6b7280;font-size:13px}
+.clients-page .lp-link{font-weight:800;margin-right:10px;color:#111827;text-decoration:none}
+.clients-page .lp-link:hover{text-decoration:underline}
+
+
+
+.clients-page .lp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;border:1px dashed #e5e7eb;border-radius:12px;background:#fafafa}
+.clients-page .lp-empty .txt{color:#6b7280}
+
+/* ===============================
+   LAYOUT BASE (Flex) - Desktop OK
+   =============================== */
+/* Sidebar fixa no desktop */
+.dashboard-sidebar {
+  position: sticky;
+  top: 0;
+}
+/* Botão hambúrguer escondido no desktop */
+.sidebar-toggle { display: none; }
+/* Overlay desativado no desktop */
+.overlay { display: none !important; }
+
+/* ===============================
+   MOBILE (<= 992px)
+   =============================== */
+@media (max-width: 992px) {
+  .sidebar-toggle {
+    display: block;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    background: #ff7f2a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 24px;
+    padding: 6px 10px;
+    z-index: 1100;
+    cursor: pointer;
+  }
+
+  .dashboard-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+  .dashboard-sidebar.active {
+    transform: translateX(0);
+    box-shadow: 0 0 20px rgba(0,0,0,.3);
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 900;
+    opacity: 0;
+    transition: opacity .3s ease;
+    pointer-events: none;
+  }
+  .overlay.active { opacity: 1; pointer-events: all; }
+
+  body.no-scroll { overflow: hidden; }
+
+  .dashboard-content {
+    padding: 80px 16px 60px;
+    margin: 0;
+    overflow-x: hidden;
+  }
+
+  /* Tabelas e blocos com scroll horizontal controlado */
+  .table-wrapper,
+  .lp-table-wrap,
+  .op-card .table-wrapper,
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Cards não podem "vazar" para fora */
+  .card, .lp-card, .op-card, .section-card {
+    overflow-x: hidden;
+  }
+}
+
+/* ===============================
+   CONTAINER CENTRAL (Lovable)
+   =============================== */
+.container-xl {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ============ ANTI-SANGRAMENTO GLOBAL ============ */
+html, body { width: 100%; overflow-x: hidden; }
+
+* { box-sizing: border-box; }
+
+.dashboard-wrapper { width: 100%; overflow-x: hidden; }
+
+.dashboard-content { min-width: 0; overflow-x: hidden; }
+
+/* Inputs / barras de busca sempre ocupam 100% do bloco pai */
+.search-wrap, .lp-search, .lp-input { max-width: 100%; width: 100%; }
+
+/* Tabelas e listas longas tratadas com scroll, não com overflow da página */
+.table-wrapper, .lp-table-wrap, table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Cards nunca com largura fixa */
+.card, .lp-card, .section-card, .product-card, .category-card {
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Espaços laterais do card principal que envolve a busca + grid */
+.board-card { background:#fff; border:1px solid #eef2f7; border-radius:14px; padding:16px; }
+
+/* ============ GRADES (Categorias / Produtos) ============ */
+.grid-cards{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  width: 100%;
+}
+.grid-cards .card{ margin:0; }
+
+/* Grades feitas com flex */
+.row.flex-grid{ display:flex; flex-wrap:wrap; margin:-10px; }
+.row.flex-grid > .col{ flex:0 1 100%; max-width:100%; padding:10px; }
+@media (min-width: 768px){ .row.flex-grid > .col{ flex:0 1 50%; } }
+@media (min-width:1100px){ .row.flex-grid > .col{ flex:0 1 33.333%; } }
+
+/* ============ MOBILE ============ */
+@media (max-width: 992px){
+  .dashboard-content{ padding:80px 12px 60px; }
+  .board-card{ padding:12px; }
+  .grid-cards{ grid-template-columns: 1fr; gap:12px; }
+}

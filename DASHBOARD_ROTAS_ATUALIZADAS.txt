@@ -1,0 +1,26 @@
+﻿âœ… ROTAS DO DASHBOARD ATUALIZADAS:
+
+1. Mirror de debug (/__orders_mirror):
+   - Acesse: https://menuolika.com.br/__orders_mirror
+   - Testa controller/view sem binding de domÃ­nio
+
+2. Suporte a mÃºltiplos hosts:
+   - dashboard.menuolika.com.br
+   - www.dashboard.menuolika.com.br
+
+3. Route model binding por CODE:
+   - Route::get('/orders/{order:code}')
+   - Laravel busca automaticamente pelo campo 'code'
+
+4. Controller jÃ¡ ajustado:
+   - public function orderShow(\App\Models\Order \)
+
+ðŸ“ PRÃ“XIMOS PASSOS:
+1. Limpe cache de rotas:
+   php artisan route:clear
+
+2. Teste o mirror:
+   https://menuolika.com.br/__orders_mirror
+
+3. Teste o dashboard normal:
+   https://dashboard.menuolika.com.br/orders

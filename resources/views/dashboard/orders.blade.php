@@ -1,49 +1,206 @@
-{{-- PÁGINA: Pedidos (Listagem de Pedidos/Ordens) --}}
 @extends('layouts.dashboard')
 
-@section('title','Pedidos — Dashboard Olika')
+@section('title', 'Pedidos')
 
 @section('content')
 
-<div class="card">
+<div class="orders-page" data-new-url="{{ route('dashboard.pdv') }}">
 
-  <h1 class="text-xl" style="font-weight:800;margin-bottom:10px">Pedidos</h1>
+  <div class="op-header">
 
-  <table>
+    <h1>Pedidos</h1>
 
-    <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th><th>Pgto</th><th>Quando</th><th></th></tr></thead>
+    <p>Gerencie todos os pedidos do restaurante</p>
+
+    <div class="op-actions">
+
+      <a href="{{ route('dashboard.pdv') }}" class="btn btn-primary">+ Novo Pedido</a>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="card op-card">
+
+    <div class="op-search">
+
+      <span class="ico">🔍</span>
+
+      <input id="order-search" type="text" class="input" placeholder="Buscar por cliente, número do pedido...">
+
+    </div>
+
+
+
+    <div class="table-wrapper">
+
+      <table class="table" id="orders-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width:100px">#</th>
+
+            <th>Cliente</th>
+
+            <th style="width:140px" class="t-right">Total</th>
+
+            <th style="width:140px">Status</th>
+
+            <th style="width:140px">Pagamento</th>
+
+            <th style="width:160px">Quando</th>
+
+            <th style="width:120px" class="t-right">Ações</th>
+
+          </tr>
+
+        </thead>
 
     <tbody>
 
-      @foreach($orders as $o)
+          @forelse($orders as $o)
 
-        <tr>
+            @php
 
-          <td>#{{ $o->order_number ?? $o->number ?? $o->id }}</td>
+              $code   = $o->order_number ?? $o->id;
 
-          <td>{{ $o->customer_name ?? '—' }}</td>
+              $cliente= $o->customer_name ?? optional($o->customer)->name ?? '—';
 
-          <td>R$ {{ number_format($o->final_amount ?? $o->total_amount ?? 0,2,',','.') }}</td>
+              $total  = number_format($o->final_amount ?? $o->total_amount ?? 0, 2, ',', '.');
 
-          <td><span class="badge">{{ $o->status }}</span></td>
+              $status = $o->status_label ?? $o->status ?? '—';
 
-          <td>{{ $o->payment_status ?? '—' }}</td>
+              $pgto   = $o->payment_status_label ?? $o->payment_status ?? '—';
 
-          <td>{{ \Carbon\Carbon::parse($o->created_at)->format('d/m H:i') }}</td>
+              $quando = isset($o->created_at)
 
-          <td><a class="badge" href="{{ route('dashboard.orders.show',$o->order_number ?? $o->id) }}">abrir</a></td>
+                        ? (\Carbon\Carbon::parse($o->created_at)->isToday()
+
+                            ? 'Hoje, '.\Carbon\Carbon::parse($o->created_at)->format('H:i')
+
+                            : \Carbon\Carbon::parse($o->created_at)->format('d/m/Y H:i'))
+
+                        : '—';
+
+
+
+              $clsStatus = match(strtolower($status)){
+
+                'entregue','delivered'   => 'badge-green',
+
+                'em preparo','preparing' => 'badge-orange',
+
+                'confirmado','confirmed' => 'badge-blue',
+
+                default => 'badge-gray',
+
+              };
+
+              $clsPay = match(strtolower($pgto)){
+
+                'pago','paid' => 'badge-blue',
+
+                'pendente','pending' => 'badge-gray',
+
+                default => 'badge-gray',
+
+              };
+
+            @endphp
+
+
+
+            <tr data-search="{{ Str::slug($code.' '.$cliente.' '.$status.' '.$pgto,' ') }}">
+
+              <td>{{ str_pad($loop->iteration,3,'0',STR_PAD_LEFT) }}</td>
+
+              <td>{{ $cliente }}</td>
+
+              <td class="t-right">R$ {{ $total }}</td>
+
+              <td><span class="badge {{ $clsStatus }}">{{ ucfirst($status) }}</span></td>
+
+              <td><span class="badge {{ $clsPay }}">{{ ucfirst($pgto) }}</span></td>
+
+              <td>{{ $quando }}</td>
+
+              <td class="t-right">
+
+                <a class="link" href="{{ route('dashboard.orders.show', $code) }}">Ver detalhes</a>
+
+              </td>
 
         </tr>
 
-      @endforeach
+          @empty
+
+            <tr><td colspan="7">
+
+              <div class="empty">
+
+                <div class="empty-ico">🛒</div>
+
+                <div class="empty-text">Nenhum pedido registrado ainda</div>
+
+              </div>
+
+            </td></tr>
+
+          @endforelse
 
     </tbody>
 
   </table>
 
-  <div style="margin-top:10px">{{ $orders->links() }}</div>
+    </div>
+
+  </div>
+
+
+
+  {{-- marcador rápido para conferir no código-fonte --}}
+
+  <div data-debug="lovable-orders-v2"></div>
 
 </div>
 
 @endsection
+
+
+
+@push('scripts')
+
+<script>
+
+(function(){
+
+  const input = document.getElementById('order-search');
+
+  const rows  = Array.from(document.querySelectorAll('#orders-table tbody tr'));
+
+  const norm  = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  input?.addEventListener('input', (e)=>{
+
+    const q = norm(e.target.value.trim());
+
+    rows.forEach(tr=>{
+
+      const v = norm(tr.getAttribute('data-search') || tr.textContent);
+
+      tr.style.display = v.indexOf(q) >= 0 ? '' : 'none';
+
+    });
+
+  });
+
+})();
+
+</script>
+
+@endpush
 

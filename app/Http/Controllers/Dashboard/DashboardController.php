@@ -82,21 +82,37 @@ class DashboardController extends Controller
 
     public function orders()
     {
-        $orders = DB::table('orders as o')
-            ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
-            ->select('o.*', 'c.name as customer_name', 'c.phone as customer_phone')
-            ->orderByDesc('o.id')
-            ->paginate(30);
+        $orders = \App\Models\Order::with('customer')
+            ->latest('created_at')->limit(50)->get();
 
         return view('dashboard.orders', compact('orders'));
     }
 
-    public function orderShow(Order $order)
+    public function orderShow($order)
     {
         // Log para debug
-        \Log::info('LOADING VIEW: dashboard.order-show');
+        \Log::info('orderShow called', [
+            'param' => $order,
+            'host' => request()->getHost(),
+            'uri'  => request()->getRequestUri(),
+        ]);
+
+        // Busca por order_number ou id (com agrupamento correto)
+        $orderModel = \App\Models\Order::with(['customer', 'items'])
+            ->where(function($q) use ($order) {
+                $q->where('order_number', $order)
+                  ->orWhere('id', $order);
+            })
+            ->firstOrFail();
+
+        \Log::info('LOADING VIEW: dashboard.order-show', [
+            'order_id' => $orderModel->id,
+            'order_number' => $orderModel->order_number ?? 'N/A',
+            'host' => request()->getHost(),
+            'uri'  => request()->getRequestUri(),
+        ]);
         
-        return view('dashboard.order-show', compact('order'));
+        return view('dashboard.order-show', ['order' => $orderModel]);
     }
 
     public function orderChangeStatus(Request $r, Order $order, OrderStatusService $oss)
@@ -113,7 +129,20 @@ class DashboardController extends Controller
 
     public function customers()
     {
-        $customers = DB::table('customers')->orderByDesc('id')->paginate(30);
+        $customers = \App\Models\Customer::query()
+            ->withCount('orders')
+            ->withSum('orders as total_spent', 'final_amount')
+            ->addSelect([
+                'debt_open' => \App\Models\CustomerDebt::selectRaw('
+                    COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - 
+                    COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0)
+                ')
+                    ->whereColumn('customer_id', 'customers.id')
+                    ->where('status', 'open')
+                    ->limit(1)
+            ])
+            ->orderBy('name')
+            ->get();
 
         return view('dashboard.customers', compact('customers'));
     }

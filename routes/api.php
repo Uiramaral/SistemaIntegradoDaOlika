@@ -62,7 +62,7 @@ Route::prefix('delivery-fee')->name('api.delivery-fee.')->group(function () {
 // Rotas da API de cupons
 Route::prefix('coupons')->name('api.coupons.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CouponController::class, 'getVisibleCoupons'])->name('index');
-    Route::post('/validate', [\App\Http\Controllers\CouponController::class, 'validate'])->name('validate');
+    Route::get('/validate', [\App\Http\Controllers\CouponController::class, 'validateCoupon'])->name('validate');
     Route::post('/', [\App\Http\Controllers\CouponController::class, 'create'])->name('create');
     Route::put('/{coupon}', [\App\Http\Controllers\CouponController::class, 'update'])->name('update');
     Route::delete('/{coupon}', [\App\Http\Controllers\CouponController::class, 'delete'])->name('delete');

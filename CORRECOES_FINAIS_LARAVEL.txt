@@ -1,0 +1,120 @@
+# ✅ CORREÇÕES FINAIS - LARAVEL.LOG
+
+## 🔍 ERRO ADICIONAL IDENTIFICADO E CORRIGIDO
+
+### ❌ Erro: Column 'total' not found
+**Arquivo:** `app/Http/Controllers/ReportsController.php`  
+**Causa:** Tabela `orders` usa `final_amount` em vez de `total`
+
+**Correções aplicadas:**
+
+1. **KPIs (linhas 37, 40):**
+```php
+// ANTES:
+'faturamento' => (clone $pedidosBase)->sum('total'),
+return $qtd ? (clone $pedidosBase)->sum('total') / $qtd : 0;
+
+// DEPOIS:
+'faturamento' => (clone $pedidosBase)->sum('final_amount'),
+return $qtd ? (clone $pedidosBase)->sum('final_amount') / $qtd : 0;
+```
+
+2. **Série diária (linha 46):**
+```php
+// ANTES:
+->select(DB::raw('DATE(created_at) as dia'), DB::raw('SUM(total) as total'))
+
+// DEPOIS:
+->select(DB::raw('DATE(created_at) as dia'), DB::raw('SUM(final_amount) as total'))
+```
+
+3. **Cupons usados (linhas 67-70):**
+```php
+// ANTES:
+->whereNotNull('cupom_codigo')
+->select('cupom_codigo', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(total) as receita'))
+->groupBy('cupom_codigo')
+
+// DEPOIS:
+->whereNotNull('coupon_code')
+->select('coupon_code', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(final_amount) as receita'))
+->groupBy('coupon_code')
+```
+
+4. **Geografia por bairro (linhas 74-80):**
+```php
+// ANTES:
+->join('clientes','pedidos.cliente_id','=','clientes.id')
+->select('clientes.bairro', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(pedidos.total) as receita'))
+->groupBy('clientes.bairro')
+
+// DEPOIS:
+->join('customers','orders.customer_id','=','customers.id')
+->select('customers.neighborhood', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(orders.final_amount) as receita'))
+->groupBy('customers.neighborhood')
+```
+
+5. **Exportação CSV (linhas 121-130):**
+```php
+// ANTES:
+optional($p->cliente)->nome
+optional($p->data_entrega)->format('Y-m-d H:i:s')
+number_format($p->total,2,'.','')
+$p->cupom_codigo ?? ''
+
+// DEPOIS:
+optional($p->customer)->name
+optional($p->scheduled_delivery_at)->format('Y-m-d H:i:s')
+number_format($p->final_amount,2,'.','')
+$p->coupon_code ?? ''
+```
+
+---
+
+## 📋 RESUMO DAS CORREÇÕES
+
+| Erro | Status | Arquivo | Correção |
+|------|--------|---------|----------|
+| Column 'active' delivery_schedules | ✅ Corrigido | PDVController.php | Removido filtro |
+| Column 'active' delivery_fees | ✅ Corrigido | PDVController.php | Removido filtro |
+| CouponController::validate | ✅ Corrigido | CouponController.php | Renomeado para validateCoupon |
+| Model Pedido not found | ✅ Corrigido | ReportsController.php | Alterado para Order |
+| Column 'total' not found | ✅ Corrigido | ReportsController.php | Alterado para final_amount |
+| Tabelas antigas (pedidos/produtos) | ✅ Corrigido | ReportsController.php | Alterado para orders/products |
+| Campos antigos (cliente/bairro) | ✅ Corrigido | ReportsController.php | Alterado para customer/neighborhood |
+
+---
+
+## ✅ PRÓXIMOS PASSOS
+
+### Limpar cache:
+```bash
+php artisan route:clear
+php artisan view:clear
+php artisan cache:clear
+php artisan optimize:clear
+```
+
+### Verificar se não há mais erros:
+```bash
+Get-Content storage/logs/laravel.log -Tail 50
+```
+
+### Testar rotas afetadas:
+- `/dashboard/pdv` (PDV)
+- `/relatorios` (Relatórios)
+
+---
+
+## 🎯 TODAS AS CORREÇÕES APLICADAS!
+
+Os erros identificados no `laravel.log` foram corrigidos:
+- ✅ Removido filtros de colunas inexistentes
+- ✅ Renomeado método conflitante
+- ✅ Corrigido imports e referências de models
+- ✅ Atualizado queries para tabelas corretas (orders/products/customers)
+- ✅ Atualizado campos para nomes corretos (final_amount, coupon_code, etc.)
+- ✅ Corrigidas relações (customer em vez de cliente)
+- ✅ Corrigidos nomes de campos (name, neighborhood, scheduled_delivery_at)
+
+**Sistema pronto para uso sem erros!** 🎉

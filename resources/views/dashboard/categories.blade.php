@@ -2,54 +2,64 @@
 
 @section('title','Categorias — Dashboard Olika')
 
+@section('page-title','Categorias')
+
+@section('page-subtitle','Organize seus produtos por categoria')
+
 @section('content')
 
-<div class="card">
+@if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
+@if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h1 class="text-xl" style="font-weight:800">Categorias</h1>
-    <a href="{{ route('dashboard.categories.create') }}" class="btn" style="background:#059669;color:#fff">➕ Nova Categoria</a>
+<div class="toolbar">
+  <div class="grow">
+    <h1 class="page-title">Categorias</h1>
+    <p class="page-sub">Organize seus produtos por categoria</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost" href="{{ route('dashboard.index') }}">Voltar</a>
+    <a class="btn primary" href="{{ route('dashboard.categories.create') }}">+ Nova Categoria</a>
+  </div>
+</div>
+
+{{-- Campo de busca --}}
+<div class="card">
+  <div class="input-search">
+    <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35" stroke="#999" stroke-width="1.5" fill="none"/><circle cx="10.5" cy="10.5" r="7" stroke="#999" stroke-width="1.5" fill="none"/></svg>
+    <input class="inp" placeholder="Buscar categorias..." name="q" value="{{ request('q') }}">
   </div>
 
-  @if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
-  @if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
-
-  <table style="width:100%">
-    <thead><tr><th>ID</th><th>Nome</th><th>Slug</th><th>Descrição</th><th>Status</th><th>Ordem</th><th>Ações</th></tr></thead>
-    <tbody>
-      @forelse($cats as $cat)
-        <tr>
-          <td data-label="ID">#{{ $cat->id }}</td>
-          <td data-label="Nome"><strong>{{ $cat->name }}</strong></td>
-          <td data-label="Slug"><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">{{ $cat->slug }}</code></td>
-          <td data-label="Descrição">{{ \Str::limit($cat->description ?? '—', 40) }}</td>
-          <td data-label="Status">
-            <form method="POST" action="{{ route('dashboard.categories.toggle', $cat->id) }}" style="display:inline">
-              @csrf
-              <button type="submit" class="badge" style="{{ $cat->is_active ? 'background:#d1fae5;color:#065f46' : 'background:#fee2e2;color:#991b1b' }}">
-                {{ $cat->is_active ? '✅ Ativa' : '❌ Inativa' }}
-              </button>
-            </form>
-          </td>
-          <td data-label="Ordem">{{ $cat->display_order ?? 0 }}</td>
-          <td data-label="Ações">
-            <div style="display:flex;gap:4px">
-              <a href="{{ route('dashboard.categories.edit', $cat->id) }}" class="badge" style="background:#f59e0b;color:#fff">✏️ Editar</a>
-              <form method="POST" action="{{ route('dashboard.categories.destroy', $cat->id) }}" style="display:inline" onsubmit="return confirm('Excluir esta categoria?')">
-                @csrf @method('DELETE')
-                <button type="submit" class="badge" style="background:#ef4444;color:#fff">🗑️ Excluir</button>
-              </form>
+  {{-- Grid de categorias --}}
+  <div class="grid-2" style="grid-template-columns: repeat(3, 1fr); gap:16px; margin-top:16px;">
+    @forelse($cats as $categoria)
+      @php $ativa = (bool)($categoria->active ?? $categoria->is_active ?? true); @endphp
+      <div class="card" style="border-radius:14px;">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <div style="width:42px; height:42px; border-radius:12px; background:#fff3e8; display:flex; align-items:center; justify-content:center;">🗂️</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; margin-bottom:6px;">
+              <div style="font-weight:800;">{{ $categoria->name ?? $categoria->nome }}</div>
+              <span class="badge {{ $ativa ? 'orange' : 'gray' }}">{{ $ativa ? 'Ativa' : 'Inativa' }}</span>
             </div>
-          </td>
-        </tr>
-      @empty
-        <tr><td colspan="7" style="text-align:center;padding:20px">Nenhuma categoria cadastrada</td></tr>
-      @endforelse
-    </tbody>
-  </table>
+            <div class="muted">{{ $categoria->products_count ?? 0 }} produtos</div>
+            @if($categoria->description ?? $categoria->descricao)
+            <p class="muted" style="margin-top:8px; font-size:13px;">{{ Str::limit($categoria->description ?? $categoria->descricao, 80) }}</p>
+            @endif
+            <div style="margin-top:10px; display:flex; gap:8px;">
+              <a class="pill" href="{{ route('dashboard.categories.edit', $categoria->id) }}">Editar</a>
+              <a class="pill" href="{{ route('dashboard.products', ['category' => $categoria->id]) }}">Ver produtos</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    @empty
+      <div class="muted">Nenhuma categoria cadastrada.</div>
+    @endforelse
+  </div>
 
-  <div style="margin-top:12px">{{ $cats->links() }}</div>
-
+  @if(method_exists($cats, 'links'))
+  <div style="margin-top:16px;">{{ $cats->links() }}</div>
+  @endif
 </div>
 
 @endsection

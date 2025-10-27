@@ -1,0 +1,130 @@
+# ✅ PADRONIZAÇÃO CSS COMPLETA
+
+## 📝 ESTILOS ADICIONADOS
+
+Todos os novos tokens e componentes foram adicionados ao final de `public/css/styles.css`.
+
+### Componentes disponíveis:
+
+#### 1. **Toolbar** (cabeçalho de página)
+```html
+<div class="toolbar">
+  <div class="grow">
+    <h1 class="page-title">Título</h1>
+    <p class="page-sub">Subtítulo</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost">Ação 1</a>
+    <a class="btn primary">Ação 2</a>
+  </div>
+</div>
+```
+
+#### 2. **Card com Search**
+```html
+<div class="card">
+  <div class="input-search" style="margin-bottom:12px;">
+    <svg class="icon" width="18" height="18" viewBox="0 0 24 24">
+      <path d="M21 21l-4.35-4.35" stroke="#999" stroke-width="1.5" fill="none"/>
+      <circle cx="10.5" cy="10.5" r="7" stroke="#999" stroke-width="1.5" fill="none"/>
+    </svg>
+    <input class="inp" placeholder="Buscar...">
+  </div>
+  <!-- conteúdo -->
+</div>
+```
+
+#### 3. **Tabela Padrão**
+```html
+<table class="table">
+  <thead>
+    <tr>
+      <th>Coluna 1</th>
+      <th>Coluna 2</th>
+      <th class="cell-right">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Dados</td>
+      <td class="muted">Subtítulo</td>
+      <td class="cell-right"><a class="link" href="#">Ver</a></td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### 4. **Avatar**
+```html
+<div class="avatar">JS</div>
+```
+
+#### 5. **Badges**
+```html
+<span class="badge green">Entregue</span>
+<span class="badge orange">Em preparo</span>
+<span class="badge gray">Pendente</span>
+```
+
+#### 6. **Form Grid** (PDV)
+```html
+<div class="card">
+  <div class="card-title">Título</div>
+  <div class="form-section">
+    <div class="field">
+      <div class="lbl">Label</div>
+      <div class="field-row">
+        <div class="field" style="grid-column: span 6;">
+          <input class="inp" placeholder="...">
+        </div>
+        <div class="field" style="grid-column: span 3;">
+          <input class="inp" placeholder="...">
+        </div>
+        <div class="field" style="grid-column: span 3;">
+          <input class="inp" placeholder="...">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## 🎨 TOKENS CSS
+
+```css
+:root{
+  --bg:#fafafa;
+  --panel:#fff;
+  --line:#ececec;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --brand:#ff7a18;
+  --brand-2:#ff8b3f;
+  --radius-xl:18px;
+  --radius-lg:14px;
+  --radius:12px;
+  --shadow:0 10px 30px rgba(0,0,0,.06);
+}
+```
+
+---
+
+## 📱 RESPONSIVO
+
+- **Desktop (1024px+)**: Toolbar completo
+- **Tablet (900px+)**: Field-row com 2 colunas
+- **Mobile (640px+)**: Field-row com 1 coluna
+- **Mobile (900px-)**: Toolbar .actions oculto
+
+---
+
+## ✅ PRÓXIMOS PASSOS
+
+1. Atualizar views de **Clientes** com novo markup
+2. Atualizar views de **Pedidos** com novo markup
+3. Atualizar view de **PDV** com form sections
+4. Aplicar toolbar em todas as páginas
+
+**CSS padrão aplicado!** 🎉

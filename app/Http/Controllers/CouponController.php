@@ -25,64 +25,43 @@ class CouponController extends Controller
     }
 
     /**
-     * Valida cupom
+     * Valida cupom (API para PDV)
      */
-    public function validate(Request $request)
+    public function validateCoupon(Request $request)
     {
-        $request->validate([
-            'code' => 'required|string|max:50',
-            'customer_id' => 'nullable|integer|exists:customers,id',
-        ]);
-
-        $coupon = Coupon::where('code', strtoupper($request->code))->first();
-
-        if (!$coupon) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cupom não encontrado',
-            ], 404);
+        $code = strtoupper(trim($request->get('code') ?? ''));
+        
+        if (empty($code)) {
+            return response()->json(['valid' => false, 'message' => 'Código do cupom é obrigatório.'], 400);
         }
 
-        $customerId = $request->customer_id;
-        
-        if (!$coupon->canBeUsedBy($customerId)) {
-            $message = 'Cupom não pode ser usado';
-            
-            if ($coupon->visibility === 'targeted' && $coupon->target_customer_id !== $customerId) {
-                $message = 'Este cupom é exclusivo para outro cliente';
-            } elseif ($coupon->visibility === 'private') {
-                $message = 'Este cupom é privado e não pode ser usado';
-            } elseif (!$coupon->isValid($customerId)) {
-                if ($coupon->expires_at && $coupon->expires_at->isPast()) {
-                    $message = 'Cupom expirado';
-                } elseif ($coupon->starts_at && $coupon->starts_at->isFuture()) {
-                    $message = 'Cupom ainda não está ativo';
-                } elseif ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
-                    $message = 'Cupom esgotado';
-                } else {
-                    $message = 'Cupom inativo';
-                }
-            }
+        $coupon = Coupon::where('code', $code)
+            ->where('active', true)
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>=', now());
+            })
+            ->first();
 
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], 400);
+        if (!$coupon) {
+            return response()->json(['valid' => false, 'message' => 'Cupom inválido ou expirado.'], 404);
+        }
+
+        // Valida limite de uso
+        if ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
+            return response()->json(['valid' => false, 'message' => 'Cupom esgotado.'], 400);
+        }
+
+        // Valida data de início
+        if ($coupon->starts_at && $coupon->starts_at->isFuture()) {
+            return response()->json(['valid' => false, 'message' => 'Cupom ainda não está ativo.'], 400);
         }
 
         return response()->json([
-            'success' => true,
-            'coupon' => [
-                'id' => $coupon->id,
-                'code' => $coupon->code,
-                'name' => $coupon->name,
-                'description' => $coupon->description,
-                'type' => $coupon->type,
-                'value' => $coupon->value,
-                'formatted_value' => $coupon->formatted_value,
-                'minimum_amount' => $coupon->minimum_amount,
-                'visibility' => $coupon->visibility,
-            ],
+            'valid' => true,
+            'type'  => $coupon->type,   // 'percentage' ou 'fixed'
+            'value' => $coupon->value,
+            'message' => 'Cupom aplicado com sucesso!'
         ]);
     }
 

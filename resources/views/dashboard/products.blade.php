@@ -2,64 +2,66 @@
 
 @section('title','Produtos — Dashboard Olika')
 
+@section('page-title','Produtos')
+
+@section('page-subtitle','Gerencie o cardápio do seu restaurante')
+
 @section('content')
 
-<div class="card">
+@if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
+@if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h1 class="text-xl" style="font-weight:800">Produtos</h1>
-    <a href="{{ route('dashboard.products.create') }}" class="btn" style="background:#059669;color:#fff">➕ Novo Produto</a>
+<div class="toolbar">
+  <div class="grow">
+    <h1 class="page-title">Produtos</h1>
+    <p class="page-sub">Gerencie o cardápio do seu restaurante</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost" href="{{ route('dashboard.index') }}">Voltar</a>
+    <a class="btn primary" href="{{ route('dashboard.products.create') }}">+ Novo Produto</a>
+  </div>
+</div>
+
+{{-- Campo de busca --}}
+<div class="card">
+  <div class="input-search">
+    <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35" stroke="#999" stroke-width="1.5" fill="none"/><circle cx="10.5" cy="10.5" r="7" stroke="#999" stroke-width="1.5" fill="none"/></svg>
+    <input class="inp" placeholder="Buscar produtos..." name="q" value="{{ request('q') }}">
   </div>
 
-  @if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
-  @if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
-
-  <table style="width:100%">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Nome</th>
-        <th>Categoria</th>
-        <th>Preço</th>
-        <th>Status</th>
-        <th>Cadastrado</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      @forelse($products as $p)
-        <tr>
-          <td data-label="ID">#{{ $p->id }}</td>
-          <td data-label="Produto"><strong>{{ $p->name }}</strong><br><small style="color:#6b7280">{{ $p->sku ?? '—' }}</small></td>
-          <td data-label="Categoria">{{ $p->category_name ?? '—' }}</td>
-          <td data-label="Preço">R$ {{ number_format($p->price,2,',','.') }}</td>
-          <td data-label="Status">
-            <form method="POST" action="{{ route('dashboard.products.toggle', $p->id) }}" style="display:inline">
-              @csrf
-              <button type="submit" class="badge" style="{{ $p->is_active ? 'background:#d1fae5;color:#065f46' : 'background:#fee2e2;color:#991b1b' }}">
-                {{ $p->is_active ? '✅ Ativo' : '❌ Inativo' }}
-              </button>
-            </form>
-          </td>
-          <td data-label="Cadastrado">{{ \Carbon\Carbon::parse($p->created_at)->format('d/m/Y') }}</td>
-          <td data-label="Ações">
-            <div style="display:flex;gap:4px">
-              <a href="{{ route('dashboard.products.edit', $p->id) }}" class="badge" style="background:#f59e0b;color:#fff">✏️ Editar</a>
-              <form method="POST" action="{{ route('dashboard.products.destroy', $p->id) }}" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
-                @csrf @method('DELETE')
-                <button type="submit" class="badge" style="background:#ef4444;color:#fff">🗑️ Excluir</button>
-              </form>
+  {{-- Grid de produtos --}}
+  <div class="grid-2" style="grid-template-columns: repeat(3, 1fr); gap:16px; margin-top:16px;">
+    @forelse($products as $p)
+      @php $ativo = (bool)($p->active ?? $p->is_active ?? true); @endphp
+      <div class="card" style="border-radius:14px;">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <div style="width:42px; height:42px; border-radius:12px; background:#fff3e8; display:flex; align-items:center; justify-content:center;">📦</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; justify-content:space-between;">
+              <div style="font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ $p->name ?? $p->nome }}
+              </div>
+              <span class="badge {{ $ativo ? 'orange' : 'gray' }}">{{ $ativo ? 'Ativo' : 'Inativo' }}</span>
             </div>
-          </td>
-        </tr>
-      @empty
-        <tr><td colspan="7" style="text-align:center;padding:20px">Nenhum produto cadastrado</td></tr>
-      @endforelse
-    </tbody>
-  </table>
+            <div class="muted">{{ $p->category_name ?? $p->categoria->nome ?? '—' }}</div>
+            <div style="display:flex; gap:14px; align-items:center; margin-top:6px;">
+              <div style="font-weight:800;">R$ {{ number_format($p->price ?? $p->preco ?? 0,2,',','.') }}</div>
+              <div class="muted">Estoque: {{ $p->stock ?? $p->estoque ?? 0 }}</div>
+            </div>
+            <div style="margin-top:10px;">
+              <a class="pill" href="{{ route('dashboard.products.edit',$p->id) }}">Editar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    @empty
+      <div class="muted">Nenhum produto cadastrado.</div>
+    @endforelse
+  </div>
 
-  <div style="margin-top:12px">{{ $products->links() }}</div>
-
+  @if(method_exists($products, 'links'))
+  <div style="margin-top:16px;">{{ $products->links() }}</div>
+  @endif
 </div>
 
 @endsection

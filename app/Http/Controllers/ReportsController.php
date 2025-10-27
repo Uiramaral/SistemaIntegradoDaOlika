@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Pedido;
-use App\Models\PedidoItem;
-use App\Models\Produto;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -27,54 +27,56 @@ class ReportsController extends Controller
         };
 
         // Base de pedidos no período
-        $pedidosBase = Pedido::query()
+        $pedidosBase = Order::query()
             ->when($status->isNotEmpty(), fn($q)=>$q->where('status',$status))
             ->whereBetween('created_at', $between);
 
         // 2.1 — KPIs
         $kpIs = [
             'qtd_pedidos' => (clone $pedidosBase)->count(),
-            'faturamento' => (clone $pedidosBase)->sum('total'),
+            'faturamento' => (clone $pedidosBase)->sum('final_amount'),
             'ticket_medio'=> (function() use ($pedidosBase){
                 $qtd = (clone $pedidosBase)->count();
-                return $qtd ? (clone $pedidosBase)->sum('total') / $qtd : 0;
+                return $qtd ? (clone $pedidosBase)->sum('final_amount') / $qtd : 0;
             })(),
         ];
 
         // 2.2 — Série diária (faturamento por dia)
         $serieDiaria = (clone $pedidosBase)
-            ->select(DB::raw('DATE(created_at) as dia'), DB::raw('SUM(total) as total'))
+            ->select(DB::raw('DATE(created_at) as dia'), DB::raw('SUM(final_amount) as total'))
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('dia')
             ->get();
 
         // 2.3 — Top produtos no período
-        $topProdutos = PedidoItem::query()
-            ->join('pedidos','pedido_items.pedido_id','=','pedidos.id')
-            ->join('produtos','pedido_items.produto_id','=','produtos.id')
-            ->whereBetween('pedidos.created_at', $between)
-            ->when($status->isNotEmpty(), fn($q)=>$q->where('pedidos.status',$status))
-            ->select('produtos.id','produtos.nome',
-                DB::raw('SUM(pedido_items.quantidade) as qtd'),
-                DB::raw('SUM(pedido_items.subtotal) as receita'))
-            ->groupBy('produtos.id','produtos.nome')
+        $topProdutos = OrderItem::query()
+            ->join('orders','order_items.order_id','=','orders.id')
+            ->join('products','order_items.product_id','=','products.id')
+            ->whereBetween('orders.created_at', $between)
+            ->when($status->isNotEmpty(), fn($q)=>$q->where('orders.status',$status))
+            ->select('products.id','products.name',
+                DB::raw('SUM(order_items.quantity) as qtd'),
+                DB::raw('SUM(order_items.total_price) as receita'))
+            ->groupBy('products.id','products.name')
             ->orderByDesc('receita')
             ->limit(10)
             ->get();
 
         // 2.4 — Cupons usados
         $cuponsUsados = (clone $pedidosBase)
-            ->whereNotNull('cupom_codigo')
-            ->select('cupom_codigo', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(total) as receita'))
-            ->groupBy('cupom_codigo')
+            ->whereNotNull('coupon_code')
+            ->select('coupon_code', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(final_amount) as receita'))
+            ->groupBy('coupon_code')
             ->orderByDesc('qtd')
             ->get();
 
         // 2.5 — Geografia (bairro) - ajustado para buscar do cliente
-        $porBairro = (clone $pedidosBase)
-            ->join('clientes','pedidos.cliente_id','=','clientes.id')
-            ->select('clientes.bairro', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(pedidos.total) as receita'))
-            ->groupBy('clientes.bairro')
+        $porBairro = Order::query()
+            ->join('customers','orders.customer_id','=','customers.id')
+            ->whereBetween('orders.created_at', $between)
+            ->when($status->isNotEmpty(), fn($q)=>$q->where('orders.status',$status))
+            ->select('customers.neighborhood', DB::raw('COUNT(*) as qtd'), DB::raw('SUM(orders.final_amount) as receita'))
+            ->groupBy('customers.neighborhood')
             ->orderByDesc('qtd')
             ->limit(12)
             ->get();
@@ -108,8 +110,8 @@ class ReportsController extends Controller
             default  => [now()->startOfMonth(), now()->endOfMonth()],
         };
 
-        $query = Pedido::query()
-            ->with(['cliente:id,nome'])
+        $query = Order::query()
+            ->with(['customer:id,name'])
             ->when($status->isNotEmpty(), fn($q)=>$q->where('status',$status))
             ->whereBetween('created_at',$between)
             ->orderBy('created_at');
@@ -121,12 +123,12 @@ class ReportsController extends Controller
                 foreach($rows as $p){
                     fputcsv($out, [
                         $p->id,
-                        optional($p->cliente)->nome,
+                        optional($p->customer)->name,
                         $p->status,
                         optional($p->created_at)->format('Y-m-d H:i:s'),
-                        optional($p->data_entrega)->format('Y-m-d H:i:s'),
-                        number_format($p->total,2,'.',''),
-                        $p->cupom_codigo ?? '',
+                        optional($p->scheduled_delivery_at)->format('Y-m-d H:i:s'),
+                        number_format($p->final_amount,2,'.',''),
+                        $p->coupon_code ?? '',
                     ]);
                 }
             });

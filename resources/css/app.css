@@ -1,3 +1,84 @@
+/* TOKENS DO DESIGN SYSTEM */
+:root{
+  /* cores base */
+  --bg: #F7F7F7;
+  --surface: #FFFFFF;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --primary: #ff7a1a;
+  --primary-600:#fb6a00;
+  --success:#22c55e;
+  --warning:#f59e0b;
+  --danger:#ef4444;
+  --ring:#e5e7eb;
+
+  /* raios/sombras/spacing */
+  --radius: 14px;
+  --shadow: 0 8px 24px rgba(2,6,23,.06);
+  --shadow-sm: 0 2px 8px rgba(2,6,23,.05);
+}
+
+/* resetinho suave */
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--text);}
+
+/* containers */
+.page{padding:24px 28px;}
+.section{margin:0 auto; max-width:1200px;}
+.card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+
+/* header de página */
+.page-header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px;}
+.page-title{font-size:32px; font-weight:800; letter-spacing:-.02em}
+
+/* inputs */
+.input{
+  width:100%; height:44px; padding:0 14px; border:1px solid var(--ring);
+  border-radius:12px; background:#fff; outline:none;
+}
+.input:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(255,122,26,.15)}
+
+/* botões */
+.btn{
+  height:44px; padding:0 18px; border-radius:12px; border:1px solid transparent;
+  display:inline-flex; align-items:center; gap:10px; font-weight:600; cursor:pointer;
+}
+.btn-primary{background:var(--primary); color:#fff;}
+.btn-primary:hover{background:var(--primary-600);}
+.btn-ghost{background:#fff; border-color:var(--ring); color:var(--text)}
+.btn-ghost:hover{box-shadow:var(--shadow-sm);}
+
+/* badges */
+.badge{display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:12px;
+  border-radius:999px; padding:6px 10px; background:#f3f4f6; color:#111827}
+.badge-success{background:rgba(34,197,94,.12); color:#15803d;}
+.badge-warning{background:rgba(245,158,11,.12); color:#a16207;}
+.badge-danger{background:rgba(239,68,68,.12); color:#b91c1c;}
+.badge-neutral{background:#eef2ff; color:#3730a3;}
+
+/* bloco de busca */
+.search{display:flex; align-items:center; gap:10px; padding:14px; border:1px solid var(--ring); border-radius:12px; background:#fff}
+.search input{border:0; outline:0; width:100%}
+
+/* grid/cards */
+.grid{display:grid; gap:16px;}
+.grid-3{grid-template-columns:repeat(3, 1fr);}
+.grid-2{grid-template-columns:repeat(2, 1fr);}
+@media (max-width:1024px){ .grid-3{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:640px){ .grid-3,.grid-2{grid-template-columns:1fr;} }
+
+/* tabela simples */
+.table{width:100%; border-collapse:separate; border-spacing:0 10px;}
+.table th{font-size:12px; color:var(--muted); text-align:left; font-weight:700; padding:0 16px 6px}
+.table tr{background:#fff; box-shadow:var(--shadow-sm); border-radius:12px;}
+.table td{padding:16px;}
+.table tr td:first-child{border-top-left-radius:12px; border-bottom-left-radius:12px;}
+.table tr td:last-child{border-top-right-radius:12px; border-bottom-right-radius:12px;}
+
 /* Importações CSS */
 @import "./dashboard.css";
 @tailwind base;

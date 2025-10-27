@@ -2,49 +2,74 @@
 
 @section('title','Clientes — Dashboard Olika')
 
+@section('page-title','Clientes')
+
+@section('page-subtitle','Gerencie sua base de clientes')
+
 @section('content')
 
-<div class="card">
+@if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
+@if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h1 class="text-xl" style="font-weight:800">Clientes</h1>
-    <a href="{{ route('dashboard.customers.create') }}" class="btn" style="background:#059669;color:#fff">➕ Novo Cliente</a>
+<div class="toolbar">
+  <div class="grow">
+    <h1 class="page-title">Clientes</h1>
+    <p class="page-sub">Gerencie sua base de clientes</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost" href="{{ route('dashboard.index') }}">Voltar</a>
+    <a class="btn primary" href="{{ route('dashboard.customers.create') }}">+ Novo Cliente</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="input-search" style="margin-bottom:12px;">
+    <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35" stroke="#999" stroke-width="1.5" fill="none"/><circle cx="10.5" cy="10.5" r="7" stroke="#999" stroke-width="1.5" fill="none"/></svg>
+    <input class="inp" placeholder="Buscar clientes..." name="q" value="{{ request('q') }}">
   </div>
 
-  @if(session('ok'))<div class="badge" style="background:#d1fae5;color:#065f46;margin-bottom:12px">{{ session('ok') }}</div>@endif
-  @if(session('error'))<div class="badge" style="background:#fee2e2;color:#991b1b;margin-bottom:12px">{{ session('error') }}</div>@endif
-
-  <table style="width:100%">
-    <thead><tr><th>ID</th><th>Nome</th><th>Telefone</th><th>Email</th><th>Pedidos</th><th>Total Gasto</th><th>Cadastrado</th><th>Ações</th></tr></thead>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Contato</th>
+        <th class="cell-right">Pedidos</th>
+        <th class="cell-right">Total Gasto</th>
+        <th class="cell-right">Ações</th>
+      </tr>
+    </thead>
     <tbody>
       @forelse($customers as $c)
-        <tr>
-          <td data-label="ID">#{{ $c->id }}</td>
-          <td data-label="Nome"><strong>{{ $c->name }}</strong></td>
-          <td data-label="Telefone">{{ $c->phone }}</td>
-          <td data-label="Email">{{ $c->email ?? '—' }}</td>
-          <td data-label="Pedidos">{{ $c->total_orders ?? 0 }}</td>
-          <td data-label="Total">R$ {{ number_format($c->total_spent ?? 0,2,',','.') }}</td>
-          <td data-label="Cadastrado">{{ \Carbon\Carbon::parse($c->created_at)->format('d/m/Y') }}</td>
-          <td data-label="Ações">
-            <div style="display:flex;gap:4px">
-              <a href="{{ route('dashboard.customers.show', $c->id) }}" class="badge" style="background:#3b82f6;color:#fff">👁️ Ver</a>
-              <a href="{{ route('dashboard.customers.edit', $c->id) }}" class="badge" style="background:#f59e0b;color:#fff">✏️ Editar</a>
-              <form method="POST" action="{{ route('dashboard.customers.destroy', $c->id) }}" style="display:inline" onsubmit="return confirm('Excluir este cliente?')">
-                @csrf @method('DELETE')
-                <button type="submit" class="badge" style="background:#ef4444;color:#fff">🗑️ Excluir</button>
-              </form>
+      <tr>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="avatar">{{ strtoupper(substr($c->name ?? 'N/A', 0, 2)) }}</div>
+            <div>
+              <div style="font-weight:800;">{{ $c->name ?? 'N/A' }}</div>
+              <div class="muted">{{ $c->email ?? '—' }}</div>
             </div>
-          </td>
-        </tr>
+          </div>
+        </td>
+        <td class="muted">{{ $c->phone ?? '—' }}</td>
+        <td class="cell-right" style="font-weight:800;">{{ $c->total_orders ?? $c->orders_count ?? 0 }}</td>
+        <td class="cell-right" style="font-weight:800;">R$ {{ number_format($c->total_spent ?? 0,2,',','.') }}</td>
+        <td class="cell-right">
+          <a class="link" href="{{ route('dashboard.customers.show', $c->id) }}">Ver perfil</a>
+        </td>
+      </tr>
       @empty
-        <tr><td colspan="8" style="text-align:center;padding:20px">Nenhum cliente cadastrado</td></tr>
+      <tr>
+        <td colspan="5" class="muted" style="text-align:center; padding:40px;">
+          Nenhum cliente cadastrado
+        </td>
+      </tr>
       @endforelse
     </tbody>
   </table>
 
-  <div style="margin-top:12px">{{ $customers->links() }}</div>
-
+  @if(method_exists($customers, 'links'))
+  <div style="margin-top:12px;">{{ $customers->links() }}</div>
+  @endif
 </div>
 
 @endsection

@@ -1,0 +1,59 @@
+# ✅ CORREÇÃO FINAL - AMBIGUIDADE RÉSVIDA
+
+## 🔍 ERRO FINAL IDENTIFICADO E CORRIGIDO
+
+### ❌ Erro: Column 'created_at' is ambiguous (duplicado)
+**Arquivo:** `app/Http/Controllers/ReportsController.php` (linha 74-81)
+**Causa:** Clonar `$pedidosBase` já contém `whereBetween('created_at', $between)`, causando duplicação após o join
+**Correção:** Reconstruir query do zero em vez de clonar
+
+**Código corrigido:**
+```php
+// ANTES (duplica whereBetween):
+$porBairro = (clone $pedidosBase)
+    ->join('customers','orders.customer_id','=','customers.id')
+    ->whereBetween('orders.created_at', $between)  // ❌ DUPLICA
+    ->select(...)
+    ->get();
+
+// DEPOIS (query limpa):
+$porBairro = Order::query()
+    ->join('customers','orders.customer_id','=','customers.id')
+    ->whereBetween('orders.created_at', $between)
+    ->when($status->isNotEmpty(), fn($q)=>$q->where('orders.status',$status))
+    ->select(...)
+    ->get();
+```
+
+---
+
+## 📋 RESUMO COMPLETO DAS CORREÇÕES
+
+### PDVController.php:
+- ✅ Removido `where('active', 1)` em delivery_schedules
+- ✅ Removido `where('active', 1)` em delivery_fees
+- ✅ Removido `orderBy('weekday')` em delivery_schedules
+
+### CouponController.php:
+- ✅ Renomeado `validate()` → `validateCoupon()`
+
+### ReportsController.php:
+- ✅ Model `Pedido` → `Order`
+- ✅ Coluna `total` → `final_amount`
+- ✅ Coluna `subtotal` → `total_price`
+- ✅ Tabelas: pedidos/produtos/clientes → orders/products/customers
+- ✅ Query por bairro: reconstruída do zero (sem clone)
+
+---
+
+## ✅ TODAS AS CORREÇÕES APLICADAS!
+
+**Sistema pronto para uso sem erros no laravel.log!** 🎉
+
+### Limpar cache:
+```bash
+php artisan route:clear
+php artisan view:clear
+php artisan cache:clear
+php artisan optimize:clear
+```

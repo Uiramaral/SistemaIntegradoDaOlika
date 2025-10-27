@@ -26,9 +26,9 @@ class PDVController extends Controller
         $coupons   = DB::table('coupons')->where('is_active', 1)->orderByDesc('id')->limit(50)->get();
 
         // janelas e dias de entrega
-        $schedules = DB::table('delivery_schedules')->where('active', 1)->orderBy('weekday')->get();
+        $schedules = DB::table('delivery_schedules')->get();
         // regras simples de frete
-        $fees = DB::table('delivery_fees')->where('active', 1)->get();
+        $fees = DB::table('delivery_fees')->get();
 
         return view('dashboard.pdv', compact('customers', 'products', 'coupons', 'schedules', 'fees'));
     }

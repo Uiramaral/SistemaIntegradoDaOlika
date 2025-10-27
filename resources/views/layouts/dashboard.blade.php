@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@yield('title','OLIKA — Dashboard')</title>
   <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="{{ asset('js/alpine.min.js') }}"></script>
 </head>
 <body class="ui"
       x-data="{ open:false }"
@@ -14,11 +14,11 @@
 
 <div class="layout">
 
-  {{-- BACKDROP: clica fora → fecha --}}
-  <div class="backdrop" x-show="open" x-transition.opacity @click="open=false"></div>
+  {{-- BACKDROP (id p/ fallback JS) --}}
+  <div id="backdrop" class="backdrop" x-cloak x-show="open" x-transition.opacity @click="open=false"></div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar" :class="open ? 'open' : ''" @click.outside="open=false">
+  <!-- Sidebar (id p/ fallback JS) -->
+  <aside id="sidebar" class="sidebar" x-cloak :class="open ? 'open' : ''" @click.outside="open=false">
     <div class="brand">
       <span class="logo-square"></span>
       <div>
@@ -29,59 +29,49 @@
 
     {{-- Clicar em QUALQUER link fecha o drawer no mobile --}}
     <nav class="menu" @click="open=false">
-      <a class="mi {{ request()->routeIs('dashboard.index','dashboard.compact') ? 'active' : '' }}"
-         href="{{ route('dashboard.index') }}"><span class="mi-ico">👁️</span>Visão Geral</a>
+      @php
+        // Mapeamento das rotas reais (subdomínio dashboard.menuolika.com.br)
+        $items = [
+          ['label'=>'Visão Geral', 'icon'=>'👁️', 'match'=>['dashboard.index','dashboard.compact'], 'route'=>'dashboard.index'],
+          ['label'=>'PDV', 'icon'=>'🧾', 'match'=>['dashboard.pdv*'], 'route'=>'dashboard.pdv'],
+          ['label'=>'Pedidos', 'icon'=>'📦', 'match'=>['dashboard.orders*'], 'route'=>'dashboard.orders'],
+          ['label'=>'Clientes', 'icon'=>'👥', 'match'=>['dashboard.customers*'], 'route'=>'dashboard.customers'],
+          ['label'=>'Produtos', 'icon'=>'🍕', 'match'=>['dashboard.products*'], 'route'=>'dashboard.products'],
+          ['label'=>'Categorias', 'icon'=>'🗂️', 'match'=>['dashboard.categories*'], 'route'=>'dashboard.categories'],
+          ['label'=>'Cupons', 'icon'=>'🏷️', 'match'=>['dashboard.coupons*'], 'route'=>'dashboard.coupons'],
+          ['label'=>'Cashback', 'icon'=>'💸', 'match'=>['dashboard.cashback*'], 'route'=>'dashboard.cashback'],
+          ['label'=>'Fidelidade', 'icon'=>'⭐', 'match'=>['dashboard.loyalty'], 'route'=>'dashboard.loyalty'],
+          // Relatórios: usa relatorios.index se existir; senão dashboard.reports
+          ['label'=>'Relatórios', 'icon'=>'📊', 'match'=>['relatorios.*','dashboard.reports'], 'route'=>\Illuminate\Support\Facades\Route::has('relatorios.index') ? 'relatorios.index' : 'dashboard.reports'],
+          ['label'=>'WhatsApp', 'icon'=>'💬', 'match'=>['dashboard.whatsapp*'], 'route'=>'dashboard.whatsapp'],
+          ['label'=>'Mercado Pago', 'icon'=>'💳', 'match'=>['dashboard.mp*'], 'route'=>'dashboard.mp'],
+          ['label'=>'Status & Templates', 'icon'=>'⚙️', 'match'=>['dashboard.statuses*'], 'route'=>'dashboard.statuses'],
+        ];
+      @endphp
 
-      <a class="mi {{ request()->routeIs('dashboard.pdv*') ? 'active' : '' }}"
-         href="{{ route('dashboard.pdv') }}"><span class="mi-ico">🧾</span>PDV</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.orders*') ? 'active' : '' }}"
-         href="{{ route('dashboard.orders') }}"><span class="mi-ico">📦</span>Pedidos</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.customers*') ? 'active' : '' }}"
-         href="{{ route('dashboard.customers') }}"><span class="mi-ico">👥</span>Clientes</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.products*') ? 'active' : '' }}"
-         href="{{ route('dashboard.products') }}"><span class="mi-ico">🍕</span>Produtos</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.categories*') ? 'active' : '' }}"
-         href="{{ route('dashboard.categories') }}"><span class="mi-ico">🗂️</span>Categorias</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.coupons*') ? 'active' : '' }}"
-         href="{{ route('dashboard.coupons') }}"><span class="mi-ico">🏷️</span>Cupons</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.cashback*') ? 'active' : '' }}"
-         href="{{ route('dashboard.cashback') }}"><span class="mi-ico">💸</span>Cashback</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.loyalty') ? 'active' : '' }}"
-         href="{{ route('dashboard.loyalty') }}"><span class="mi-ico">⭐</span>Fidelidade</a>
-
-      @php($relRoute = \Illuminate\Support\Facades\Route::has('relatorios.index') ? 'relatorios.index' : 'dashboard.reports')
-      <a class="mi {{ request()->routeIs('relatorios.*','dashboard.reports') ? 'active' : '' }}"
-         href="{{ route($relRoute) }}"><span class="mi-ico">📊</span>Relatórios</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.whatsapp*') ? 'active' : '' }}"
-         href="{{ route('dashboard.whatsapp') }}"><span class="mi-ico">💬</span>WhatsApp</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.mp*') ? 'active' : '' }}"
-         href="{{ route('dashboard.mp') }}"><span class="mi-ico">💳</span>Mercado Pago</a>
-
-      <a class="mi {{ request()->routeIs('dashboard.statuses*') ? 'active' : '' }}"
-         href="{{ route('dashboard.statuses') }}"><span class="mi-ico">⚙️</span>Status & Templates</a>
+      @foreach($items as $it)
+        @php
+          $isActive = request()->routeIs(...(array)$it['match']);
+          $url = \Illuminate\Support\Facades\Route::has($it['route']) ? route($it['route']) : '#';
+        @endphp
+        <a class="mi {{ $isActive ? 'active' : '' }} {{ $url === '#' ? 'disabled' : '' }}" href="{{ $url }}">
+          <span class="mi-ico">{{ $it['icon'] }}</span>{{ $it['label'] }}
+        </a>
+      @endforeach
     </nav>
   </aside>
 
   <!-- Conteúdo -->
   <main class="main">
     <header class="topbar">
-      <button class="hamb" @click="open = !open">☰</button>
+      <!-- HAMBURGER: id + type + aria -->
+      <button id="navToggle" class="hamb" type="button" aria-controls="sidebar" aria-expanded="false" @click="open = !open">☰</button>
       <div class="titles">
         <h1>@yield('page-title','Status & Templates')</h1>
         <p class="sub">@yield('page-subtitle','Gerencie os status dos pedidos e templates de mensagens')</p>
       </div>
       <div class="actions">
-        <button class="btn ghost">Baixar Layout</button>
-        <button class="btn primary">+ Novo Status</button>
+        @yield('page-actions')
       </div>
     </header>
 
@@ -90,5 +80,54 @@
     </div>
   </main>
 </div>
+
+<script>
+(function(){
+  // Se Alpine estiver carregado, deixamos ele cuidar. Caso contrário, JS puro.
+  var hasAlpine = !!window.Alpine;
+
+  // Elementos
+  var btn      = document.getElementById('navToggle');
+  var aside    = document.getElementById('sidebar');
+  var backdrop = document.getElementById('backdrop');
+  var body     = document.body;
+  var menu     = document.querySelector('.menu');
+
+  if (!btn || !aside || !backdrop) return;
+
+  // Helpers
+  function openMenu(){
+    aside.classList.add('open');
+    body.classList.add('no-scroll');
+    backdrop.style.display = 'block';
+    btn.setAttribute('aria-expanded','true');
+  }
+  function closeMenu(){
+    aside.classList.remove('open');
+    body.classList.remove('no-scroll');
+    backdrop.style.display = 'none';
+    btn.setAttribute('aria-expanded','false');
+  }
+  function toggleMenu(){
+    if (aside.classList.contains('open')) closeMenu(); else openMenu();
+  }
+
+  // Se Alpine não estiver ativo, ligamos o fallback
+  if (!hasAlpine){
+    btn.addEventListener('click', function(e){ e.preventDefault(); toggleMenu(); }, {passive:false});
+    backdrop.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeMenu(); });
+
+    // fechar ao clicar em qualquer link do menu
+    if (menu){
+      menu.addEventListener('click', function(e){
+        var a = e.target.closest('a');
+        if (a) closeMenu();
+      });
+    }
+  }
+})();
+</script>
+
 </body>
 </html>

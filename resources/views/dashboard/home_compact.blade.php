@@ -1,3 +1,4 @@
+{{-- PÁGINA: Dashboard Compacto (Versão Compacta) --}}
 @extends('layouts.dashboard')
 
 @section('title','Compacto — Dashboard Olika')

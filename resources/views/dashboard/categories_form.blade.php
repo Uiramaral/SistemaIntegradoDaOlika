@@ -1,3 +1,4 @@
+{{-- PÁGINA: Formulário de Categoria (Criar/Editar) --}}
 @extends('layouts.dashboard')
 
 @section('title', ($category ? 'Editar' : 'Nova').' Categoria — Dashboard Olika')

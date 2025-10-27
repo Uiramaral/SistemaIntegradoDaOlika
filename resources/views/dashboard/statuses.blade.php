@@ -1,106 +1,108 @@
-{{-- resources/views/dashboard/statuses.blade.php --}}
-@extends('layouts.app')
+{{-- PÁGINA: Status de Pedidos (Configuração de Status) --}}
+@extends('layouts.dashboard')
 
-@section('title', 'Visão Geral')
+@section('title', 'Status de Pedidos — Dashboard Olika')
 
 @section('content')
-  <div class="px-6 py-6">
+<div class="container mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-4">📦 Status de Pedidos</h1>
 
-    {{-- Título + subtítulo --}}
-    <div class="mb-6">
-      <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Visão Geral</h1>
-      <p class="text-gray-500">Acompanhe suas métricas e desempenho em tempo real</p>
-    </div>
+  {{-- Feedback --}}
+  @if(session('ok'))
+    <div class="bg-green-100 text-green-800 p-3 rounded mb-4">{{ session('ok') }}</div>
+  @endif
 
-    {{-- Cards de métricas --}}
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-      <div class="rounded-xl border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-500 mb-1">Total Hoje</div>
-        <div class="text-3xl font-semibold text-gray-900">R$ {{ number_format($stats['total_hoje'] ?? 0,2,',','.') }}</div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-500 mb-1">Pedidos Hoje</div>
-        <div class="text-3xl font-semibold text-gray-900">{{ $stats['pedidos_hoje'] ?? 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-500 mb-1">Pagos Hoje</div>
-        <div class="text-3xl font-semibold text-gray-900">{{ $stats['pagos_hoje'] ?? 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-500 mb-1">Pendentes Pgto</div>
-        <div class="text-3xl font-semibold text-gray-900">{{ $stats['pendentes'] ?? 0 }}</div>
-      </div>
-    </div>
-
-    {{-- Painéis principais --}}
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {{-- Pedidos Recentes --}}
-      <div class="rounded-2xl border border-gray-200 bg-white">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900">Pedidos Recentes</h2>
-            <p class="text-sm text-gray-500 -mt-0.5">Últimos pedidos realizados</p>
-          </div>
-          <a href="{{ route('dashboard.orders') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Ver todos</a>
-        </div>
-
-        <div class="px-5 py-12">
-          @if(isset($pedidos_recentes) && $pedidos_recentes->count() > 0)
-            <div class="grid gap-3">
-              @foreach($pedidos_recentes as $p)
-              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                <div>
-                  <div class="font-semibold text-gray-900">#{{ $p->id }}</div>
-                  <div class="text-sm text-gray-500">{{ $p->customer->name ?? 'Cliente' }}</div>
-                </div>
-                <div class="text-right">
-                  <div class="font-semibold text-gray-900">R$ {{ number_format($p->final_amount ?? $p->total ?? 0,2,',','.') }}</div>
-                  <div class="text-sm text-gray-500">{{ $p->status }}</div>
-                </div>
-              </div>
-              @endforeach
-            </div>
-          @else
-            <div class="flex flex-col items-center justify-center text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-4V3H9v4H5v14h14V7Zm-6 0H11V5h2v2Z"/></svg>
-              <div class="text-sm text-gray-500">Nenhum pedido registrado ainda</div>
-            </div>
-          @endif
-        </div>
-      </div>
-
-      {{-- Top Produtos --}}
-      <div class="rounded-2xl border border-gray-200 bg-white">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900">Top Produtos</h2>
-            <p class="text-sm text-gray-500 -mt-0.5">Últimos 7 dias</p>
-          </div>
-        </div>
-
-        <div class="px-5 py-12">
-          @if(isset($top_produtos) && $top_produtos->count() > 0)
-            <div class="grid gap-3">
-              @foreach($top_produtos as $prod)
-              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                <div>
-                  <div class="font-semibold text-gray-900">{{ $prod->product->name ?? $prod->nome ?? 'Produto' }}</div>
-                  <div class="text-sm text-gray-500">{{ $prod->qtd ?? 0 }} vendidos</div>
-                </div>
-                <div class="text-right">
-                  <div class="font-semibold text-gray-900">R$ {{ number_format($prod->receita ?? 0,2,',','.') }}</div>
-                </div>
-              </div>
-              @endforeach
-            </div>
-          @else
-            <div class="flex flex-col items-center justify-center text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 4.84L19.53 19H4.47L12 6.84Z"/></svg>
-              <div class="text-sm text-gray-500">Nenhum produto vendido ainda</div>
-            </div>
-          @endif
-        </div>
-      </div>
-    </div>
+  {{-- Criar novo status --}}
+  <div class="bg-white shadow rounded p-4 mb-6">
+    <h2 class="font-semibold mb-2">Novo Status</h2>
+    <form method="POST" action="{{ route('dashboard.statuses.store') }}" class="grid gap-3 md:grid-cols-2">
+      @csrf
+      <input name="code" placeholder="Código interno (ex: preparing)" class="border p-2 rounded" required>
+      <input name="name" placeholder="Nome visível (ex: Em preparo)" class="border p-2 rounded" required>
+      <label class="flex items-center gap-2"><input type="checkbox" name="is_final"> Finaliza pedido</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="notify_customer" checked> Notificar cliente</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="notify_admin"> Notificar admin</label>
+      <select name="whatsapp_template_id" class="border p-2 rounded">
+        <option value="">— Template WhatsApp —</option>
+        @foreach($templates as $tpl)
+          <option value="{{ $tpl->id }}">{{ $tpl->slug }}</option>
+        @endforeach
+      </select>
+      <button class="bg-amber-600 hover:bg-amber-700 text-white py-2 rounded md:col-span-2">Adicionar</button>
+    </form>
   </div>
+
+  {{-- Lista --}}
+  <div class="bg-white shadow rounded p-4">
+    <h2 class="font-semibold mb-2">Status existentes</h2>
+    <table class="w-full border text-sm">
+      <thead>
+        <tr class="bg-gray-100 text-left">
+          <th class="p-2">Código</th>
+          <th class="p-2">Nome</th>
+          <th class="p-2 text-center">Cliente</th>
+          <th class="p-2 text-center">Admin</th>
+          <th class="p-2">Template</th>
+          <th class="p-2 text-center">Ativo</th>
+          <th class="p-2 text-center">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach($statuses as $s)
+        <tr class="border-t hover:bg-gray-50">
+          <td class="p-2 font-mono">{{ $s->code }}</td>
+          <td class="p-2">{{ $s->name }}</td>
+          <td class="p-2 text-center">
+            <form method="POST" action="{{ route('dashboard.statuses.update', $s->id) }}">
+              @csrf @method('PATCH')
+              <input type="hidden" name="notify_customer" value="{{ $s->notify_customer?0:1 }}">
+              <button class="text-sm px-2 py-1 rounded {{ $s->notify_customer?'bg-green-200 text-green-800':'bg-gray-200 text-gray-600' }}">
+                {{ $s->notify_customer?'Sim':'Não' }}
+              </button>
+            </form>
+          </td>
+          <td class="p-2 text-center">
+            <form method="POST" action="{{ route('dashboard.statuses.update', $s->id) }}">
+              @csrf @method('PATCH')
+              <input type="hidden" name="notify_admin" value="{{ $s->notify_admin?0:1 }}">
+              <button class="text-sm px-2 py-1 rounded {{ $s->notify_admin?'bg-green-200 text-green-800':'bg-gray-200 text-gray-600' }}">
+                {{ $s->notify_admin?'Sim':'Não' }}
+              </button>
+            </form>
+          </td>
+          <td class="p-2">
+            <form method="POST" action="{{ route('dashboard.statuses.update', $s->id) }}">
+              @csrf @method('PATCH')
+              <select name="whatsapp_template_id" class="border rounded p-1 text-sm" onchange="this.form.submit()">
+                <option value="">—</option>
+                @foreach($templates as $tpl)
+                  <option value="{{ $tpl->id }}" {{ $tpl->id == $s->whatsapp_template_id ? 'selected':'' }}>
+                    {{ $tpl->slug }}
+                  </option>
+                @endforeach
+              </select>
+            </form>
+          </td>
+          <td class="p-2 text-center">
+            <form method="POST" action="{{ route('dashboard.statuses.update', $s->id) }}">
+              @csrf @method('PATCH')
+              <input type="hidden" name="active" value="{{ $s->active?0:1 }}">
+              <button class="text-sm px-2 py-1 rounded {{ $s->active?'bg-green-200 text-green-800':'bg-red-100 text-red-700' }}">
+                {{ $s->active?'Ativo':'Inativo' }}
+              </button>
+            </form>
+          </td>
+          <td class="p-2 text-center">
+            <form method="POST" action="{{ route('dashboard.statuses.destroy', $s->id) }}" onsubmit="return confirm('Excluir status {{ $s->name }}?')">
+              @csrf @method('DELETE')
+              <button class="text-red-600 hover:underline text-sm">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        @endforeach
+      </tbody>
+    </table>
+  </div>
+</div>
 @endsection
+

@@ -1,3 +1,4 @@
+{{-- PÁGINA: Configurações do Mercado Pago --}}
 @extends('layouts.dashboard')
 
 @section('title','Mercado Pago — Dashboard Olika')

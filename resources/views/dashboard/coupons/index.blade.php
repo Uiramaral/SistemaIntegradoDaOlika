@@ -1,3 +1,4 @@
+{{-- PÁGINA: Cupons de Desconto (Listagem Alternativa) --}}
 @extends('layouts.dashboard')
 
 @section('title','Cupons de Desconto')

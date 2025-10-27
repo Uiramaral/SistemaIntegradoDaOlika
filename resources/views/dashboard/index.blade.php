@@ -1,3 +1,4 @@
+{{-- PÁGINA: Dashboard Principal (Visão Geral) --}}
 @extends('layouts.dashboard')
 
 @section('title', 'Dashboard')
@@ -60,14 +61,13 @@
         <tbody>
           @forelse($recentOrders as $order)
           <tr>
-            <td>#{{ $order->number ?? $order->id }}</td>
+            <td>#{{ $order->order_number ?? $order->number ?? $order->id }}</td>
             <td><strong>{{ $order->customer_name ?? '-' }}</strong></td>
             <td><span class="pill">{{ ucfirst($order->status ?? 'pending') }}</span></td>
-            <td>R$ {{ number_format($order->total ?? 0,2,',','.') }}</td>
+            <td>R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0,2,',','.') }}</td>
             <td>{{ $order->created_at ? \Carbon\Carbon::parse($order->created_at)->format('d/m H:i') : '-' }}</td>
             <td style="text-align:right">
               <a href="{{ route('dashboard.orders.show', $order->id) }}" class="pill" style="padding:4px 8px">Ver</a>
-              <x-map-link :href="optional($order->customer)->maps_url" mode="icon" size="sm" />
             </td>
           </tr>
           @empty

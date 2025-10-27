@@ -1,3 +1,4 @@
+{{-- PÁGINA: Pedidos (Listagem de Pedidos/Ordens) --}}
 @extends('layouts.dashboard')
 
 @section('title','Pedidos — Dashboard Olika')

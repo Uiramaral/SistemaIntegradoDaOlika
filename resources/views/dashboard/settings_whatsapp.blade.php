@@ -1,3 +1,4 @@
+{{-- PÁGINA: Configurações do WhatsApp --}}
 @extends('layouts.dashboard')
 
 @section('title','WhatsApp — Dashboard Olika')

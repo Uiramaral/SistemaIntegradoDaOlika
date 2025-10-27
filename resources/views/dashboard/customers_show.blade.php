@@ -1,3 +1,4 @@
+{{-- PÁGINA: Detalhes do Cliente (Visualização Individual) --}}
 @extends('layouts.dashboard')
 
 @section('title','Cliente #'.$customer->id.' — Dashboard Olika')

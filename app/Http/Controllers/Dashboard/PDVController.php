@@ -152,20 +152,11 @@ class PDVController extends Controller
         $delivery = 0;
         if (isset($data['address']['city'])) {
             $feeRow = DB::table('delivery_fees')
-                ->where('active', 1)
-                ->where(function ($q) use ($data) {
-                    $q->where('city', $data['address']['city'])
-                      ->orWhereNull('city');
-                })
-                ->where(function ($q) use ($data) {
-                    $q->where('state', $data['address']['state'])
-                      ->orWhereNull('state');
-                })
-                ->orderByDesc('city')
-                ->orderByDesc('state')
+                ->where('is_active', 1)
                 ->first();
             if ($feeRow) {
-                $delivery = (float)$feeRow->fee_value;
+                // Usa base_fee como valor padrão
+                $delivery = (float)$feeRow->base_fee;
             }
         }
 
@@ -186,17 +177,17 @@ class PDVController extends Controller
         $total = max(0, $subtotal - $discount + $delivery);
 
         // dias/horários de entrega disponíveis (próximos 10 dias)
-        $schedules = DB::table('delivery_schedules')->where('active', 1)->orderBy('weekday')->get();
+        $schedules = DB::table('delivery_schedules')->where('is_active', 1)->get();
         $options = [];
         $d = now();
 
         for ($i = 0; $i < 10; $i++) {
-            $weekday = (int)$d->dayOfWeek; // 0=domingo
-            $slot = $schedules->firstWhere('weekday', $weekday);
+            $weekday = strtolower($d->format('l')); // 'monday', 'tuesday', etc
+            $slot = $schedules->firstWhere('day_of_week', $weekday);
             if ($slot) {
                 $options[] = [
                     'date' => $d->format('Y-m-d'),
-                    'label' => $d->format('d/m') . ' (' . $this->weekdayLabel($weekday) . ') ' . ($slot->window_label ?? '')
+                    'label' => $d->format('d/m') . ' (' . $this->weekdayLabel((int)$d->dayOfWeek) . ') ' . ($slot->name ?? '')
                 ];
             }
             $d->addDay();

@@ -1,3 +1,4 @@
+{{-- PÁGINA: Formulário de Cliente (Criar/Editar) --}}
 @extends('layouts.dashboard')
 
 @section('title', ($customer ? 'Editar' : 'Novo').' Cliente — Dashboard Olika')

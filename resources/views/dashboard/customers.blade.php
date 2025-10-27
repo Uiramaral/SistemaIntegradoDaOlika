@@ -1,3 +1,4 @@
+{{-- PÁGINA: Clientes (Listagem da Base de Clientes) --}}
 @extends('layouts.dashboard')
 
 @section('title','Clientes — Dashboard Olika')

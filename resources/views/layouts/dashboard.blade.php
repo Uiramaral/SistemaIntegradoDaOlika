@@ -71,7 +71,8 @@
         <p class="sub">@yield('page-subtitle','Gerencie os status dos pedidos e templates de mensagens')</p>
       </div>
       <div class="actions">
-        @yield('page-actions')
+        <button class="btn ghost">Baixar Layout</button>
+        <button class="btn primary">+ Novo Status</button>
       </div>
     </header>
 

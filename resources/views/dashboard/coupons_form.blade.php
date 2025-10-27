@@ -1,3 +1,4 @@
+{{-- PÁGINA: Formulário de Cupom (Criar/Editar) --}}
 @extends('layouts.dashboard')
 
 @section('title', ($coupon ? 'Editar' : 'Novo').' Cupom — Dashboard Olika')

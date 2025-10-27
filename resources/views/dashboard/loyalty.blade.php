@@ -1,3 +1,4 @@
+{{-- PÁGINA: Programa de Fidelidade (Listagem de Programas) --}}
 @extends('layouts.dashboard')
 
 @section('title','Fidelidade — Dashboard Olika')

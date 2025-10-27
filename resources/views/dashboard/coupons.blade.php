@@ -1,3 +1,4 @@
+{{-- PÁGINA: Cupons (Listagem de Cupons de Desconto) --}}
 @extends('layouts.dashboard')
 
 @section('title','Cupons — Dashboard Olika')

@@ -1,3 +1,4 @@
+{{-- PÁGINA: Formulário de Cashback (Criar/Editar) --}}
 @extends('layouts.dashboard')
 
 @section('title', ($cashback ? 'Editar' : 'Novo').' Cashback — Dashboard Olika')

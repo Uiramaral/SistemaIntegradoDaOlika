@@ -1,3 +1,4 @@
+{{-- PÁGINA: Detalhes do Pedido (Visualização Individual) --}}
 @extends('layouts.dashboard')
 
 @section('title', 'Pedido #'.$order->number.' — Dashboard Olika')

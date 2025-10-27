@@ -1,3 +1,4 @@
+{{-- PÁGINA: Formulário de Produto (Criar/Editar) --}}
 @extends('layouts.dashboard')
 
 @section('title', ($product ? 'Editar' : 'Novo').' Produto — Dashboard Olika')

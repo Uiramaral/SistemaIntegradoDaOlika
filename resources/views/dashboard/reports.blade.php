@@ -1,3 +1,4 @@
+{{-- PÁGINA: Relatórios (Visualização de Relatórios) --}}
 @extends('layouts.dashboard')
 
 @section('title','Relatórios — Dashboard Olika')

@@ -1,3 +1,4 @@
+{{-- PÁGINA: Produtos (Listagem do Cardápio) --}}
 @extends('layouts.dashboard')
 
 @section('title','Produtos — Dashboard Olika')

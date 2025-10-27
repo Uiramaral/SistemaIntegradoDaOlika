@@ -1,3 +1,4 @@
+{{-- PÁGINA: Cashback (Gerenciamento de Cashback) --}}
 @extends('layouts.dashboard')
 
 @section('title','Cashback — Dashboard Olika')

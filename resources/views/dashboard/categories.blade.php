@@ -1,3 +1,4 @@
+{{-- PÁGINA: Categorias (Listagem de Categorias de Produtos) --}}
 @extends('layouts.dashboard')
 
 @section('title','Categorias — Dashboard Olika')

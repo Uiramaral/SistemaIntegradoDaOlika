@@ -1,3 +1,4 @@
+{{-- PÁGINA: Dashboard Principal Lovable (Visão Geral - Tema Lovable) --}}
 @extends('layouts.dashboard_lovable')
 
 @section('title','Dashboard')

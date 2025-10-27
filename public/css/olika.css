@@ -3,7 +3,7 @@ html, body { overflow-x: hidden; }
 
 /* ====== HERO cobre a tela toda, conteúdo centralizado ====== */
 .header-hero{
-  min-height:360px;
+  min-height:160px;
   background-image:var(--hero, none);
   background-size:cover!important;
   background-position:center!important;
@@ -29,7 +29,7 @@ html, body { overflow-x: hidden; }
   margin-bottom: 18px;
 }
 
-.hero-inner{ max-width:1120px; margin:0 auto; padding:26px 24px 0; position:relative; z-index:1; }
+.hero-inner{ max-width:1120px; margin:0 auto; padding:10px 16px 0; position:relative; z-index:1; }
 
 /* Se por acaso existir .cover no DOM, esconda */
 .header-hero .cover{ display:none !important; }
@@ -95,7 +95,7 @@ html, body { overflow-x: hidden; }
 /* bloco superior central (logo, nome, status) */
 .hero-head{
   display:grid; place-items:center; row-gap:8px;
-  margin-top:10px; margin-bottom:16px; text-align:center; color:#fff;
+  margin-top:0; margin-bottom:6px; text-align:center; color:#fff;
 }
 
 .hero-logo{
@@ -261,3 +261,796 @@ html, body { overflow-x: hidden; }
   background:#fff; border:1px solid #eee6d7; border-radius:12px; padding:12px 14px; font-weight:900;
 }
 .cart-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+
+/* Espaçamento após hero */
+.section-after-hero{ margin-top:14px; }
+
+/* === Modal: tamanho padronizado do lado da imagem === */
+
+:root{ --pm-media-h: 420px; }           /* desktop */
+
+@media (max-width: 860px){
+
+  :root{ --pm-media-h: 260px; }         /* mobile */
+
+}
+
+
+
+.pdialog{
+
+  width:min(820px,94vw);
+
+  display:grid;
+
+  grid-template-columns:1.15fr 1fr;     /* leve ajuste de proporção */
+
+  align-items:stretch;                   /* garante colunas com a mesma altura */
+
+}
+
+
+
+/* Área da imagem com altura fixa (independente da foto) */
+
+.pmedia{
+
+  position:relative;
+
+  height:var(--pm-media-h);
+
+  background:#000;
+
+  overflow:hidden;
+
+}
+
+.pmedia img{
+
+  position:absolute; inset:0;
+
+  width:100%; height:100%;
+
+  object-fit:cover;                      /* sempre preenche sem distorcer */
+
+}
+
+/* === HERO mais compacto (mobile-first) === */
+
+.header-hero{ min-height: 150px; }
+
+.hero-head{ margin: 4px 0 8px; }
+
+.hero-sub{ font-size: 0.95rem; }
+
+
+
+/* === Container de cupons + entrega (lado a lado no >=480px) === */
+
+.hero-info-shelf{
+
+  background:#fff8f0;
+
+  border-radius:18px;
+
+  padding:12px;
+
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 28px rgba(0,0,0,.08);
+
+}
+
+.shelf-grid{ display:grid; gap:12px; }
+
+@media (min-width:480px){ .shelf-grid{ grid-template-columns:1fr 1fr; } }
+
+
+
+.shelf-card{
+
+  background:#fff; border-radius:14px; padding:14px;
+
+  box-shadow:0 10px 20px rgba(0,0,0,.06); height:100%;
+
+}
+
+.shelf-title{ margin:0 0 10px; font-size:1.05rem; font-weight:800; }
+
+
+
+/* Chips de dia de entrega */
+
+.days{ display:flex; flex-wrap:wrap; gap:8px; }
+
+.day-chip{
+
+  background:#fff; border:1px solid #eee6d7; border-radius:999px;
+
+  padding:8px 12px; font-weight:700; color:#6b7280;
+
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+
+}
+
+
+
+/* === Grid de produtos: garantir que o "+" nunca cubra o nome === */
+
+.product-body{ padding:12px 14px 18px 14px; }
+
+.product-card{ padding-bottom: 46px; }             /* espaço reservado pro botão */
+
+.btn-add{ bottom: 8px; right: 10px; z-index: 2; }  /* fica fora da área do texto */
+
+.product-name{ margin-right: 56px; }               /* respiro pro "+" no mobile */
+
+
+
+/* Lista (quando usado futuramente) também com folga pro botão */
+
+.products-grid.list .product-card{ padding-bottom: 10px; }
+
+.products-grid.list .product-name{ margin-right: 0; }
+
+
+
+/* === Modal: altura fixada pra não variar com a imagem === */
+
+:root{ --pm-media-h: 360px; }
+
+@media (max-width: 860px){ :root{ --pm-media-h: 240px; } }
+
+.pmedia{ position:relative; height:var(--pm-media-h); background:#000; overflow:hidden; }
+
+.pmedia img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+
+
+
+/* REMOVER exibição antiga de filtros (se por acaso ficou algo) */
+
+.cat-toolbar, .toolbar, .pills{ display:none !important; }
+
+/* === Patch de refinamento visual do cabeçalho (hero) === */
+
+/* 1) Hero um pouco menor, com fade mais suave e sem "tijolo" */
+.header-hero{ min-height: 130px; }
+
+.header-hero::after{
+
+  background: linear-gradient(180deg,
+
+      rgba(0,0,0,.30) 0%,
+
+      rgba(0,0,0,.16) 45%,
+
+      rgba(0,0,0,0) 80%);
+
+}
+
+
+
+/* 2) Cart pill menor e mais discreto */
+.cart-link{
+
+  padding: 7px 12px;
+
+  border: 1px solid rgba(255,255,255,.7);
+
+  background: rgba(255,255,255,.92);
+
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+
+}
+
+
+
+/* 3) "Prateleira" mais elegante (bordas coerentes, sombra leve) */
+.hero-info-shelf{
+
+  background: #fff8f0;
+
+  border-radius: 16px;
+
+  padding: 10px;
+
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+
+}
+
+
+
+/* 4) Cartões internos mais finos */
+.shelf-card{
+
+  background: #fff;
+
+  border: 1px solid #f1e7d7;
+
+  border-radius: 14px;
+
+  padding: 12px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+
+}
+
+
+
+/* 5) Títulos menos "pesados" e alinhados */
+.shelf-title{
+
+  margin: 2px 0 8px;
+
+  font-size: 1rem;          /* ↓ */
+
+  font-weight: 800;
+
+}
+
+
+
+/* 6) Chips de dia com look mais clean */
+.day-chip{
+
+  background: #fff;
+
+  border: 1px solid #ece3d3;
+
+  color: #6b7280;
+
+  padding: 7px 12px;        /* ↓ */
+
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+
+}
+
+
+
+/* 7) Badges de cupom com sombra sutil */
+.badge-soft{
+
+  background: #fff7ed;
+
+  color: #b45309;
+
+  padding: 6px 10px;        /* ↓ */
+
+  border-radius: 999px;
+
+  box-shadow: 0 4px 10px rgba(245,158,11,.12);
+
+}
+
+
+
+/* 8) Espaçamento vertical do bloco branco, evitando "canto quadrado" visível */
+.hero-inner{ padding: 10px 12px 0; }
+
+.section-after-hero{ margin-top: 10px; }
+
+
+
+/* 9) Tipografia do título "Nossos Produtos" (menos alto e com respiro) */
+.container-narrow h3{
+
+  font-size: 1.15rem;
+
+  margin: 8px 0 10px 2px;
+
+}
+
+
+
+/* 10) Produtos: mais equilíbrio entre nome, preço e botão + (sem sobrepor) */
+.product-card{ padding-bottom: 44px; border-radius: 14px; }
+
+.product-name{ font-size: .98rem; margin-right: 54px; }
+
+.product-price{ margin-top: 2px; }
+
+.btn-add{ width: 40px; height: 40px; bottom: 8px; right: 10px; }
+
+
+
+/* 11) Modal: bordas e sombra alinhadas com o resto */
+.pdialog{ border-radius: 14px; box-shadow: 0 22px 70px rgba(0,0,0,.28); }
+
+/* === HERO – prateleira unificada (um container) === */
+
+.hero-info-shelf{
+
+  background:#fff;                /* agora branco (não mais #fff8f0) */
+
+  border:1px solid #f1e7d7;
+
+  border-radius:16px;
+
+  padding:12px 14px;
+
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+
+}
+
+
+
+/* grid interno: empilha no mobile, 2 col >=520px */
+
+.shelf-grid{ display:grid; gap:12px; align-items:start; }
+
+@media (min-width:520px){ .shelf-grid{ grid-template-columns:1fr 1fr; gap:0; }}
+
+
+
+/* seções internas não têm fundo próprio */
+
+.shelf-section{ padding:8px 4px; }
+
+.shelf-title{ margin:0 0 8px; font-size:1.0rem; font-weight:800; }
+
+
+
+/* divisória que aparece entre as seções, adaptativa */
+
+.shelf-divider{ height:1px; background:#efe6d6; margin:8px 0; }
+
+@media (min-width:520px){
+
+  .shelf-divider{ width:1px; height:auto; background:#efe6d6; margin:0 12px; }
+
+  .shelf-grid{ grid-template-columns:1fr 1px 1fr; }  /* [Cupons] | [div] | [Dias] */
+
+}
+
+
+
+/* badges e chips, mais leves dentro do container branco */
+
+.badge-soft{
+
+  background:#fff7ed; color:#b45309;
+
+  padding:6px 10px; border-radius:999px;
+
+  box-shadow:0 4px 10px rgba(245,158,11,.10);
+
+}
+
+.days{ display:flex; flex-wrap:wrap; gap:8px; }
+
+.day-chip{
+
+  background:#fff; border:1px solid #ece3d3;
+
+  padding:7px 12px; border-radius:999px; font-weight:700; color:#6b7280;
+
+  box-shadow:0 4px 10px rgba(0,0,0,.05);
+
+}
+
+
+
+/* pequenos ajustes do topo para compactar */
+
+.hero-inner{ padding:10px 12px 0; }
+
+.header-hero{ min-height:130px; }
+
+
+
+/* garantias de mobile (cards) */
+
+.product-card{ padding-bottom: 48px; } /* antes 44px */
+
+.product-name{ margin-right: 60px; }   /* antes 54px */
+
+/* === HERO: cartão branco por cima do banner === */
+
+.hero-info-shelf{
+
+  background:#fff;                 /* volta o branco */
+
+  border:1px solid #efe5d2;
+
+  border-radius:18px;
+
+  padding:14px;                    /* padding volta para o container */
+
+  margin:6px 8px 0;                /* respiro lateral e aproximação do topo */
+
+  box-shadow:0 12px 32px rgba(0,0,0,.12); /* sombra de cartão */
+
+  overflow:hidden;                 /* garante cantos perfeitos */
+
+}
+
+/* Seções internas continuam "chapadas" (sem fundo próprio) */
+
+.shelf-grid{
+
+  display:grid;
+
+  grid-template-columns:1fr;
+
+  gap:0;
+
+  position:relative;
+
+}
+
+.shelf-section{
+
+  background:transparent;
+
+  padding:10px 2px;                /* padding interno mais contido */
+
+}
+
+/* Divisor entre seções no mobile (horizontal) */
+
+.shelf-section + .shelf-section{
+
+  border-top:1px solid #f1e7d7;
+
+}
+
+/* Em telas maiores: duas colunas e divisor vertical central */
+
+@media (min-width:520px){
+
+  .shelf-grid{ grid-template-columns:1fr 1fr; }
+
+  .shelf-section + .shelf-section{ border-top:none; }
+
+  .shelf-grid::before{
+
+    content:"";
+
+    position:absolute;
+
+    top:8px; bottom:8px;
+
+    left:calc(50% - .5px);
+
+    width:1px;
+
+    background:#f1e7d7;
+
+  }
+
+}
+
+/* Toques de acabamento (mantemos o look clean) */
+
+.shelf-title{ margin:2px 0 8px; font-size:1rem; font-weight:800; }
+
+.badge-soft{ padding:6px 10px; box-shadow:0 4px 10px rgba(245,158,11,.12); }
+
+.day-chip{
+
+  background:#fff; border:1px solid #ece3d3; color:#6b7280;
+
+  padding:7px 12px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.05);
+
+}
+
+/* ===========================
+
+   HERO COMPACT (MOBILE FIRST)
+
+   =========================== */
+
+
+
+/* 0) Tipografia do título/tagline menor e com menos espaço */
+
+.hero-head { margin: 2px 0 6px; }
+
+.hero-title { font-size: clamp(20px, 5.4vw, 24px); line-height: 1.05; }
+
+.hero-sub   { font-size: clamp(12px, 3.3vw, 14px); opacity:.95; }
+
+
+
+/* 1) Banner bem baixo no celular */
+
+.header-hero{
+
+  min-height: clamp(96px, 22vw, 120px);   /* antes ~150–160px */
+
+}
+
+.header-hero::after{
+
+  background: linear-gradient(180deg,
+
+    rgba(0,0,0,.26) 0%,
+
+    rgba(0,0,0,.14) 40%,
+
+    rgba(0,0,0,0) 75%);
+
+}
+
+
+
+/* 2) Logo e "Meu Carrinho" mais discretos */
+
+.hero-logo img { height: 56px !important; }   /* era 70px */
+
+.cart-link{ padding: 6px 10px; font-size: .92rem; }
+
+.cart-badge{ min-width:18px; height:18px; font-size:.72rem; top:-6px; right:-8px; }
+
+
+
+/* 3) Bloco branco: cartão compacto e rente ao banner */
+
+.hero-info-shelf{
+
+  margin: 6px 8px 0;      /* aproxime do topo e reduza laterais */
+
+  padding: 10px 12px;     /* menos "ar" */
+
+  border-radius: 14px;    /* raio um pouco menor */
+
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+
+}
+
+
+
+/* 4) Seções internas (Cupons / Entrega) com densidade maior */
+
+.shelf-section{ padding: 8px 2px; }
+
+.shelf-title{ margin: 0 0 6px; font-size: .98rem; }
+
+
+
+/* 5) Conteúdos mais enxutos */
+
+.badge-soft{ padding: 5px 9px; font-size: .9rem; box-shadow: 0 3px 8px rgba(245,158,11,.10); }
+
+.meta{ font-size: .95rem; }                 /* textos "cinza" um tico menores */
+
+.day-chip{ padding: 6px 10px; font-size:.92rem; }
+
+
+
+/* 6) Ao caber em tela um pouco maior, põe lado a lado mas ainda compacto */
+
+@media (min-width: 520px){
+
+  .hero-info-shelf{ padding: 12px 14px; }
+
+  .shelf-grid{ grid-template-columns: 1fr 1fr; }
+
+}
+
+
+
+/* 7) Espaço antes dos produtos também reduzido */
+
+.section-after-hero{ margin-top: 8px; }
+
+.container-narrow h3{ font-size: 1.12rem; margin: 6px 0 8px 2px; }
+
+
+
+/* 8) Cards: botão + e textos equilibrados (já tínhamos, reforço) */
+
+.product-card{ padding-bottom: 42px; }
+
+.btn-add{ width: 38px; height: 38px; bottom: 8px; right: 10px; }
+
+.product-name{ margin-right: 52px; font-size: .98rem; }
+
+.product-price{ margin-top: 2px; }
+
+/* === COMPACT HERO (FORÇA NO MOBILE) ======================= */
+
+@media (max-width: 540px){
+
+  /* 1) Banner realmente baixo */
+
+  .header-hero{
+
+    min-height: 70px !important;         /* -> ajuste para 80/72 se quiser ainda menor */
+
+  }
+
+  .hero-inner{ padding: 6px 10px 0 !important; }
+
+  .hero-head{ margin: 0 !important; }
+
+  .hero-title{ font-size: 20px !important; line-height: 1.05 !important; }
+
+  .hero-sub{ font-size: 12px !important; opacity: .95 !important; }
+
+  .hero-logo img{ height: 70px !important; }     /* era 70/56 */
+
+
+
+  /* 2) Carrinho menos chamativo */
+
+  .cart-link{ padding: 5px 10px !important; font-size: .9rem !important; }
+
+  .cart-badge{ min-width: 18px !important; height: 18px !important; font-size: .72rem !important; top: -6px !important; right: -8px !important; }
+
+
+
+  /* 3) Cartão branco "flutuando" mais para cima: reduz a altura total */
+
+  .hero-info-shelf{
+
+    margin: -18px 8px 0 !important;      /* <- puxa sobre o banner; ajuste para -24/-28 se quiser */
+
+    padding: 8px 10px !important;
+
+    border-radius: 12px !important;
+
+    box-shadow: 0 10px 20px rgba(0,0,0,.1) !important;
+
+  }
+
+
+
+  /* 4) Seções internas ainda mais densas */
+
+  .shelf-section{ padding: 6px 0 !important; }
+
+  .shelf-title{ margin: 0 0 6px !important; font-size: .95rem !important; }
+
+  .badge-soft{ padding: 4px 8px !important; font-size: .88rem !important; box-shadow: 0 3px 8px rgba(245,158,11,.10) !important; }
+
+  .day-chip{ padding: 5px 9px !important; font-size: .9rem !important; }
+
+
+
+  /* 5) Respiro antes da lista */
+
+  .section-after-hero{ margin-top: 8px !important; }
+
+}
+
+
+
+/* Se ainda assim achar alto, tente:
+
+   .header-hero{ min-height: 80px !important; }
+
+   .hero-info-shelf{ margin: -24px 8px 0 !important; }
+
+*/
+
+/* === Centralizar dias de entrega === */
+
+@media (max-width: 540px){
+
+  .days{ justify-content: center !important; }
+  
+  /* Centralizar títulos nas seções */
+  .shelf-section .shelf-title{ text-align: center !important; }
+
+}
+
+/* === Cupons em grade 2 colunas (quebra conforme a quantidade) === */
+
+.coupons-wrap{
+
+  display:grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap:10px;
+
+}
+
+@media (max-width:360px){            /* se a tela for MUITO estreita, volta p/ 1 col */
+
+  .coupons-wrap{ grid-template-columns: 1fr; }
+
+}
+
+
+
+/* cartão do cupom (badge + texto) */
+
+.coupon-card{
+
+  display:flex; align-items:center; gap:10px;
+
+  background:#fff;
+
+  border:1px solid #f1e7d7;
+
+  border-radius:12px;
+
+  padding:6px 8px;
+
+  box-shadow:0 4px 12px rgba(0,0,0,.05);
+
+}
+
+.coupon-text .coupon-line{ margin:2px 0 0; }
+
+/* === Modal: foto ocupa toda a coluna, sem barra branca embaixo === */
+
+
+
+/* zera qualquer espaço interno do diálogo e o gap entre colunas */
+
+.pdialog{
+
+  padding: 0 !important;
+
+  gap: 0 !important;
+
+  align-items: stretch;        /* garante alturas iguais */
+
+  overflow: hidden;            /* mantém cantos arredondados */
+
+  border-radius: 14px;
+
+}
+
+
+
+/* coluna da imagem: sem padding, cobre tudo */
+
+.pmedia{
+
+  height: var(--pm-media-h);
+
+  background:#000;
+
+  overflow:hidden;
+
+  border-radius: 14px 0 0 14px; /* cantos arredondados só do lado da foto */
+
+}
+
+.pmedia img{
+
+  position:absolute; inset:0;
+
+  width:100%; height:100%;
+
+  object-fit: cover;           /* cobre inclusive a "área branca" */
+
+}
+
+
+
+/* coluna de conteúdo: onde fica o padding */
+
+.pdialog .pinfo,
+
+.pdialog .pdetails,
+
+.pdialog .pright,
+
+.pdialog .pcontent{
+
+  padding: 16px 18px !important;
+
+}
+
+
+
+/* mobile: empilha, mantendo a foto colada ao topo e sem "barra" */
+
+@media (max-width: 860px){
+
+  .pdialog{ grid-template-columns: 1fr; }
+
+  .pmedia{ height: var(--pm-media-h); border-radius: 14px 14px 0 0; }
+
+  .pdialog .pinfo,
+
+  .pdialog .pdetails,
+
+  .pdialog .pright,
+
+  .pdialog .pcontent{ padding: 14px 16px !important; }
+
+}

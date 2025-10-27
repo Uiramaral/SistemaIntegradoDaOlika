@@ -23,12 +23,9 @@
                       })->toArray() : []
 ])
 
-<div class="container-narrow">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px;">
-    <h3 style="margin:0;">Nossos Produtos</h3>
-      </div>
-
-  <section class="products-grid">
+<div class="container-narrow section-after-hero">
+  <h3 style="margin:0 0 10px 2px;">Nossos Produtos</h3>
+  <section class="products-grid" data-view="{{ $defaultView ?? 'two' }}">
     @foreach($products as $product)
       <article class="product-card js-product"
                data-id="{{ $product->id }}"
@@ -68,7 +65,7 @@
       <button type="button" class="pclose" aria-label="Fechar">×</button>
       <div class="pmedia">
         <img id="pm-img" src="" alt="" />
-      </div>
+          </div>
       <div class="pbody">
         <h3 id="pm-name">Nome do produto</h3>
         <p id="pm-desc" class="meta">Descrição breve</p>
@@ -77,15 +74,15 @@
           <button type="button" class="pm-qty-dec">−</button>
           <span id="pm-qty">1</span>
           <button type="button" class="pm-qty-inc">+</button>
-        </div>
+            </div>
         <button type="button" class="pm-add" id="pm-add">Adicionar</button>
-      </div>
-    </div>
-  </div>
+            </div>
+          </div>
+            </div>
 
   @if(method_exists($products, 'links'))
     <div style="margin-top:20px;">{{ $products->links() }}</div>
-  @endif
-</div>
+                  @endif
+        </div>
 
 @endsection

@@ -4,56 +4,77 @@
 
   <div class="hero-inner">
 
-    {{-- Carrinho dentro do banner (canto direito) --}}
+    {{-- Carrinho no banner --}}
     <div class="hero-topbar">
-      <a href="{{ route('cart.index') }}" class="cart-link" style="position:relative;">
+      <a href="{{ route('cart.index') }}" class="cart-link">
         <span>Meu Carrinho</span>
         <span class="cart-badge" data-cart-count="{{ session('cart_count', 0) }}">{{ session('cart_count', 0) }}</span>
       </a>
     </div>
 
-    {{-- Cabeça central --}}
+    {{-- Logo, nome e tagline vinda do BD --}}
     <div class="hero-head">
       <div class="hero-logo">
         <img src="{{ asset('images/logo-olika.png') }}" alt="Olika" style="height:70px;width:auto;display:block;">
       </div>
       <div class="hero-title">{{ $store_name ?? 'Olika' }}</div>
-      <div class="hero-sub">{{ $category_label ?? 'Pães • Artesanais' }}</div>
-      <div class="status-green">{{ ($is_open ?? true) ? 'Aberto Agora' : 'Fechado' }}</div>
+      <div class="hero-sub">{{ $store_tagline ?? 'Pães • Artesanais' }}</div>
+      {{-- REMOVIDO: "Aberto Agora" --}}
     </div>
 
-    {{-- Superfície clara SOMENTE com cupons (card de informações REMOVIDO) --}}
-    <div class="soft-surface single">
-      <h3 style="margin:0 0 12px 0;font-size:1.05rem;">Cupons Disponíveis</h3>
-      <div class="coupons-grid">
-        <div class="card-soft" style="padding:14px;">
-          <div class="badge-soft" style="margin-bottom:6px;">🎉 BEM-VINDO</div>
-          <div class="meta"><b>10% OFF</b> na primeira compra</div>
-        </div>
-        <div class="card-soft" style="padding:14px;">
-          <div class="badge-soft" style="margin-bottom:6px;">🚚 Frete Grátis</div>
-          <div class="meta">Em pedidos acima de R$ 100</div>
-        </div>
-      </div>
+    {{-- Prateleira: metade cupons / metade dias de entrega --}}
+    <div class="hero-info-shelf">
+      <div class="shelf-grid">
 
-      {{-- Categorias e toolbar --}}
-      <div class="cat-toolbar">
-        <div class="pills">
-          <a href="{{ url()->current() }}" class="pill active">Todos</a>
-          @if(!empty($categories))
-            @foreach($categories as $cat)
-              <a href="{{ $cat['url'] ?? '#' }}" class="pill {{ !empty($cat['active']) ? 'active' : '' }}">{{ $cat['name'] }}</a>
+        {{-- Seção Cupons --}}
+        <section class="shelf-section">
+          <h3 class="shelf-title">Cupons Disponíveis</h3>
+
+          @php
+            // Estrutura pensada para vir do BD (array de cupons).
+            // Enquanto não tiver, deixo defaults.
+            $coupons = $coupons ?? [
+              ['icon' => '🎉', 'title' => 'BEM-VINDO',   'desc' => '10% OFF na primeira compra'],
+              ['icon' => '🚚', 'title' => 'Frete Grátis','desc' => 'Em pedidos acima de R$ 100'],
+              // Se houver um 3º, 4º... automaticamente vai para a próxima linha
+              // ['icon'=>'🥖','title'=>'Dia do Pão','desc'=>'R$ 5,00 de desconto em baguetes']
+            ];
+          @endphp
+
+          <div class="coupons-wrap">
+            @foreach($coupons as $c)
+              <div class="coupon-card">
+                <span class="badge-soft">{{ $c['icon'] ?? '' }} {{ $c['title'] ?? '' }}</span>
+                <div class="coupon-text">
+                  <div class="coupon-line meta">
+                    {{ $c['desc'] ?? '' }}
+                  </div>
+                </div>
+              </div>
             @endforeach
-          @endif
-        </div>
+          </div>
+        </section>
 
-        <div class="toolbar">
-          <button type="button" class="tool-chip">Download</button>
-          <span class="meta" style="margin-left:6px;">Visualização:</span>
-          <button type="button" class="tool-btn js-grid-3">3 col</button>
-          <button type="button" class="tool-btn js-grid-4 active">4 col</button>
-          <button type="button" class="tool-btn js-grid-list">Lista</button>
-        </div>
+        {{-- Divisória adaptativa (horizontal no mobile, vertical no ≥520px) --}}
+        <div class="shelf-divider" aria-hidden="true"></div>
+
+        {{-- Seção Dias de Entrega (BD) --}}
+        <section class="shelf-section">
+          <h3 class="shelf-title">Dias de Entrega</h3>
+          @php
+            // Exemplo até ligar no BD:
+            $delivery_days = $delivery_days ?? ['Terça','Quinta','Sábado'];
+          @endphp
+
+          <div class="days">
+            @forelse($delivery_days as $d)
+              <span class="day-chip">{{ $d }}</span>
+            @empty
+              <span class="meta">Configurar no dashboard</span>
+            @endforelse
+          </div>
+        </section>
+
       </div>
     </div>
 

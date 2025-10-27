@@ -159,24 +159,29 @@
   });
 })();
 
-// ===== troca de visualização (3 col / 4 col / lista) =====
+// ===== Toggle: 2 col / lista =====
 (function(){
   const grid = document.querySelector('.products-grid');
   if(!grid) return;
+  const twoBtn  = document.querySelector('.js-grid-2');
+  const listBtn = document.querySelector('.js-grid-list');
 
-  function setCols(n){
-    grid.style.setProperty('--cols', n);
+  function setTwo(){
     grid.classList.remove('list');
+    grid.style.setProperty('--cols', 2);
     document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+    if(twoBtn) twoBtn.classList.add('active');
   }
-  document.addEventListener('click', e=>{
-    if(e.target.closest('.js-grid-3')){ setCols(3); e.target.classList.add('active'); }
-    if(e.target.closest('.js-grid-4')){ setCols(4); e.target.classList.add('active'); }
-    if(e.target.closest('.js-grid-list')){
-      grid.classList.add('list');
-      document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
-      e.target.classList.add('active');
-    }
-  });
+  function setList(){
+    grid.classList.add('list');
+    document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+    if(listBtn) listBtn.classList.add('active');
+  }
+
+  twoBtn?.addEventListener('click', setTwo);
+  listBtn?.addEventListener('click', setList);
+
+  // estado inicial vindo do data-view (two/list)
+  if(grid.dataset.view === 'list'){ setList(); } else { setTwo(); }
 })();
 

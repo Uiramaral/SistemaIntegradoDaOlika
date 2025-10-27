@@ -1,0 +1,66 @@
+# ✅ INTEGRAÇÃO GOOGLE MAPS COMPLETA
+
+## 📁 ARQUIVOS ATUALIZADOS
+
+### Model:
+- ✅ `app/Models/Customer.php`
+  - ✅ Accessor `getEnderecoFormatadoAttribute()`
+  - ✅ Accessor `getMapsQueryAttribute()`
+  - ✅ Accessor `getMapsUrlAttribute()`
+
+### Componente:
+- ✅ `resources/views/components/map-link.blade.php`
+  - Componente Blade reutilizável
+  - Estilo `.pill` consistente com o dashboard
+  - Fallback para "Sem endereço"
+
+### Views:
+- ✅ `resources/views/dashboard/index.blade.php`
+  - Botão "Mapa" na tabela de pedidos recentes
+
+- ✅ `resources/views/pedidos/index.blade.php`
+  - Botão "Mapa" na coluna de ações
+
+- ✅ `resources/views/pedidos/show.blade.php`
+  - Endereço formatado com botão "Mapa"
+  - Exibe endereço completo formatado
+
+---
+
+## 🎯 COMO USAR
+
+### Syntax:
+```blade
+<x-map-link :href="optional($pedido->cliente)->maps_url" />
+```
+
+### Comportamento:
+- Se houver endereço → mostra botão "Mapa" que abre Google Maps
+- Se não houver → mostra "Mapa" desabilitado
+- Abre em nova aba com segurança (`target="_blank" rel="noopener"`)
+
+### Accessors Disponíveis:
+- `$cliente->endereco_formatado` → Endereço completo formatado
+- `$cliente->maps_query` → Coordenadas (lat,lng) ou endereço
+- `$cliente->maps_url` → URL completa do Google Maps
+
+---
+
+## 📋 CLEAR CACHE
+
+```bash
+php artisan view:clear && php artisan optimize:clear
+```
+
+---
+
+## ✅ CHECKLIST
+
+- [x] Accessors adicionados ao Model Customer
+- [x] Componente map-link criado
+- [x] Dashboard index atualizado
+- [x] Pedidos index atualizado
+- [x] Pedidos show atualizado
+- [ ] (Opcional) Adicionar lat/lng ao banco
+
+**Integração Google Maps completa!** 🚀

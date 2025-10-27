@@ -151,4 +151,40 @@ class Customer extends Authenticatable
 
         return implode(', ', $parts);
     }
+
+    /**
+     * Endereço legível para Google Maps (formato preferencial)
+     */
+    public function getEnderecoFormatadoAttribute(): ?string
+    {
+        $partes = array_filter([
+            $this->address ?? null,
+            $this->neighborhood ?? null,
+            $this->city ?? null,
+            $this->state ?? null,
+            $this->zip_code ?? null,
+        ]);
+
+        return $partes ? implode(', ', $partes) : null;
+    }
+
+    /**
+     * Preferir coordenadas; senão, o texto do endereço
+     */
+    public function getMapsQueryAttribute(): ?string
+    {
+        if (!empty($this->lat) && !empty($this->lng)) {
+            return $this->lat.','.$this->lng;
+        }
+        return $this->endereco_formatado ?: ($this->address ?? null);
+    }
+
+    /**
+     * URL universal do Google Maps (abre app no mobile / web no desktop)
+     */
+    public function getMapsUrlAttribute(): ?string
+    {
+        $q = $this->maps_query;
+        return $q ? 'https://www.google.com/maps/dir/?api=1&destination='.urlencode($q) : null;
+    }
 }

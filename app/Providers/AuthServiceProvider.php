@@ -2,8 +2,9 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\User;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -13,7 +14,9 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        //
+        \App\Models\Pedido::class       => \App\Policies\PedidoPolicy::class,
+        \App\Models\Consignacao::class  => \App\Policies\ConsignacaoPolicy::class,
+        \App\Models\Cupom::class        => \App\Policies\CupomPolicy::class,
     ];
 
     /**
@@ -21,6 +24,9 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Gates horizontais (sem modelo específico)
+        Gate::define('view-reports', fn(User $u) => in_array($u->role, ['admin','gestor']));
+        Gate::define('manage-catalog', fn(User $u) => in_array($u->role, ['admin','gestor']));
+        Gate::define('manage-users', fn(User $u) => $u->role === 'admin');
     }
 }

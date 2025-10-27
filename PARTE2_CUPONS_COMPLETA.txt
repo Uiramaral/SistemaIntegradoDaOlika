@@ -1,0 +1,75 @@
+# ✅ PARTE 2 COMPLETA - CUPONS
+
+## 📁 ARQUIVOS CRIADOS
+
+### Controller:
+- ✅ `app/Http/Controllers/CuponsController.php`
+
+### Views Cupons:
+- ✅ `resources/views/cupons/index.blade.php`
+- ✅ `resources/views/cupons/_table.blade.php`
+- ✅ `resources/views/cupons/create.blade.php`
+- ✅ `resources/views/cupons/edit.blade.php`
+- ✅ `resources/views/cupons/show.blade.php`
+
+---
+
+## ⚠️ PRÓXIMOS PASSOS NECESSÁRIOS
+
+### 1. Adicionar Rotas em routes/web.php
+
+```php
+use App\Http\Controllers\CuponsController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::resource('cupons', CuponsController::class);
+});
+```
+
+### 2. Verificar/Adaptar Model Cupom
+
+**Importante:** O controller assume um Model `App\Models\Cupom` com campos:
+- `codigo` (string)
+- `descricao` (string|null)
+- `tipo` ("percent"|"valor")
+- `valor` (decimal)
+- `minimo_pedido` (decimal|null)
+- `uso_maximo` (int|null)
+- `validade_inicio` (date|null)
+- `validade_fim` (date|null)
+- `ativo` (bool)
+
+### 3. Recomendado: Adicionar casts no Model
+
+```php
+protected $casts = [
+    'ativo' => 'boolean',
+    'validade_inicio' => 'datetime',
+    'validade_fim' => 'datetime',
+];
+```
+
+---
+
+## 🎨 FEATURES IMPLEMENTADAS
+
+- ✅ Filtros por status (ativo, inativo, válidos, expirados, futuros)
+- ✅ Busca por código/descrição
+- ✅ Stat cards (total, ativos, válidos hoje)
+- ✅ Badge de status dinâmico
+- ✅ Formulário completo de criação/edição
+- ✅ Validação de tipo (percentual vs valor fixo)
+- ✅ Validação de datas de validade
+- ✅ Visual idêntico ao Lovable status-templates
+
+---
+
+## ✅ CHECKLIST
+
+- [ ] Adicionar rotas em web.php
+- [ ] Verificar Model Cupom (nome e campos)
+- [ ] Adicionar casts no Model
+- [ ] Testar CRUD completo
+- [ ] Testar filtros
+
+**Arquivos prontos! Apenas adicione as rotas.** 🚀

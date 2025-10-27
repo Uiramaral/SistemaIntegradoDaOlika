@@ -13,6 +13,9 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\DeliveryFeeController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PedidosBulkController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ConsignacoesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -486,6 +489,7 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
     Route::get('/orders', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orders'])->name('dashboard.orders');
     Route::get('/orders/{order}', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderShow'])->name('dashboard.orders.show');
     Route::post('/orders/{order}/status', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderChangeStatus'])->name('dashboard.orders.status');
+    Route::post('/pedidos/bulk', [PedidosBulkController::class, 'update'])->name('pedidos.bulk');
     
     // Clientes (CRUD completo)
     Route::resource('/customers', \App\Http\Controllers\Dashboard\CustomersController::class)->names([
@@ -546,6 +550,11 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
     
     // Relatórios
     Route::get('/reports', [\App\Http\Controllers\Dashboard\DashboardController::class, 'reports'])->name('dashboard.reports');
+    Route::get('/relatorios', [ReportsController::class,'index'])->name('relatorios.index');
+    Route::get('/relatorios/export', [ReportsController::class,'export'])->name('relatorios.export');
+    
+    // Consignações
+    Route::resource('consignacoes', ConsignacoesController::class);
     
         // Settings - WhatsApp e Mercado Pago
         Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.whatsapp');

@@ -1,0 +1,106 @@
+# ✅ GOOGLE MAPS — IMPLEMENTAÇÃO COMPLETA FINAL
+
+## 📁 ARQUIVOS ATUALIZADOS
+
+### Componente:
+- ✅ `resources/views/components/map-link.blade.php`
+  - ✅ Suporte a ícone (`:icon="true"`)
+  - ✅ SVG inline minimalista (pin de localização)
+  - ✅ Label customizável
+  - ✅ Fallback para "Sem endereço"
+
+### CSS:
+- ✅ `resources/css/dashboard.css`
+  - ✅ Adicionado helpers `.icon-12` e `.icon-14`
+
+### Views:
+- ✅ `resources/views/dashboard/index.blade.php`
+  - Botão "Abrir no Maps" com ícone ✅
+  
+- ✅ `resources/views/pedidos/index.blade.php`
+  - Botão "Abrir no Maps" com ícone ✅
+  
+- ✅ `resources/views/pedidos/show.blade.php`
+  - Endereço formatado + botão "Abrir no Maps" com ícone ✅
+
+---
+
+## 🎯 COMO USAR O COMPONENTE
+
+### Básico (sem ícone):
+```blade
+<x-map-link :href="optional($cliente)->maps_url" />
+```
+
+### Com ícone e label customizado:
+```blade
+<x-map-link 
+  :href="optional($cliente)->maps_url" 
+  label="Abrir no Maps" 
+  :icon="true" 
+/>
+```
+
+### Parâmetros disponíveis:
+- `href` - URL do Google Maps (opcional)
+- `label` - Texto do botão (padrão: "Mapa")
+- `icon` - Mostrar ícone SVG (padrão: false)
+- `class` - Classes CSS adicionais (via $attributes)
+
+---
+
+## 📋 ACCESSORS NO MODEL (SE NECESSÁRIO)
+
+Se ainda não aplicou no `Customer` ou `Cliente`, adicione:
+
+```php
+// app/Models/Customer.php ou app/Models/Cliente.php
+
+public function getEnderecoFormatadoAttribute(): ?string
+{
+    $partes = array_filter([
+        $this->endereco ?? $this->address ?? null,
+        $this->numero ?? null,
+        $this->bairro ?? $this->neighborhood ?? null,
+        $this->cidade ?? $this->city ?? null,
+        $this->uf ?? $this->state ?? null,
+        $this->cep ?? $this->zip_code ?? null,
+    ]);
+    return $partes ? implode(', ', $partes) : null;
+}
+
+public function getMapsQueryAttribute(): ?string
+{
+    if (!empty($this->lat) && !empty($this->lng)) {
+        return $this->lat.','.$this->lng;
+    }
+    return $this->endereco_formatado ?: ($this->endereco ?? $this->address ?? null);
+}
+
+public function getMapsUrlAttribute(): ?string
+{
+    $q = $this->maps_query;
+    return $q ? 'https://www.google.com/maps/dir/?api=1&destination='.urlencode($q) : null;
+}
+```
+
+---
+
+## 🚀 CLEAR CACHE
+
+```bash
+php artisan view:clear && php artisan optimize:clear
+```
+
+---
+
+## ✅ CHECKLIST FINAL
+
+- [x] Componente map-link com suporte a ícone
+- [x] CSS helpers icon-12 e icon-14 adicionados
+- [x] Dashboard index atualizado
+- [x] Pedidos index atualizado
+- [x] Pedidos show atualizado (endereço formatado)
+- [x] Todos os botões com ícone e label "Abrir no Maps"
+
+**Implementação Google Maps 100% completa!** 🚀

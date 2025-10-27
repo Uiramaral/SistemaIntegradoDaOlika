@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,5 +25,11 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
             URL::forceRootUrl(config('app.url'));
         }
+
+        // Helper Blade @role
+        Blade::if('role', function(...$roles){
+            $u = auth()->user();
+            return $u && (empty($roles) || in_array($u->role, $roles));
+        });
     }
 }

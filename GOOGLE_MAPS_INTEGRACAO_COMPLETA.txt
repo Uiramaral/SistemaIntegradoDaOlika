@@ -1,0 +1,93 @@
+# ✅ INTEGRAÇÃO GOOGLE MAPS COMPLETA
+
+## 📁 ARQUIVOS CRIADOS/ATUALIZADOS
+
+### Model:
+- ✅ `app/Models/Customer.php` (atualizado)
+  - Adicionado accessor `getEnderecoFormatadoAttribute()` (endereço legível)
+  - Adicionado accessor `getMapsQueryAttribute()` (prefere lat/lng; fallback para endereço)
+  - Adicionado accessor `getMapsUrlAttribute()` (URL do Google Maps)
+
+### Componente:
+- ✅ `resources/views/components/map-link.blade.php` (novo)
+  - Componente Blade reutilizável
+  - Link "Mapa" que abre no Google Maps
+  - Fallback para "Sem endereço" se não houver URL
+
+### Views:
+- ✅ `resources/views/dashboard/index.blade.php` (atualizado)
+  - Adicionado botão "Mapa" na tabela de pedidos recentes
+
+---
+
+## 🎯 FUNCIONALIDADES
+
+### Accessors do Model:
+1. **`endereco_formatado`**: Formata endereço completo (address, neighborhood, city, state, zip_code)
+2. **`maps_query`**: Retorna coordenadas (lat,lng) ou endereço para busca no Maps
+3. **`maps_url`**: URL completa do Google Maps (abre app no mobile / web no desktop)
+
+### Componente Map-Link:
+- Recebe `href` (URL do Maps)
+- Recebe `label` (texto do botão, padrão "Mapa")
+- Abre em nova aba com `target="_blank"` e `rel="noopener"`
+- Se não houver URL, mostra "Mapa" desabilitado com tooltip
+
+---
+
+## 📋 PRÓXIMOS PASSOS (OPCIONAL)
+
+### 1. Adicionar em outras views:
+
+#### Pedidos → show.blade.php:
+```blade
+<div class="flex items-center gap-2">
+  <div class="text-sm text-neutral-500">
+    {{ $pedido->customer->endereco_formatado ?? $pedido->customer->address ?? '—' }}
+  </div>
+  <x-map-link :href="optional($pedido->customer)->maps_url" />
+</div>
+```
+
+#### Pedidos → index.blade.php:
+```blade
+<td class="text-right">
+  <a class="pill" href="{{ route('pedidos.show',$p) }}">Ver</a>
+  <x-map-link :href="optional($p->customer)->maps_url" />
+</td>
+```
+
+### 2. (Opcional) Adicionar colunas lat/lng:
+Se quiser usar coordenadas exatas em vez de endereço:
+```sql
+ALTER TABLE customers ADD COLUMN lat DECIMAL(10,8) NULL;
+ALTER TABLE customers ADD COLUMN lng DECIMAL(11,8) NULL;
+```
+
+O accessor já está preparado para usar lat/lng se existir.
+
+---
+
+## 🚀 DEPLOY
+
+```bash
+php artisan view:clear && php artisan optimize:clear
+```
+
+### Teste rápido:
+1. Acesse o dashboard
+2. Clique no botão "Mapa" ao lado de um pedido
+3. Deve abrir o Google Maps com o endereço do cliente
+
+---
+
+## ✅ CHECKLIST
+
+- [x] Accessors adicionados ao Model Customer
+- [x] Componente map-link criado
+- [x] Dashboard index atualizado
+- [ ] (Opcional) Adicionar em pedidos/show
+- [ ] (Opcional) Adicionar em pedidos/index
+- [ ] (Opcional) Adicionar em rotas
+
+**Integração Google Maps pronta!** 🚀

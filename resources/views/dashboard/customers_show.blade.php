@@ -6,7 +6,10 @@
 @section('content')
 
 <div class="card">
-  <h1 class="text-xl" style="font-weight:800;margin-bottom:16px">👤 Cliente #{{ $customer->id }}</h1>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h1 class="text-xl" style="font-weight:800;margin:0">👤 Cliente #{{ $customer->id }}</h1>
+    <a class="btn btn-outline" href="{{ route('debts.index', $customer->id) }}">Fiados</a>
+  </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
     <div class="card" style="background:#f9fafb">

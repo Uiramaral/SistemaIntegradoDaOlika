@@ -55,7 +55,10 @@
         <td class="cell-right" style="font-weight:800;">{{ $c->total_orders ?? $c->orders_count ?? 0 }}</td>
         <td class="cell-right" style="font-weight:800;">R$ {{ number_format($c->total_spent ?? 0,2,',','.') }}</td>
         <td class="cell-right">
-          <a class="link" href="{{ route('dashboard.customers.show', $c->id) }}">Ver perfil</a>
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <a class="link" href="{{ route('dashboard.customers.show', $c->id) }}">Ver perfil</a>
+            <a class="btn btn-xs btn-outline" href="{{ route('debts.index', $c->id) }}">Fiados</a>
+          </div>
         </td>
       </tr>
       @empty

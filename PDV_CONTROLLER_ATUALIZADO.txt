@@ -1,0 +1,189 @@
+# ✅ PDV CONTROLLER ATUALIZADO - FUNCIONALIDADES ADICIONADAS
+
+## 📋 RESUMO
+Controller PDV atualizado com funções para cálculo de frete dinâmico, geração de PIX local e suporte a item avulso e fiado.
+
+## 📁 FUNÇÕES ADICIONADAS
+
+### 1. digits($s)
+**Função:** Remove caracteres não numéricos de uma string
+```php
+private function digits($s)
+{
+    return preg_replace('/\D+/', '', (string)$s);
+}
+```
+
+### 2. computeDeliveryFee(?string $cep, float $subtotal): float
+**Função:** Calcula frete baseado em delivery_rules ou delivery_fees
+**Lógica:**
+- Remove caracteres não numéricos do CEP
+- Verifica se CEP tem 8 dígitos
+- Busca regra em `delivery_rules` ou `delivery_fees`
+- Verifica valor mínimo para frete grátis
+- Retorna valor do frete
+
+**Uso:**
+```php
+$deliveryFee = $this->computeDeliveryFee($cep, $subtotal);
+```
+
+### 3. pixCRC16($payload)
+**Função:** Calcula CRC16 para código PIX
+**Uso:** Necessário para gerar código PIX válido
+
+### 4. emv(string $id, string $value)
+**Função:** Cria campo EMV para código PIX
+**Formato:** ID + tamanho (2 dígitos) + valor
+
+### 5. buildPixPayload(array $pix)
+**Função:** Constrói payload completo do código PIX
+**Parâmetros esperados:**
+```php
+[
+    'chave'  => 'Chave PIX',         // CPF/CNPJ/Email/Chave aleatória
+    'nome'   => 'Nome Recebedor',    // Até 25 caracteres
+    'cidade' => 'Cidade',            // Até 15 caracteres
+    'txid'   => 'ID transação',      // Até 25 caracteres
+    'valor'  => '123.45',            // Com 2 casas decimais
+    'info'   => 'Info adicional'     // Opcional, até 50 caracteres
+]
+```
+
+**Retorno:** String com código PIX completo (copia e cola)
+
+## 🔧 AJUSTES NECESSÁRIOS NO MÉTODO store()
+
+O método `store()` precisa ser atualizado para suportar:
+
+### 1. Calcular frete usando computeDeliveryFee
+```php
+$delivery = $data['delivery_type']==='delivery'
+    ? $this->computeDeliveryFee($data['address']['cep'] ?? null, $subtotal)
+    : 0.00;
+```
+
+### 2. Gerar PIX quando payment_method = 'pix'
+```php
+if($data['payment_method']==='pix'){
+    $pixKey   = config('app.pix_key', 'SUA-CHAVE-PIX-AQUI');
+    $nome     = config('app.pix_name', 'OLIKA COZINHA');
+    $cidade   = config('app.pix_city', 'SALVADOR');
+
+    $payload = $this->buildPixPayload([
+        'chave'  => $pixKey,
+        'nome'   => $nome,
+        'cidade' => $cidade,
+        'txid'   => 'PDV'.str_pad((string)$order->id, 10, '0', STR_PAD_LEFT),
+        'valor'  => number_format($final, 2, '.', ''),
+        'info'   => 'Pedido '.$order->order_number
+    ]);
+
+    $order->pix_copy_paste = $payload;
+    $order->pix_expires_at = now()->addMinutes(30);
+    $order->save();
+}
+```
+
+### 3. Lançar débito quando Fiado
+```php
+if($data['payment_method']==='fiado'){
+    DB::table('customer_debts')->insert([
+        'customer_id'  => $data['customer_id'],
+        'order_id'     => $order->id,
+        'amount'       => $final,
+        'type'         => 'debit',
+        'status'       => 'open',
+        'description'  => 'Venda fiado PDV #'.$order->order_number,
+        'created_at'   => now(),
+        'updated_at'   => now(),
+    ]);
+}
+```
+
+### 4. Suporte a item avulso em order_items
+```php
+foreach($data['items'] as $i){
+    OrderItem::create([
+        'order_id'    => $order->id,
+        'product_id'  => $i['product_id'],      // nullable para avulsos
+        'custom_name' => $i['custom'] ? $i['name'] : null,  // NOVO
+        'quantity'    => $i['qty'],
+        'unit_price'  => $i['price'],
+        'total_price' => $i['price'] * $i['qty'],
+    ]);
+}
+```
+
+## 🔌 NOVA ROTA NECESSÁRIA
+
+Adicionar em `routes/web.php` ou `routes/api.php`:
+
+```php
+Route::get('/api/calc-frete', function(\Illuminate\Http\Request $r){
+    $pdv = app(\App\Http\Controllers\Dashboard\PDVController::class);
+    $fee = $pdv->computeDeliveryFee($r->get('cep'), (float)$r->get('subtotal',0));
+    return response()->json(['fee'=>$fee]);
+});
+```
+
+## 📝 ATUALIZAR BLADE
+
+A blade `pdv.blade.php` precisa da função `recalc()` atualizada para calcular frete em tempo real:
+
+```javascript
+async function recalc(){
+  state.totals.sub = state.items.reduce((s,i)=> s + (i.price*i.qty), 0);
+
+  // calcula frete no backend quando for entrega
+  if (document.getElementById('deliveryType').value === 'delivery') {
+    const cep = document.getElementById('cep').value || '';
+    try{
+      const r = await fetch('/api/calc-frete?cep='+encodeURIComponent(cep)+'&subtotal='+state.totals.sub);
+      const j = await r.json();
+      state.totals.delivery = j.fee || 0;
+    }catch(e){ state.totals.delivery = 0; }
+  } else {
+    state.totals.delivery = 0;
+  }
+
+  state.totals.total = Math.max(0, state.totals.sub - state.totals.discount + state.totals.delivery);
+  document.getElementById('subtotal').innerText = fmt(state.totals.sub);
+  document.getElementById('discount').innerText = fmt(state.totals.discount);
+  document.getElementById('deliveryFee').innerText = fmt(state.totals.delivery);
+  document.getElementById('grandTotal').innerText = fmt(state.totals.total);
+}
+
+// Recalcula ao mudar quantidade, CEP ou tipo de entrega
+['qty','cep','deliveryType'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', recalc);
+});
+```
+
+## ⚙️ CONFIGURAÇÃO
+
+Adicionar em `.env`:
+
+```env
+PIX_KEY=00020126360014BR.GOV.BCB.PIX0114+5538999999999010400005303986540510.005802BR5920OLIKA COZINHA6009SALVADOR62070503***
+PIX_NAME=OLIKA COZINHA
+PIX_CITY=SALVADOR
+```
+
+Ou em `config/app.php`:
+
+```php
+'pix_key' => env('PIX_KEY', 'SUA-CHAVE-PIX-AQUI'),
+'pix_name' => env('PIX_NAME', 'OLIKA COZINHA'),
+'pix_city' => env('PIX_CITY', 'SALVADOR'),
+```
+
+## ✅ STATUS
+
+- ✅ Funções adicionadas ao controller
+- ⚠️ Método store() precisa ser atualizado
+- ⚠️ Rota para cálculo de frete precisa ser adicionada
+- ⚠️ Blade precisa da função recalc() atualizada
+- ⚠️ Configuração de PIX precisa ser adicionada
+

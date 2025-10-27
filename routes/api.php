@@ -83,3 +83,35 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
     Route::post('/mercadopago', [\App\Http\Controllers\WebhookController::class, 'mercadoPago'])->name('mercadopago');
     Route::post('/whatsapp', [\App\Http\Controllers\WebhookController::class, 'whatsApp'])->name('whatsapp');
 });
+
+// Rotas do PDV
+Route::prefix('pdv')->name('api.pdv.')->group(function () {
+    Route::get('/customers/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchCustomers'])->name('customers.search');
+    Route::post('/customers', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeCustomer'])->name('customers.store');
+    Route::get('/products/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('products.search');
+    Route::post('/coupons/validate', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('coupons.validate');
+    Route::post('/orders', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeOrder'])->name('orders.store');
+    
+    // Rota de cálculo de frete por distância
+    Route::get('/calc-frete', function(\Illuminate\Http\Request $r){
+        $pdv = app(\App\Http\Controllers\Dashboard\PDVController::class);
+        $addr = [
+            'cep' => $r->get('cep'),
+            'street' => $r->get('street'),
+            'number' => $r->get('number'),
+            'neighborhood' => $r->get('neighborhood'),
+            'city' => $r->get('city'),
+            'state' => $r->get('state'),
+            'latitude' => $r->get('lat'),
+            'longitude' => $r->get('lng'),
+        ];
+        $fee = $pdv->computeDeliveryFeeByDistance($addr, (float)$r->get('subtotal',0));
+        return response()->json(['fee' => $fee]);
+    })->name('calc-frete');
+});
+
+// Rotas de fiados
+Route::prefix('fiados')->name('api.fiados.')->group(function () {
+    Route::get('/saldo', [\App\Http\Controllers\DebtsController::class, 'balance'])->name('balance');
+    Route::post('/{debt}/baixa', [\App\Http\Controllers\DebtsController::class, 'settle'])->name('settle');
+});

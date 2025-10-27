@@ -15,6 +15,7 @@ use App\Services\MercadoPagoApi;
 use App\Services\AppSettings;
 use App\Services\OrderStatusService;
 use App\Services\WhatsAppService;
+use Carbon\Carbon;
 
 class PDVController extends Controller
 {
@@ -206,6 +207,201 @@ class PDVController extends Controller
     private function weekdayLabel($i)
     {
         return ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][$i] ?? $i;
+    }
+
+    /**
+     * Remove caracteres não numéricos
+     */
+    private function digits($s)
+    {
+        return preg_replace('/\D+/', '', (string)$s);
+    }
+
+    /**
+     * Calcula distância em km usando fórmula Haversine
+     */
+    private function haversineKm($lat1, $lon1, $lat2, $lon2)
+    {
+        if ($lat1 === null || $lon1 === null || $lat2 === null || $lon2 === null) return null;
+
+        $R = 6371; // raio da Terra em km
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat/2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $R * $c;
+    }
+
+    /**
+     * Geocodifica endereço usando Google Maps (opcional)
+     * Usa settings.google_maps_api_key do banco de dados
+     */
+    private function geocodeAddressIfNeeded(array &$addr)
+    {
+        if (!empty($addr['latitude']) && !empty($addr['longitude'])) return;
+
+        $key = optional(DB::table('settings')->first())->google_maps_api_key;
+        if (!$key) return;
+
+        $parts = array_filter([
+            $addr['street'] ?? null,
+            $addr['number'] ?? null,
+            $addr['neighborhood'] ?? null,
+            $addr['city'] ?? null,
+            $addr['state'] ?? null,
+            $this->digits($addr['cep'] ?? '')
+        ]);
+
+        if (!$parts) return;
+
+        $query = urlencode(implode(', ', $parts) . ', Brasil');
+        $url = "https://maps.googleapis.com/maps/api/geocode/json?address={$query}&key={$key}";
+
+        try {
+            $json = json_decode(file_get_contents($url), true);
+            if (($json['status'] ?? '') === 'OK') {
+                $loc = $json['results'][0]['geometry']['location'];
+                $addr['latitude']  = $loc['lat'];
+                $addr['longitude'] = $loc['lng'];
+            }
+        } catch (\Throwable $e) {
+            // silent fail
+        }
+    }
+
+    /**
+     * Calcula frete por distância (loja → cliente)
+     * Usa as colunas do banco: business_latitude, business_longitude, delivery_fee_per_km,
+     * free_delivery_threshold, max_delivery_distance
+     */
+    public function computeDeliveryFeeByDistance(?array $addr, float $subtotal): float
+    {
+        $s = DB::table('settings')->first();
+        if (!$s) return 0.00;
+
+        if (empty($addr)) return 0.00;
+
+        // Garante lat/lng do cliente
+        $this->geocodeAddressIfNeeded($addr);
+
+        // Calcula distância (Haversine)
+        $distKm = $this->haversineKm($s->business_latitude, $s->business_longitude, $addr['latitude'] ?? null, $addr['longitude'] ?? null);
+        if ($distKm === null) return 0.00;
+
+        // Raio máximo
+        if ($s->max_delivery_distance !== null && $distKm > (float)$s->max_delivery_distance) {
+            return 0.00; // Fora da área
+        }
+
+        // Grátis acima de X
+        if ($s->free_delivery_threshold !== null && $subtotal >= (float)$s->free_delivery_threshold) {
+            return 0.00;
+        }
+
+        // Taxa = (km arredondado p/ cima) * fee_per_km
+        $perKm = (float)$s->delivery_fee_per_km;
+        $fee = $perKm * ceil($distKm);
+
+        // Se quiser um mínimo global de taxa
+        $minFee = 0.00;
+        if (property_exists($s, 'delivery_min_fee')) $minFee = (float)$s->delivery_min_fee;
+        if ($fee < $minFee) $fee = $minFee;
+
+        return round($fee, 2);
+    }
+
+    /**
+     * Calcula frete baseado em delivery_rules (mantida para compatibilidade)
+     */
+    public function computeDeliveryFee(?string $cep, float $subtotal): float
+    {
+        if (!$cep) return 0.00;
+
+        $cep = $this->digits($cep);
+        if (strlen($cep) !== 8) return 0.00;
+
+        // Tenta usar delivery_rules, se não existir usa delivery_fees como fallback
+        $rule = DB::table('delivery_rules')
+            ->where('is_active', 1)
+            ->where(function($q) use($cep){
+                $q->where(function($qq) use($cep){
+                    $qq->whereNotNull('cep_from')->whereNotNull('cep_to')
+                       ->whereRaw('? BETWEEN cep_from AND cep_to', [$cep]);
+                })->orWhereNull('cep_from');
+            })
+            ->orderBy('sort_order')
+            ->first();
+
+        if ($rule) {
+            if($rule->min_amount_free !== null && $subtotal >= (float)$rule->min_amount_free) {
+                return 0.00;
+            }
+            return (float)$rule->fee;
+        }
+
+        // Fallback para delivery_fees
+        $feeRow = DB::table('delivery_fees')->where('is_active', 1)->first();
+        if ($feeRow) {
+            return (float)$feeRow->base_fee;
+        }
+
+        return 0.00;
+    }
+
+    /**
+     * Gera código CRC16 para PIX
+     */
+    private function pixCRC16($payload)
+    {
+        $polynomial = 0x1021;
+        $result = 0xFFFF;
+        $bytes = unpack('C*', $payload);
+        
+        foreach($bytes as $b){
+            $result ^= ($b << 8);
+            for($i=0;$i<8;$i++){
+                $result = ($result & 0x8000) ? (($result << 1) ^ $polynomial) : ($result << 1);
+                $result &= 0xFFFF;
+            }
+        }
+        
+        return strtoupper(str_pad(dechex($result), 4, '0', STR_PAD_LEFT));
+    }
+
+    /**
+     * Cria campo EMV para PIX
+     */
+    private function emv(string $id, string $value)
+    {
+        $len = strlen($value);
+        return $id . str_pad((string)$len, 2, '0', STR_PAD_LEFT) . $value;
+    }
+
+    /**
+     * Constrói payload PIX completo
+     */
+    private function buildPixPayload(array $pix)
+    {
+        $gui  = $this->emv('00', 'br.gov.bcb.pix');
+        $key  = $this->emv('01', $pix['chave']);
+        $info = !empty($pix['info']) ? $this->emv('02', mb_substr($pix['info'], 0, 50)) : '';
+        $mai  = $this->emv('26', $gui.$key.$info);
+
+        $mcc  = $this->emv('52', '0000');
+        $curr = $this->emv('53', '986');
+        $amt  = $this->emv('54', $pix['valor']);
+        $cty  = $this->emv('58', 'BR');
+        $city = $this->emv('59', mb_substr($pix['nome'], 0, 25));
+        $loc  = $this->emv('60', mb_substr($pix['cidade'], 0, 15));
+        $txid = $this->emv('62', $this->emv('05', mb_substr($pix['txid'], 0, 25)));
+
+        $base = $this->emv('00', '01')
+              . $this->emv('01', '12')
+              . $mai . $mcc . $curr . $amt . $cty . $city . $loc . $txid
+              . '6304';
+
+        $crc = $this->pixCRC16($base);
+        return $base . $crc;
     }
 
     public function store(Request $r)

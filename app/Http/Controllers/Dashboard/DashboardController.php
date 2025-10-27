@@ -22,29 +22,45 @@ class DashboardController extends Controller
 
     public function home()
     {
-        $kpis = $this->kpisBase();
-
-        $recentOrders = DB::table('orders as o')
-            ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
-            ->select('o.*', 'c.name as customer_name')
-            ->orderByDesc('o.id')
-            ->limit(10)
+        $today = \Carbon\Carbon::today();
+        
+        // Cards do topo
+        $totalHoje = DB::table('orders')->whereDate('created_at', $today)->sum('final_amount');
+        $pedidosHoje = DB::table('orders')->whereDate('created_at', $today)->count();
+        $pagosHoje = DB::table('orders')->whereDate('created_at', $today)->where('payment_status','paid')->count();
+        $pendentesPg = DB::table('orders')->whereDate('created_at', $today)->where('payment_status','pending')->count();
+        
+        // Pedidos recentes (com cliente)
+        $pedidosRecentes = \App\Models\Order::with('customer')
+            ->orderByDesc('created_at')
+            ->limit(5)
             ->get();
-
-        $seven = now()->subDays(7);
-
-        $topProducts = DB::table('order_items')
-            ->join('products', 'products.id', '=', 'order_items.product_id')
-            ->select('products.name as product_name', DB::raw('SUM(order_items.quantity) as qty'), DB::raw('SUM(order_items.total_price) as revenue'))
-            ->whereIn('order_items.order_id', function ($q) use ($seven) {
-                $q->select('id')->from('orders')->where('created_at', '>=', $seven);
-            })
-            ->groupBy('products.name')
+        
+        // Top produtos (últimos 7 dias, por quantidade)
+        $desde = \Carbon\Carbon::now()->subDays(7);
+        $topProdutos = \App\Models\OrderItem::select([
+                'order_items.product_id',
+                DB::raw('SUM(order_items.quantity) as qty'),
+                DB::raw('SUM(order_items.total_price) as revenue')
+            ])
+            ->join('orders','orders.id','=','order_items.order_id')
+            ->where('orders.created_at','>=',$desde)
+            ->groupBy('order_items.product_id')
             ->orderByDesc('qty')
-            ->limit(10)
+            ->with(['product' => function($q){
+                $q->select('id','name','price','image_url');
+            }])
+            ->limit(5)
             ->get();
 
-        return view('dashboard.index', compact('kpis', 'recentOrders', 'topProducts'));
+        return view('dashboard.index', [
+            'totalHoje' => $totalHoje,
+            'pedidosHoje' => $pedidosHoje,
+            'pagosHoje' => $pagosHoje,
+            'pendentesPg' => $pendentesPg,
+            'pedidosRecentes' => $pedidosRecentes,
+            'topProdutos' => $topProdutos,
+        ]);
     }
 
     public function compact()

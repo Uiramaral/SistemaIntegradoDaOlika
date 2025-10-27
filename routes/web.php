@@ -579,6 +579,12 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
     Route::post('/pdv/validate-coupon', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('dashboard.pdv.validate.coupon');
     Route::post('/pdv/address', [\App\Http\Controllers\Dashboard\PDVController::class, 'saveAddress'])->name('dashboard.pdv.address');
     
+    // Detalhes do pedido (com QR PIX)
+    Route::get('/orders/{id}', [\App\Http\Controllers\OrderViewController::class, 'show'])->name('orders.show');
+    
+    // Fiados do cliente
+    Route::get('/customers/{id}/fiados', [\App\Http\Controllers\DebtsController::class, 'index'])->name('debts.index');
+    
     // API auxiliar para endereços
     Route::get('/api/addresses', function (\Illuminate\Http\Request $r) {
         if (!$r->has('customer_id')) return response()->json([]);

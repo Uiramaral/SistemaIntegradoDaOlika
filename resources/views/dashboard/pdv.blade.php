@@ -1,283 +1,329 @@
 {{-- PÁGINA: PDV (Ponto de Venda - Criação de Pedidos) --}}
 @extends('layouts.dashboard')
 
-@section('title','PDV — Dashboard Olika')
+@section('title','Ponto de Venda (PDV)')
 
-@push('head')
-<style>
-  .grid-cols-2 { grid-template-columns: 1.2fr 1fr; gap: 16px; }
-  @media(max-width:1024px) { .grid-cols-2 { grid-template-columns: 1fr; } }
-</style>
-<script>
-async function fetchJSON(url, opts={}){
-  const r = await fetch(url, opts);
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  return await r.json();
-}
-</script>
-@endpush
+{{-- força o header do layout a não renderizar ações nesta página --}}
+@section('actions') @endsection
+@section('page_actions') @endsection
 
 @section('content')
-<div class="card">
-  <h1 class="text-xl" style="font-weight:800;margin-bottom:10px">Ponto de Venda (PDV)</h1>
-  <div class="grid-cols-2" style="display:grid">
-    {{-- Coluna esquerda: Cliente, Endereço, Itens --}}
-    <div>
-      {{-- Cliente --}}
-      <div class="card">
-        <h3 style="font-weight:600">Cliente</h3>
-        <input id="c-busca" class="card" placeholder="buscar por nome, telefone, e-mail">
-        <div id="c-lista" style="max-height:160px;overflow:auto;margin-top:6px"></div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <input id="c-id" type="hidden">
-          <input id="c-nome" class="card" placeholder="Nome">
-          <input id="c-fone" class="card" placeholder="Telefone (E164)">
-          <input id="c-email" class="card" placeholder="E-mail">
-        </div>
-      </div>
 
-      {{-- Endereço --}}
-      <div class="card" style="margin-top:12px">
-        <h3 style="font-weight:600">Endereço</h3>
-        <div id="addr-existentes" style="margin-bottom:6px"></div>
-        <div style="display:grid;grid-template-columns:1fr 120px 80px 80px;gap:8px">
-          <input id="a-street" class="card" placeholder="Rua *">
-          <input id="a-number" class="card" placeholder="Nº *">
-          <input id="a-cep" class="card" placeholder="CEP">
-          <input id="a-comp" class="card" placeholder="Compl.">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 140px 80px;gap:8px;margin-top:8px">
-          <input id="a-neigh" class="card" placeholder="Bairro">
-          <input id="a-city" class="card" placeholder="Cidade *">
-          <input id="a-state" class="card" placeholder="UF *" maxlength="2">
-        </div>
-        <button class="btn" style="margin-top:8px" onclick="salvarEndereco()">Salvar Endereço</button>
-        <input type="hidden" id="address_id">
-      </div>
+<div class="page-header">
+  <h1 class="text-2xl font-bold">Ponto de Venda (PDV)</h1>
+  {{-- Removido botão "Baixar Layout" --}}
+</div>
 
-      {{-- Itens --}}
-      <div class="card" style="margin-top:12px">
-        <h3 style="font-weight:600">Itens</h3>
-        <input id="p-busca" class="card" placeholder="buscar produto por nome ou SKU">
-        <div id="p-lista" style="max-height:160px;overflow:auto;margin-top:6px"></div>
-        <table style="width:100%;margin-top:8px">
-          <thead><tr><th>Produto</th><th>Preço</th><th>Qtd</th><th>Total</th><th></th></tr></thead>
-          <tbody id="cart"></tbody>
-        </table>
+<div id="pdv" class="space-y-6">
+  
+  {{-- CLIENTE --}}
+  <section class="card">
+    <h2 class="card-title">Cliente</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="col-span-2">
+        <input type="text" id="customerSearch" class="input" placeholder="buscar por nome, telefone ou e-mail…">
+        <div id="customerResults" class="dropdown d-none"></div>
       </div>
+      <button id="btnNewCustomer" class="btn btn-outline">+ Incluir cliente</button>
+    </div>
+    <div id="customerData" class="mt-3 text-sm text-gray-600 d-none"></div>
+    <div class="mt-2" id="fiadoTools" style="display:none">
+      <a id="linkFiados" href="#" class="btn btn-sm btn-outline-secondary">Fiados do cliente</a>
+      <span id="fiadoBadge" class="badge bg-warning text-dark">Em aberto: R$ 0,00</span>
+    </div>
+  </section>
+
+  {{-- ENDEREÇO (CEP -> Número -> resto) --}}
+  <section class="card">
+    <h2 class="card-title">Endereço</h2>
+    <div class="grid grid-cols-1 md:grid-cols-8 gap-3">
+      <input id="cep" class="input md:col-span-2" placeholder="CEP *">
+      <input id="number" class="input md:col-span-2" placeholder="Nº *">
+      <input id="street" class="input md:col-span-4" placeholder="Rua *">
+      <input id="neighborhood" class="input md:col-span-3" placeholder="Bairro">
+      <input id="city" class="input md:col-span-3" placeholder="Cidade">
+      <input id="state" class="input md:col-span-2" placeholder="UF">
+      <input id="complement" class="input md:col-span-8" placeholder="Complemento">
+    </div>
+  </section>
+
+  {{-- PRODUTOS (com item avulso) --}}
+  <section class="card">
+    <h2 class="card-title">Produtos</h2>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div class="md:col-span-3">
+        <input type="text" id="productSearch" class="input" placeholder="buscar produto por nome ou SKU…">
+        <div id="productResults" class="dropdown d-none"></div>
+      </div>
+      <input type="number" id="qty" class="input" min="1" value="1" placeholder="Qtd">
+      <button id="addProduct" class="btn">Adicionar</button>
     </div>
 
-    {{-- Coluna direita: Entrega, Resumo, Pagamento --}}
-    <div>
-      {{-- Entrega --}}
-      <div class="card">
-        <h3 style="font-weight:600">Entrega</h3>
-        <div id="slots" style="margin-bottom:6px;color:#555">Selecione um endereço e itens para calcular opções…</div>
-        <select id="delivery_slot" class="card" style="width:100%"></select>
-        <textarea id="o-notes" class="card" placeholder="Observações do pedido" style="margin-top:6px"></textarea>
+    <details class="mt-4">
+      <summary class="text-sm text-gray-600 cursor-pointer">+ Item avulso (somente para esta venda)</summary>
+      <div class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3">
+        <input id="customName" class="input md:col-span-3" placeholder="Nome do item">
+        <input id="customPrice" class="input" type="number" step="0.01" placeholder="Preço">
+        <button id="addCustom" class="btn btn-outline">Adicionar avulso</button>
       </div>
+    </details>
 
-      {{-- Cupom + Resumo --}}
-      <div class="card" style="margin-top:12px">
-        <h3 style="font-weight:600">Resumo</h3>
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <input id="cupom" class="card" placeholder="Cupom">
-          <button class="btn" onclick="aplicarCupom()">Aplicar</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 120px;gap:6px">
-          <div>Subtotal</div><div id="r-subtotal" style="text-align:right">R$ 0,00</div>
-          <div>Desconto</div><div id="r-desconto" style="text-align:right">R$ 0,00</div>
-          <div>Entrega</div><div id="r-entrega" style="text-align:right">R$ 0,00</div>
-          <div style="font-weight:800">Total</div><div id="r-total" style="text-align:right;font-weight:800">R$ 0,00</div>
-        </div>
-      </div>
+    <div class="mt-4 overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Produto</th><th class="w-24 text-right">Preço</th><th class="w-20">Qtd</th><th class="w-28 text-right">Total</th><th class="w-10"></th>
+          </tr>
+        </thead>
+        <tbody id="cartBody"></tbody>
+      </table>
+    </div>
+  </section>
 
-      {{-- Pagamento / Finalizar --}}
-      <div class="card" style="margin-top:12px">
-        <h3 style="font-weight:600">Pagamento</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <label><input type="radio" name="pm" value="pix" checked> PIX</label>
-          <label><input type="radio" name="pm" value="link"> Link Mercado Pago</label>
-          <label><input type="radio" name="pm" value="cash"> Dinheiro</label>
-          <label><input type="radio" name="pm" value="card"> Cartão presencial</label>
-        </div>
-        <button class="btn" style="margin-top:8px;width:100%" onclick="finalizar()">Finalizar Pedido</button>
-        <div id="p-out" style="margin-top:10px"></div>
-      </div>
+  {{-- ENTREGA / OBS --}}
+  <section class="card">
+    <h2 class="card-title">Entrega</h2>
+    <select id="deliveryType" class="input mb-3">
+      <option value="pickup">Retirada</option>
+      <option value="delivery">Entrega</option>
+    </select>
+    <textarea id="orderNotes" class="input" rows="3" placeholder="Observações do pedido…"></textarea>
+  </section>
+
+  {{-- RESUMO + CUPOM --}}
+  <section class="card">
+    <h2 class="card-title">Resumo</h2>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
+      <input id="couponCode" class="input md:col-span-2" placeholder="Cupom">
+      <button id="applyCoupon" class="btn md:col-span-1">Aplicar</button>
+      <div id="couponMsg" class="md:col-span-2 text-sm"></div>
+    </div>
+
+    <div class="mt-4 space-y-1 text-sm">
+      <div class="flex justify-between"><span>Subtotal</span><span id="subtotal">R$ 0,00</span></div>
+      <div class="flex justify-between"><span>Desconto</span><span id="discount">R$ 0,00</span></div>
+      <div class="flex justify-between"><span>Entrega</span><span id="deliveryFee">R$ 0,00</span></div>
+      <div class="flex justify-between font-semibold text-lg"><span>Total</span><span id="grandTotal">R$ 0,00</span></div>
+    </div>
+  </section>
+
+  {{-- PAGAMENTO --}}
+  <section class="card">
+    <h2 class="card-title">Pagamento</h2>
+    <div class="flex flex-wrap gap-4 text-sm">
+      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="pix" checked> PIX</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="link"> Link Mercado Pago</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="fiado"> Fiado (lançar débito)</label>
+    </div>
+    <button id="finish" class="btn btn-primary w-full mt-4">Finalizar Pedido</button>
+  </section>
+</div>
+
+{{-- Modal Novo Cliente --}}
+<div id="modalCustomer" class="modal d-none">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-3">Novo Cliente</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <input id="nc_name" class="input" placeholder="Nome *">
+      <input id="nc_phone" class="input" placeholder="Telefone (E.164) *">
+      <input id="nc_email" class="input md:col-span-2" placeholder="E-mail (opcional)">
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button id="nc_cancel" class="btn btn-outline">Cancelar</button>
+      <button id="nc_save" class="btn">Salvar</button>
     </div>
   </div>
 </div>
 
+@endsection
+
 @push('scripts')
 <script>
-let items = []; // {product_id, name, price, qty}
-let customerId = null;
-let discountCode = null;
-let calcCache = null;
+const fmt = v => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0));
 
-// busca clientes
-document.getElementById('c-busca').addEventListener('input', async (e)=>{
-  const q = e.target.value.trim();
-  const j = await fetchJSON('{{ route('dashboard.pdv.search.customers') }}?q='+encodeURIComponent(q));
-  const box = document.getElementById('c-lista'); box.innerHTML='';
-  j.forEach(c=>{
-    const a = document.createElement('a');
-    a.href='#'; a.textContent = c.name + (c.phone?' · '+c.phone:'');
-    a.onclick=(ev)=>{ev.preventDefault(); selecionarCliente(c); };
-    a.className='badge'; a.style.display='inline-block'; a.style.margin='3px';
-    box.appendChild(a);
-  });
-});
+let state = {
+  customer:null, address:{}, items:[], coupon:null, totals:{sub:0,discount:0,delivery:0,total:0}
+};
 
-function selecionarCliente(c){
-  customerId = c.id;
-  document.getElementById('c-id').value = c.id;
-  document.getElementById('c-nome').value = c.name || '';
-  document.getElementById('c-fone').value = c.phone || '';
-  document.getElementById('c-email').value = c.email || '';
-  carregarEnderecos(c.id);
-}
-
-async function carregarEnderecos(cid){
-  const wrap = document.getElementById('addr-existentes');
-  wrap.innerHTML = 'Carregando endereços…';
-  const j = await fetchJSON('/api/addresses?customer_id='+cid).catch(()=>[]);
-  wrap.innerHTML='';
-  if(Array.isArray(j) && j.length){
-    j.forEach(a=>{
-      const b = document.createElement('button');
-      b.className='badge'; b.textContent = `${a.street}, ${a.number} — ${a.city}/${a.state}`;
-      b.onclick=()=>{ document.getElementById('address_id').value = a.id; recalc(); };
-      wrap.appendChild(b);
-    });
-  } else {
-    wrap.textContent = 'Nenhum endereço salvo.';
-  }
-}
-
-async function salvarEndereco(){
-  if(!customerId){ alert('Selecione um cliente.'); return; }
-  const payload = {
-    customer_id: customerId,
-    cep: document.getElementById('a-cep').value,
-    street: document.getElementById('a-street').value,
-    number: document.getElementById('a-number').value,
-    complement: document.getElementById('a-comp').value,
-    neighborhood: document.getElementById('a-neigh').value,
-    city: document.getElementById('a-city').value,
-    state: document.getElementById('a-state').value.toUpperCase()
-  };
-  const j = await fetchJSON('{{ route('dashboard.pdv.address') }}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:JSON.stringify(payload)});
-  if(j.ok){ document.getElementById('address_id').value = j.address_id; recalc(); }
-}
-
-// produtos
-document.getElementById('p-busca').addEventListener('input', async (e)=>{
-  const q = e.target.value.trim();
-  const j = await fetchJSON('{{ route('dashboard.pdv.search.products') }}?q='+encodeURIComponent(q));
-  const box = document.getElementById('p-lista'); box.innerHTML='';
-  j.forEach(p=>{
-    const a = document.createElement('a');
-    a.href='#'; a.textContent = p.name + ' — R$ '+(+p.price).toFixed(2).replace('.',',');
-    a.onclick=(ev)=>{ev.preventDefault(); addItem(p); };
-    a.className='badge'; a.style.display='inline-block'; a.style.margin='3px';
-    box.appendChild(a);
-  });
-});
-
-function addItem(p){
-  const i = items.findIndex(x=>x.product_id===p.id);
-  if(i>=0){ items[i].qty += 1; }
-  else { items.push({product_id:p.id, name:p.name, price:+p.price, qty:1}); }
-  renderCart(); recalc();
-}
-
-function removeItem(id){
-  items = items.filter(x=>x.product_id!==id);
-  renderCart(); recalc();
-}
-
-function changeQty(id, q){
-  const it = items.find(x=>x.product_id===id);
-  if(!it) return;
-  it.qty = Math.max(1, parseInt(q||1));
-  renderCart(); recalc();
+function recalc(){
+  state.totals.sub = state.items.reduce((s,i)=> s + (i.price*i.qty), 0);
+  state.totals.total = Math.max(0, state.totals.sub - state.totals.discount + state.totals.delivery);
+  document.getElementById('subtotal').innerText = fmt(state.totals.sub);
+  document.getElementById('discount').innerText = fmt(state.totals.discount);
+  document.getElementById('deliveryFee').innerText = fmt(state.totals.delivery);
+  document.getElementById('grandTotal').innerText = fmt(state.totals.total);
 }
 
 function renderCart(){
-  const tb = document.getElementById('cart'); tb.innerHTML='';
-  items.forEach(row=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${row.name}</td>
-      <td>R$ ${row.price.toFixed(2).replace('.',',')}</td>
-      <td><input type="number" min="1" value="${row.qty}" style="width:70px" onchange="changeQty(${row.product_id}, this.value)"></td>
-      <td>R$ ${(row.price*row.qty).toFixed(2).replace('.',',')}</td>
-      <td><a href="#" class="badge" onclick="removeItem(${row.product_id});return false;">remover</a></td>`;
-    tb.appendChild(tr);
-  });
+  const tbody = document.getElementById('cartBody');
+  tbody.innerHTML = state.items.map((i,idx)=>`
+    <tr>
+      <td>${i.name}${i.custom? ' <span class="badge">avulso</span>':''}</td>
+      <td class="text-right">${fmt(i.price)}</td>
+      <td><input type="number" min="1" value="${i.qty}" class="input input-sm" onchange="updQty(${idx},this.value)"></td>
+      <td class="text-right">${fmt(i.price*i.qty)}</td>
+      <td><button class="btn btn-xs btn-ghost" onclick="delItem(${idx})">✕</button></td>
+    </tr>`).join('');
+  recalc();
 }
 
-async function aplicarCupom(){
-  discountCode = document.getElementById('cupom').value.trim();
-  await recalc();
+window.updQty = (idx,v)=>{ state.items[idx].qty = parseInt(v||1); renderCart(); };
+window.delItem = (idx)=>{ state.items.splice(idx,1); renderCart(); };
+
+async function viaCEP(cep){
+  cep = cep.replace(/\D/g,'');
+  if(cep.length!==8) return;
+  try{
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const j = await r.json();
+    if(!j.erro){
+      document.getElementById('street').value = j.logradouro||'';
+      document.getElementById('neighborhood').value = j.bairro||'';
+      document.getElementById('city').value = j.localidade||'';
+      document.getElementById('state').value = j.uf||'';
+    }
+  }catch(e){}
+}
+document.getElementById('cep').addEventListener('blur', e=> viaCEP(e.target.value));
+
+// Função para atualizar badge de fiados
+async function updateFiadoBadge(customerId){
+  const badge = document.getElementById('fiadoBadge');
+  try{
+    const r = await fetch(`/api/fiados/saldo?customer_id=${customerId}`);
+    const j = await r.json();
+    if(j.ok){
+      const v = Number(j.saldo||0);
+      const fmt = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
+      badge.textContent = `Em aberto: ${fmt}`;
+      // cor opcional por saldo
+      badge.classList.remove('bg-success','bg-danger','bg-warning');
+      badge.classList.add(v>0 ? 'bg-danger' : 'bg-success'); // débito = vermelho; ok/crédito = verde
+    }
+  }catch(e){}
 }
 
-async function recalc(){
-  const addrId = document.getElementById('address_id').value;
-  let address = null;
-  if(addrId){
-    address = {
-      city: document.getElementById('a-city').value,
-      state: document.getElementById('a-state').value
-    };
-  }
-  const payload = { items, address, coupon_code: discountCode || null, customer_id: customerId || null };
-  const j = await fetchJSON('{{ route('dashboard.pdv.calculate') }}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:JSON.stringify(payload)});
-  calcCache = j;
-  document.getElementById('r-subtotal').textContent = money(j.subtotal);
-  document.getElementById('r-desconto').textContent = money(j.discount);
-  document.getElementById('r-entrega').textContent = money(j.delivery);
-  document.getElementById('r-total').textContent = money(j.total);
-  const slotSel = document.getElementById('delivery_slot'); slotSel.innerHTML='';
-  (j.slots||[]).forEach(s=>{
-    const o = document.createElement('option');
-    o.value = s.date; o.textContent = s.label; slotSel.appendChild(o);
-  });
-  document.getElementById('slots').textContent = (j.slots||[]).length ? 'Escolha a data/ janela:' : 'Sem janelas disponíveis nos próximos dias.';
-}
+/* ------- BUSCA CLIENTE ------- */
+const custInput = document.getElementById('customerSearch');
+const custDrop = document.getElementById('customerResults');
+const customerData = document.getElementById('customerData');
+const customerSearch = document.getElementById('customerSearch');
+custInput.addEventListener('input', async (e)=>{
+  const q = e.target.value.trim();
+  if(q.length<2){ custDrop.classList.add('d-none'); return; }
+  const r = await fetch(`{{ route('dashboard.pdv.search.customers') }}?q=${encodeURIComponent(q)}`);
+  const list = await r.json();
+  custDrop.innerHTML = list.map(c=>`<button class="dropdown-item" data-id="${c.id}">${c.name} • ${c.phone} ${c.email? ' • '+c.email:''}</button>`).join('') 
+    || `<div class="p-3 text-sm">Nada encontrado. <button id="linkNewCustomer" class="link">+ criar novo</button></div>`;
+  custDrop.classList.remove('d-none');
+});
+custDrop.addEventListener('click', (ev)=>{
+  const b = ev.target.closest('button.dropdown-item'); 
+  if(b){
+    state.customer = {id: b.dataset.id, label: b.innerText};
+    customerData.innerText = b.innerText;
+    customerData.style.display = '';            // mostra o resumo
+    
+    // habilita link + badge
+    document.getElementById('fiadoTools').style.display = 'block';
+    const lf = document.getElementById('linkFiados');
+    lf.href = `/dashboard/customers/${state.customer.id}/fiados`;
+    updateFiadoBadge(state.customer.id);
+    
+    custDrop.classList.add('d-none'); // ou hidden, conforme seu tema
+  }else if(ev.target.id==='linkNewCustomer'){ openCustomerModal(); }
+});
+document.getElementById('btnNewCustomer').onclick = openCustomerModal;
 
-function money(v){ return 'R$ '+(+v).toFixed(2).replace('.',','); }
+function openCustomerModal(){ document.getElementById('modalCustomer').classList.remove('d-none'); }
+document.getElementById('nc_cancel').onclick = ()=> document.getElementById('modalCustomer').classList.add('d-none');
+document.getElementById('nc_save').onclick = async ()=>{
+  const body = {name: document.getElementById('nc_name').value, phone: document.getElementById('nc_phone').value, email: document.getElementById('nc_email').value};
+  const r = await fetch('/api/customers',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const c = await r.json();
+  state.customer = {id:c.id, label:`${c.name} • ${c.phone} ${c.email? ' • '+c.email:''}`};
+  customerSearch.value = c.name;
+  customerData.innerText = state.customer.label;
+  customerData.style.display = '';
 
-async function finalizar(){
-  if(!customerId){ alert('Selecione o cliente.'); return; }
-  if(!items.length){ alert('Adicione ao menos 1 item.'); return; }
-  const pm = document.querySelector('input[name="pm"]:checked').value;
-  const payload = {
-    customer_id: customerId,
-    address_id: document.getElementById('address_id').value || null,
-    delivery_date: document.getElementById('delivery_slot').value || null,
-    delivery_window: (document.getElementById('delivery_slot').selectedOptions[0]?.text || '').trim(),
-    items: items,
-    coupon_code: discountCode || null,
-    payment_method: pm,
-    note: document.getElementById('o-notes').value || null
-  };
-  const out = document.getElementById('p-out'); out.textContent = 'Processando…';
-  const j = await fetchJSON('{{ route('dashboard.pdv.store') }}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:JSON.stringify(payload)});
+  document.getElementById('fiadoTools').style.display = 'block';
+  document.getElementById('linkFiados').href = `/dashboard/customers/${state.customer.id}/fiados`;
+  updateFiadoBadge(state.customer.id);
+  
+  document.getElementById('modalCustomer').classList.add('d-none');
+};
+
+/* ------- PRODUTOS ------- */
+const prodInput = document.getElementById('productSearch');
+const prodDrop = document.getElementById('productResults');
+prodInput.addEventListener('input', async (e)=>{
+  const q = e.target.value.trim();
+  if(q.length<2){ prodDrop.classList.add('d-none'); return; }
+  const r = await fetch(`{{ route('dashboard.pdv.search.products') }}?q=${encodeURIComponent(q)}`);
+  const list = await r.json();
+  prodDrop.innerHTML = list.map(p=>`<button class="dropdown-item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">${p.name} • ${fmt(p.price)}</button>`).join('');
+  prodDrop.classList.remove('d-none');
+});
+prodDrop.addEventListener('click', (ev)=>{
+  const b = ev.target.closest('button.dropdown-item'); 
+  if(!b) return;
+  state.items.push({product_id: +b.dataset.id, name:b.dataset.name, price:+b.dataset.price, qty: +document.getElementById('qty').value||1});
+  prodDrop.classList.add('d-none'); prodInput.value=''; renderCart();
+});
+document.getElementById('addProduct').onclick = ()=>{};
+document.getElementById('addCustom').onclick = ()=>{
+  const name = document.getElementById('customName').value.trim(); 
+  const price = parseFloat(document.getElementById('customPrice').value||0);
+  if(!name || !price) return;
+  state.items.push({product_id:null, custom:true, name, price, qty:1});
+  document.getElementById('customName').value=''; 
+  document.getElementById('customPrice').value=''; 
+  renderCart();
+};
+
+/* ------- CUPOM ------- */
+document.getElementById('applyCoupon').onclick = async ()=>{
+  const code = document.getElementById('couponCode').value.trim();
+  const payload = {code, customer_id: state.customer?.id || null, subtotal: state.totals.sub};
+  const r = await fetch('{{ route('dashboard.pdv.validate.coupon') }}',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  const j = await r.json();
   if(j.ok){
-    let html = `<div class="badge" style="background:#d1fae5;color:#065f46">Pedido #${j.number} criado!</div>`;
-    if(j.payment_link){
-      html += `<div style="margin-top:6px"><a class="badge" target="_blank" href="${j.payment_link}">Abrir checkout Mercado Pago</a></div>`;
-    }
-    if(j.pix_qr_base64){
-      html += `<div style="margin-top:6px"><img style="max-width:220px;border:1px solid #eee" src="data:image/png;base64,${j.pix_qr_base64}"><br><small>Copia-e-cola: ${j.pix_copy_paste}</small></div>`;
-    }
-    out.innerHTML = html;
-  } else {
-    out.innerHTML = `<div class="badge" style="background:#fee2e2;color:#991b1b">Erro ao criar pedido</div>`;
+    state.coupon = j.coupon; state.totals.discount = j.discount_value; 
+    document.getElementById('couponMsg').innerHTML = `<span class="text-green-700">Cupom aplicado: ${j.coupon.code} (${j.coupon.type==='percentage'? j.coupon.value+'%' : fmt(j.coupon.value)})</span>`;
+  }else{
+    state.coupon = null; state.totals.discount = 0;
+    document.getElementById('couponMsg').innerHTML = `<span class="text-red-700">${j.message||'Cupom inválido'}</span>`;
   }
-}
+  recalc();
+};
+
+/* ------- FINALIZAR ------- */
+document.getElementById('finish').onclick = async ()=>{
+  const body = {
+    customer_id: state.customer?.id,
+    address: {
+      cep: document.getElementById('cep').value, 
+      number: document.getElementById('number').value, 
+      street: document.getElementById('street').value, 
+      neighborhood: document.getElementById('neighborhood').value,
+      city: document.getElementById('city').value, 
+      state: document.getElementById('state').value, 
+      complement: document.getElementById('complement').value
+    },
+    delivery_type: document.getElementById('deliveryType').value,
+    notes: document.getElementById('orderNotes').value,
+    items: state.items,
+    coupon_code: state.coupon?.code || null,
+    payment_method: document.querySelector('input[name="pay"]:checked').value
+  };
+  const r = await fetch('{{ route('dashboard.pdv.store') }}',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const j = await r.json();
+  if(j.ok){
+    alert('Pedido criado com sucesso! #' + j.order_number);
+    window.location.href = `/dashboard/orders/${j.id}`;
+  }else{
+    alert('Erro: ' + (j.message||'Não foi possível finalizar'));
+  }
+};
 </script>
 @endpush
-@endsection
-

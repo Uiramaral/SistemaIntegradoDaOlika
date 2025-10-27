@@ -1,0 +1,231 @@
+# ✅ FRETE POR DISTÂNCIA E FUNCIONALIDADES IMPLEMENTADAS
+
+## 📋 RESUMO
+Implementação completa de frete por distância (loja → cliente), tela de pedido com QR PIX, e gestão de fiados.
+
+## 🔧 ALTERAÇÕES REALIZADAS
+
+### 1. SQL (Executar Manualmente)
+
+```sql
+-- 1.1 Settings - Endereço da loja + parâmetros do frete
+ALTER TABLE settings
+  ADD COLUMN store_zip_code VARCHAR(10) NULL AFTER company_address,
+  ADD COLUMN store_number VARCHAR(20) NULL AFTER store_zip_code,
+  ADD COLUMN store_lat DECIMAL(10,7) NULL AFTER store_number,
+  ADD COLUMN store_lng DECIMAL(10,7) NULL AFTER store_lat,
+  ADD COLUMN delivery_base_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER store_lng,
+  ADD COLUMN delivery_per_km DECIMAL(10,2) NOT NULL DEFAULT 2.50 AFTER delivery_base_fee,
+  ADD COLUMN delivery_min_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER delivery_min_fee,
+  ADD COLUMN delivery_free_over DECIMAL(10,2) NULL AFTER delivery_min_fee,
+  ADD COLUMN delivery_radius_km DECIMAL(10,2) NULL AFTER delivery_free_over;
+
+-- Exemplo de preenchimento (ajustar aos seus valores)
+UPDATE settings
+   SET store_zip_code='40140000',
+       store_number='123',
+       store_lat=-12.9777490,
+       store_lng=-38.5016310,
+       delivery_base_fee=4.00,
+       delivery_per_km=2.50,
+       delivery_min_fee=6.00,
+       delivery_free_over=150.00,
+       delivery_radius_km=15.00
+ WHERE id=1;
+
+-- 1.2 Addresses - Latitude/Longitude do cliente (para cache)
+ALTER TABLE addresses
+  ADD COLUMN latitude DECIMAL(10,7) NULL AFTER state,
+  ADD COLUMN longitude DECIMAL(10,7) NULL AFTER latitude;
+
+-- 1.3 Fiado (se ainda não criou)
+CREATE TABLE IF NOT EXISTS customer_debts (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  customer_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  type ENUM('debit','credit') NOT NULL DEFAULT 'debit',
+  status ENUM('open','settled') NOT NULL DEFAULT 'open',
+  description VARCHAR(255) NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_customer (customer_id),
+  KEY idx_order (order_id),
+  CONSTRAINT fk_debts_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
+  CONSTRAINT fk_debts_order FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+-- 1.4 Item avulso (se ainda não aplicou)
+ALTER TABLE order_items
+  MODIFY product_id BIGINT UNSIGNED NULL,
+  ADD COLUMN custom_name VARCHAR(255) NULL AFTER product_id;
+```
+
+### 2. Controllers
+
+#### 2.1 PDVController.php (ATUALIZADO)
+**Arquivo:** `app/Http/Controllers/Dashboard/PDVController.php`
+
+**Novos métodos adicionados:**
+- `haversineKm($lat1, $lon1, $lat2, $lon2)` - Calcula distância em km usando fórmula Haversine
+- `geocodeAddressIfNeeded(array &$addr)` - Geocodifica endereço usando Google Maps (opcional)
+- `computeDeliveryFeeByDistance(?array $addr, float $subtotal)` - Calcula frete por distância
+
+**Alterações:**
+- Método `computeDeliveryFee()` mantido para compatibilidade
+- Novo método `computeDeliveryFeeByDistance()` implementado
+
+#### 2.2 OrderViewController.php (NOVO)
+**Arquivo:** `app/Http/Controllers/OrderViewController.php`
+
+**Funcionalidade:**
+- Exibe detalhes do pedido com QR PIX e botão de copiar
+- Método `show($id)` carrega pedido com relações (customer, items, product)
+
+#### 2.3 DebtsController.php (NOVO)
+**Arquivo:** `app/Http/Controllers/DebtsController.php`
+
+**Funcionalidade:**
+- Lista fiados de um cliente (`index($customerId)`)
+- Dá baixa em débitos (`settle($debtId, Request $r)`)
+
+### 3. Rotas
+
+#### 3.1 routes/api.php (ATUALIZADO)
+**Rotas adicionadas:**
+```php
+// Rotas do PDV
+Route::prefix('pdv')->name('api.pdv.')->group(function () {
+    Route::get('/customers/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchCustomers'])->name('customers.search');
+    Route::post('/customers', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeCustomer'])->name('customers.store');
+    Route::get('/products/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('products.search');
+    Route::post('/coupons/validate', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('coupons.validate');
+    Route::post('/orders', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeOrder'])->name('orders.store');
+    
+    // Rota de cálculo de frete por distância
+    Route::get('/calc-frete', function(\Illuminate\Http\Request $r){
+        $pdv = app(\App\Http\Controllers\Dashboard\PDVController::class);
+        $addr = [
+            'cep' => $r->get('cep'),
+            'street' => $r->get('street'),
+            'number' => $r->get('number'),
+            'neighborhood' => $r->get('neighborhood'),
+            'city' => $r->get('city'),
+            'state' => $r->get('state'),
+            'latitude' => $r->get('lat'),
+            'longitude' => $r->get('lng'),
+        ];
+        $fee = $pdv->computeDeliveryFeeByDistance($addr, (float)$r->get('subtotal',0));
+        return response()->json(['fee' => $fee]);
+    })->name('calc-frete');
+});
+
+// Rotas de fiados
+Route::prefix('fiados')->name('api.fiados.')->group(function () {
+    Route::post('/{debt}/baixa', [\App\Http\Controllers\DebtsController::class, 'settle'])->name('settle');
+});
+```
+
+#### 3.2 routes/web.php (ATUALIZADO)
+**Rotas adicionadas:**
+```php
+// Detalhes do pedido (com QR PIX)
+Route::get('/orders/{id}', [\App\Http\Controllers\OrderViewController::class, 'show'])->name('orders.show');
+
+// Fiados do cliente
+Route::get('/customers/{id}/fiados', [\App\Http\Controllers\DebtsController::class, 'index'])->name('debts.index');
+```
+
+## 📝 BLADES NECESSÁRIAS (A CRIAR)
+
+### 1. resources/views/dashboard/orders/show.blade.php
+**Funcionalidade:** Exibe detalhes do pedido com QR PIX e botão de copiar
+
+**Recursos:**
+- QR Code gerado via qrcodejs
+- Textarea com código PIX copiável
+- Botão "Copiar código PIX"
+- Informação de validade do PIX
+
+### 2. resources/views/dashboard/customers/fiados.blade.php
+**Funcionalidade:** Lista fiados do cliente com botão de baixa
+
+**Recursos:**
+- Tabela com todos os fiados (débitos e créditos)
+- Botão "Dar baixa" para débitos em aberto
+- Cálculo de saldo total
+
+## ⚙️ CONFIGURAÇÃO
+
+### .env
+Adicionar (opcional, para geocodificação):
+```env
+GOOGLE_MAPS_KEY=sua_chave_aqui
+```
+
+### Configuração da Loja
+Preencher na tabela `settings`:
+- `store_zip_code` - CEP da loja
+- `store_number` - Número do endereço da loja
+- `store_lat` - Latitude da loja
+- `store_lng` - Longitude da loja
+- `delivery_base_fee` - Taxa base de entrega (R$)
+- `delivery_per_km` - Valor por km rodado (R$)
+- `delivery_min_fee` - Taxa mínima de entrega (R$)
+- `delivery_free_over` - Valor mínimo para frete grátis (R$)
+- `delivery_radius_km` - Raio máximo de entrega (km)
+
+## 🔄 FLUXO DE FUNCIONAMENTO
+
+### 1. Cálculo de Frete
+1. PDV solicita cálculo de frete via `/api/pdv/calc-frete`
+2. Backend calcula distância entre loja e endereço do cliente (Haversine)
+3. Aplica regras: raio máximo, frete grátis, taxa mínima
+4. Retorna valor do frete em tempo real
+
+### 2. Pedido com PIX
+1. Pedido finalizado com método PIX
+2. Sistema gera código PIX (BR Code) via `buildPixPayload()`
+3. Salva `pix_copia_cola` e `pix_expires_at` no pedido
+4. Tela de detalhes exibe QR Code e botão de copiar
+
+### 3. Fiados
+1. PDV cria pedido com método "Fiado"
+2. Sistema cria registro em `customer_debts` (type='debit')
+3. Cliente pode visualizar seus fiados em `/dashboard/customers/{id}/fiados`
+4. Usuário pode dar baixa no fiado, criando registro de crédito
+
+## 📦 ARQUIVOS MODIFICADOS/CRIADOS
+
+### Criados:
+- `app/Http/Controllers/OrderViewController.php`
+- `app/Http/Controllers/DebtsController.php`
+- `FRETE_DISTANCIA_E_FUNCIONALIDADES.txt` (este arquivo)
+
+### Modificados:
+- `app/Http/Controllers/Dashboard/PDVController.php`
+- `routes/api.php`
+- `routes/web.php`
+
+### Criar Manualmente:
+- `resources/views/dashboard/orders/show.blade.php`
+- `resources/views/dashboard/customers/fiados.blade.php`
+
+## ✅ STATUS
+
+- ✅ SQL documentado (executar manualmente)
+- ✅ Controllers criados/atualizados
+- ✅ Rotas adicionadas
+- ⚠️ Blades precisam ser criadas
+- ⚠️ Configuração no .env (opcional para geocodificação)
+- ⚠️ Executar migrations/ajustes SQL
+
+## 🚀 PRÓXIMOS PASSOS
+
+1. Executar SQL manualmente no banco de dados
+2. Criar as blades `show.blade.php` e `fiados.blade.php`
+3. Configurar endereço da loja na tabela `settings`
+4. Testar cálculo de frete no PDV
+5. Testar geração de PIX
+6. Testar gestão de fiados

@@ -1,329 +1,407 @@
-{{-- PÁGINA: PDV (Ponto de Venda - Criação de Pedidos) --}}
 @extends('layouts.dashboard')
 
-@section('title','Ponto de Venda (PDV)')
-
-{{-- força o header do layout a não renderizar ações nesta página --}}
-@section('actions') @endsection
-@section('page_actions') @endsection
+@section('title', 'Ponto de Venda (PDV)')
 
 @section('content')
 
-<div class="page-header">
-  <h1 class="text-2xl font-bold">Ponto de Venda (PDV)</h1>
-  {{-- Removido botão "Baixar Layout" --}}
-</div>
+<div class="page-header flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-xl font-semibold">Status & Templates</h1>
+    <p class="text-sm text-gray-500">Gerencie os status dos pedidos e templates de mensagens</p>
+  </div>
 
-<div id="pdv" class="space-y-6">
-  
-  {{-- CLIENTE --}}
-  <section class="card">
-    <h2 class="card-title">Cliente</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div class="col-span-2">
-        <input type="text" id="customerSearch" class="input" placeholder="buscar por nome, telefone ou e-mail…">
-        <div id="customerResults" class="dropdown d-none"></div>
-      </div>
-      <button id="btnNewCustomer" class="btn btn-outline">+ Incluir cliente</button>
-    </div>
-    <div id="customerData" class="mt-3 text-sm text-gray-600 d-none"></div>
-    <div class="mt-2" id="fiadoTools" style="display:none">
-      <a id="linkFiados" href="#" class="btn btn-sm btn-outline-secondary">Fiados do cliente</a>
-      <span id="fiadoBadge" class="badge bg-warning text-dark">Em aberto: R$ 0,00</span>
-    </div>
-  </section>
-
-  {{-- ENDEREÇO (CEP -> Número -> resto) --}}
-  <section class="card">
-    <h2 class="card-title">Endereço</h2>
-    <div class="grid grid-cols-1 md:grid-cols-8 gap-3">
-      <input id="cep" class="input md:col-span-2" placeholder="CEP *">
-      <input id="number" class="input md:col-span-2" placeholder="Nº *">
-      <input id="street" class="input md:col-span-4" placeholder="Rua *">
-      <input id="neighborhood" class="input md:col-span-3" placeholder="Bairro">
-      <input id="city" class="input md:col-span-3" placeholder="Cidade">
-      <input id="state" class="input md:col-span-2" placeholder="UF">
-      <input id="complement" class="input md:col-span-8" placeholder="Complemento">
-    </div>
-  </section>
-
-  {{-- PRODUTOS (com item avulso) --}}
-  <section class="card">
-    <h2 class="card-title">Produtos</h2>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <div class="md:col-span-3">
-        <input type="text" id="productSearch" class="input" placeholder="buscar produto por nome ou SKU…">
-        <div id="productResults" class="dropdown d-none"></div>
-      </div>
-      <input type="number" id="qty" class="input" min="1" value="1" placeholder="Qtd">
-      <button id="addProduct" class="btn">Adicionar</button>
-    </div>
-
-    <details class="mt-4">
-      <summary class="text-sm text-gray-600 cursor-pointer">+ Item avulso (somente para esta venda)</summary>
-      <div class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3">
-        <input id="customName" class="input md:col-span-3" placeholder="Nome do item">
-        <input id="customPrice" class="input" type="number" step="0.01" placeholder="Preço">
-        <button id="addCustom" class="btn btn-outline">Adicionar avulso</button>
-      </div>
-    </details>
-
-    <div class="mt-4 overflow-x-auto">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Produto</th><th class="w-24 text-right">Preço</th><th class="w-20">Qtd</th><th class="w-28 text-right">Total</th><th class="w-10"></th>
-          </tr>
-        </thead>
-        <tbody id="cartBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  {{-- ENTREGA / OBS --}}
-  <section class="card">
-    <h2 class="card-title">Entrega</h2>
-    <select id="deliveryType" class="input mb-3">
-      <option value="pickup">Retirada</option>
-      <option value="delivery">Entrega</option>
-    </select>
-    <textarea id="orderNotes" class="input" rows="3" placeholder="Observações do pedido…"></textarea>
-  </section>
-
-  {{-- RESUMO + CUPOM --}}
-  <section class="card">
-    <h2 class="card-title">Resumo</h2>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
-      <input id="couponCode" class="input md:col-span-2" placeholder="Cupom">
-      <button id="applyCoupon" class="btn md:col-span-1">Aplicar</button>
-      <div id="couponMsg" class="md:col-span-2 text-sm"></div>
-    </div>
-
-    <div class="mt-4 space-y-1 text-sm">
-      <div class="flex justify-between"><span>Subtotal</span><span id="subtotal">R$ 0,00</span></div>
-      <div class="flex justify-between"><span>Desconto</span><span id="discount">R$ 0,00</span></div>
-      <div class="flex justify-between"><span>Entrega</span><span id="deliveryFee">R$ 0,00</span></div>
-      <div class="flex justify-between font-semibold text-lg"><span>Total</span><span id="grandTotal">R$ 0,00</span></div>
-    </div>
-  </section>
-
-  {{-- PAGAMENTO --}}
-  <section class="card">
-    <h2 class="card-title">Pagamento</h2>
-    <div class="flex flex-wrap gap-4 text-sm">
-      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="pix" checked> PIX</label>
-      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="link"> Link Mercado Pago</label>
-      <label class="inline-flex items-center gap-2"><input type="radio" name="pay" value="fiado"> Fiado (lançar débito)</label>
-    </div>
-    <button id="finish" class="btn btn-primary w-full mt-4">Finalizar Pedido</button>
-  </section>
-</div>
-
-{{-- Modal Novo Cliente --}}
-<div id="modalCustomer" class="modal d-none">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg mb-3">Novo Cliente</h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <input id="nc_name" class="input" placeholder="Nome *">
-      <input id="nc_phone" class="input" placeholder="Telefone (E.164) *">
-      <input id="nc_email" class="input md:col-span-2" placeholder="E-mail (opcional)">
-    </div>
-    <div class="mt-4 flex justify-end gap-2">
-      <button id="nc_cancel" class="btn btn-outline">Cancelar</button>
-      <button id="nc_save" class="btn">Salvar</button>
-    </div>
+  {{-- Estes dois botões aparecem na página de referência --}}
+  <div class="flex gap-2">
+    <a href="{{ route('dashboard.layout.download') }}" class="btn btn-soft">Baixar Layout</a>
+    <a href="{{ route('dashboard.status.create') }}" class="btn btn-primary">+ Novo Status</a>
   </div>
 </div>
 
+<div class="card">
+  <div class="card-header">
+    <h2 class="text-lg font-semibold">Ponto de Venda (PDV)</h2>
+  </div>
+  <div class="card-body">
+    {{-- CLIENTE --}}
+    <section class="mb-6">
+      <h3 class="section-title">Cliente</h3>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div class="lg:col-span-4">
+          <input id="cliente-busca" type="text" class="input"
+                 placeholder="buscar por nome, telefone, e-mail" autocomplete="off">
+          <div id="cliente-sugestoes" class="suggestions"></div>
+        </div>
+
+        <div class="lg:col-span-3">
+          <input id="cliente-nome" type="text" class="input" placeholder="Nome">
+        </div>
+        <div class="lg:col-span-3">
+          <input id="cliente-telefone" type="tel" class="input" placeholder="Telefone (E164)">
+        </div>
+        <div class="lg:col-span-2">
+          <input id="cliente-email" type="email" class="input" placeholder="E-mail">
+        </div>
+      </div>
+    </section>
+
+    {{-- ENDEREÇO --}}
+    <section class="mb-6">
+      <h3 class="section-title">Endereço</h3>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div class="lg:col-span-6">
+          <input id="end-rua" class="input" placeholder="Rua *">
+        </div>
+        <div class="lg:col-span-2">
+          <input id="end-num" class="input" placeholder="N° *">
+        </div>
+        <div class="lg:col-span-2">
+          <input id="end-cep" class="input" placeholder="CEP">
+        </div>
+        <div class="lg:col-span-2">
+          <input id="end-compl" class="input" placeholder="Compl.">
+        </div>
+
+        <div class="lg:col-span-3">
+          <input id="end-bairro" class="input" placeholder="Bairro">
+        </div>
+        <div class="lg:col-span-5">
+          <input id="end-cidade" class="input" placeholder="Cidade *">
+        </div>
+        <div class="lg:col-span-2">
+          <input id="end-uf" class="input" placeholder="UF *" maxlength="2">
+        </div>
+        <div class="lg:col-span-2">
+          <button id="btn-salvar-endereco" type="button" class="btn btn-soft w-full">Salvar Endereço</button>
+        </div>
+      </div>
+    </section>
+
+    {{-- ITENS --}}
+    <section class="mb-6">
+      <h3 class="section-title">Itens</h3>
+
+      <div class="lg:max-w-md mb-3">
+        <input id="produto-busca" type="text" class="input"
+               placeholder="buscar produto por nome ou SKU" autocomplete="off">
+        <div id="produto-sugestoes" class="suggestions"></div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="text-right">Preço</th>
+              <th class="text-center">Qtd</th>
+              <th class="text-right">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabela-itens">
+            {{-- linhas adicionadas via JS --}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {{-- ENTREGA --}}
+    <section class="mb-6">
+      <h3 class="section-title">Entrega</h3>
+
+      <select id="entrega-opcao" class="input mb-3">
+        <option value="" selected>Selecione um endereço e itens para calcular opções...</option>
+      </select>
+
+      <textarea id="pedido-observacoes" class="textarea" placeholder="Observações do pedido"></textarea>
+    </section>
+
+    {{-- RESUMO / CUPOM --}}
+    <section class="mb-6">
+      <h3 class="section-title">Resumo</h3>
+
+      <div class="flex items-center gap-2 mb-3">
+        <input id="cupom" type="text" class="input w-40" placeholder="Cupom">
+        <button id="btn-aplicar-cupom" type="button" class="btn btn-soft">Aplicar</button>
+        <span id="cupom-feedback" class="text-sm text-gray-500"></span>
+      </div>
+
+      <div class="totais">
+        <div class="totais-row"><span>Subtotal</span><span id="subtotal">R$ 0,00</span></div>
+        <div class="totais-row"><span>Desconto</span><span id="desconto">R$ 0,00</span></div>
+        <div class="totais-row"><span>Entrega</span><span id="entrega">R$ 0,00</span></div>
+        <div class="totais-row font-semibold text-lg"><span>Total</span><span id="total">R$ 0,00</span></div>
+      </div>
+    </section>
+
+    {{-- PAGAMENTO --}}
+    <section>
+      <h3 class="section-title">Pagamento</h3>
+
+      <div class="flex flex-wrap gap-4 mb-4">
+        <label class="radio"><input type="radio" name="pagamento" value="pix" checked> PIX</label>
+        <label class="radio"><input type="radio" name="pagamento" value="link"> Link Mercado Pago</label>
+        <label class="radio"><input type="radio" name="pagamento" value="dinheiro"> Dinheiro</label>
+        <label class="radio"><input type="radio" name="pagamento" value="cartao"> Cartão presencial</label>
+      </div>
+
+      <button id="btn-finalizar" class="btn btn-primary w-full lg:w-auto">
+        Finalizar Pedido
+      </button>
+    </section>
+  </div>
+</div>
+
+{{-- Templates ocultos para tabela de itens --}}
+<template id="tpl-item">
+  <tr data-id="">
+    <td class="produto-nome"></td>
+    <td class="text-right">
+      <input type="number" step="0.01" class="input input-xs text-right item-preco" value="">
+    </td>
+    <td class="text-center">
+      <div class="inline-flex items-center gap-1">
+        <button type="button" class="btn btn-xs btn-soft dec">–</button>
+        <input type="number" min="1" class="input input-xs text-center item-qtd" value="1">
+        <button type="button" class="btn btn-xs btn-soft inc">+</button>
+      </div>
+    </td>
+    <td class="text-right item-total">R$ 0,00</td>
+    <td class="text-right">
+      <button type="button" class="btn btn-xs btn-danger remove">Remover</button>
+    </td>
+  </tr>
+</template>
 @endsection
+
+@push('styles')
+<style>
+  /* utilitários/ajustes leves para ficar igual ao mock */
+  .card{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .card-header{padding:18px 20px;border-bottom:1px solid #f0f0f0}
+  .card-body{padding:20px}
+  .input{width:100%;border:1px solid #eee;background:#fff;border-radius:12px;padding:10px 12px}
+  .input-xs{padding:6px 8px;border-radius:10px}
+  .textarea{width:100%;min-height:90px;border:1px solid #eee;border-radius:12px;padding:10px 12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 14px;border-radius:12px}
+  .btn-xs{height:28px;padding:0 10px;border-radius:10px}
+  .btn-primary{background:#ff7f2a;color:#fff}
+  .btn-soft{background:#f7f7f7}
+  .btn-danger{background:#ef4444;color:#fff}
+  .radio{display:inline-flex;gap:8px;align-items:center}
+  .section-title{font-weight:600;margin-bottom:10px}
+  .table-wrapper{border:1px solid #f2f2f2;border-radius:12px;overflow:hidden}
+  .table{width:100%}
+  .table th,.table td{padding:10px 12px;border-bottom:1px solid #f5f5f5;background:#fff}
+  .table th{background:#fafafa;font-weight:600}
+  .totais{max-width:340px}
+  .totais-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+  .suggestions{position:relative}
+  .suggestions ul{position:absolute;z-index:30;width:100%;background:#fff;border:1px solid #eee;border-radius:10px;margin-top:6px;max-height:220px;overflow:auto}
+  .suggestions li{padding:8px 10px;cursor:pointer}
+  .suggestions li:hover{background:#fafafa}
+</style>
+@endpush
 
 @push('scripts')
 <script>
-const fmt = v => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0));
+/* ===============================
+   CONFIG – ajuste as rotas, se necessário
+   =============================== */
+const ROTA_BUSCA_CLIENTE = @json(route('api.customers.search'));     // GET ?q=
+const ROTA_BUSCA_PRODUTO = @json(route('api.products.search'));      // GET ?q=
+const ROTA_VALIDAR_CUPOM = @json(route('api.coupons.validate'));     // POST {code, items:[{id,qty,price}]}
+const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-let state = {
-  customer:null, address:{}, items:[], coupon:null, totals:{sub:0,discount:0,delivery:0,total:0}
+/* ===============================
+   STATE
+   =============================== */
+const state = {
+  cliente: null,
+  endereco: {},
+  itens: [],       // {id, nome, price, qty}
+  entrega: 0,
+  desconto: 0,
+  cupom: null,
 };
 
+/* ===============================
+   UTILS
+   =============================== */
+const $ = (sel, ctx=document) => ctx.querySelector(sel);
+function debounce(fn, wait=300){ let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a), wait)} }
+function renderMoney(v){ return MOEDA.format(Number(v||0)) }
+
+/* ===============================
+   CLIENTE – busca e preenchimento
+   =============================== */
+const clienteBusca = $('#cliente-busca');
+const clienteSug = $('#cliente-sugestoes');
+
+clienteBusca.addEventListener('input', debounce(async (ev)=>{
+  const q = ev.target.value.trim();
+  clienteSug.innerHTML = '';
+  if(!q){ return; }
+  const url = new URL(ROTA_BUSCA_CLIENTE);
+  url.searchParams.set('q', q);
+  const res = await fetch(url);
+  if(!res.ok) return;
+  const dados = await res.json(); // [{id,nome,telefone,email,endereco?}]
+  if(!dados.length) return;
+  const ul = document.createElement('ul');
+  dados.forEach(c=>{
+    const li = document.createElement('li');
+    li.textContent = `${c.nome} • ${c.telefone||''} ${c.email? '• '+c.email:''}`;
+    li.addEventListener('click', ()=>selecionarCliente(c));
+    ul.appendChild(li);
+  });
+  clienteSug.appendChild(ul);
+}, 250));
+
+function selecionarCliente(c){
+  state.cliente = c;
+  $('#cliente-nome').value = c.nome||'';
+  $('#cliente-telefone').value = c.telefone||'';
+  $('#cliente-email').value = c.email||'';
+  if(c.endereco){
+    $('#end-rua').value = c.endereco.rua||'';
+    $('#end-num').value = c.endereco.numero||'';
+    $('#end-cep').value = c.endereco.cep||'';
+    $('#end-compl').value = c.endereco.complemento||'';
+    $('#end-bairro').value = c.endereco.bairro||'';
+    $('#end-cidade').value = c.endereco.cidade||'';
+    $('#end-uf').value = c.endereco.uf||'';
+  }
+  clienteSug.innerHTML = '';
+  clienteBusca.value = '';
+}
+
+/* ===============================
+   PRODUTO – busca e adição
+   =============================== */
+const produtoBusca = $('#produto-busca');
+const produtoSug = $('#produto-sugestoes');
+
+produtoBusca.addEventListener('input', debounce(async (ev)=>{
+  const q = ev.target.value.trim();
+  produtoSug.innerHTML = '';
+  if(!q){ return; }
+  const url = new URL(ROTA_BUSCA_PRODUTO);
+  url.searchParams.set('q', q);
+  const res = await fetch(url);
+  if(!res.ok) return;
+  const dados = await res.json(); // [{id,nome,preco}]
+  if(!dados.length) return;
+  const ul = document.createElement('ul');
+  dados.forEach(p=>{
+    const li = document.createElement('li');
+    li.textContent = `${p.nome} — ${renderMoney(p.preco)}`;
+    li.addEventListener('click', ()=>{ addItem(p); produtoSug.innerHTML=''; produtoBusca.value=''; });
+    ul.appendChild(li);
+  });
+  produtoSug.appendChild(ul);
+}, 250));
+
+function addItem(p){
+  const existente = state.itens.find(i=>i.id===p.id);
+  if(existente){ existente.qty += 1; }
+  else{
+    state.itens.push({ id:p.id, nome:p.nome, price:Number(p.preco), qty:1 });
+  }
+  renderItens();
+  recalc();
+}
+
+function removeItem(id){
+  state.itens = state.itens.filter(i=>i.id!==id);
+  renderItens();
+  recalc();
+}
+
+function renderItens(){
+  const tbody = $('#tabela-itens');
+  tbody.innerHTML = '';
+  const tpl = $('#tpl-item').content;
+  state.itens.forEach(item=>{
+    const row = document.importNode(tpl, true);
+    const tr = row.querySelector('tr');
+    tr.dataset.id = item.id;
+    tr.querySelector('.produto-nome').textContent = item.nome;
+    const inpPreco = tr.querySelector('.item-preco');
+    const inpQtd   = tr.querySelector('.item-qtd');
+    const cellTot  = tr.querySelector('.item-total');
+    inpPreco.value = item.price.toFixed(2);
+    inpQtd.value   = item.qty;
+    const atualizar = ()=>{
+      item.price = Number(inpPreco.value||0);
+      item.qty   = Math.max(1, Number(inpQtd.value||1));
+      cellTot.textContent = renderMoney(item.price*item.qty);
+      recalc();
+    };
+    tr.querySelector('.inc').addEventListener('click', ()=>{ inpQtd.value = Number(inpQtd.value||1)+1; atualizar(); });
+    tr.querySelector('.dec').addEventListener('click', ()=>{ inpQtd.value = Math.max(1, Number(inpQtd.value||1)-1); atualizar(); });
+    inpPreco.addEventListener('change', atualizar);
+    inpQtd.addEventListener('change', atualizar);
+    tr.querySelector('.remove').addEventListener('click', ()=>removeItem(item.id));
+    cellTot.textContent = renderMoney(item.price*item.qty);
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===============================
+   CUPOM
+   =============================== */
+$('#btn-aplicar-cupom').addEventListener('click', async ()=>{
+  const code = ($('#cupom').value||'').trim();
+  $('#cupom-feedback').textContent = '';
+  if(!code){ state.cupom=null; state.desconto=0; recalc(); return; }
+  try{
+    const res = await fetch(ROTA_VALIDAR_CUPOM, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN':'{{ csrf_token() }}' },
+      body: JSON.stringify({ code, items: state.itens.map(i=>({id:i.id, qty:i.qty, price:i.price})) })
+    });
+    if(!res.ok) throw new Error('Falha ao validar cupom');
+    const data = await res.json(); // { valido:true/false, tipo:'percent|valor', valor:10, mensagem? }
+    if(data.valido){
+      state.cupom = code;
+      state.desconto = Number(data.desconto||0);
+      $('#cupom-feedback').textContent = data.mensagem || 'Cupom aplicado.';
+    }else{
+      state.cupom = null;
+      state.desconto = 0;
+      $('#cupom-feedback').textContent = data.mensagem || 'Cupom inválido.';
+    }
+    recalc();
+  }catch(e){
+    console.error(e);
+    state.cupom=null; state.desconto=0; recalc();
+    $('#cupom-feedback').textContent = 'Não foi possível validar o cupom.';
+  }
+});
+
+/* ===============================
+   TOTAIS
+   =============================== */
 function recalc(){
-  state.totals.sub = state.items.reduce((s,i)=> s + (i.price*i.qty), 0);
-  state.totals.total = Math.max(0, state.totals.sub - state.totals.discount + state.totals.delivery);
-  document.getElementById('subtotal').innerText = fmt(state.totals.sub);
-  document.getElementById('discount').innerText = fmt(state.totals.discount);
-  document.getElementById('deliveryFee').innerText = fmt(state.totals.delivery);
-  document.getElementById('grandTotal').innerText = fmt(state.totals.total);
+  const subtotal = state.itens.reduce((s,i)=> s + i.price*i.qty, 0);
+  const entrega  = Number(state.entrega||0);
+  const desconto = Number(state.desconto||0);
+  const total    = Math.max(0, subtotal - desconto + entrega);
+  $('#subtotal').textContent = renderMoney(subtotal);
+  $('#desconto').textContent = renderMoney(desconto);
+  $('#entrega').textContent  = renderMoney(entrega);
+  $('#total').textContent    = renderMoney(total);
 }
 
-function renderCart(){
-  const tbody = document.getElementById('cartBody');
-  tbody.innerHTML = state.items.map((i,idx)=>`
-    <tr>
-      <td>${i.name}${i.custom? ' <span class="badge">avulso</span>':''}</td>
-      <td class="text-right">${fmt(i.price)}</td>
-      <td><input type="number" min="1" value="${i.qty}" class="input input-sm" onchange="updQty(${idx},this.value)"></td>
-      <td class="text-right">${fmt(i.price*i.qty)}</td>
-      <td><button class="btn btn-xs btn-ghost" onclick="delItem(${idx})">✕</button></td>
-    </tr>`).join('');
-  recalc();
-}
-
-window.updQty = (idx,v)=>{ state.items[idx].qty = parseInt(v||1); renderCart(); };
-window.delItem = (idx)=>{ state.items.splice(idx,1); renderCart(); };
-
-async function viaCEP(cep){
-  cep = cep.replace(/\D/g,'');
-  if(cep.length!==8) return;
-  try{
-    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-    const j = await r.json();
-    if(!j.erro){
-      document.getElementById('street').value = j.logradouro||'';
-      document.getElementById('neighborhood').value = j.bairro||'';
-      document.getElementById('city').value = j.localidade||'';
-      document.getElementById('state').value = j.uf||'';
-    }
-  }catch(e){}
-}
-document.getElementById('cep').addEventListener('blur', e=> viaCEP(e.target.value));
-
-// Função para atualizar badge de fiados
-async function updateFiadoBadge(customerId){
-  const badge = document.getElementById('fiadoBadge');
-  try{
-    const r = await fetch(`/api/fiados/saldo?customer_id=${customerId}`);
-    const j = await r.json();
-    if(j.ok){
-      const v = Number(j.saldo||0);
-      const fmt = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
-      badge.textContent = `Em aberto: ${fmt}`;
-      // cor opcional por saldo
-      badge.classList.remove('bg-success','bg-danger','bg-warning');
-      badge.classList.add(v>0 ? 'bg-danger' : 'bg-success'); // débito = vermelho; ok/crédito = verde
-    }
-  }catch(e){}
-}
-
-/* ------- BUSCA CLIENTE ------- */
-const custInput = document.getElementById('customerSearch');
-const custDrop = document.getElementById('customerResults');
-const customerData = document.getElementById('customerData');
-const customerSearch = document.getElementById('customerSearch');
-custInput.addEventListener('input', async (e)=>{
-  const q = e.target.value.trim();
-  if(q.length<2){ custDrop.classList.add('d-none'); return; }
-  const r = await fetch(`{{ route('dashboard.pdv.search.customers') }}?q=${encodeURIComponent(q)}`);
-  const list = await r.json();
-  custDrop.innerHTML = list.map(c=>`<button class="dropdown-item" data-id="${c.id}">${c.name} • ${c.phone} ${c.email? ' • '+c.email:''}</button>`).join('') 
-    || `<div class="p-3 text-sm">Nada encontrado. <button id="linkNewCustomer" class="link">+ criar novo</button></div>`;
-  custDrop.classList.remove('d-none');
+/* ===============================
+   FINALIZAR
+   =============================== */
+$('#btn-finalizar').addEventListener('click', ()=>{
+  // aqui você reaproveita a rota que já salva o pedido no seu sistema
+  // monte o payload a partir de "state" + campos da página
+  alert('Finalização: integrar com sua rota de pedidos.');
 });
-custDrop.addEventListener('click', (ev)=>{
-  const b = ev.target.closest('button.dropdown-item'); 
-  if(b){
-    state.customer = {id: b.dataset.id, label: b.innerText};
-    customerData.innerText = b.innerText;
-    customerData.style.display = '';            // mostra o resumo
-    
-    // habilita link + badge
-    document.getElementById('fiadoTools').style.display = 'block';
-    const lf = document.getElementById('linkFiados');
-    lf.href = `/dashboard/customers/${state.customer.id}/fiados`;
-    updateFiadoBadge(state.customer.id);
-    
-    custDrop.classList.add('d-none'); // ou hidden, conforme seu tema
-  }else if(ev.target.id==='linkNewCustomer'){ openCustomerModal(); }
-});
-document.getElementById('btnNewCustomer').onclick = openCustomerModal;
-
-function openCustomerModal(){ document.getElementById('modalCustomer').classList.remove('d-none'); }
-document.getElementById('nc_cancel').onclick = ()=> document.getElementById('modalCustomer').classList.add('d-none');
-document.getElementById('nc_save').onclick = async ()=>{
-  const body = {name: document.getElementById('nc_name').value, phone: document.getElementById('nc_phone').value, email: document.getElementById('nc_email').value};
-  const r = await fetch('/api/customers',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-  const c = await r.json();
-  state.customer = {id:c.id, label:`${c.name} • ${c.phone} ${c.email? ' • '+c.email:''}`};
-  customerSearch.value = c.name;
-  customerData.innerText = state.customer.label;
-  customerData.style.display = '';
-
-  document.getElementById('fiadoTools').style.display = 'block';
-  document.getElementById('linkFiados').href = `/dashboard/customers/${state.customer.id}/fiados`;
-  updateFiadoBadge(state.customer.id);
-  
-  document.getElementById('modalCustomer').classList.add('d-none');
-};
-
-/* ------- PRODUTOS ------- */
-const prodInput = document.getElementById('productSearch');
-const prodDrop = document.getElementById('productResults');
-prodInput.addEventListener('input', async (e)=>{
-  const q = e.target.value.trim();
-  if(q.length<2){ prodDrop.classList.add('d-none'); return; }
-  const r = await fetch(`{{ route('dashboard.pdv.search.products') }}?q=${encodeURIComponent(q)}`);
-  const list = await r.json();
-  prodDrop.innerHTML = list.map(p=>`<button class="dropdown-item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">${p.name} • ${fmt(p.price)}</button>`).join('');
-  prodDrop.classList.remove('d-none');
-});
-prodDrop.addEventListener('click', (ev)=>{
-  const b = ev.target.closest('button.dropdown-item'); 
-  if(!b) return;
-  state.items.push({product_id: +b.dataset.id, name:b.dataset.name, price:+b.dataset.price, qty: +document.getElementById('qty').value||1});
-  prodDrop.classList.add('d-none'); prodInput.value=''; renderCart();
-});
-document.getElementById('addProduct').onclick = ()=>{};
-document.getElementById('addCustom').onclick = ()=>{
-  const name = document.getElementById('customName').value.trim(); 
-  const price = parseFloat(document.getElementById('customPrice').value||0);
-  if(!name || !price) return;
-  state.items.push({product_id:null, custom:true, name, price, qty:1});
-  document.getElementById('customName').value=''; 
-  document.getElementById('customPrice').value=''; 
-  renderCart();
-};
-
-/* ------- CUPOM ------- */
-document.getElementById('applyCoupon').onclick = async ()=>{
-  const code = document.getElementById('couponCode').value.trim();
-  const payload = {code, customer_id: state.customer?.id || null, subtotal: state.totals.sub};
-  const r = await fetch('{{ route('dashboard.pdv.validate.coupon') }}',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-  const j = await r.json();
-  if(j.ok){
-    state.coupon = j.coupon; state.totals.discount = j.discount_value; 
-    document.getElementById('couponMsg').innerHTML = `<span class="text-green-700">Cupom aplicado: ${j.coupon.code} (${j.coupon.type==='percentage'? j.coupon.value+'%' : fmt(j.coupon.value)})</span>`;
-  }else{
-    state.coupon = null; state.totals.discount = 0;
-    document.getElementById('couponMsg').innerHTML = `<span class="text-red-700">${j.message||'Cupom inválido'}</span>`;
-  }
-  recalc();
-};
-
-/* ------- FINALIZAR ------- */
-document.getElementById('finish').onclick = async ()=>{
-  const body = {
-    customer_id: state.customer?.id,
-    address: {
-      cep: document.getElementById('cep').value, 
-      number: document.getElementById('number').value, 
-      street: document.getElementById('street').value, 
-      neighborhood: document.getElementById('neighborhood').value,
-      city: document.getElementById('city').value, 
-      state: document.getElementById('state').value, 
-      complement: document.getElementById('complement').value
-    },
-    delivery_type: document.getElementById('deliveryType').value,
-    notes: document.getElementById('orderNotes').value,
-    items: state.items,
-    coupon_code: state.coupon?.code || null,
-    payment_method: document.querySelector('input[name="pay"]:checked').value
-  };
-  const r = await fetch('{{ route('dashboard.pdv.store') }}',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-  const j = await r.json();
-  if(j.ok){
-    alert('Pedido criado com sucesso! #' + j.order_number);
-    window.location.href = `/dashboard/orders/${j.id}`;
-  }else{
-    alert('Erro: ' + (j.message||'Não foi possível finalizar'));
-  }
-};
 </script>
 @endpush

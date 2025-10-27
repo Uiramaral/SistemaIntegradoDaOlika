@@ -215,3 +215,27 @@ p.page-sub{ color:var(--muted); margin:0 0 16px; }
 @media (max-width: 640px){
   .field-row{ grid-template-columns: 1fr; }
 }
+
+/* ===== PDV WIDTH FIX (não interfere no layout geral) ===== */
+.pdv { width: 100%; max-width: 100%; }
+
+/* Espaçamentos suaves só dentro do PDV */
+.pdv .card { margin-bottom: 16px; }
+.pdv .card-title { margin-bottom: 12px; }
+
+/* Campos do PDV: respeitar seu padrão .inp + altura dos forms */
+.pdv .field .inp { min-height: 42px; }
+
+/* Tabelas no PDV como no resto do dashboard */
+.pdv .table thead th { font-weight: 600; color: #6b7280; border-bottom: 1px solid #ececec; }
+.pdv .table tbody td { vertical-align: middle; }
+
+/* Botão base já existe (.btn). Aqui ficam as variações usadas no PDV */
+.btn.primary{ 
+  background: linear-gradient(90deg,#ff7a18,#ff8b3f); 
+  color:#fff; border:none;
+}
+.btn.primary:hover{ filter:brightness(0.95); }
+.btn.ghost{ background:#fff; border:1px solid #ececec; color:#111; }
+.btn.sm, .btn.btn-sm{ padding:8px 12px; font-size:14px; border-radius:12px; }
+.btn.block{ display:block; width:100%; }

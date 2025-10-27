@@ -57,6 +57,8 @@
 
 @section('content')
 
+{{-- DEBUG: ORDER-SHOW VIEW ATIVA --}}
+
 <div class="order-page" 
      data-status-url="{{ route('dashboard.orders.status', ['order' => $order->id]) }}">
 
@@ -253,3 +255,4 @@
 })();
 </script>
 @endpush
+

@@ -37,7 +37,7 @@
           <td>R$ {{ number_format($o->final_amount ?? $o->total_amount ?? 0,2,',','.') }}</td>
           <td><span class="badge">{{ $o->status }}</span></td>
           <td>{{ \Carbon\Carbon::parse($o->created_at)->format('d/m/Y H:i') }}</td>
-          <td><a href="{{ route('dashboard.orders.show', $o->id) }}" class="badge">Ver Pedido</a></td>
+          <td><a href="{{ route('dashboard.orders.show', $o->order_number ?? $o->id) }}" class="badge">Ver Pedido</a></td>
         </tr>
       @empty
         <tr><td colspan="5" style="text-align:center;padding:20px">Nenhum pedido</td></tr>

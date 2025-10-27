@@ -31,7 +31,7 @@
 
           <td>{{ \Carbon\Carbon::parse($o->created_at)->format('d/m H:i') }}</td>
 
-          <td><a class="badge" href="{{ route('dashboard.orders.show',$o->id) }}">abrir</a></td>
+          <td><a class="badge" href="{{ route('dashboard.orders.show',$o->order_number ?? $o->id) }}">abrir</a></td>
 
         </tr>
 

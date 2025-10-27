@@ -1,1 +1,1 @@
-﻿âœ… PDV: Blade completa substituÃ­da com layout da imagem de referÃªncia!
+﻿âœ… PDV: Blade atualizada + CSS isolado no styles.css!

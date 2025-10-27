@@ -21,17 +21,18 @@ class PDVController extends Controller
 {
     public function index()
     {
-        // pré-carrega listas enxutas (o resto vem via busca)
-        $customers = DB::table('customers')->orderByDesc('id')->limit(20)->get();
-        $products  = DB::table('products')->where('is_active', 1)->orderBy('name')->limit(50)->get();
-        $coupons   = DB::table('coupons')->where('is_active', 1)->orderByDesc('id')->limit(50)->get();
+        // 🔗 MAPA DE ROTAS — USE OS NAMES QUE EXISTEM NO SEU PROJETO
+        $pdvRoutes = [
+            // === suas rotas (estão sob middleware auth) ===
+            'customers_search' => route('api.customers.search'),          // GET /api/customers/search?q=
+            'products_search'  => route('api.products.search'),           // GET /api/products/search?q=
+            'coupons_eligible' => route('api.coupons.eligible'),          // GET /api/coupons/eligible?customer_id=&items=[]
+            'coupons_validate' => route('api.coupons.validate'),          // POST /api/coupons/validate
+            'fiado_balance'    => route('api.customers.fiado.balance'),   // GET /api/customers/fiado/balance?customer_id=
+            'order_store'      => route('api.pdv.store'),                 // POST /api/pdv/store
+        ];
 
-        // janelas e dias de entrega
-        $schedules = DB::table('delivery_schedules')->get();
-        // regras simples de frete
-        $fees = DB::table('delivery_fees')->get();
-
-        return view('dashboard.pdv', compact('customers', 'products', 'coupons', 'schedules', 'fees'));
+        return view('dashboard.pdv', compact('pdvRoutes'));
     }
 
     public function searchCustomers(Request $r)

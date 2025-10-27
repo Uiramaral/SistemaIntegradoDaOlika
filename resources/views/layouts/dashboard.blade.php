@@ -63,21 +63,6 @@
 
   <!-- Conteúdo -->
   <main class="main">
-    <header class="topbar">
-      <!-- HAMBURGER: id + type + aria -->
-      <button id="navToggle" class="hamb" type="button" aria-controls="sidebar" aria-expanded="false" @click="open = !open">☰</button>
-      <div class="titles">
-        <h1>@yield('page-title','Status & Templates')</h1>
-        <p class="sub">@yield('page-subtitle','Gerencie os status dos pedidos e templates de mensagens')</p>
-      </div>
-      <div class="actions">
-        @if(false)
-          <button class="btn ghost">Baixar Layout</button>
-          <button class="btn primary">+ Novo Status</button>
-        @endif
-      </div>
-    </header>
-
     <div class="page">
       @yield('content')
     </div>

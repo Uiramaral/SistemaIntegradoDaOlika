@@ -93,7 +93,10 @@ class DashboardController extends Controller
 
     public function orderShow(Order $order)
     {
-        return view('dashboard.order_show', compact('order'));
+        // Log para debug
+        \Log::info('LOADING VIEW: dashboard.order-show');
+        
+        return view('dashboard.order-show', compact('order'));
     }
 
     public function orderChangeStatus(Request $r, Order $order, OrderStatusService $oss)

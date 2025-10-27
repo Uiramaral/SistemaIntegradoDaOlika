@@ -641,3 +641,28 @@ Route::match(['get','post'], '/__flush', function () {
         'server_info' => ['php' => PHP_VERSION, 'laravel' => app()->version(), 'env' => app()->environment()],
     ]);
 })->name('system.flush');
+
+/*
+|--------------------------------------------------------------------------
+| ROTAS DO PDV (Ponto de Venda)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    // Busca de clientes e produtos (GET)
+    Route::get('/api/customers/search', [\App\Http\Controllers\Api\CustomerSearchController::class, 'index'])->name('api.customers.search');
+    Route::get('/api/products/search', [\App\Http\Controllers\Api\ProductSearchController::class, 'index'])->name('api.products.search');
+    
+    // Fiado - saldo do cliente
+    Route::get('/api/customers/fiado/balance', [\App\Http\Controllers\Api\FiadoController::class, 'balance'])->name('api.customers.fiado.balance');
+    
+    // Cupons
+    Route::get('/api/coupons/eligible', [\App\Http\Controllers\Api\CouponController::class, 'eligible'])->name('api.coupons.eligible');
+    Route::post('/api/coupons/validate', [\App\Http\Controllers\Api\CouponController::class, 'validateCode'])->name('api.coupons.validate');
+    
+    // Salvar pedido do PDV
+    Route::post('/api/pdv/store', [\App\Http\Controllers\PDVController::class, 'store'])->name('api.pdv.store');
+    
+    // (opcionais do topo da página)
+    Route::get('/dashboard/layout/download', fn() => abort(404))->name('dashboard.layout.download');
+    Route::get('/dashboard/status/create', fn() => abort(404))->name('dashboard.status.create');
+});

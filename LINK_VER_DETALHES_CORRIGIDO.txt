@@ -1,0 +1,14 @@
+﻿âœ… LINKS "VER DETALHES" CORRIGIDOS:
+
+1. resources/views/dashboard/orders.blade.php
+   - Linha 34: \->id â†’ \->order_number ?? \->id
+
+2. resources/views/dashboard/customers_show.blade.php
+   - Linha 40: \->id â†’ \->order_number ?? \->id
+
+3. resources/views/dashboard/status.blade.php
+   - Linha 73: \->id â†’ \->order_number ?? \->id
+
+ðŸ“ RESULTADO:
+Agora os links usam o cÃ³digo humanizado (ex: OLK00003) em vez do ID numÃ©rico.
+Se nÃ£o houver order_number, usa o ID como fallback.

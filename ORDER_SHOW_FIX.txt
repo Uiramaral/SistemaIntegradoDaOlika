@@ -1,0 +1,16 @@
+﻿âœ… CORREÃ‡ÃƒO APLICADA:
+
+1. Controller ajustado (app/Http/Controllers/Dashboard/DashboardController.php):
+   - Linha 96: dashboard.order_show â†’ dashboard.order-show
+
+2. Arquivo correto (resources/views/dashboard/order-show.blade.php):
+   - Existe e contÃ©m o comentÃ¡rio DEBUG
+   - Layout Lovable completo
+
+3. PRÃ“XIMO PASSO:
+   - Limpe o cache de views:
+     php artisan view:clear
+   - OU acesse: https://dashboard.menuolika.com.br/clear-cache-now
+   - Abra um pedido e verifique se aparece '{{-- DEBUG: ORDER-SHOW VIEW ATIVA --}}'
+
+ðŸ“ O comentÃ¡rio aparece no cÃ³digo-fonte? Se SIM, estÃ¡ funcionando!

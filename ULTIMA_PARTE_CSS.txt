@@ -1,0 +1,30 @@
+﻿.overview-page .ov-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.overview-page .kpi-card{background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:16px}
+.overview-page .kpi-title{font-size:14px;color:#6b7280;margin-bottom:6px}
+.overview-page .kpi-value{font-size:22px;font-weight:700}
+.overview-page .ov-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.overview-page .panel{background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:16px}
+.overview-page .panel-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px}
+.overview-page .panel h3{margin:0 0 2px;font-size:18px}
+.overview-page .muted{color:#6b7280;font-size:12px}
+.overview-page .link{font-weight:600;color:#111827;text-decoration:none}
+.overview-page .link:hover{text-decoration:underline}
+.overview-page .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 8px;border:1px dashed #e5e7eb;border-radius:12px;background:#fafafa}
+.overview-page .empty-ico{font-size:32px;opacity:.55;margin-bottom:6px}
+.overview-page .empty-text{color:#6b7280}
+.overview-page .orders-list{display:flex;flex-direction:column;gap:10px}
+.overview-page .order-item{display:grid;grid-template-columns:140px 1fr 120px 120px;gap:10px;padding:10px;border:1px solid #f3f4f6;border-radius:12px}
+.overview-page .order-id{font-weight:600}
+.overview-page .order-total{text-align:right}
+.overview-page .tops-list{display:flex;flex-direction:column;gap:10px}
+.overview-page .top-item{display:grid;grid-template-columns:56px 1fr 120px;gap:10px;align-items:center;padding:10px;border:1px solid #f3f4f6;border-radius:12px}
+.overview-page .top-img{width:56px;height:56px;border-radius:10px;overflow:hidden;background:#fafafa;border:1px solid #f3f4f6}
+.overview-page .top-img img{width:100%;height:100%;object-fit:cover}
+.overview-page .top-img .ph{width:100%;height:100%}
+.overview-page .top-info .top-name{font-weight:600}
+.overview-page .top-info .top-meta{font-size:12px;color:#6b7280}
+.overview-page .top-price{text-align:right;font-weight:600}
+@media (max-width: 1024px){
+  .overview-page .ov-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview-page .ov-panels{grid-template-columns:1fr}
+}

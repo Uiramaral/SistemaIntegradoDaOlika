@@ -70,7 +70,7 @@
                                     {{ $order->created_at?->format('d/m H:i') }}
                                 </td>
                                 <td class="px-5 py-3 whitespace-nowrap">
-                                    <a href="{{ route('orders.show', $order->id) }}" class="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50">Ver</a>
+                                    <a href="{{ route('orders.show', $order->order_number ?? $order->id) }}" class="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50">Ver</a>
                                 </td>
                             </tr>
                         @empty

@@ -5,137 +5,141 @@
 
 @section('content')
 
-<div class="container-fluid">
-  {{-- Título + descrição (sem botão Baixar Layout) --}}
-  <div class="d-flex align-items-start justify-content-between mb-3">
+<div class="overview-page" 
+     data-stats-url="{{ \Illuminate\Support\Facades\Route::has('admin.dashboard.stats') ? route('admin.dashboard.stats') : '' }}">
+
+  {{-- Título + botão (como no Lovable) --}}
+  <div class="ov-header">
     <div>
-      <h2 class="mb-1" style="font-weight: 700;">Visão Geral</h2>
-      <div class="text-muted">Acompanhe suas métricas e desempenho em tempo real</div>
+      <h1>Visão Geral</h1>
+      <p>Acompanhe suas métricas e desempenho em tempo real</p>
+    </div>
+    <div class="ov-actions">
+      @if (\Illuminate\Support\Facades\Route::has('dashboard.layout.download'))
+        <a class="btn btn-soft" href="{{ route('dashboard.layout.download') }}">Baixar Layout</a>
+      @endif
     </div>
   </div>
 
-  {{-- Cards do topo (4 colunas) --}}
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-md-3">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="text-muted small">Total Hoje</div>
-            <span class="small">💵</span>
-          </div>
-          <div class="fs-3 fw-bold">R$ {{ number_format($totalHoje ?? 0, 2, ',', '.') }}</div>
-        </div>
-      </div>
+  {{-- GRID de 4 cards (Total, Pedidos Hoje, Pagos Hoje, Pendentes) --}}
+  <div class="ov-kpis">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Hoje</div>
+      <div class="kpi-value" id="kpi-total">{{ isset($stats['totalHoje']) ? 'R$ '.number_format($stats['totalHoje'],2,',','.') : 'R$ '.number_format($totalHoje ?? 0,2,',','.') }}</div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="text-muted small">Pedidos Hoje</div>
-            <span class="small">🧾</span>
-          </div>
-          <div class="fs-3 fw-bold">{{ $pedidosHoje ?? 0 }}</div>
-        </div>
-      </div>
+
+    <div class="kpi-card">
+      <div class="kpi-title">Pedidos Hoje</div>
+      <div class="kpi-value" id="kpi-pedidos">{{ $stats['pedidosHoje'] ?? $pedidosHoje ?? 0 }}</div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="text-muted small">Pagos Hoje</div>
-            <span class="small">✔️</span>
-          </div>
-          <div class="fs-3 fw-bold">{{ $pagosHoje ?? 0 }}</div>
-        </div>
-      </div>
+
+    <div class="kpi-card">
+      <div class="kpi-title">Pagos Hoje</div>
+      <div class="kpi-value" id="kpi-pagos">{{ $stats['pagosHoje'] ?? $pagosHoje ?? 0 }}</div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="text-muted small">Pendentes Pgto</div>
-            <span class="small">🕒</span>
-          </div>
-          <div class="fs-3 fw-bold">{{ $pendentesPg ?? 0 }}</div>
-        </div>
-      </div>
+
+    <div class="kpi-card">
+      <div class="kpi-title">Pendentes Pgto</div>
+      <div class="kpi-value" id="kpi-pendentes">{{ $stats['pendentesHoje'] ?? $pendentesPg ?? 0 }}</div>
     </div>
   </div>
 
-  {{-- Caixas: Pedidos Recentes / Top Produtos --}}
-  <div class="row g-3">
-    <div class="col-12 col-lg-6">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div>
-              <h5 class="mb-0 fw-bold">Pedidos Recentes</h5>
-              <div class="text-muted small">Últimos pedidos realizados</div>
-            </div>
-            <a href="{{ route('dashboard.orders') }}" class="text-decoration-none small">Ver todos</a>
-          </div>
+  {{-- 2 colunas: Pedidos Recentes (esq) | Top Produtos (dir) --}}
+  <div class="ov-panels">
+    {{-- Pedidos Recentes --}}
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Pedidos Recentes</h3>
+          <span class="muted">Últimos pedidos realizados</span>
+        </div>
+        @if (\Illuminate\Support\Facades\Route::has('dashboard.orders'))
+          <a href="{{ route('dashboard.orders') }}" class="link">Ver todos</a>
+        @endif
+      </div>
 
-          @if(empty($pedidosRecentes) || $pedidosRecentes->isEmpty())
-            <div class="text-center text-muted py-4">
-              <div class="fs-2 mb-2">🛍️</div>
-              Nenhum pedido registrado ainda
-            </div>
-          @else
-            <div class="list-group list-group-flush">
-              @foreach($pedidosRecentes as $o)
-                <div class="list-group-item px-0 d-flex justify-content-between">
-                  <div>
-                    <div class="fw-semibold">#{{ $o->order_number ?? $o->id }} • {{ optional($o->customer)->name ?? 'Cliente' }}</div>
-                    <div class="text-muted small">{{ $o->created_at?->format('d/m/Y H:i') }} • {{ ucfirst($o->payment_status ?? 'pending') }}</div>
-                  </div>
-                  <div class="fw-bold">R$ {{ number_format($o->final_amount ?? 0,2,',','.') }}</div>
-                </div>
-              @endforeach
-            </div>
-          @endif
+      @if(!empty($pedidosRecentes) && count($pedidosRecentes))
+        <ul class="orders-list">
+          @foreach($pedidosRecentes as $o)
+            <li class="order-item">
+              <div class="order-id">#{{ $o->order_number ?? $o->id }}</div>
+              <div class="order-customer">{{ $o->customer_name ?? optional($o->customer)->name ?? '—' }}</div>
+              <div class="order-status">{{ $o->status_label ?? $o->status ?? '—' }}</div>
+              <div class="order-total">R$ {{ number_format($o->final_amount ?? 0,2,',','.') }}</div>
+            </li>
+          @endforeach
+        </ul>
+      @else
+        <div class="empty">
+          <div class="empty-ico">🛍️</div>
+          <div class="empty-text">Nenhum pedido registrado ainda</div>
+        </div>
+      @endif
+    </section>
+
+    {{-- Top Produtos --}}
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Top Produtos</h3>
+          <span class="muted">Últimos 7 dias</span>
         </div>
       </div>
-    </div>
-    <div class="col-12 col-lg-6">
-      <div class="card h-100 shadow-sm border-0" style="border-radius: 14px;">
-        <div class="card-body">
-          <div class="mb-2">
-            <h5 class="mb-0 fw-bold">Top Produtos</h5>
-            <div class="text-muted small">Últimos 7 dias</div>
-          </div>
 
-          @if(empty($topProdutos) || $topProdutos->isEmpty())
-            <div class="text-center text-muted py-4">
-              <div class="fs-2 mb-2">💲</div>
-              Nenhum produto vendido ainda
-            </div>
-          @else
-            <div class="list-group list-group-flush">
-              @foreach($topProdutos as $tp)
-                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center gap-3">
-                    @php $p = $tp->product; @endphp
-                    @if($p && isset($p->image_url) && !empty($p->image_url))
-                      <img src="{{ $p->image_url }}" alt="{{ $p->name }}" width="40" height="40" class="rounded" style="object-fit:cover;">
-                    @else
-                      <div class="bg-gray-200 d-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:8px;">
-                        <span>🍞</span>
-                      </div>
-                    @endif
-                    <div>
-                      <div class="fw-semibold">{{ $p->name ?? 'Produto' }}</div>
-                      <div class="text-muted small">Qtd: {{ $tp->qty }} • Receita: R$ {{ number_format($tp->revenue,2,',','.') }}</div>
-                    </div>
-                  </div>
-                  <div class="text-muted small">R$ {{ isset($p) ? number_format($p->price,2,',','.') : '-' }}</div>
+      @if(!empty($topProdutos) && count($topProdutos))
+        <ul class="tops-list">
+          @foreach($topProdutos as $tp)
+            @php $p = $tp->product ?? null; @endphp
+            <li class="top-item">
+              <div class="top-img">
+                @if($p && !empty($p->image_url))
+                  <img src="{{ $p->image_url }}" alt="{{ $p->name }}">
+                @else
+                  <div class="ph"></div>
+                @endif
+              </div>
+              <div class="top-info">
+                <div class="top-name">{{ $p->name ?? 'Produto' }}</div>
+                <div class="top-meta">
+                  Qtd: {{ $tp->qty ?? 0 }} • Receita: R$ {{ number_format($tp->revenue ?? 0,2,',','.') }}
                 </div>
-              @endforeach
-            </div>
-          @endif
+              </div>
+              <div class="top-price">R$ {{ number_format(($p->price ?? 0),2,',','.') }}</div>
+            </li>
+          @endforeach
+        </ul>
+      @else
+        <div class="empty">
+          <div class="empty-ico">💲</div>
+          <div class="empty-text">Nenhum produto vendido ainda</div>
         </div>
-      </div>
-    </div>
+      @endif
+    </section>
   </div>
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+(function(){
+  const root = document.querySelector('.overview-page');
+  const url  = root?.dataset?.statsUrl;
+
+  if(!url) return;
+
+  const money = v => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(v||0));
+
+  fetch(url, {headers:{'Accept':'application/json'}})
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if(!j) return;
+      if(j.totalHoje !== undefined) document.getElementById('kpi-total').textContent = money(j.totalHoje);
+      if(j.pedidosHoje !== undefined) document.getElementById('kpi-pedidos').textContent = j.pedidosHoje;
+      if(j.pagosHoje !== undefined) document.getElementById('kpi-pagos').textContent = j.pagosHoje;
+      if(j.pendentesHoje !== undefined) document.getElementById('kpi-pendentes').textContent = j.pendentesHoje;
+    })
+    .catch(()=>{});
+})();
+</script>
+@endpush

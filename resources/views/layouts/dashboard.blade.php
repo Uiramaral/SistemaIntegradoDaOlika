@@ -8,8 +8,8 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   
   {{-- CSS legado (se existir) + novos estilos --}}
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=2">
-  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=2" media="(max-width: 768px)">
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=3">
+  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=3" media="(max-width: 768px)">
   
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
   

@@ -5,6 +5,23 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    public function index(Request $r){
+        $q = trim((string)$r->get('q',''));
+        $orders = \DB::table('orders')
+            ->leftJoin('customers','customers.id','=','orders.customer_id')
+            ->when($q!=='', function($qb) use ($q){
+                $qb->where(function($w) use ($q){
+                    $w->where('orders.order_number','like',"%{$q}%")
+                      ->orWhere('customers.name','like',"%{$q}%");
+                });
+            })
+            ->select('orders.*','customers.name as customer_name')
+            ->orderByDesc('orders.id')
+            ->paginate(12)
+            ->withQueryString();
+        return view('dashboard.orders.index', compact('orders','q'));
+    }
+
     public function show($orderId){
         $order = DB::table('orders')->where('id',$orderId)->first();
         abort_if(!$order,404);

@@ -522,6 +522,7 @@ foreach ($dashboardHosts as $host) {
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
     
     // Pedidos
+    Route::get('/pedidos', [OrderController::class, 'index'])->name('dashboard.orders.index');
     Route::get('/orders', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orders'])->name('dashboard.orders');
     // Rota duplicada: aceita tanto code quanto id (compatibilidade)
     Route::get('/orders/{order}', [\App\Http\Controllers\Dashboard\DashboardController::class, 'orderShow'])

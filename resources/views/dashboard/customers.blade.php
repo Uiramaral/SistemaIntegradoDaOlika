@@ -16,13 +16,13 @@
 
       <p>Gerencie sua base de clientes</p>
 
-    </div>
+  </div>
 
     <div class="lp-actions">
 
       <a href="{{ route('dashboard.customers.create') }}" class="btn lp-primary">+ Novo Cliente</a>
 
-    </div>
+</div>
 
   </div>
 
@@ -46,11 +46,11 @@
 
       <table class="lp-table" id="clients-table">
 
-        <thead>
+    <thead>
 
-          <tr>
+      <tr>
 
-            <th>Cliente</th>
+        <th>Cliente</th>
 
             <th style="width:220px">Contato</th>
 
@@ -60,13 +60,13 @@
 
             <th style="width:160px" class="t-right">Ações</th>
 
-          </tr>
+      </tr>
 
-        </thead>
+    </thead>
 
-        <tbody>
+    <tbody>
 
-          @forelse($customers as $c)
+      @forelse($customers as $c)
 
             @php
 
@@ -118,9 +118,9 @@
 
                     <div class="lp-sub">{{ $email }}</div>
 
-                  </div>
+            </div>
 
-                </div>
+          </div>
 
               </td>
 
@@ -128,7 +128,7 @@
 
                 <span class="lp-sub">{{ $phone ? $phone : '—' }}</span>
 
-              </td>
+        </td>
 
               <td class="t-center"><strong>{{ $ordersCount }}</strong></td>
 
@@ -138,17 +138,17 @@
 
                 <a class="lp-link" href="{{ route('dashboard.customers.show', $c->id) }}">Ver perfil</a>
 
-                @if($debtOpen > 0)
+                @if(($c->debts_sum ?? 0) > 0)
 
                   <a class="btn lp-soft mini" href="{{ route('debts.index', $c->id) }}">Fiados</a>
 
                 @endif
 
-              </td>
+        </td>
 
-            </tr>
+      </tr>
 
-          @empty
+      @empty
 
             <tr>
 
@@ -162,15 +162,15 @@
 
                 </div>
 
-              </td>
+        </td>
 
-            </tr>
+      </tr>
 
-          @endforelse
+      @endforelse
 
-        </tbody>
+    </tbody>
 
-      </table>
+  </table>
 
     </div>
 

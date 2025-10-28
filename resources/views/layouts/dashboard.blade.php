@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@yield('title','OLIKA — Dashboard')</title>
   <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}" media="screen and (max-width: 992px)">
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
 </head>
 <body class="ui"
@@ -20,56 +21,56 @@
 
     <!-- Sidebar -->
     <aside class="dashboard-sidebar" :class="open ? 'active' : ''">
-      <div class="brand">
-        <span class="logo-square"></span>
-        <div>
-          <div class="brand-title">OLIKA</div>
-          <div class="brand-sub">Dashboard</div>
-        </div>
+    <div class="brand">
+      <span class="logo-square"></span>
+      <div>
+        <div class="brand-title">OLIKA</div>
+        <div class="brand-sub">Dashboard</div>
       </div>
+    </div>
 
-      {{-- Clicar em QUALQUER link fecha o drawer no mobile --}}
-      <nav class="menu" @click="open=false">
+    {{-- Clicar em QUALQUER link fecha o drawer no mobile --}}
+    <nav class="menu" @click="open=false">
+      @php
+        // Mapeamento das rotas reais (subdomínio dashboard.menuolika.com.br)
+        $items = [
+          ['label'=>'Visão Geral', 'icon'=>'👁️', 'match'=>['dashboard.index','dashboard.compact'], 'route'=>'dashboard.index'],
+          ['label'=>'PDV', 'icon'=>'🧾', 'match'=>['dashboard.pdv*'], 'route'=>'dashboard.pdv'],
+          ['label'=>'Pedidos', 'icon'=>'📦', 'match'=>['dashboard.orders*'], 'route'=>'dashboard.orders'],
+          ['label'=>'Clientes', 'icon'=>'👥', 'match'=>['dashboard.customers*'], 'route'=>'dashboard.customers'],
+          ['label'=>'Produtos', 'icon'=>'🍕', 'match'=>['dashboard.products*'], 'route'=>'dashboard.products'],
+          ['label'=>'Categorias', 'icon'=>'🗂️', 'match'=>['dashboard.categories*'], 'route'=>'dashboard.categories'],
+          ['label'=>'Cupons', 'icon'=>'🏷️', 'match'=>['dashboard.coupons*'], 'route'=>'dashboard.coupons'],
+          ['label'=>'Cashback', 'icon'=>'💸', 'match'=>['dashboard.cashback*'], 'route'=>'dashboard.cashback'],
+          ['label'=>'Fidelidade', 'icon'=>'⭐', 'match'=>['dashboard.loyalty'], 'route'=>'dashboard.loyalty'],
+          // Relatórios: usa relatorios.index se existir; senão dashboard.reports
+          ['label'=>'Relatórios', 'icon'=>'📊', 'match'=>['relatorios.*','dashboard.reports'], 'route'=>\Illuminate\Support\Facades\Route::has('relatorios.index') ? 'relatorios.index' : 'dashboard.reports'],
+          ['label'=>'WhatsApp', 'icon'=>'💬', 'match'=>['dashboard.whatsapp*'], 'route'=>'dashboard.whatsapp'],
+          ['label'=>'Mercado Pago', 'icon'=>'💳', 'match'=>['dashboard.mp*'], 'route'=>'dashboard.mp'],
+          ['label'=>'Status & Templates', 'icon'=>'⚙️', 'match'=>['dashboard.statuses*'], 'route'=>'dashboard.statuses'],
+        ];
+      @endphp
+
+      @foreach($items as $it)
         @php
-          // Mapeamento das rotas reais (subdomínio dashboard.menuolika.com.br)
-          $items = [
-            ['label'=>'Visão Geral', 'icon'=>'👁️', 'match'=>['dashboard.index','dashboard.compact'], 'route'=>'dashboard.index'],
-            ['label'=>'PDV', 'icon'=>'🧾', 'match'=>['dashboard.pdv*'], 'route'=>'dashboard.pdv'],
-            ['label'=>'Pedidos', 'icon'=>'📦', 'match'=>['dashboard.orders*'], 'route'=>'dashboard.orders'],
-            ['label'=>'Clientes', 'icon'=>'👥', 'match'=>['dashboard.customers*'], 'route'=>'dashboard.customers'],
-            ['label'=>'Produtos', 'icon'=>'🍕', 'match'=>['dashboard.products*'], 'route'=>'dashboard.products'],
-            ['label'=>'Categorias', 'icon'=>'🗂️', 'match'=>['dashboard.categories*'], 'route'=>'dashboard.categories'],
-            ['label'=>'Cupons', 'icon'=>'🏷️', 'match'=>['dashboard.coupons*'], 'route'=>'dashboard.coupons'],
-            ['label'=>'Cashback', 'icon'=>'💸', 'match'=>['dashboard.cashback*'], 'route'=>'dashboard.cashback'],
-            ['label'=>'Fidelidade', 'icon'=>'⭐', 'match'=>['dashboard.loyalty'], 'route'=>'dashboard.loyalty'],
-            // Relatórios: usa relatorios.index se existir; senão dashboard.reports
-            ['label'=>'Relatórios', 'icon'=>'📊', 'match'=>['relatorios.*','dashboard.reports'], 'route'=>\Illuminate\Support\Facades\Route::has('relatorios.index') ? 'relatorios.index' : 'dashboard.reports'],
-            ['label'=>'WhatsApp', 'icon'=>'💬', 'match'=>['dashboard.whatsapp*'], 'route'=>'dashboard.whatsapp'],
-            ['label'=>'Mercado Pago', 'icon'=>'💳', 'match'=>['dashboard.mp*'], 'route'=>'dashboard.mp'],
-            ['label'=>'Status & Templates', 'icon'=>'⚙️', 'match'=>['dashboard.statuses*'], 'route'=>'dashboard.statuses'],
-          ];
+          $isActive = request()->routeIs(...(array)$it['match']);
+          $url = \Illuminate\Support\Facades\Route::has($it['route']) ? route($it['route']) : '#';
         @endphp
+        <a class="mi {{ $isActive ? 'active' : '' }} {{ $url === '#' ? 'disabled' : '' }}" href="{{ $url }}">
+          <span class="mi-ico">{{ $it['icon'] }}</span>{{ $it['label'] }}
+        </a>
+      @endforeach
+    </nav>
+  </aside>
 
-        @foreach($items as $it)
-          @php
-            $isActive = request()->routeIs(...(array)$it['match']);
-            $url = \Illuminate\Support\Facades\Route::has($it['route']) ? route($it['route']) : '#';
-          @endphp
-          <a class="mi {{ $isActive ? 'active' : '' }} {{ $url === '#' ? 'disabled' : '' }}" href="{{ $url }}">
-            <span class="mi-ico">{{ $it['icon'] }}</span>{{ $it['label'] }}
-          </a>
-        @endforeach
-      </nav>
-    </aside>
-
-    <!-- Conteúdo -->
+  <!-- Conteúdo -->
     <main class="dashboard-content">
-      <div class="page">
-        @yield('content')
-      </div>
-    </main>
+    <div class="page">
+      @yield('content')
+    </div>
+  </main>
 
-  </div>
+</div>
 
 <script>
 function toggleSidebar() {
@@ -81,7 +82,7 @@ function toggleSidebar() {
   if (window.Alpine) {
     const alpineState = Alpine.store?.('sidebar') || 
                         window.__x?.$data?.(document.querySelector('body'))?.open;
-    
+
     if (typeof alpineState !== 'undefined') {
       // Alpine já gerencia, apenas passa o click para ele
       return;
@@ -100,9 +101,37 @@ document.addEventListener('keydown', function(e) {
     const sb = document.querySelector('.dashboard-sidebar');
     if (sb.classList.contains('active')) {
       toggleSidebar();
-    }
+  }
   }
 });
+
+// Fallback mobile (caso Alpine falhe)
+(function(){
+  const btn = document.querySelector('.sidebar-toggle');
+  const sidebar = document.querySelector('.dashboard-sidebar');
+  const overlay = document.getElementById('overlay');
+  
+  if(!btn || !sidebar || !overlay) return;
+
+  function openMenu(){ 
+    sidebar.classList.add('active'); 
+    overlay.classList.add('active');
+    document.body.classList.add('no-scroll');
+  }
+  
+  function closeMenu(){ 
+    sidebar.classList.remove('active'); 
+    overlay.classList.remove('active');
+    document.body.classList.remove('no-scroll');
+  }
+
+  btn.addEventListener('click', () => {
+    const isOpen = sidebar.classList.contains('active');
+    isOpen ? closeMenu() : openMenu();
+      });
+  
+  overlay.addEventListener('click', closeMenu);
+})();
 </script>
 
 </body>

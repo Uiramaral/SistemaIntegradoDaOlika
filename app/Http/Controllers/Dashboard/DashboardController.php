@@ -133,7 +133,7 @@ class DashboardController extends Controller
             ->withCount('orders')
             ->withSum('orders as total_spent', 'final_amount')
             ->addSelect([
-                'debt_open' => \App\Models\CustomerDebt::selectRaw('
+                'debts_sum' => \App\Models\CustomerDebt::selectRaw('
                     COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - 
                     COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0)
                 ')

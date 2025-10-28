@@ -676,3 +676,120 @@ html, body { width: 100%; overflow-x: hidden; }
   .board-card{ padding:12px; }
   .grid-cards{ grid-template-columns: 1fr; gap:12px; }
 }
+
+/* ===== PRODUTOS – anti sangramento e grade responsiva ===== */
+.page-products { width:100%; }
+.page-products .board-card { overflow:hidden; }
+.page-products .lp-search, .page-products .lp-input { width:100%; max-width:100%; }
+.page-products .grid-cards{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap:18px;
+  width:100%;
+}
+/* Zera larguras antigas: */
+.page-products .product-card{
+  position:relative;
+  display:block;
+  width:100% !important;
+  max-width:100% !important;
+  margin:0 !important;
+  overflow-wrap:anywhere;
+}
+/* Conteúdo do card nunca estoura */
+.page-products .product-card *{ max-width:100%; }
+.page-products .product-card img{ max-width:48px; height:auto; }
+.page-products .product-card .pc-badge{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#fde6c9;
+  color:#a8631a;
+  font-weight:600;
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:999px;
+}
+/* Títulos longos: reticências, não "empurra" a borda */
+.page-products .product-card .pc-title,
+.page-products .product-card .pc-sub{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media (max-width: 992px){
+  .page-products .grid-cards{ grid-template-columns:1fr; gap:12px; }
+}
+
+/* ===== MOBILE: sempre 1 por linha ===== */
+@media (max-width: 992px){
+  /* Grids base (categorias, produtos, etc.) */
+  .grid-cards,
+  .grid-products,
+  .grid-categories,
+  .grid-generic {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+    width: 100%;
+  }
+  /* Qualquer grade feita com .row/.col (flex) */
+  .row.flex-grid > .col,
+  .row > [class*="col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  /* Cartões/listas não "esticam" pra fora */
+  .card,
+  .product-card,
+  .category-card,
+  .list-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  /* Listas horizontais viram coluna */
+  .list-cards,
+  .cards-row {
+    display: flex;
+    flex-direction: column !important;
+    gap: 12px;
+  }
+  /* Tabelas/containers com overflow horizontal */
+  .table-wrapper,
+  .lp-table-wrap,
+  .board-card {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+/* Wrapper opt-in: força 1 por linha mesmo fora do @media */
+.force-1col .grid-cards,
+.force-1col .grid-products,
+.force-1col .grid-categories { grid-template-columns: 1fr !important; }
+.force-1col .row.flex-grid > .col,
+.force-1col .row > [class*="col-"] { flex:0 0 100% !important; max-width:100% !important; }
+.force-1col .card,
+.force-1col .list-card { width:100% !important; max-width:100% !important; }
+
+/* ==== HOTFIX GLOBAL OLIKA (único arquivo) ==== */
+html, body { width:100%; overflow-x:hidden; }
+* { box-sizing:border-box; }
+img, video { max-width:100%; height:auto; }
+/* Containers do dashboard nunca passam da área */
+.container, .container-xl, .dashboard-content, .board-card,
+[class*="wrapper"], [class*="content"] { max-width:100%; overflow: hidden; }
+/* Grades em cartões: impedem vazamento à direita */
+.grid-cards { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:18px; }
+.grid-cards > * { width:100% !important; max-width:100% !important; }
+/* Badges posicionadas corretamente (sem right negativo) */
+.pc-badge, .cc-badge, .status-badge { position:absolute; top:10px; right:10px; }
+/* Títulos longos não estouram */
+.card h4, .product-card .pc-title, .category-card .cc-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Tabelas grandes rolam horizontal sem quebrar layout */
+.table-wrapper, .lp-table-wrap, table { display:block; max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+table th, table td { white-space:nowrap; }
+/* Sidebar/móbile: mantém botão visível, evita deslocamentos */
+.menu-toggle { position:fixed; top:14px; left:14px; z-index:1002; }
+.dashboard-sidebar { z-index:1001; }

@@ -1,0 +1,189 @@
+/* ==========================================================================
+   Olika Dashboard — Base UI (Desktop/Tablet)
+   Fonte: Helvetica/Arial (peso forte para títulos)
+   Cores e espaçamentos padronizados para todo o dashboard.
+   ========================================================================== */
+
+:root{
+  --ol-bg: #f7f7f8;
+  --ol-card-bg: #ffffff;
+  --ol-text: #1f2937;
+  --ol-text-muted: #6b7280;
+  --ol-border: #e5e7eb;
+  --ol-primary: #ff7a00;   /* laranja do CTA */
+  --ol-primary-600: #ff6a00;
+  --ol-primary-700: #f35d00;
+  --ol-success: #16a34a;
+  --ol-danger: #dc2626;
+  --ol-warning: #f59e0b;
+  --ol-radius-xl: 14px;
+  --ol-radius-lg: 10px;
+  --ol-gap: 12px;
+  --ol-gap-lg: 16px;
+  --ol-shadow: 0 8px 24px rgba(0,0,0,.06);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--ol-bg); color:var(--ol-text);
+  font-family: "Helvetica Neue","Helvetica","Arial",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+
+/* --------- Layouts globais --------- */
+.ol-container{
+  padding: 24px;
+}
+.ol-card{
+  background:var(--ol-card-bg);
+  border:1px solid var(--ol-border);
+  border-radius: var(--ol-radius-xl);
+  box-shadow: var(--ol-shadow);
+  padding: 20px;
+}
+.ol-card-title{
+  font-weight: 700; font-size: 18px; margin: 0 0 14px;
+}
+
+/* --------- Grid utilitário --------- */
+.ol-grid{display:grid; gap: var(--ol-gap)}
+.ol-grid-2{grid-template-columns: 1fr 1fr}
+.ol-grid-3{grid-template-columns: 1fr 1fr 1fr}
+.ol-grid-4{grid-template-columns: 1fr 1fr 1fr 1fr}
+.ol-grid-colspan-2{grid-column: span 2}
+.ol-grid-colspan-3{grid-column: span 3}
+.ol-grid-colspan-4{grid-column: span 4}
+
+/* --------- Inputs --------- */
+.ol-label{font-size:12px; color:var(--ol-text-muted); margin-bottom:6px; display:block}
+.ol-input, .ol-select, .ol-textarea{
+  width:100%; background:#fff; color:var(--ol-text);
+  border:1px solid var(--ol-border); border-radius:10px;
+  padding:12px 12px; font-size:14px; outline:none;
+  transition: box-shadow .15s, border-color .15s;
+}
+.ol-textarea{min-height:90px; resize:vertical}
+.ol-input:focus, .ol-select:focus, .ol-textarea:focus{
+  border-color: var(--ol-primary); box-shadow: 0 0 0 3px rgba(255,122,0,.15);
+}
+
+/* --------- Botões --------- */
+.ol-btn{
+  appearance:none; border:1px solid transparent; cursor:pointer;
+  border-radius: 999px; padding: 12px 18px; font-weight:700; font-size:14px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  transition: transform .04s ease, background .15s ease, box-shadow .15s ease;
+}
+.ol-btn:active{ transform: translateY(1px) }
+
+.ol-btn-primary{
+  background:var(--ol-primary); color:#fff;
+  box-shadow: 0 8px 16px rgba(255,122,0,.25);
+}
+.ol-btn-primary:hover{ background: var(--ol-primary-600) }
+.ol-btn-primary:disabled{opacity:.5; cursor:not-allowed}
+
+.ol-btn-outline{
+  background:#fff; color:var(--ol-text);
+  border-color: var(--ol-border);
+}
+.ol-btn-outline:hover{ border-color: #d1d5db }
+
+.ol-btn-danger{ background: var(--ol-danger); color:#fff }
+.ol-btn-danger:hover{ background:#b91c1c }
+
+/* --------- Badges / chips --------- */
+.ol-badge{
+  background:#f3f4f6; color:var(--ol-text);
+  border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700;
+}
+
+/* --------- Tabela carrinho --------- */
+.pdv-table{
+  width:100%; border-collapse:separate; border-spacing:0;
+  border-radius: var(--ol-radius-lg); overflow:hidden; border:1px solid var(--ol-border)
+}
+.pdv-table thead th{
+  background:#fafafa; text-align:left; padding:12px; font-size:12px; color:var(--ol-text-muted);
+  border-bottom:1px solid var(--ol-border);
+}
+.pdv-table tbody td{
+  background:#fff; padding:12px; border-bottom:1px solid var(--ol-border); font-size:14px;
+}
+.pdv-empty{
+  padding:16px; text-align:center; color:var(--ol-text-muted); font-size:14px;
+}
+
+/* --------- Stepper qtd --------- */
+.stepper{
+  display:inline-flex; border:1px solid var(--ol-border); border-radius:10px; overflow:hidden
+}
+.stepper button{
+  width:32px; height:36px; background:#f8f8f8; border:0; cursor:pointer; font-weight:700
+}
+.stepper input{
+  width:46px; height:36px; border:0; text-align:center; outline:none; font-weight:700;
+}
+
+/* --------- Área de resumo --------- */
+.pdv-summary{
+  display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+.pdv-summary .line{
+  display:flex; align-items:center; justify-content:space-between; padding:6px 0; font-size:14px;
+}
+.pdv-summary .total{
+  font-size:22px; font-weight:800; padding-top:8px;
+}
+
+/* --------- Pagamento --------- */
+.pdv-payments{
+  display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+}
+.pdv-radio{
+  display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--ol-border);
+  border-radius:999px; background:#fff; cursor:pointer;
+}
+.pdv-radio input{accent-color: var(--ol-primary)}
+
+/* --------- Header de página --------- */
+.page-header{
+  display:flex; align-items:center; justify-content:space-between; margin: 6px 0 18px;
+}
+.page-title{
+  font-size:20px; font-weight:800; letter-spacing:.2px;
+}
+
+/* --------- Utilidades --------- */
+.mt-12{margin-top:12px} .mt-16{margin-top:16px} .mt-20{margin-top:20px}
+.mb-12{margin-bottom:12px} .mb-16{margin-bottom:16px} .mb-20{margin-bottom:20px}
+.w-full{width:100%}
+
+/* --------- Remoção global do "Baixar Layout" (backup defensivo)
+   — além de remover o HTML no código, isso garante que nada apareça se escapar.
+-------------------------------------------------------------- */
+[data-action="download-layout"], .js-download-layout, .btn-download-layout,
+span.hidden.sm\:inline:has(> :where(*)) { display:none !important; }
+
+
+:root{ --ol-gap:12px; --ol-radius:12px; --ol-border:#ececec; --ol-text:#222; --ol-muted:#666; --ol-cta:#FF6B35;}
+.ol-card{background:#fff;border:1px solid var(--ol-border);border-radius:16px;padding:20px;}
+.ol-card__title{font-weight:700;font-size:18px;margin-bottom:16px;}
+.ol-grid{display:grid;gap:var(--ol-gap);}
+.ol-grid--4{grid-template-columns:repeat(4,1fr);}
+.ol-grid--6{grid-template-columns:repeat(6,1fr);}
+.ol-input,.ol-select,.ol-textarea{width:100%;padding:10px 12px;border:1px solid var(--ol-border);border-radius:var(--ol-radius);font:14px/1.2 system-ui;}
+.ol-textarea{min-height:96px;resize:vertical;}
+.ol-btn{padding:10px 14px;border-radius:12px;border:1px solid var(--ol-border);background:#fafafa;font-weight:600;cursor:pointer}
+.ol-btn--ghost{background:#fff}
+.ol-btn--danger{background:#FFEBEA;border-color:#FFC7C3;color:#B42318}
+.ol-cta{display:inline-block;background:var(--ol-cta);color:#fff;border:none;border-radius:20px;padding:12px 20px;font-weight:700}
+.ol-table{width:100%;border-collapse:collapse;border:1px solid var(--ol-border)}
+.ol-table th,.ol-table td{padding:10px;border-top:1px solid var(--ol-border);text-align:left}
+.ol-flex{display:flex}.gap-2{gap:8px}.items-center{align-items:center}.ml-auto{margin-left:auto}.w-24{width:92px}.w-32{width:128px}.w-48{width:192px}.flex-1{flex:1}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+.ol-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ol-summary__total{grid-column:span 4;display:flex;justify-content:space-between;border-top:1px dashed var(--ol-border);padding-top:8px;margin-top:4px}
+.ol-radio-group{display:flex;gap:16px}
+/* kill-switch para qualquer resquício do botão Baixar Layout */
+.btn-download-layout,[data-action="download-layout"]{display:none !important}

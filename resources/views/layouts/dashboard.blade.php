@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@yield('title','OLIKA — Dashboard')</title>
-  <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}" media="screen and (max-width: 992px)">
+  <!-- CSS base + mobile -->
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}" media="(max-width: 640px)">
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
 </head>
 <body class="ui"
@@ -71,6 +72,9 @@
   </main>
 
 </div>
+
+<!-- JS por página (onde usar PDV) -->
+@stack('page-scripts')
 
 <script>
 function toggleSidebar() {

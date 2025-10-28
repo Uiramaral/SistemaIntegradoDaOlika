@@ -15,7 +15,9 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PedidosBulkController;
 use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\ConsignacoesController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -215,6 +217,33 @@ Route::prefix('menu')->name('menu.')->group(function () {
 
 // Página HTML do carrinho (usa o nome esperado pelo Blade)
 Route::get('/cart', [CartController::class, 'show'])->name('cart.index');
+
+Route::post('/dashboard/settings/production/toggle',[SettingsController::class,'toggleProduction'])->name('settings.production.toggle');
+Route::post('/dashboard/pdv/order',[PDVController::class,'store'])->name('dashboard.pdv.store');
+
+// Stubs de retorno (ajuste se já existirem)
+Route::post('/mp/webhook', fn()=>response()->json(['ok'=>true]))->name('mp.webhook');
+Route::get('/pagamento/sucesso', fn()=> 'Pagamento aprovado')->name('checkout.success');
+Route::get('/pagamento/erro', fn()=> 'Pagamento com erro')->name('checkout.failure');
+Route::get('/pagamento/pendente', fn()=> 'Pagamento pendente')->name('checkout.pending');
+
+// Pedidos - ver/editar
+Route::get('/dashboard/pedidos/{order}', [OrderController::class, 'show'])->name('dashboard.orders.show');
+Route::post('/dashboard/pedidos/{order}/update', [OrderController::class, 'update'])->name('dashboard.orders.update');
+Route::post('/dashboard/pedidos/{order}/items/add', [OrderController::class, 'addItem'])->name('dashboard.orders.items.add');
+Route::delete('/dashboard/pedidos/{order}/items/{item}', [OrderController::class, 'removeItem'])->name('dashboard.orders.items.remove');
+
+// Clientes - ver/editar
+Route::get('/dashboard/clientes/{customer}', [CustomerController::class, 'show'])->name('dashboard.customers.show');
+Route::post('/dashboard/clientes/{customer}/update', [CustomerController::class, 'update'])->name('dashboard.customers.update');
+
+// Produtos - index (cards padrão), editar, salvar
+Route::get('/dashboard/produtos', [ProductController::class, 'index'])->name('dashboard.products.index');
+Route::get('/dashboard/produtos/{product}/edit', [ProductController::class, 'edit'])->name('dashboard.products.edit');
+Route::post('/dashboard/produtos/{product}', [ProductController::class, 'update'])->name('dashboard.products.update');
+Route::post('/dashboard/produtos/{product}/images', [ProductController::class, 'storeImage'])->name('dashboard.products.images.store');
+Route::post('/dashboard/produtos/{product}/images/{image}/primary', [ProductController::class, 'makePrimary'])->name('dashboard.products.images.primary');
+Route::delete('/dashboard/produtos/{product}/images/{image}', [ProductController::class, 'destroyImage'])->name('dashboard.products.images.destroy');
 
 // Rota para limpar cache do sistema (global)
 Route::match(['get', 'post'], '/cache/limpar', function() {

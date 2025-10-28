@@ -15,9 +15,7 @@
       <p>Acompanhe suas métricas e desempenho em tempo real</p>
     </div>
     <div class="ov-actions">
-      @if (\Illuminate\Support\Facades\Route::has('dashboard.layout.download'))
-        <a class="btn btn-soft" href="{{ route('dashboard.layout.download') }}">Baixar Layout</a>
-      @endif
+      {{-- Botão "Baixar Layout" REMOVIDO por solicitação --}}
     </div>
   </div>
 

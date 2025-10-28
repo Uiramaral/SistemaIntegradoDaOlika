@@ -1,0 +1,42 @@
+diff --git a/resources/views/dashboard/settings_mp.blade.php b/resources/views/dashboard/settings_mp.blade.php
+index 1234567..1234568
+--- a/resources/views/dashboard/settings_mp.blade.php
++++ b/resources/views/dashboard/settings_mp.blade.php
+@@ -1,10 +1,20 @@
+-  <button class="btn btn-download-layout">Baixar Layout</button>
++  {{-- REMOVIDO: botão "Baixar Layout" --}}
+@@ -60,10 +70,30 @@
++  <label class="ol-label">Modo de produção</label>
++  <label class="switch">
++    <input id="production-toggle" type="checkbox" {{ $production ? 'checked' : '' }}>
++    <span class="slider round"></span>
++  </label>
++
++  <div id="production-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;">
++    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;max-width:420px;width:92vw;">
++      <h3 style="margin:0 0 16px;font-size:18px;">⚠️ Confirmar Desativação</h3>
++      <p style="margin:0 0 20px;color:#666;">Tem certeza que deseja desativar o modo de produção? Pagamentos seguirão em modo teste.</p>
++      <div style="display:flex;gap:12px;justify-content:flex-end;">
++        <button id="confirm-no" class="ol-btn ol-btn--ghost">Cancelar</button>
++        <button id="confirm-yes" class="ol-btn ol-btn--danger">Sim, Desativar</button>
++      </div>
++    </div>
++  </div>
++
++@push('page-scripts')
++<script>
++  const toggle=document.getElementById('production-toggle');
++  const modal=document.getElementById('production-confirm-modal');
++  const noBtn=document.getElementById('confirm-no');
++  const yesBtn=document.getElementById('confirm-yes');
++  toggle?.addEventListener('change',e=>{
++    if(!e.target.checked){ modal.style.display='block'; e.target.checked=true; }
++    else fetch("{{ route('settings.production.toggle') }}",{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content},body:JSON.stringify({production:true})});
++  });
++  noBtn?.addEventListener('click',()=>modal.style.display='none');
++  yesBtn?.addEventListener('click',()=>{
++    fetch("{{ route('settings.production.toggle') }}",{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content},body:JSON.stringify({production:false})})
++      .then(()=>{ modal.style.display='none'; toggle.checked=false;});
++  });
++</script>
++@endpush

@@ -82,7 +82,7 @@ class DashboardController extends Controller
 
     public function orders()
     {
-        $orders = \App\Models\Order::with('customer')
+        $orders = Order::with('customer')
             ->latest('created_at')->limit(50)->get();
 
         return view('dashboard.orders', compact('orders'));
@@ -98,7 +98,7 @@ class DashboardController extends Controller
         ]);
 
         // Busca por order_number ou id (com agrupamento correto)
-        $orderModel = \App\Models\Order::with(['customer', 'items'])
+        $orderModel = Order::with(['customer', 'items'])
             ->where(function($q) use ($order) {
                 $q->where('order_number', $order)
                   ->orWhere('id', $order);

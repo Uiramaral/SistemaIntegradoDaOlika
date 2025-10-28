@@ -2,61 +2,125 @@
 
 namespace App\Services;
 
-class MercadoPagoApi 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+
+class MercadoPagoApi
 {
-    private string $accessToken;
+    private string $base = 'https://api.mercadopago.com';
+    private string $token;
+    private bool $production;
 
-    public function __construct(?string $accessToken = null)
+    public function __construct()
     {
-        $this->accessToken = $accessToken ?: AppSettings::get('mercadopago_access_token');
+        // lê de settings() ou .env; se tiver tabela settings/payment_settings use um Config repository
+        $env = config('payments.mp.environment', env('MP_ENV', 'production'));
+        $this->production = $env === 'production';
+        $this->token = config('payments.mp.access_token', env('MP_ACCESS_TOKEN'));
     }
 
-    private function http($method, $url, $payload = null)
+    private function client()
     {
-        $ch = curl_init($url);
-        $headers = ["Authorization: Bearer {$this->accessToken}"];
-        
-        if ($payload !== null) {
-            $headers[] = "Content-Type: application/json";
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        }
-        
-        curl_setopt_array($ch, [
-            CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER    => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT       => 30
-        ]);
-        
-        $resp = curl_exec($ch);
-        
-        if ($resp === false) {
-            throw new \Exception(curl_error($ch));
-        }
-        
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($code >= 300) {
-            throw new \Exception("MP HTTP {$code}: {$resp}");
-        }
-        
-        return json_decode($resp, true);
+        return Http::withToken($this->token)->acceptJson()->asJson()->timeout(25);
     }
 
+    /** PIX direto (/v1/payments) */
+    public function createPixPayment(array $order, array $payer): array
+    {
+        $payload = [
+            'transaction_amount' => (float)$order['total'],
+            'description'        => "Pedido #{$order['number']} - Olika",
+            'payment_method_id'  => 'pix',
+            'installments'       => 1,
+            'binary_mode'        => true,
+            'payer' => [
+                'email' => $payer['email'] ?? null,
+                'first_name' => $payer['first_name'] ?? null,
+                'last_name'  => $payer['last_name'] ?? null,
+                'identification' => [
+                    'type' => $payer['doc_type'] ?? 'CPF',
+                    'number' => $payer['doc_number'] ?? null,
+                ],
+            ],
+            'additional_info' => [
+                'items' => array_map(fn($i)=>[
+                    'title'=>$i['title'],'quantity'=>(int)$i['quantity'],'unit_price'=>(float)$i['unit_price']
+                ], $order['items'] ?? []),
+            ],
+            'external_reference' => (string)$order['number'],
+            'notification_url'   => $order['notification_url'] ?? null,
+            'statement_descriptor'=> 'OLIKA',
+        ];
+
+        $res = $this->client()->post($this->base.'/v1/payments', $payload);
+        if ($res->failed()) return ['ok'=>false,'status'=>$res->status(),'error'=>$res->json()];
+        $d = $res->json();
+        return [
+            'ok'=>true,
+            'id'=>$d['id'] ?? null,
+            'qr_code'=>$d['point_of_interaction']['transaction_data']['qr_code'] ?? null,
+            'qr_code_base64'=>$d['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null,
+            'raw'=>$d,
+        ];
+    }
+
+    /** Link de pagamento (/checkout/preferences) — aceita crédito/débito/PIX; bloqueia boleto; parcelas 1x */
+    public function createPaymentLink(array $order, array $payer = []): array
+    {
+        $items = array_map(fn($i)=>[
+            'title'=>$i['title'],'quantity'=>(int)$i['quantity'],'unit_price'=>(float)$i['unit_price'],'currency_id'=>'BRL'
+        ], $order['items'] ?? []);
+        if (empty($items)) {
+            $items[] = ['title'=>"Pedido #".($order['number'] ?? Str::upper(Str::random(6))),'quantity'=>1,'unit_price'=>(float)$order['total'],'currency_id'=>'BRL'];
+        }
+
+        $payload = [
+            'items'=>$items,
+            'payer'=>[
+                'name'=>trim(($payer['first_name']??'').' '.($payer['last_name']??'')) ?: null,
+                'email'=>$payer['email'] ?? null,
+                'phone'=>isset($payer['phone'])?['number'=>$payer['phone']]:null,
+                'identification'=>isset($payer['doc_number'])?['type'=>$payer['doc_type']??'CPF','number'=>$payer['doc_number']]:null,
+            ],
+            'external_reference'=>(string)$order['number'],
+            'notification_url'=>$order['notification_url'] ?? null,
+            'back_urls'=>[
+                'success'=>$order['back_urls']['success'] ?? url('/pagamento/sucesso'),
+                'failure'=>$order['back_urls']['failure'] ?? url('/pagamento/erro'),
+                'pending'=>$order['back_urls']['pending'] ?? url('/pagamento/pendente'),
+            ],
+            'auto_return'=>'approved',
+            'payment_methods'=>[
+                'excluded_payment_types'=>[
+                    ['id'=>'ticket'], // boleto fora
+                ],
+                'installments'=>1,  // trava parcelamento
+            ],
+            'statement_descriptor'=>'OLIKA',
+            'binary_mode'=>true,
+        ];
+
+        $res = $this->client()->post($this->base.'/checkout/preferences', $payload);
+        if ($res->failed()) return ['ok'=>false,'status'=>$res->status(),'error'=>$res->json()];
+        $d = $res->json();
+        return ['ok'=>true,'id'=>$d['id']??null,'init_point'=>$d['init_point'] ?? ($d['sandbox_init_point'] ?? null),'raw'=>$d];
+    }
+
+    // Métodos de compatibilidade com código existente
     public function createPix(array $data)
     {
-        return $this->http('POST', 'https://api.mercadopago.com/v1/payments', $data);
+        return $this->createPixPayment($data, []);
     }
 
     public function createPreference(array $data)
     {
-        return $this->http('POST', 'https://api.mercadopago.com/checkout/preferences', $data);
+        return $this->createPaymentLink($data, []);
     }
 
     public function getPayment($paymentId)
     {
-        return $this->http('GET', "https://api.mercadopago.com/v1/payments/{$paymentId}");
+        $res = $this->client()->get($this->base."/v1/payments/{$paymentId}");
+        return $res->json();
     }
 }
 

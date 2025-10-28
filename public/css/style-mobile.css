@@ -1,129 +1,24 @@
-/* =====================================================
-   OLIKA — MOBILE ONLY (≤ 992px)
-   ===================================================== */
+/* ==========================================================================
+   Olika Dashboard — Mobile (≤ 640px)
+   Empilha tudo em 1 coluna, aumenta click-area e fixa CTA.
+   ========================================================================== */
 
-/* Reset anti-sangramento */
-html, body { width: 100%; overflow-x: hidden; }
-* { box-sizing: border-box; }
-img, video { max-width: 100%; height: auto; }
+.ol-container{ padding: 16px }
+.ol-card{ padding:16px; border-radius: 16px }
 
-/* Layout base */
-.dashboard-shell { display: block; width: 100%; }
-.dashboard-content { padding: 80px 12px 60px; min-width: 0; overflow-x: hidden; }
-
-/* ----- Sidebar móvel -----*/
-.dashboard-sidebar {
-  position: fixed;
-  top: 0; left: 0;
-  width: 260px; max-width: 82vw;
-  height: 100dvh;
-  background: #ffffff;
-  border-right: 1px solid #eef2f7;
-  transform: translateX(-100%);
-  transition: transform .28s ease;
-  z-index: 1001;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+.ol-grid, .ol-grid-2, .ol-grid-3, .ol-grid-4{
+  display:grid; grid-template-columns: 1fr; gap: 10px;
 }
-.dashboard-sidebar.active { transform: translateX(0); }
+.ol-grid-colspan-2, .ol-grid-colspan-3, .ol-grid-colspan-4{ grid-column: auto }
 
-/* backdrop (ao abrir o menu) */
-.sidebar-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.28);
-  opacity: 0; pointer-events: none;
-  transition: opacity .2s ease;
-  z-index: 1000;
+.pdv-summary{ grid-template-columns: 1fr 1fr }
+.pdv-payments{ gap:10px }
+
+.page-header{ flex-direction: column; align-items:flex-start; gap:8px }
+
+/* Botão CTA fixo no rodapé em telas pequenas (opcional) */
+.pdv-footer-cta{
+  position: sticky; bottom: 0; background: linear-gradient(180deg, rgba(247,247,248,0) 0%, rgba(247,247,248,1) 18%, rgba(247,247,248,1) 100%);
+  padding-top: 8px; margin-top: 8px;
 }
-.sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
-
-/* Botão hamburguer */
-.menu-toggle {
-  position: fixed;
-  top: 14px; left: 14px;
-  z-index: 1002;
-  background: #ff7b00;
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 10px;
-  line-height: 1;
-  box-shadow: 0 6px 20px rgba(255,123,0,.25);
-}
-
-/* Header / título */
-.page-title { font-size: 26px; margin: 8px 0 6px; }
-.page-subtitle { font-size: 14px; color:#667085; }
-
-/* Cartões/containers */
-.board-card {
-  background: #fff;
-  border: 1px solid #eef2f7;
-  border-radius: 14px;
-  padding: 12px;
-  width: 100%;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(16, 24, 40, .04);
-}
-
-/* Barras de busca e inputs extensíveis */
-.lp-search, .lp-input { width: 100%; max-width: 100%; }
-.lp-search .ico { display:none; }
-
-/* ====== GRADE: 1 por linha forçado ====== */
-.grid-cards,
-.page-products .grid-cards,
-.page-categories .grid-cards,
-.page-coupons .grid-cards,
-.page-customers .grid-cards {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 12px !important;
-  width: 100%;
-}
-
-/* Cards de produto/categoria */
-.card, .product-card, .category-card, .section-card {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  position: relative;
-  overflow-wrap: anywhere;
-}
-.product-card .pc-badge,
-.category-card .pc-badge {
-  position: absolute; top: 10px; right: 10px;
-  background: #fde6c9; color: #a8631a;
-  font-weight: 700; padding: 4px 10px; border-radius: 999px; font-size: 12px;
-}
-
-/* Títulos longos sem quebrar layout */
-.product-card .pc-title,
-.product-card .pc-sub,
-.category-card .cc-title,
-.category-card .cc-sub {
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Tabelas/listas (pedidos, clientes) rolam horizontal sem quebrar página) */
-.table-wrapper, .lp-table-wrap, table {
-  display: block; max-width: 100%;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-}
-table thead th, table tbody td { white-space: nowrap; }
-
-/* Botões «Voltar» / «Novo» enxutos */
-.btn, button { font-size: 14px; padding: 10px 14px; }
-.btn-primary, .lp-primary { padding: 10px 16px; border-radius: 10px; }
-
-/* PDV — inputs em coluna e sumário legível */
-.pdv-grid { display: flex; flex-direction: column; gap: 12px; }
-.pdv-row { display: flex; flex-direction: column; gap: 8px; }
-.pdv-resume { font-size: 14px; }
-.pdv-payment .options { display: grid; grid-template-columns: 1fr; gap: 8px; }
-
-/* Evita 100vw causar "vazamento" lateral */
-[class*="container"], [class*="wrapper"], [class*="content"] { width: 100%; max-width: 100%; }
-
-/* Margens de respiro */
-.section { margin-top: 12px; }
-
+.pdv-footer-cta .ol-btn{ width:100% }

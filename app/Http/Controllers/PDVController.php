@@ -2,130 +2,89 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\MercadoPagoApi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Customer;
-use App\Models\Address;
-use Carbon\Carbon;
 
 class PDVController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $req, MercadoPagoApi $mp)
     {
-        $data = $request->all();
+        $data = $req->validate([
+            'customer_id'    => 'nullable|integer',
+            'items'          => 'required|array|min:1',
+            'items.*.name'   => 'required|string',
+            'items.*.qty'    => 'required|integer|min:1',
+            'items.*.price'  => 'required|numeric|min:0',
+            'payment_method' => 'required|in:pix,link-mp,fiado',
+            'note'           => 'nullable|string',
+            'coupon_code'    => 'nullable|string',
+        ]);
 
-        // Criar/atualizar cliente
-        $customer = null;
-        if (!empty($data['customer']['id'])) {
-            $customer = Customer::find($data['customer']['id']);
-        } else if (!empty($data['customer']['nome'])) {
-            $customer = Customer::create([
-                'name' => $data['customer']['nome'],
-                'phone' => $data['customer']['telefone'] ?? null,
-                'email' => $data['customer']['email'] ?? null,
+        $total = collect($data['items'])->reduce(fn($s,$i)=>$s+($i['price']*$i['qty']),0);
+        $orderNumber = now()->format('ymd').'-'.rand(1000,9999);
+
+        return DB::transaction(function() use ($data,$total,$orderNumber,$mp){
+            // grava orders + order_items de forma simplificada
+            $orderId = DB::table('orders')->insertGetId([
+                'customer_id'   => $data['customer_id'] ?? 0,
+                'order_number'  => $orderNumber,
+                'status'        => 'pending',
+                'total_amount'  => $total,
+                'final_amount'  => $total,
+                'payment_method'=> $data['payment_method']==='link-mp'?'credit_card':$data['payment_method'],
+                'created_at'    => now(), 'updated_at'=>now(),
             ]);
-        }
-
-        if (!$customer) {
-            return response()->json(['ok'=>false,'message'=>'Cliente não informado'], 422);
-        }
-
-        // Criar/atualizar endereço
-        $address = null;
-        if (!empty($data['address'])) {
-            $addrData = $data['address'];
-            if (!empty($addrData['rua']) && !empty($addrData['numero'])) {
-                $address = Address::firstOrCreate(
-                    [
-                        'customer_id' => $customer->id,
-                        'street' => $addrData['rua'],
-                        'number' => $addrData['numero'],
-                        'is_primary' => 1,
-                    ],
-                    [
-                        'zip_code' => $addrData['cep'] ?? null,
-                        'complement' => $addrData['complemento'] ?? null,
-                        'neighborhood' => $addrData['bairro'] ?? null,
-                        'city' => $addrData['cidade'] ?? null,
-                        'state' => $addrData['uf'] ?? null,
-                        'is_primary' => 1,
-                    ]
-                );
+            foreach($data['items'] as $i){
+                DB::table('order_items')->insert([
+                    'order_id'=>$orderId,'product_id'=>0,'quantity'=>$i['qty'],
+                    'unit_price'=>$i['price'],'total_price'=>$i['qty']*$i['price'],
+                    'created_at'=>now(),'updated_at'=>now(),
+                ]);
             }
-        }
 
-        // Calcular totais
-        $subtotal = 0;
-        $items = $data['items'] ?? [];
-        
-        // Se pagamento é fiado, lançar débito
-        $isFiado = ($data['pagamento'] ?? '') === 'fiado';
-        
-        // Gerar número do pedido
-        $orderNumber = 'P'.date('Ymd').str_pad(Order::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
-        
-        // Criar pedido
-        $order = Order::create([
-            'order_number' => $orderNumber,
-            'customer_id' => $customer->id,
-            'address_id' => $address?->id,
-            'subtotal' => 0, // será recalculado abaixo
-            'discount_amount' => $data['desconto'] ?? 0,
-            'delivery_fee' => $data['entrega'] ?? 0,
-            'final_amount' => 0, // será recalculado
-            'payment_method' => $data['pagamento'] ?? 'pix',
-            'payment_status' => $isFiado ? 'pending' : 'pending',
-            'delivery_type' => 'delivery',
-            'notes' => $data['observacoes'] ?? '',
-            'status' => 'pending',
-        ]);
+            $orderPayload = [
+                'number'=>$orderNumber,
+                'items'=>array_map(fn($i)=>['title'=>$i['name'],'quantity'=>$i['qty'],'unit_price'=>$i['price']],$data['items']),
+                'total'=>$total,
+                'notification_url'=>route('mp.webhook',[],false),
+                'back_urls'=>[
+                    'success'=>route('checkout.success',[],false),
+                    'failure'=>route('checkout.failure',[],false),
+                    'pending'=>route('checkout.pending',[],false),
+                ],
+            ];
 
-        // Adicionar itens
-        foreach ($items as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['id'] ?? null,
-                'custom_name' => $item['nome'] ?? null,
-                'quantity' => $item['qty'] ?? 1,
-                'price' => $item['price'] ?? 0,
-                'total_price' => ($item['price'] ?? 0) * ($item['qty'] ?? 1),
-            ]);
-            $subtotal += ($item['price'] ?? 0) * ($item['qty'] ?? 1);
-        }
+            if ($data['payment_method']==='pix') {
+                $pix = $mp->createPixPayment($orderPayload, []);
+                if(!$pix['ok']) abort(422,'Erro ao criar PIX');
+                DB::table('orders')->where('id',$orderId)->update([
+                    'payment_provider'=>'mercadopago',
+                    'payment_id'=>$pix['id'] ?? null,
+                    'pix_qr_base64'=>$pix['qr_code_base64'] ?? null,
+                    'pix_copy_paste'=>$pix['qr_code'] ?? null,
+                    'payment_status'=>'pending',
+                    'updated_at'=>now(),
+                ]);
+                return response()->json(['ok'=>true,'number'=>$orderNumber,'pix'=>$pix]);
+            }
 
-        // Atualizar totais do pedido
-        $deliveryFee = $data['entrega'] ?? 0;
-        $discountAmount = $data['desconto'] ?? 0;
-        $finalAmount = max(0, $subtotal - $discountAmount + $deliveryFee);
-        
-        $order->update([
-            'subtotal' => $subtotal,
-            'discount_amount' => $discountAmount,
-            'delivery_fee' => $deliveryFee,
-            'final_amount' => $finalAmount,
-        ]);
+            if ($data['payment_method']==='link-mp') {
+                $pref = $mp->createPaymentLink($orderPayload, []);
+                if(!$pref['ok']) abort(422,'Erro ao criar link de pagamento');
+                DB::table('orders')->where('id',$orderId)->update([
+                    'payment_provider'=>'mercadopago',
+                    'preference_id'=>$pref['id'] ?? null,
+                    'payment_link'=>$pref['init_point'] ?? null,
+                    'payment_status'=>'pending',
+                    'updated_at'=>now(),
+                ]);
+                return response()->json(['ok'=>true,'number'=>$orderNumber,'init_point'=>$pref['init_point'] ?? null]);
+            }
 
-        // Se pagamento é fiado, criar lançamento em customer_debts
-        if ($isFiado) {
-            DB::table('customer_debts')->insert([
-                'customer_id' => $customer->id,
-                'order_id' => $order->id,
-                'amount' => $finalAmount,
-                'type' => 'debit',
-                'status' => 'open',
-                'description' => "Pedido #{$orderNumber}",
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        return response()->json([
-            'ok' => true,
-            'order_id' => $order->id,
-            'order_number' => $orderNumber,
-            'message' => 'Pedido criado com sucesso',
-        ]);
+            // fiado
+            DB::table('orders')->where('id',$orderId)->update(['payment_status'=>'pending','updated_at'=>now()]);
+            return response()->json(['ok'=>true,'number'=>$orderNumber]);
+        });
     }
 }

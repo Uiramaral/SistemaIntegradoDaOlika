@@ -228,10 +228,19 @@ Route::get('/pagamento/erro', fn()=> 'Pagamento com erro')->name('checkout.failu
 Route::get('/pagamento/pendente', fn()=> 'Pagamento pendente')->name('checkout.pending');
 
 // Pedidos - ver/editar
-Route::get('/dashboard/pedidos/{order}', [OrderController::class, 'show'])->name('dashboard.orders.show');
-Route::post('/dashboard/pedidos/{order}/update', [OrderController::class, 'update'])->name('dashboard.orders.update');
-Route::post('/dashboard/pedidos/{order}/items/add', [OrderController::class, 'addItem'])->name('dashboard.orders.items.add');
-Route::delete('/dashboard/pedidos/{order}/items/{item}', [OrderController::class, 'removeItem'])->name('dashboard.orders.items.remove');
+Route::get('/dashboard/pedidos', [OrderController::class, 'index'])->name('dashboard.orders.index');
+
+Route::prefix('dashboard/pedidos')->name('dashboard.orders.')->group(function () {
+    Route::get('{order}', [OrderController::class, 'show'])->name('show');
+
+    // Edições rápidas (data/hora/status/observação)
+    Route::post('{order}/meta', [OrderController::class, 'updateMeta'])->name('meta');
+
+    // Itens (adicionar/remover/alterar qtd)
+    Route::post('{order}/items', [OrderController::class, 'addItem'])->name('items.add');
+    Route::patch('{order}/items/{item}', [OrderController::class, 'updateItem'])->name('items.update');
+    Route::delete('{order}/items/{item}', [OrderController::class, 'removeItem'])->name('items.remove');
+});
 
 // Clientes - ver/editar
 Route::get('/dashboard/clientes/{customer}', [CustomerController::class, 'show'])->name('dashboard.customers.show');

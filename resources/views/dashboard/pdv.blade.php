@@ -15,7 +15,7 @@
     <input id="cli-name" class="ol-input" placeholder="Nome">
     <input id="cli-phone" class="ol-input" placeholder="Telefone (E164)">
     <input id="cli-email" class="ol-input" placeholder="E-mail">
-  </section>
+      </section>
 
   {{-- Endereço --}}
   <section class="ol-grid ol-grid--6 mt-3">
@@ -27,7 +27,7 @@
     <input id="addr-city" class="ol-input" placeholder="Cidade *">
     <input id="addr-uf" class="ol-input" placeholder="UF *">
     <button id="addr-save" class="ol-btn ol-btn--ghost ml-auto">Salvar Endereço</button>
-  </section>
+      </section>
 
   {{-- Itens --}}
   <section class="mt-4">
@@ -37,42 +37,42 @@
       <input id="free-price" class="ol-input w-32" placeholder="Preço">
       <input id="free-qty" class="ol-input w-24" type="number" min="1" value="1" placeholder="Qtd">
       <button id="add-item" class="ol-btn">Adicionar</button>
-    </div>
+          </div>
     <table class="ol-table mt-2" id="cart-table">
       <thead><tr><th>Produto</th><th>Preço</th><th>Qtd</th><th>Total</th><th></th></tr></thead>
       <tbody></tbody>
-    </table>
-  </section>
+          </table>
+      </section>
 
   {{-- Entrega / Observações --}}
   <section class="mt-4">
     <select id="delivery-slot" class="ol-select w-full">
       <option>Selecione um endereço e itens para calcular opções…</option>
-    </select>
+        </select>
     <textarea id="order-notes" class="ol-textarea mt-2" placeholder="Observações do pedido"></textarea>
-  </section>
+      </section>
 
   {{-- Resumo --}}
   <section class="mt-4">
     <div class="ol-flex items-center gap-2">
       <div class="ol-dropdown">
         <button class="ol-btn">Selecionar</button>
-      </div>
+        </div>
       <button class="ol-btn ol-btn--ghost">Digitar</button>
       <select id="coupon-eligible" class="ol-select">
         <option>— cupons elegíveis —</option>
-      </select>
+            </select>
       <button id="apply-eligible" class="ol-btn">Aplicar</button>
       <input id="coupon-code" class="ol-input w-48" placeholder="Cupom">
       <button id="apply-code" class="ol-btn">Aplicar</button>
-    </div>
+          </div>
     <div class="ol-summary mt-3">
       <div>Subtotal <strong id="sum-sub">R$ 0,00</strong></div>
       <div>Desconto <strong id="sum-discount">R$ 0,00</strong></div>
       <div>Entrega <strong id="sum-ship">R$ 0,00</strong></div>
       <div class="ol-summary__total">Total <strong id="sum-total">R$ 0,00</strong></div>
-    </div>
-  </section>
+        </div>
+      </section>
 
   {{-- Pagamento --}}
   <section class="mt-4">

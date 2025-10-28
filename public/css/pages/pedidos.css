@@ -1,0 +1,132 @@
+/* Estilos para a página de pedidos - classes corretas do HTML */
+.orders-page {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 24px !important;
+}
+
+.orders-page .op-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+  margin-bottom: 20px !important;
+}
+
+.orders-page .op-header h1 {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  margin: 0 !important;
+}
+
+.orders-page .op-header p {
+  color: #666 !important;
+  margin: 6px 0 0 !important;
+}
+
+.orders-page .btn-primary {
+  background: #ff6b00 !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  padding: 10px 18px !important;
+  transition: 0.2s !important;
+  text-decoration: none !important;
+}
+.orders-page .btn-primary:hover { 
+  background: #ff8d3d !important; 
+}
+
+.orders-page .op-card {
+  background: #fff !important;
+  border: 1px solid #f1f1f1 !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+.orders-page .op-search {
+  position: relative !important;
+  margin-bottom: 16px !important;
+}
+.orders-page .op-search input {
+  width: 100% !important;
+  padding: 12px 14px 12px 40px !important;
+  border-radius: 12px !important;
+  border: 1px solid #eee !important;
+  background: #fafafa !important;
+  font-size: 14px !important;
+}
+.orders-page .op-search .ico {
+  position: absolute !important;
+  left: 14px !important;
+  top: 12px !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.orders-page .table-wrapper {
+  overflow-x: auto !important;
+}
+.orders-page table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+.orders-page th, .orders-page td {
+  padding: 12px !important;
+  border-bottom: 1px solid #f1f1f1 !important;
+  text-align: left !important;
+}
+.orders-page th { 
+  color: #666 !important;
+  font-weight: 700 !important; 
+}
+.orders-page td strong { 
+  font-weight: 700 !important; 
+}
+
+.orders-page .badge {
+  display: inline-block !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.orders-page .badge-gray {
+  background: #f5f5f5 !important;
+  color: #888 !important;
+}
+.orders-page .badge-blue {
+  background: #e5f2ff !important;
+  color: #007bff !important;
+}
+.orders-page .badge-green {
+  background: #e7f8e9 !important;
+  color: #22a34f !important;
+}
+
+.orders-page .link {
+  color: #6a3df2 !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+.orders-page .link:hover { 
+  text-decoration: underline !important; 
+}
+
+.orders-page .empty {
+  text-align: center !important;
+  color: #aaa !important;
+  padding: 20px 0 !important;
+}
+
+@media (max-width: 768px) {
+  .orders-page { 
+    padding: 16px !important;
+  }
+  .orders-page .op-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}

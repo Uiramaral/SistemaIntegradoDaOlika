@@ -11,6 +11,24 @@
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=3">
   <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=3" media="(max-width: 768px)">
   
+  {{-- Página-específica por nome de rota --}}
+  @php($route = Route::currentRouteName())
+  
+  @switch(true)
+    @case(Str::is('dashboard.orders.index', $route))
+      <link rel="stylesheet" href="{{ asset('css/pages/pedidos.css') }}?v=8">
+      @break
+  
+    @case(Str::is('dashboard.orders.show', $route))
+      <link rel="stylesheet" href="{{ asset('css/pages/pedido-detalhe.css') }}?v=9">
+      @break
+  
+    {{-- adicione aqui outros casos por página --}}
+  @endswitch
+  
+  {{-- Fallback para stacks (se alguma view ainda usar @push) --}}
+  @stack('styles')
+  
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
   
   @stack('head')
@@ -122,16 +140,16 @@ document.addEventListener('keydown', function(e) {
   const btn = document.querySelector('.sidebar-toggle');
   const sidebar = document.querySelector('.dashboard-sidebar');
   const overlay = document.getElementById('overlay');
-  
+
   if(!btn || !sidebar || !overlay) return;
 
-  function openMenu(){ 
+  function openMenu(){
     sidebar.classList.add('active'); 
     overlay.classList.add('active');
     document.body.classList.add('no-scroll');
   }
   
-  function closeMenu(){ 
+  function closeMenu(){
     sidebar.classList.remove('active'); 
     overlay.classList.remove('active');
     document.body.classList.remove('no-scroll');

@@ -1,77 +1,69 @@
 @extends('layouts.dashboard')
+
 @section('content')
-<div class="page">
-  <div class="page-header">
-    <div>
-      <h1>Pedidos</h1>
-      <p class="muted">Gerencie todos os pedidos do restaurante</p>
-    </div>
-    <div class="actions">
+<div class="orders-page" data-new-url="{{ route('dashboard.pdv') }}">
+  <div class="op-header">
+    <h1>Pedidos</h1>
+    <p>Gerencie todos os pedidos do restaurante</p>
+    <div class="op-actions">
       <a href="{{ route('dashboard.pdv') }}" class="btn btn-primary">+ Novo Pedido</a>
     </div>
   </div>
 
-  <div class="card">
-    <form class="search-wrapper" method="get">
-      <input class="input" type="search" name="q" value="{{ $q }}" placeholder="Buscar por cliente, número do pedido...">
-    </form>
+  <div class="card op-card">
+    <div class="op-search">
+      <span class="ico">🔍</span>
+      <input id="order-search" type="text" class="input" placeholder="Buscar por cliente, número do pedido...">
+    </div>
 
     <div class="table-wrapper">
-      <table class="table">
+      <table class="table" id="orders-table">
         <thead>
           <tr>
-            <th style="width:72px">#</th>
+            <th style="width:100px">#</th>
             <th>Cliente</th>
-            <th class="t-right">Total</th>
-            <th>Status</th>
-            <th>Pagamento</th>
-            <th>Quando</th>
-            <th class="t-right">Ações</th>
+            <th style="width:140px" class="t-right">Total</th>
+            <th style="width:140px">Status</th>
+            <th style="width:140px">Pagamento</th>
+            <th style="width:160px">Quando</th>
+            <th style="width:120px" class="t-right">Ações</th>
           </tr>
         </thead>
         <tbody>
           @forelse($orders as $o)
-            <tr>
+            @php
+              $statusMap = [
+                'pending' => ['Pendente', 'gray'],
+                'confirmed' => ['Confirmado', 'blue'],
+                'preparing' => ['Preparando', 'gray'],
+                'delivered' => ['Entregue', 'green'],
+              ];
+              $payMap = [
+                'pending' => ['Pendente', 'gray'],
+                'paid' => ['Pago', 'blue'],
+              ];
+              [$statusLabel, $statusClass] = $statusMap[$o->status] ?? [$o->status, 'gray'];
+              [$payLabel, $payClass] = $payMap[$o->payment_status] ?? [$o->payment_status, 'gray'];
+            @endphp
+            <tr data-search="{{ strtolower($o->order_number . ' ' . ($o->customer_name ?? '') . ' ' . $statusLabel . ' ' . $payLabel) }}">
               <td>{{ $o->order_number }}</td>
               <td>{{ $o->customer_name ?? '—' }}</td>
-              <td class="t-right">R$ {{ number_format($o->final_amount,2,',','.') }}</td>
-              <td>
-                @php
-                  $map = [
-                    'pending'    => ['Pendente','badge-soft'],
-                    'confirmed'  => ['Confirmado','badge-info'],
-                    'preparing'  => ['Preparando','badge-warn'],
-                    'delivered'  => ['Entregue','badge-success'],
-                    'canceled'   => ['Cancelado','badge-danger'],
-                  ];
-                  [$label,$cls] = $map[$o->status] ?? [$o->status,'badge-soft'];
-                @endphp
-                <span class="badge {{ $cls }}">{{ $label }}</span>
+              <td class="t-right">R$ {{ number_format($o->final_amount, 2, ',', '.') }}</td>
+              <td><span class="badge badge-{{ $statusClass }}">{{ $statusLabel }}</span></td>
+              <td><span class="badge badge-{{ $payClass }}">{{ $payLabel }}</span></td>
+              <td>{{ \Carbon\Carbon::parse($o->created_at)->isoFormat('DD/MM/YYYY HH:mm') }}</td>
+              <td class="t-right">
+                <a class="link" href="{{ route('dashboard.orders.show', $o->id) }}">Ver detalhes</a>
               </td>
-              <td>
-                @php
-                  $pmap = [
-                    'pending' => ['Pendente','badge-soft'],
-                    'paid'    => ['Pago','badge-info'],
-                    'refunded'=> ['Estornado','badge-danger'],
-                  ];
-                  [$plabel,$pcls] = $pmap[$o->payment_status] ?? [$o->payment_status,'badge-soft'];
-                @endphp
-                <span class="badge {{ $pcls }}">{{ $plabel }}</span>
-              </td>
-              <td>{{ \Carbon\Carbon::parse($o->created_at)->format('d/m/Y H:i') }}</td>
-              <td class="t-right"><a class="btn btn-soft" href="{{ route('dashboard.orders.show',$o->id) }}">Ver detalhes</a></td>
             </tr>
           @empty
-            <tr><td colspan="7" class="t-center muted">Nenhum pedido encontrado.</td></tr>
+            <tr><td colspan="7" class="empty">Nenhum pedido encontrado</td></tr>
           @endforelse
         </tbody>
       </table>
     </div>
-
-    <div class="pagination mt-3">
-      {{ $orders->links() }}
-    </div>
   </div>
+  
+  <div data-debug="lovable-orders-v2"></div>
 </div>
 @endsection

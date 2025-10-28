@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ asset('css/olika.css') }}">
     
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  @stack('styles')
   <script>
     // endpoint exposto para o JS externo
     window.cartAddEndpoint = "{{ route('cart.add') }}";

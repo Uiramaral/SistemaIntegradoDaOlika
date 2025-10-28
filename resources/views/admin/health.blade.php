@@ -1,36 +1,30 @@
-@extends('layouts.admin')
+@extends('layouts.dashboard')
 
-@section('title', 'Health Check - Olika Admin')
-@section('page-title', 'Monitoramento do Sistema')
+@section('title', 'Health Check')
 
 @section('content')
-<div class="p-6">
-    <!-- Status Geral -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-900">Status do Sistema</h2>
-                <p class="text-gray-600">Última verificação: {{ now()->format('d/m/Y H:i:s') }}</p>
+<div class="page p-6">
+    <h1 class="text-2xl font-bold mb-4">Status do Sistema</h1>
+    <p class="text-gray-600 mb-6">Última verificação: {{ now()->format('d/m/Y H:i:s') }}</p>
+
+    <!-- Status e Botão -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <div class="w-3 h-3 rounded-full mr-2 
+                {{ $health['status'] === 'healthy' ? 'bg-green-500' : 
+                   ($health['status'] === 'warning' ? 'bg-yellow-500' : 'bg-red-500') }}">
             </div>
-            <div class="flex items-center space-x-4">
-                <button onclick="refreshHealthCheck()" 
-                        class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
-                    <i class="fas fa-sync-alt mr-2"></i>
-                    Atualizar
-                </button>
-                <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full mr-2 
-                        {{ $health['status'] === 'healthy' ? 'bg-green-500' : 
-                           ($health['status'] === 'warning' ? 'bg-yellow-500' : 'bg-red-500') }}">
-                    </div>
-                    <span class="font-semibold text-lg
-                        {{ $health['status'] === 'healthy' ? 'text-green-600' : 
-                           ($health['status'] === 'warning' ? 'text-yellow-600' : 'text-red-600') }}">
-                        {{ ucfirst($health['status']) }}
-                    </span>
-                </div>
-            </div>
+            <span class="font-semibold text-lg
+                {{ $health['status'] === 'healthy' ? 'text-green-600' : 
+                   ($health['status'] === 'warning' ? 'text-yellow-600' : 'text-red-600') }}">
+                {{ ucfirst($health['status']) }}
+            </span>
         </div>
+        <button onclick="refreshHealthCheck()" 
+                class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
+            <i class="fas fa-sync-alt mr-2"></i>
+            Atualizar
+        </button>
     </div>
 
     <!-- Checks Grid -->
@@ -102,9 +96,9 @@
                 // Atualizar apenas o conteúdo principal
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const newContent = doc.querySelector('.p-6');
+                const newContent = doc.querySelector('.page');
                 if (newContent) {
-                    document.querySelector('.p-6').innerHTML = newContent.innerHTML;
+                    document.querySelector('.page').innerHTML = newContent.innerHTML;
                 }
             })
             .catch(error => {

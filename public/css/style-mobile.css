@@ -22,3 +22,8 @@
   padding-top: 8px; margin-top: 8px;
 }
 .pdv-footer-cta .ol-btn{ width:100% }
+
+.ol-grid--4,.ol-grid--6{grid-template-columns:1fr 1fr}
+.ol-summary{grid-template-columns:1fr 1fr}
+.w-48,.w-32,.w-24{width:100%}
+.ol-flex{flex-wrap:wrap}

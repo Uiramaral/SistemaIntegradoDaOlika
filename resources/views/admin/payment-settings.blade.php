@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.dashboard')
 
 @section('title', 'Configurações de Pagamento')
 
@@ -35,17 +35,9 @@
 @endpush
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-4xl mx-auto px-4">
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">
-                    ⚙️ Configurações de Pagamento
-                </h1>
-                <p class="text-gray-600">
-                    Configure as integrações de pagamento e modo de teste
-                </p>
-            </div>
+<div class="page p-6">
+    <h1 class="text-2xl font-bold mb-4">⚙️ Configurações de Pagamento</h1>
+    <p class="text-gray-600 mb-6">Configure as integrações de pagamento e modo de teste</p>
 
             <!-- Formulário de Configurações -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -195,8 +187,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 </div>
 
 @push('scripts')

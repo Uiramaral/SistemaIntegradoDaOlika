@@ -1,14 +1,11 @@
-@extends('layouts.admin')
+@extends('layouts.dashboard')
 
-@section('title', 'Dashboard - Olika Admin')
+@section('title', 'Dashboard')
 
 @section('content')
-<div class="p-6">
-    <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p class="text-gray-600">Visão geral do sistema Olika</p>
-    </div>
+<div class="page p-6">
+    <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+    <p class="text-gray-600 mb-6">Visão geral do sistema Olika</p>
 
     <!-- Period Filter -->
     <div class="mb-6">

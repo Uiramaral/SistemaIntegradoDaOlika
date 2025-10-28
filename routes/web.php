@@ -2,26 +2,27 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\{
+    MenuController,
+    CartController,
+    OrderController,
+    WebhookController,
+    LoyaltyController,
+    ReferralController,
+    DeliveryFeeController,
+    CouponController,
+    PaymentController,
+    PedidosBulkController,
+    ReportsController,
+    CustomerController,
+    ProductController
+};
+use App\Http\Controllers\Auth\LoginController;
 
-// Rota de login (redireciona para dashboard)
-Route::get('/login', function () {
-    return redirect()->route('admin.dashboard');
-})->name('login');
-
-// Seus controllers (ajuste namespaces se necessário)
-use App\Http\Controllers\MenuController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\WebhookController;
-use App\Http\Controllers\LoyaltyController;
-use App\Http\Controllers\ReferralController;
-use App\Http\Controllers\DeliveryFeeController;
-use App\Http\Controllers\CouponController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PedidosBulkController;
-use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\ProductController;
+// =================== ROTAS DE AUTENTICAÇÃO =================== //
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->name('auth.login');
+Route::post('/logout', [LoginController::class, 'logout'])->name('auth.logout');
 
 /*
 |--------------------------------------------------------------------------
@@ -29,15 +30,57 @@ use App\Http\Controllers\ProductController;
 |    Rotas de administração ficam restritas a esse host.
 |--------------------------------------------------------------------------
 */
-Route::domain('dashboard.menuolika.com.br')->group(function () {
-
-    // Página inicial do subdomínio -> redireciona para o dashboard
+// =================== SUBDOMÍNIO: DASHBOARD =================== //
+Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function () {
+    
+    // Home principal (Dashboard)
     Route::get('/', function () {
-        return redirect()->route('dashboard.index');
-    })->name('dashboard.home');
+        return view('dash.pages.dashboard');
+    })->name('dashboard.index');
+
+    // Rotas principais do sistema (views básicas)
+    Route::get('/orders', fn() => view('dash.pages.orders'));
+    Route::get('/products', fn() => view('dash.pages.products'));
+    Route::get('/categories', fn() => view('dash.pages.categories'));
+    Route::get('/coupons', fn() => view('dash.pages.coupons'));
+    Route::get('/customers', fn() => view('dash.pages.customers'));
+    Route::get('/cashback', fn() => view('dash.pages.cashback'));
+    Route::get('/loyalty', fn() => view('dash.pages.loyalty'));
+    Route::get('/reports', fn() => view('dash.pages.reports'));
+    Route::get('/settings', fn() => view('dash.pages.settings'));
+
+    // Recursos com controllers funcionais
+    Route::resources([
+        'orders'     => \App\Http\Controllers\Dashboard\DashboardController::class,
+        'products'   => \App\Http\Controllers\Dashboard\ProductsController::class,
+        'customers'  => \App\Http\Controllers\Dashboard\CustomersController::class,
+        'categories' => \App\Http\Controllers\Dashboard\CategoriesController::class,
+        'coupons'    => \App\Http\Controllers\Dashboard\CouponsController::class,
+        'cashback'   => \App\Http\Controllers\Dashboard\CashbackController::class,
+    ]);
+
+    // Relatórios
+    Route::get('/reports', [ReportsController::class, 'index'])->name('dashboard.reports');
+    Route::get('/reports/export', [ReportsController::class, 'export'])->name('dashboard.reports.export');
+
+    // Fidelidade
+    Route::get('/loyalty', [\App\Http\Controllers\Dashboard\DashboardController::class, 'loyalty'])->name('dashboard.loyalty');
+
+    // Configurações e integrações
+    Route::get('/settings/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
+    Route::post('/settings/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave']);
+    Route::get('/settings/mercadopago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
+    Route::post('/settings/mercadopago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpSave']);
+
+    // PDV
+    Route::prefix('pdv')->name('dashboard.pdv.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('index');
+        Route::post('/calc', [\App\Http\Controllers\Dashboard\PDVController::class, 'calculate'])->name('calculate');
+        Route::post('/order', [\App\Http\Controllers\Dashboard\PDVController::class, 'store'])->name('store');
+    });
 
     // Rotas de administração
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/stats', [\App\Http\Controllers\Admin\DashboardController::class, 'getStats'])->name('dashboard.stats');
@@ -185,7 +228,7 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
 
     // Rotas de cupons
     Route::prefix('coupons')->name('coupons.')->group(function () {
-        Route::get('/', [CouponController::class, 'index'])->name('index');
+        Route::get('/', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('index');
     });
 
     // Rotas de pagamento
@@ -345,7 +388,7 @@ Route::prefix('delivery-fee')->name('delivery-fee.')->group(function () {
 
 // Rotas de cupons
 Route::prefix('coupons')->name('coupons.')->group(function () {
-    Route::get('/', [CouponController::class, 'index'])->name('index');
+    Route::get('/', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('index');
 });
 
 // Rotas de pagamento
@@ -718,6 +761,16 @@ Route::match(['get','post'], '/__flush', function () {
         'server_info' => ['php' => PHP_VERSION, 'laravel' => app()->version(), 'env' => app()->environment()],
     ]);
 })->name('system.flush');
+
+// =================== ROTAS GLOBAIS =================== //
+Route::get('/clear-cache-now', function () {
+    Artisan::call('optimize:clear');
+    return response()->json(['status' => 'success', 'cleared' => true]);
+});
+
+Route::prefix('webhooks')->group(function () {
+    Route::post('/mercadopago', [WebhookController::class, 'mercadoPago']);
+});
 
 /*
 |--------------------------------------------------------------------------

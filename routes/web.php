@@ -15,7 +15,6 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PedidosBulkController;
 use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 
@@ -29,7 +28,7 @@ Route::domain('dashboard.menuolika.com.br')->group(function () {
 
     // Página inicial do subdomínio -> redireciona para o dashboard
     Route::get('/', function () {
-        return redirect()->route('admin.dashboard');
+        return redirect()->route('dashboard.index');
     })->name('dashboard.home');
 
     // Rotas de administração
@@ -200,11 +199,12 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
 |--------------------------------------------------------------------------
 | 3) LOJA — rotas globais (domínio principal /sistema/public)
 |     Mantém compatibilidade acessando pelo domínio raiz.
+|     IMPORTANTE: Esta rota só deve ser usada como fallback final
 |--------------------------------------------------------------------------
 */
 
-// Home no domínio raiz
-Route::get('/', [MenuController::class, 'index'])->name('menu.index');
+// Home no domínio raiz (COMENTADA - só usar se não houver subdomínio configurado)
+// Route::get('/', [MenuController::class, 'index'])->name('menu.index');
 
 // Alias /menu (opcional), com nome diferente pra não duplicar
 Route::prefix('menu')->name('menu.')->group(function () {

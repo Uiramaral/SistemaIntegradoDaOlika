@@ -3,11 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('title','OLIKA — Dashboard')</title>
-  <!-- CSS base + mobile -->
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}" media="(max-width: 640px)">
+  
+  {{-- CSRF p/ fetch/POST --}}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  
+  {{-- CSS legado (se existir) + novos estilos --}}
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=20251027">
+  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=20251027" media="(max-width: 768px)">
+  
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
+  
+  @stack('head')
+  
+  <title>@yield('title','OLIKA — Dashboard')</title>
+  
+  <style>
+    /* mini-fix para não ficar tudo colado enquanto ajusta */
+    body { background:#f7f7f7; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto; color:#222; }
+    .ol-card { background:#fff; border:1px solid #ececec; border-radius:16px; padding:20px; margin:16px; }
+  </style>
 </head>
 <body class="ui"
       x-data="{ open:false }"
@@ -137,6 +151,8 @@ document.addEventListener('keydown', function(e) {
   overlay.addEventListener('click', closeMenu);
 })();
 </script>
+
+@stack('page-scripts')
 
 </body>
 </html>

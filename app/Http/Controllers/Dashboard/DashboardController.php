@@ -53,13 +53,15 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('dashboard.index', [
-            'totalHoje' => $totalHoje,
-            'pedidosHoje' => $pedidosHoje,
-            'pagosHoje' => $pagosHoje,
-            'pendentesPg' => $pendentesPg,
-            'pedidosRecentes' => $pedidosRecentes,
-            'topProdutos' => $topProdutos,
+        return view('dashboard.home_compact', [
+            'kpis' => [
+                'orders_today' => $pedidosHoje,
+                'revenue_today' => $totalHoje,
+                'paid_today' => $pagosHoje,
+                'waiting_payment' => $pendentesPg,
+            ],
+            'todayOrders' => $pedidosRecentes,
+            'statuses' => [],
         ]);
     }
 

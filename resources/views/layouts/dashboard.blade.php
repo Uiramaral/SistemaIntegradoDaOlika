@@ -8,20 +8,14 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   
   {{-- CSS legado (se existir) + novos estilos --}}
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=20251027">
-  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=20251027" media="(max-width: 768px)">
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=2">
+  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}?v=2" media="(max-width: 768px)">
   
   <script defer src="{{ asset('js/alpine.min.js') }}"></script>
   
   @stack('head')
   
   <title>@yield('title','OLIKA — Dashboard')</title>
-  
-  <style>
-    /* mini-fix para não ficar tudo colado enquanto ajusta */
-    body { background:#f7f7f7; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto; color:#222; }
-    .ol-card { background:#fff; border:1px solid #ececec; border-radius:16px; padding:20px; margin:16px; }
-  </style>
 </head>
 <body class="ui"
       x-data="{ open:false }"

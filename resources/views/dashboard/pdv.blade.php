@@ -1,99 +1,222 @@
 @extends('layouts.dashboard')
 
 @section('content')
-@push('head')
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/style-mobile.css') }}" media="(max-width: 768px)">
-@endpush
-
-<div class="ol-card">
-  <div class="ol-card__title">Ponto de Venda (PDV)</div>
-
-  {{-- Cliente --}}
-  <section class="ol-grid ol-grid--4">
-    <input id="cli-search" class="ol-input" placeholder="buscar por nome, telefone, e-mail">
-    <input id="cli-name" class="ol-input" placeholder="Nome">
-    <input id="cli-phone" class="ol-input" placeholder="Telefone (E164)">
-    <input id="cli-email" class="ol-input" placeholder="E-mail">
-      </section>
-
-  {{-- Endereço --}}
-  <section class="ol-grid ol-grid--6 mt-3">
-    <input id="addr-street" class="ol-input" placeholder="Rua *">
-    <input id="addr-number" class="ol-input" placeholder="Nº *">
-    <input id="addr-zip" class="ol-input" placeholder="CEP">
-    <input id="addr-comp" class="ol-input" placeholder="Compl.">
-    <input id="addr-nei" class="ol-input" placeholder="Bairro">
-    <input id="addr-city" class="ol-input" placeholder="Cidade *">
-    <input id="addr-uf" class="ol-input" placeholder="UF *">
-    <button id="addr-save" class="ol-btn ol-btn--ghost ml-auto">Salvar Endereço</button>
-      </section>
-
-  {{-- Itens --}}
-  <section class="mt-4">
-    <div class="ol-flex gap-2">
-      <input id="prod-search" class="ol-input flex-1" placeholder="buscar produto por nome ou SKU">
-      <input id="free-title" class="ol-input w-48" placeholder="Item avulso (desc)">
-      <input id="free-price" class="ol-input w-32" placeholder="Preço">
-      <input id="free-qty" class="ol-input w-24" type="number" min="1" value="1" placeholder="Qtd">
-      <button id="add-item" class="ol-btn">Adicionar</button>
-          </div>
-    <table class="ol-table mt-2" id="cart-table">
-      <thead><tr><th>Produto</th><th>Preço</th><th>Qtd</th><th>Total</th><th></th></tr></thead>
-      <tbody></tbody>
-          </table>
-      </section>
-
-  {{-- Entrega / Observações --}}
-  <section class="mt-4">
-    <select id="delivery-slot" class="ol-select w-full">
-      <option>Selecione um endereço e itens para calcular opções…</option>
-        </select>
-    <textarea id="order-notes" class="ol-textarea mt-2" placeholder="Observações do pedido"></textarea>
-      </section>
-
-  {{-- Resumo --}}
-  <section class="mt-4">
-    <div class="ol-flex items-center gap-2">
-      <div class="ol-dropdown">
-        <button class="ol-btn">Selecionar</button>
-        </div>
-      <button class="ol-btn ol-btn--ghost">Digitar</button>
-      <select id="coupon-eligible" class="ol-select">
-        <option>— cupons elegíveis —</option>
-            </select>
-      <button id="apply-eligible" class="ol-btn">Aplicar</button>
-      <input id="coupon-code" class="ol-input w-48" placeholder="Cupom">
-      <button id="apply-code" class="ol-btn">Aplicar</button>
-          </div>
-    <div class="ol-summary mt-3">
-      <div>Subtotal <strong id="sum-sub">R$ 0,00</strong></div>
-      <div>Desconto <strong id="sum-discount">R$ 0,00</strong></div>
-      <div>Entrega <strong id="sum-ship">R$ 0,00</strong></div>
-      <div class="ol-summary__total">Total <strong id="sum-total">R$ 0,00</strong></div>
-        </div>
-      </section>
-
-  {{-- Pagamento --}}
-  <section class="mt-4">
-    <div class="ol-radio-group">
-      <label><input type="radio" name="pay" value="pix" checked> PIX</label>
-      <label><input type="radio" name="pay" value="link-mp"> Link Mercado Pago</label>
-      <label><input type="radio" name="pay" value="fiado"> Fiado (lançar débito)</label>
+<div class="pdv-page" x-data="PDV()">
+  <div class="pdv-card">
+    <div class="pdv-head">
+      <h1>Ponto de Venda (PDV)</h1>
+      <div class="pdv-actions"></div>
     </div>
-    <button id="finalize" class="ol-cta mt-3">Finalizar Pedido</button>
-  </section>
+
+    {{-- Cliente --}}
+    <div class="grid grid-4">
+      <div class="field col-2">
+        <label>Cliente</label>
+        <div class="combo" @click.outside="cbx.close('customer')">
+          <input id="cli-search" class="input"
+                 placeholder="buscar por nome, telefone, e-mail"
+                 x-model="cbx.customer.query"
+                 @input.debounce.250ms="cbx.search('customer')">
+          <ul class="combo-list" x-show="cbx.customer.open">
+            <template x-for="opt in cbx.customer.results" :key="opt.id">
+              <li @click="cbx.pick('customer', opt)" x-text="opt.label"></li>
+            </template>
+            <li class="empty" x-show="!cbx.customer.results.length">Sem resultados</li>
+            <li class="new" @click="cbx.newCustomer()">+ Novo cliente</li>
+          </ul>
+        </div>
+      </div>
+      <div class="field">
+        <label>Nome</label>
+        <input class="input" x-model="form.customer.name" placeholder="Nome">
+      </div>
+      <div class="field">
+        <label>Telefone</label>
+        <input class="input" x-model="form.customer.phone" placeholder="5511999999999">
+      </div>
+      <div class="field">
+        <label>E-mail</label>
+        <input class="input" x-model="form.customer.email" placeholder="email@dominio.com">
+      </div>
+    </div>
+
+    {{-- CEP pequeno (vem depois do cliente) --}}
+    <div class="grid grid-cep">
+      <div class="field">
+        <label>CEP <span class="req">*</span></label>
+        <div class="cep-wrap">
+          <input id="cep" x-model="form.cep"
+                 @input.debounce.500ms="onCep()"
+                 class="input cep sm"
+                 placeholder="Somente números">
+          <button type="button" class="btn btn-soft" @click="onCep()">Buscar</button>
+          <small class="hint" x-text="cepHint"></small>
+        </div>
+      </div>
+    </div>
+
+    {{-- Endereço --}}
+    <div class="grid grid-6">
+      <div class="field col-2">
+        <label>Rua <span class="req">*</span></label>
+        <input class="input" x-model="form.address.street" placeholder="Rua">
+      </div>
+      <div class="field">
+        <label>Nº <span class="req">*</span></label>
+        <input class="input" x-model="form.address.number" placeholder="Nº">
+      </div>
+      <div class="field">
+        <label>Compl.</label>
+        <input class="input" x-model="form.address.complement" placeholder="Apto, Bloco…">
+      </div>
+      <div class="field">
+        <label>Bairro</label>
+        <input class="input" x-model="form.address.district" placeholder="Bairro">
+      </div>
+      <div class="field">
+        <label>Cidade <span class="req">*</span></label>
+        <input class="input" x-model="form.address.city" placeholder="Cidade">
+      </div>
+      <div class="field">
+        <label>UF <span class="req">*</span></label>
+        <input class="input" x-model="form.address.state" maxlength="2" placeholder="UF">
+      </div>
+      <div class="field">
+        <button class="btn btn-soft" @click="saveAddress()">Salvar Endereço</button>
+      </div>
+    </div>
+
+    {{-- Itens --}}
+    <div class="grid grid-items">
+      <div class="field col-3">
+        <label>Produto</label>
+        <div class="combo" @click.outside="cbx.close('product')">
+          <input class="input" placeholder="buscar produto por nome ou SKU"
+                 x-model="cbx.product.query" @input.debounce.250ms="cbx.search('product')">
+          <ul class="combo-list" x-show="cbx.product.open">
+            <template x-for="opt in cbx.product.results" :key="opt.id">
+              <li @click="cbx.pick('product', opt)">
+                <span x-text="opt.label"></span> <small x-text="opt.meta"></small>
+              </li>
+            </template>
+            <li class="new" @click="cbx.avulso()">+ Item avulso</li>
+          </ul>
+        </div>
+      </div>
+      <div class="field">
+        <label>Item avulso</label>
+        <input class="input" x-model="avulso.desc" placeholder="Descrição">
+      </div>
+      <div class="field">
+        <label>Preço</label>
+        <input class="input t-right" x-model.number="avulso.price" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label>Qtd</label>
+        <input class="input t-center" x-model.number="avulso.qty" min="1" value="1" type="number">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn" @click="addAvulso()">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+        <tr>
+          <th>Produto</th><th class="t-right">Preço</th>
+          <th class="t-center">Qtd</th><th class="t-right">Total</th><th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <template x-for="(it,idx) in cart" :key="it.key">
+          <tr>
+            <td x-text="it.name"></td>
+            <td class="t-right" x-text="money(it.price)"></td>
+            <td class="t-center">
+              <input class="qty" type="number" min="1" x-model.number="it.qty" @change="recalc()">
+            </td>
+            <td class="t-right"><strong x-text="money(it.price*it.qty)"></strong></td>
+            <td class="t-right"><button class="btn btn-soft" @click="remove(idx)">Remover</button></td>
+          </tr>
+        </template>
+        <tr x-show="!cart.length"><td colspan="5" class="empty">Adicione itens…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    {{-- Entrega & Observações --}}
+    <div class="grid grid-1">
+      <div class="field">
+        <label>Entrega</label>
+        <select class="input" x-model="form.delivery.option" @change="recalc()">
+          <option value="">Selecione um endereço e itens para calcular opções…</option>
+          <template x-for="opt in deliveryOptions" :key="opt.code">
+            <option :value="opt.code" x-text="opt.label"></option>
+          </template>
+        </select>
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <textarea class="input" x-model="form.notes" rows="3" placeholder="Observações do pedido…"></textarea>
+      </div>
+    </div>
+
+    {{-- Rodapé: totais + pagamento alinhados --}}
+    <div class="footer-grid">
+      <div class="resume">
+        <div class="coupon">
+          <div class="btn-group">
+            <button class="btn btn-soft" @click="loadEligibleCoupons()">Selecionar</button>
+            <button class="btn btn-soft" @click="toggleManual()">Digitar</button>
+          </div>
+          <select class="input" x-show="!manualCoupon" x-model="form.coupon.selected" @change="applySelectedCoupon()">
+            <option value="">— cupons elegíveis —</option>
+            <template x-for="c in coupons.eligible" :key="c.code">
+              <option :value="c.code" x-text="c.label"></option>
+            </template>
+          </select>
+          <div class="combo" x-show="manualCoupon">
+            <input class="input" x-model="form.coupon.code" placeholder="Cupom">
+            <button class="btn btn-soft" @click="applyCoupon()">Aplicar</button>
+          </div>
+        </div>
+        <div class="totals">
+          <div>Subtotal <strong x-text="money(totals.subtotal)"></strong></div>
+          <div>Desconto <strong x-text="money(totals.discount)"></strong></div>
+          <div>Entrega  <strong x-text="money(totals.delivery)"></strong></div>
+        </div>
+        <div class="grand">Total <strong x-text="money(totals.total)"></strong></div>
+      </div>
+
+      <div class="pay card">
+        <label class="pay-title">Pagamento</label>
+        <label class="radio"><input type="radio" name="pay" value="pix" x-model="form.payment" checked> PIX</label>
+        <label class="radio"><input type="radio" name="pay" value="link_mp" x-model="form.payment"> Link Mercado Pago</label>
+        <label class="radio"><input type="radio" name="pay" value="fiado" x-model="form.payment"> Fiado (lançar débito)</label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" @click="finalize()">Finalizar Pedido</button>
+    </div>
+  </div>
+
+  {{-- Modal Pagamento (PIX/Link) permanece igual ao seu --}}
+  @include('dashboard.pdv._modal_pagamento')
+
 </div>
 
-{{-- rotas/CSRF para o JS --}}
+{{-- Endpoints p/ JS --}}
 <script>
-  window.Olika = {
-    csrf: "{{ csrf_token() }}",
-    routes: { pdvStore: "{{ route('dashboard.pdv.store') }}" }
-  };
+window.PDV_API = {
+  'cep': '{{ route('dashboard.ajax.cep') }}',
+  'customers': '{{ route('dashboard.ajax.customers') }}',
+  'products': '{{ route('dashboard.ajax.products') }}',
+  'coupons': '{{ route('dashboard.ajax.coupons.eligible') }}',
+  'delivery': '{{ route('dashboard.ajax.delivery.options') }}',
+  'finalize': '{{ route('dashboard.pdv.store') }}'
+};
 </script>
 @endsection
-
-@push('page-scripts')
-  <script src="{{ asset('js/pdv.js') }}"></script>
-@endpush

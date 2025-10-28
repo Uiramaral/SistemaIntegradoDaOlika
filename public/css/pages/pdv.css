@@ -1,0 +1,129 @@
+/* === PDV === */
+.ui .pdv-page{max-width:1200px;margin:0 auto;padding:0px}
+.ui .pdv-page .pdv-card{background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:16px}
+.ui .pdv-page .pdv-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.ui .pdv-page h1{font-size:22px;font-weight:800;margin:0}
+.ui .pdv-page .grid{display:grid;gap:12px;margin-bottom:12px}
+.ui .pdv-page .grid-cep{grid-template-columns:1fr}
+.ui .pdv-page .grid-4{grid-template-columns:2fr 1fr 1fr 1fr}
+.ui .pdv-page .grid-6{grid-template-columns:2fr 1fr 1.2fr 1fr 1fr .7fr}
+.ui .pdv-page .grid-items{grid-template-columns:3fr 2fr 1fr .8fr .8fr}
+.ui .pdv-page .grid-1{grid-template-columns:1fr}
+.ui .pdv-page .col-2{grid-column:span 2}
+.ui .pdv-page .col-3{grid-column:span 3}
+.ui .pdv-page .field label{display:block;font-size:12px;color:#666;margin-bottom:6px}
+.ui .pdv-page .req{color:#ff6b35}
+.ui .pdv-page .input{width:100% !important;border:1px solid #ddd !important;border-radius:10px !important;padding:10px 12px !important;background:#fff !important}
+.ui .pdv-page .input:focus{border-color:#ff6b35 !important;outline:none !important;box-shadow:0 0 0 2px rgba(255,107,53,.15) !important}
+.ui .pdv-page .input.t-right{text-align:right}
+.ui .pdv-page .input.t-center{text-align:center}
+.ui .pdv-page .hint{color:#888;font-size:12px;margin-top:4px}
+.ui .pdv-page .combo{position:relative;display:flex;gap:8px;align-items:center}
+.ui .pdv-page .combo-list{position:absolute;top:110%;left:0;right:0;background:#fff;border:1px solid #eee;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:30;max-height:260px;overflow:auto}
+.ui .pdv-page .combo-list li{padding:10px 12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer}
+.ui .pdv-page .combo-list li:hover{background:#fff7f3}
+.ui .pdv-page .combo-list li.new{font-weight:700;color:#ff6b35}
+.ui .pdv-page .combo-list li.empty{color:#888;cursor:default}
+.ui .pdv-page .btn{border:1px solid #ddd !important;background:#fff !important;border-radius:10px !important;padding:10px 14px !important;font-weight:700 !important;cursor:pointer !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;height:auto !important}
+.ui .pdv-page .btn:hover{background:#fafafa !important}
+.ui .pdv-page .btn-soft{border-color:#ddd !important;color:#444 !important}
+.ui .pdv-page .btn-primary{background:#ff6b35 !important;border-color:#ff6b35 !important;color:#fff !important}
+.ui .pdv-page .btn-primary:hover{background:#ff814f !important;border-color:#ff814f !important}
+.ui .pdv-page .table-wrapper{border:1px solid #eee;border-radius:12px;overflow:hidden;margin-top:6px}
+.ui .pdv-page .table{width:100%;border-collapse:collapse}
+.ui .pdv-page .table th,.ui .pdv-page .table td{padding:10px 12px;border-bottom:1px solid #f2f2f2;text-align:left}
+.ui .pdv-page .table thead th{background:#fafafa;color:#555;font-weight:700}
+.ui .pdv-page .t-right{text-align:right}.ui .pdv-page .t-center{text-align:center}
+.ui .pdv-page .table .qty{width:66px;border:1px solid #ddd;border-radius:8px;padding:6px 8px;text-align:center}
+.ui .pdv-page .table .empty{text-align:center;color:#888}
+.ui .pdv-page .resume{display:flex;gap:24px;align-items:flex-start;margin-top:10px}
+.ui .pdv-page .resume-left{flex:1}
+.ui .pdv-page .coupon{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.ui .pdv-page .btn-group{display:flex;gap:8px}
+.ui .pdv-page .totals{display:grid;gap:4px;color:#444}
+.ui .pdv-page .grand{margin-top:6px;font-size:18px;font-weight:800}
+.ui .pdv-page .pay{min-width:280px;border:1px solid #eee;border-radius:12px;padding:12px}
+.ui .pdv-page .pay-title{display:block;margin-bottom:8px;font-weight:800}
+.ui .pdv-page .radio{display:block;margin:6px 0;color:#333}
+.ui .pdv-page .actions{margin-top:16px;text-align:left}
+@media (max-width: 1024px){
+  .ui .pdv-page .grid-4{grid-template-columns:1fr 1fr}
+  .ui .pdv-page .grid-6{grid-template-columns:1fr 1fr}
+  .ui .pdv-page .grid-items{grid-template-columns:1fr 1fr 1fr}
+  .ui .pdv-page .resume{flex-direction:column}
+  .ui .pdv-page .pay{width:100%}
+}
+
+/* === Modal de Pagamento === */
+.ui .pdv-page .ol-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000}
+.ui .pdv-page .ol-modal-box{width:min(680px,92vw);background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:16px}
+.ui .pdv-page .ol-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ui .pdv-page .ol-modal-head h3{margin:0;font-weight:800}
+.ui .pdv-page .pix-box .pix-qr{display:block;margin:0 auto 12px auto;max-width:220px}
+.ui .pdv-page .pix-box .row{display:flex;align-items:center;gap:12px;margin-top:8px}
+.ui .pdv-page .muted{color:#666}
+.ui .pdv-page .label{display:block;margin:10px 0 6px;color:#666;font-size:12px}
+
+/* Modal ações extras */
+.ui .pdv-page .pair{display:flex;justify-content:space-between;gap:12px;margin:6px 0;color:#333}
+.ui .pdv-page .pair strong{font-weight:800}
+.ui .pdv-page .row .btn{min-width:150px}
+
+/* ===== Escopo do PDV ===== */
+.pdv-page .pdv-card{ padding:18px 20px; }
+.pdv-page .pdv-head{ margin-bottom:12px; }
+.pdv-page .grid{ gap:12px; margin-bottom:12px; }
+.pdv-page .field label{ display:block; margin:0 0 6px; font-weight:600; }
+.pdv-page .input{ height:38px; }
+.pdv-page .input.t-right{ text-align:right; }
+.pdv-page .input.t-center{ text-align:center; }
+
+/* CEP pequeno e no lugar */
+.pdv-page .grid-cep{ margin-top:-2px; }
+.pdv-page .cep-wrap{ display:flex; gap:8px; align-items:center; }
+.pdv-page .input.cep.sm{ width:160px; }
+
+/* Grids firmes */
+.pdv-page .grid-6{ display:grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap:12px; }
+.pdv-page .grid-4{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; }
+.pdv-page .grid-1{ display:grid; grid-template-columns: 1fr; gap:12px; }
+.pdv-page .grid-items{ display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:12px; }
+.pdv-page .grid-6 .col-2{ grid-column: span 2 / span 2; }
+.pdv-page .grid-items .col-3{ grid-column: span 3 / span 3; }
+
+/* Tabela e empty state */
+.pdv-page .table-wrapper{ margin-top:4px; }
+.pdv-page .table .empty{ text-align:center; color:#888; }
+
+/* Rodapé colado: totais + pagamento lado a lado */
+.pdv-page .footer-grid{
+  display:grid; gap:12px; grid-template-columns: 1.2fr 0.8fr; align-items:start; margin-top:6px;
+}
+.pdv-page .resume .btn-group{ display:flex; gap:8px; margin-bottom:8px; }
+.pdv-page .resume .totals{ margin-top:8px; display:grid; gap:6px; }
+.pdv-page .resume .grand{ margin-top:6px; font-size:18px; }
+.pdv-page .pay.card{ background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; }
+.pdv-page .pay-title{ display:block; font-weight:700; margin-bottom:8px; }
+
+/* Ações */
+.pdv-page .actions{ margin-top:10px; display:flex; justify-content:flex-start; }
+
+/* Combo padrão */
+.pdv-page .combo{ position:relative; }
+.pdv-page .combo-list{
+  position:absolute; z-index:50; inset-inline:0; top:100%;
+  background:#fff; border:1px solid #eee; border-radius:10px; margin-top:4px; max-height:280px; overflow:auto;
+}
+.pdv-page .combo-list li{ padding:8px 10px; cursor:pointer; }
+.pdv-page .combo-list li:hover{ background:#f6f6f6; }
+.pdv-page .combo-list .empty{ color:#888; cursor:default; }
+.pdv-page .combo-list .new{ color:#ff6a00; font-weight:600; }
+
+/* Responsivo */
+@media (max-width: 1024px){
+  .pdv-page .grid-6{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .pdv-page .grid-4{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .pdv-page .grid-items{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .pdv-page .footer-grid{ grid-template-columns: 1fr; }
+  .pdv-page .input.cep.sm{ width:140px; }
+}

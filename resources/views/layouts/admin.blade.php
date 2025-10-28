@@ -18,6 +18,8 @@
             color: white;
         }
     </style>
+    
+    @stack('styles')
 </head>
 <body class="bg-gray-100">
     <div class="flex h-screen">
@@ -36,37 +38,37 @@
                     Dashboard
                 </a>
                 
-                <a href="{{ route('admin.orders') }}" 
+                <a href="{{ route('dashboard.orders') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-shopping-cart mr-3"></i>
                     Pedidos
                 </a>
                 
-                <a href="{{ route('admin.products') }}" 
+                <a href="{{ route('dashboard.products') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-utensils mr-3"></i>
                     Produtos
                 </a>
                 
-                <a href="{{ route('admin.categories') }}" 
+                <a href="{{ route('dashboard.categories') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-tags mr-3"></i>
                     Categorias
                 </a>
                 
-                <a href="{{ route('admin.coupons') }}" 
+                <a href="{{ route('dashboard.coupons') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-ticket-alt mr-3"></i>
                     Cupons
                 </a>
                 
-                <a href="{{ route('admin.customers') }}" 
+                <a href="{{ route('dashboard.customers') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-users mr-3"></i>
                     Clientes
                 </a>
                 
-                <a href="{{ route('admin.settings') }}" 
+                <a href="{{ route('admin.payment-settings') }}" 
                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition">
                     <i class="fas fa-cog mr-3"></i>
                     Configurações

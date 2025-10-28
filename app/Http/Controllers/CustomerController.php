@@ -12,17 +12,31 @@ class CustomerController extends Controller
         return view('dashboard.customers.show', ['c'=>$c,'orders'=>$orders]);
     }
 
-    public function update($customerId, Request $r){
-        $data = $r->validate([
-            'name'  => 'nullable|string',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string|max:30',
-            'cashback_balance' => 'nullable|numeric',
-            'credit_balance'   => 'nullable|numeric',
-            'credit_limit'     => 'nullable|numeric',
-            'exclusive_coupon_code' => 'nullable|string|max:60',
-        ]);
-        DB::table('customers')->where('id',$customerId)->update(array_merge($data,['updated_at'=>now()]));
-        return back()->with('ok', true);
+    public function search(Request $req)
+    {
+        $q = trim($req->get('q', ''));
+        if ($q === '') return response()->json([]);
+
+        $items = \App\Models\Customer::query()
+            ->select(['id','name','phone','email'])
+            ->when($q, function($sql) use ($q) {
+                $like = "%{$q}%";
+                $sql->where(function($w) use ($like) {
+                    $w->where('name','like',$like)
+                      ->orWhere('phone','like',$like)
+                      ->orWhere('email','like',$like);
+                });
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(fn($c) => [
+                'id'    => $c->id,
+                'label' => $c->name,
+                'phone' => $c->phone,
+                'email' => $c->email,
+            ]);
+
+        return response()->json($items);
     }
 }

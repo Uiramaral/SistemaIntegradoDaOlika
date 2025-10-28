@@ -1,0 +1,46 @@
+.product-edit .pe-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.product-edit .pe-tabs .pe-tabbar{display:flex;gap:8px;margin-bottom:12px}
+.product-edit .pe-tabs .pe-tabbar button{padding:8px 12px;border-radius:10px;border:1px solid #ececec;background:#f7f7f7;cursor:pointer}
+.product-edit .pe-tabs .pe-tabbar .active{background:#fff;border-color:#e0e0e0;font-weight:700}
+
+.product-edit .card{background:#fff;border:1px solid #ececec;border-radius:14px;padding:12px}
+.product-edit .grid{display:grid;gap:12px}
+.product-edit .g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.product-edit .g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width: 900px){.product-edit .g-2,.product-edit .g-3{grid-template-columns:1fr}}
+
+.product-edit .field label{display:block;margin:0 0 6px;font-weight:600}
+.product-edit .input{width:100%;height:40px;border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px;background:#fafafa}
+.product-edit textarea.input{height:auto}
+
+.product-edit .checkline{display:flex;gap:16px;align-items:center}
+
+/* Uploader */
+.product-edit .uploader{border:1px dashed #e5e7eb;border-radius:12px;padding:24px;text-align:center;background:#fafafa}
+.product-edit .uploader .btn{margin-left:8px}
+
+/* Galeria */
+.product-edit .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px}
+.product-edit .g-item{position:relative;border:1px solid #ececec;border-radius:12px;overflow:hidden;background:#fff}
+.product-edit .g-item img{display:block;width:100%;height:180px;object-fit:cover}
+.product-edit .g-actions{display:flex;gap:6px;align-items:center;justify-content:space-between;padding:8px;border-top:1px solid #f0f0f0}
+.product-edit .mv{display:flex;gap:6px}
+
+.product-edit .btn{border:none;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:700}
+.product-edit .btn-soft{background:#f6f6f6}
+.product-edit .btn-primary{background:#ff7a22;color:#fff}
+.product-edit .btn-danger{background:#ef4444;color:#fff}
+
+.product-edit .allergens{display:grid;gap:12px}
+.product-edit .alg-group{border:1px solid #f1f1f1;border-radius:12px;padding:10px}
+.product-edit .alg-title{font-weight:800;margin-bottom:8px}
+.product-edit .alg-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.product-edit .alg-item{display:flex;gap:8px;align-items:center}
+
+.product-edit .actions{margin-top:10px;display:flex;gap:8px}
+
+.product-edit .info-line{margin-top:12px;padding:8px 12px;background:#f8f9fa;border-radius:8px;border-left:3px solid #ff7a22}
+.product-edit .info-line strong{color:#333}
+.product-edit #auto-desc-preview{background:#fbfbfb}
+.product-edit #auto-label-preview{background:#fbfbfb}
+.product-edit .muted{color:#6b7280}

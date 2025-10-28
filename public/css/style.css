@@ -676,3 +676,13 @@ span.hidden.sm\:inline:has(> :where(*)) { display:none !important; }
 .ol-radio-group{display:flex;gap:16px}
 /* kill-switch para qualquer resquício do botão Baixar Layout */
 .btn-download-layout,[data-action="download-layout"]{display:none !important}
+
+/* ===== Compactação global suave do dashboard ===== */
+.ui .dashboard-content{ padding:5px 5px 30px; }              /* antes era maior */
+.ui .dashboard-content .page{ max-width:1200px; margin:0 auto; padding:0; }
+.ui .page .card, .ui .pdv-page .pdv-card{ margin-top:0; }
+
+/* tabelas e seções com "respiro" menor */
+.ui .page .table-wrapper, .ui .card{ border-radius:12px; }
+.ui .page h1{ margin:0 0 8px; }
+.ui .page .subtitle, .ui .ov-sub{ margin:0 0 16px; }

@@ -1,11 +1,42 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Configurações de Pagamento')
 
+@push('styles')
+<style>
+    .form-input {
+        @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent;
+    }
+    
+    .btn-primary {
+        @apply bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition;
+    }
+    
+    .btn-secondary {
+        @apply bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition;
+    }
+    
+    .notification {
+        @apply fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50;
+    }
+    
+    .notification.success {
+        @apply bg-green-500;
+    }
+    
+    .notification.error {
+        @apply bg-red-500;
+    }
+    
+    .notification.info {
+        @apply bg-blue-500;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="py-8">
-    <div class="container">
-        <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl mx-auto px-4">
             <!-- Header -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">
@@ -35,7 +66,7 @@
                                 <input type="text" 
                                        name="mercadopago_access_token" 
                                        value="{{ $settings['mercadopago_access_token']->value ?? '' }}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                       class="form-input"
                                        placeholder="APP_USR-...">
                             </div>
                             
@@ -46,7 +77,7 @@
                                 <input type="text" 
                                        name="mercadopago_public_key" 
                                        value="{{ $settings['mercadopago_public_key']->value ?? '' }}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                       class="form-input"
                                        placeholder="APP_USR-...">
                             </div>
                         </div>
@@ -56,7 +87,7 @@
                                 Ambiente
                             </label>
                             <select name="mercadopago_environment" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    class="form-input">
                                 <option value="sandbox" {{ ($settings['mercadopago_environment']->value ?? 'sandbox') === 'sandbox' ? 'selected' : '' }}>
                                     Sandbox (Teste)
                                 </option>
@@ -82,7 +113,7 @@
                                    value="{{ $settings['pix_expiration_minutes']->value ?? 30 }}"
                                    min="1" 
                                    max="1440"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                   class="form-input">
                         </div>
                     </div>
 
@@ -113,14 +144,14 @@
                     <!-- Botões -->
                     <div class="flex flex-col sm:flex-row gap-4">
                         <button type="submit" 
-                                class="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition">
+                                class="flex-1 btn-primary">
                             <i class="fas fa-save mr-2"></i>
                             Salvar Configurações
                         </button>
                         
                         <button type="button" 
                                 onclick="testConnection()" 
-                                class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                                class="flex-1 btn-secondary">
                             <i class="fas fa-wifi mr-2"></i>
                             Testar Conexão
                         </button>
@@ -253,10 +284,7 @@
 
     function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${
-            type === 'success' ? 'bg-green-500' : 
-            type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-        }`;
+        notification.className = `notification ${type}`;
         notification.textContent = message;
         
         document.body.appendChild(notification);

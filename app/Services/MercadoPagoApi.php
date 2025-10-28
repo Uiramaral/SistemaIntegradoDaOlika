@@ -122,5 +122,90 @@ class MercadoPagoApi
         $res = $this->client()->get($this->base."/v1/payments/{$paymentId}");
         return $res->json();
     }
+
+    /** Gera link (checkout) para cartão (crédito/débito) e PIX dentro do mesmo link */
+    public function createPaymentLink($order, $customer, array $items, array $opts = []): array
+    {
+        $payload = [
+            'title'       => 'Pedido ' . $order->order_number,
+            'quantity'    => 1,
+            'unit_price'  => (float) $order->final_amount,
+            'currency_id' => 'BRL',
+        ];
+
+        $body = [
+            'items' => [$payload],
+            'payer' => [
+                'name'    => $customer->name,
+                'email'   => $customer->email ?? 'sem-email@dominio.com',
+                'phone'   => ['area_code' => '', 'number' => $customer->phone],
+            ],
+            'payment_methods' => [
+                'excluded_payment_types' => array_map(fn($t)=>['id'=>$t], $opts['exclude_payment_types'] ?? ['ticket']), // boleto fora
+                'installments'           => (int)($opts['installments'] ?? 1), // sem parcelas
+            ],
+            'metadata' => [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+            ]
+        ];
+
+        $res = Http::withHeaders($this->headers())
+            ->post("{$this->base}/checkout/preferences", $body);
+
+        if (!$res->ok()) {
+            throw new \RuntimeException('MP erro: '.$res->body());
+        }
+        $j = $res->json();
+
+        return [
+            'preference_id' => $j['id'] ?? null,
+            'checkout_url'  => $j['init_point'] ?? ($j['sandbox_init_point'] ?? null),
+            'raw'           => $j,
+        ];
+    }
+
+    /** Gera carga PIX (qr + copia e cola) */
+    public function createPixPreference($order, $customer, array $items, array $opts = []): array
+    {
+        $body = [
+            'transaction_amount' => (float)$order->final_amount,
+            'description'        => 'Pedido ' . $order->order_number,
+            'payment_method_id'  => 'pix',
+            'payer'              => [
+                'email' => $customer->email ?? 'sem-email@dominio.com',
+                'first_name' => $customer->name,
+            ],
+        ];
+
+        $res = Http::withHeaders($this->headers())
+            ->post("{$this->base}/v1/payments", $body);
+
+        if (!$res->ok()) {
+            throw new \RuntimeException('MP PIX erro: '.$res->body());
+        }
+        $j = $res->json();
+
+        $qr = $j['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null;
+        $cc = $j['point_of_interaction']['transaction_data']['qr_code'] ?? null;
+        $exp= $j['date_of_expiration'] ?? null;
+
+        return [
+            'preference_id' => (string)($j['id'] ?? ''),
+            'checkout_url'  => null,
+            'qr_base64'     => $qr,
+            'copia_cola'    => $cc,
+            'expires_at'    => $exp,
+            'raw'           => $j,
+        ];
+    }
+
+    private function headers(): array
+    {
+        return [
+            'Authorization' => "Bearer {$this->token}",
+            'Content-Type'  => 'application/json',
+        ];
+    }
 }
 

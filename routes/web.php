@@ -3,6 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 
+// Rota de login (redireciona para dashboard)
+Route::get('/login', function () {
+    return redirect()->route('admin.dashboard');
+})->name('login');
+
 // Seus controllers (ajuste namespaces se necessário)
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\CartController;
@@ -227,8 +232,32 @@ Route::get('/pagamento/sucesso', fn()=> 'Pagamento aprovado')->name('checkout.su
 Route::get('/pagamento/erro', fn()=> 'Pagamento com erro')->name('checkout.failure');
 Route::get('/pagamento/pendente', fn()=> 'Pagamento pendente')->name('checkout.pending');
 
-// Pedidos - ver/editar
-Route::get('/dashboard/pedidos', [OrderController::class, 'index'])->name('dashboard.orders.index');
+// Produtos
+Route::prefix('products')->name('dashboard.products.')->middleware('auth')->group(function () {
+    Route::get('/',         [ProductController::class, 'index'])->name('index');
+    Route::get('/create',   [ProductController::class, 'create'])->name('create');
+    Route::post('/',        [ProductController::class, 'store'])->name('store');
+    Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
+    Route::put('/{product}',       [ProductController::class, 'update'])->name('update');
+    Route::patch('/{product}/toggle', [ProductController::class,'toggle'])->name('toggle');
+    Route::get('/search', [ProductController::class, 'search'])->name('search');
+
+    // Galeria (AJAX)
+    Route::post('/{product}/images',                           [\App\Http\Controllers\ProductGalleryController::class,'store'])->name('images.store');
+    Route::patch('/{product}/images/{image}/primary',          [\App\Http\Controllers\ProductGalleryController::class,'primary'])->name('images.primary');
+    Route::delete('/{product}/images/{image}',                 [\App\Http\Controllers\ProductGalleryController::class,'destroy'])->name('images.destroy');
+    Route::patch('/{product}/images/{image}/move/{direction}', [\App\Http\Controllers\ProductGalleryController::class,'move'])->name('images.move'); // up/down
+});
+
+// --- PDV — AJAX --- //
+Route::middleware(['auth'])->group(function () {
+    Route::get('/ajax/test', [\App\Http\Controllers\Ajax\TestController::class, 'test'])->name('dashboard.ajax.test');
+    Route::get('/ajax/cep', [\App\Http\Controllers\Ajax\PdvAjaxController::class, 'cep'])->name('dashboard.ajax.cep');
+    Route::get('/ajax/customers', [\App\Http\Controllers\Ajax\PdvAjaxController::class, 'customers'])->name('dashboard.ajax.customers');
+    Route::get('/ajax/products', [\App\Http\Controllers\Ajax\PdvAjaxController::class, 'products'])->name('dashboard.ajax.products');
+    Route::get('/ajax/coupons/eligible', [\App\Http\Controllers\Ajax\PdvAjaxController::class, 'eligibleCoupons'])->name('dashboard.ajax.coupons.eligible');
+    Route::post('/ajax/delivery/options', [\App\Http\Controllers\Ajax\PdvAjaxController::class, 'deliveryOptions'])->name('dashboard.ajax.delivery.options');
+});
 
 Route::prefix('dashboard/pedidos')->name('dashboard.orders.')->group(function () {
     Route::get('{order}', [OrderController::class, 'show'])->name('show');
@@ -247,7 +276,6 @@ Route::get('/dashboard/clientes/{customer}', [CustomerController::class, 'show']
 Route::post('/dashboard/clientes/{customer}/update', [CustomerController::class, 'update'])->name('dashboard.customers.update');
 
 // Produtos - index (cards padrão), editar, salvar
-Route::get('/dashboard/produtos', [ProductController::class, 'index'])->name('dashboard.products.index');
 Route::get('/dashboard/produtos/{product}/edit', [ProductController::class, 'edit'])->name('dashboard.products.edit');
 Route::post('/dashboard/produtos/{product}', [ProductController::class, 'update'])->name('dashboard.products.update');
 Route::post('/dashboard/produtos/{product}/images', [ProductController::class, 'storeImage'])->name('dashboard.products.images.store');
@@ -560,7 +588,6 @@ foreach ($dashboardHosts as $host) {
         'update' => 'dashboard.products.update',
         'destroy' => 'dashboard.products.destroy',
     ]);
-    Route::post('/products/{id}/toggle', [\App\Http\Controllers\Dashboard\ProductsController::class, 'toggleStatus'])->name('dashboard.products.toggle');
     
     // Categorias (CRUD completo)
     Route::resource('/categories', \App\Http\Controllers\Dashboard\CategoriesController::class)->names([

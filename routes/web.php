@@ -27,7 +27,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('auth.logout');
 Route::get('/register', [RegisterController::class, 'showForm'])->name('register.form');
 Route::post('/register', [RegisterController::class, 'register'])->name('register');
 
-// Subdomínio: Dashboard
+// Subdomínio: Dashboard (produção)
 Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function () {
 
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
@@ -103,6 +103,24 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::post('/order',    [\App\Http\Controllers\Dashboard\PDVController::class, 'store'])->name('store');
     });
 
+});
+
+// Rotas públicas de visual (ambiente local ou sem subdomínio)
+// Mapeiam exatamente os caminhos do site clonado para evitar 404
+Route::prefix('/')->group(function () {
+    Route::get('/', function () { return view('dash.pages.dashboard.index'); });
+    Route::get('/pdv', function () { return view('dash.pages.pdv.index'); });
+    Route::get('/pedidos', function () { return view('dash.pages.orders.index'); });
+    Route::get('/clientes', function () { return view('dash.pages.customers.index'); });
+    Route::get('/produtos', function () { return view('dash.pages.products.index'); });
+    Route::get('/categorias', function () { return view('dash.pages.categories.index'); });
+    Route::get('/cupons', function () { return view('dash.pages.coupons.index'); });
+    Route::get('/cashback', function () { return view('dash.pages.cashback.index'); });
+    Route::get('/fidelidade', function () { return view('dash.pages.loyalty.index'); });
+    Route::get('/relatorios', function () { return view('dash.pages.reports.index'); });
+    Route::get('/whatsapp', function () { return view('dash.pages.settings.whatsapp'); });
+    Route::get('/mercado-pago', function () { return view('dash.pages.settings.mercado-pago'); });
+    Route::get('/status-templates', function () { return view('dash.pages.settings.status-templates'); });
 });
 
 // Subdomínio: Pedido (Loja)

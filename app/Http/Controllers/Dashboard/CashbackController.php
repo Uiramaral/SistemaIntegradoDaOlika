@@ -3,15 +3,14 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cashback;
 use Illuminate\Http\Request;
 
 class CashbackController extends Controller
 {
     public function index()
     {
-        $cashbacks = Cashback::all();
-        return view('dash.pages.cashback.index', compact('cashbacks'));
+        // Renderiza apenas a view clonada (sem dependência de modelo)
+        return view('dash.pages.cashback.index');
     }
 
     public function create()

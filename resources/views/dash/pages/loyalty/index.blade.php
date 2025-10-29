@@ -1,175 +1,122 @@
-@extends('layouts.admin')
+@extends('dash.layouts.app')
 
-@section('title', 'Fidelidade')
-@section('page_title', 'Programa de Fidelidade')
+@section('title', 'Fidelidade - OLIKA Dashboard')
 
 @section('content')
-<div class="container-page">
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold">Programa de Fidelidade</h1>
-    <p class="text-gray-600 mt-2">Configure os benefícios do programa de fidelidade para seus clientes</p>
+<div class="space-y-6 animate-in fade-in duration-500">
+  <div>
+    <h1 class="text-3xl font-bold tracking-tight">Programa de Fidelidade</h1>
+    <p class="text-muted-foreground">Recompense clientes fiéis e aumente o engajamento</p>
   </div>
 
-  @if(session('status'))
-    <x-alert type="success">{{ session('status') }}</x-alert>
-  @endif
-
-  @if(session('error'))
-    <x-alert type="error">{{ session('error') }}</x-alert>
-  @endif
-
-  @if ($errors->any())
-    <x-alert type="danger">
-      <ul class="list-disc pl-5 text-sm">
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-alert>
-  @endif
-
-  <!-- Cashback -->
-  <x-card class="mb-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-coins text-orange-600 mr-3"></i>
-      <h2 class="text-lg font-semibold">Cashback</h2>
-    </div>
-    <p class="text-sm text-gray-600 mb-4">Configure o percentual de cashback que os clientes recebem em cada compra.</p>
-    
-    <form method="POST" action="{{ route('dashboard.loyalty.update.cashback') }}" class="space-y-4">
-      @csrf
-      <x-form-group label="% de Cashback por compra">
-        <x-input type="number" name="percentual" step="0.1" value="{{ old('percentual', $cashbackPercent ?? 0) }}" placeholder="0.0" />
-        <p class="text-xs text-gray-500 mt-1">Não inclui taxa de entrega nem descontos aplicados.</p>
-      </x-form-group>
-      
-      <div class="flex gap-2">
-        <x-button variant="primary" type="submit">
-          <i class="fas fa-save mr-2"></i> Atualizar Cashback
-        </x-button>
-        <x-button variant="secondary" type="button" onclick="document.querySelector('input[name=\"percentual\"]').value = '0'">
-          <i class="fas fa-times mr-2"></i> Limpar
-        </x-button>
-      </div>
-    </form>
-  </x-card>
-
-  <!-- Indicação -->
-  <x-card class="mb-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-users text-blue-600 mr-3"></i>
-      <h2 class="text-lg font-semibold">Indicação de Clientes</h2>
-    </div>
-    <p class="text-sm text-gray-600 mb-4">Configure o bônus para clientes que indicam novos compradores.</p>
-    
-    <form method="POST" action="{{ route('dashboard.loyalty.update.indicacao') }}" class="space-y-4">
-      @csrf
-      <x-form-group label="% de bônus por compra do indicado">
-        <x-input type="number" name="percentual_indicacao" step="0.1" value="{{ old('percentual_indicacao', $indicacaoPercent ?? 0) }}" placeholder="0.0" />
-        <p class="text-xs text-gray-500 mt-1">Valor baseado no total da compra do indicado, sem entrega nem cupons.</p>
-      </x-form-group>
-      
-      <div class="flex gap-2">
-        <x-button variant="primary" type="submit">
-          <i class="fas fa-save mr-2"></i> Atualizar Bônus de Indicação
-        </x-button>
-        <x-button variant="secondary" type="button" onclick="document.querySelector('input[name=\"percentual_indicacao\"]').value = '0'">
-          <i class="fas fa-times mr-2"></i> Limpar
-        </x-button>
-      </div>
-    </form>
-  </x-card>
-
-  <!-- Bônus por Pedidos -->
-  <x-card>
-    <div class="flex items-center mb-4">
-      <i class="fas fa-gift text-green-600 mr-3"></i>
-      <h2 class="text-lg font-semibold">Bônus por Quantidade de Pedidos</h2>
-    </div>
-    <p class="text-sm text-gray-600 mb-4">Configure bônus especiais baseados no número de pedidos realizados pelo cliente.</p>
-    
-    <form method="POST" action="{{ route('dashboard.loyalty.update.bonus') }}" class="space-y-4">
-      @csrf
-      
-      <div class="space-y-3">
-        <div class="grid grid-cols-3 gap-4 text-sm font-medium text-gray-600 mb-2">
-          <div>Quantidade de Pedidos</div>
-          <div>Valor do Bônus (R$)</div>
-          <div class="text-right">Ações</div>
+  <div class="grid gap-4 md:grid-cols-4">
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div class="p-6 pt-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">Pontos Emitidos</p>
+            <p class="text-2xl font-bold">12.450</p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-8 w-8 text-warning"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>
         </div>
-        
-        @foreach($bonusPedidos ?? [] as $i => $bonus)
-          <div class="grid grid-cols-3 gap-4 items-center p-3 bg-gray-50 rounded-lg">
-            <x-input type="number" name="bonus[{{ $i }}][qtd]" value="{{ $bonus['qtd'] }}" placeholder="Ex: 5" />
-            <x-input type="number" name="bonus[{{ $i }}][valor]" step="0.01" value="{{ $bonus['valor'] }}" placeholder="Ex: 10.00" />
-            <div class="text-right">
-              <x-button variant="danger" size="sm" type="button" onclick="this.closest('.grid').remove()">
-                <i class="fas fa-trash"></i>
-              </x-button>
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div class="p-6 pt-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">Pontos Resgatados</p>
+            <p class="text-2xl font-bold">8.230</p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift h-8 w-8 text-success"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div class="p-6 pt-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">Clientes Ativos</p>
+            <p class="text-2xl font-bold">342</p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart h-8 w-8 text-primary"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div class="p-6 pt-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">Taxa de Resgate</p>
+            <p class="text-2xl font-bold">66%</p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up h-8 w-8 text-primary"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div dir="ltr" data-orientation="horizontal" class="space-y-4">
+    <div role="tablist" aria-orientation="horizontal" class="h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3">
+      <button type="button" role="tab" aria-selected="true" class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Configurações</button>
+      <button type="button" role="tab" aria-selected="false" class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all">Top Clientes</button>
+      <button type="button" role="tab" aria-selected="false" class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all">Recompensas</button>
+    </div>
+
+    <div class="mt-2 space-y-4">
+      <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6">
+          <h3 class="text-2xl font-semibold leading-none tracking-tight">Configurações do Programa</h3>
+          <p class="text-sm text-muted-foreground">Configure as regras do programa de fidelidade</p>
+        </div>
+        <div class="p-6 pt-0 space-y-6">
+          <div class="flex items-center justify-between">
+            <div class="space-y-0.5">
+              <label class="text-sm font-medium leading-none" for="loyalty-active">Programa Ativo</label>
+              <p class="text-sm text-muted-foreground">Ativar ou desativar o programa de fidelidade</p>
+            </div>
+            <button type="button" role="switch" aria-checked="true" data-state="checked" value="on" class="peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors data-[state=checked]:bg-primary data-[state=unchecked]:bg-input" id="loyalty-active">
+              <span data-state="checked" class="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"></span>
+            </button>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium leading-none" for="points-per-real">Pontos por Real (R$)</label>
+              <input type="number" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 md:text-sm" id="points-per-real" placeholder="10" value="10">
+              <p class="text-sm text-muted-foreground">Quantos pontos o cliente ganha por R$ 1,00 gasto</p>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium leading-none" for="min-order">Pedido Mínimo (R$)</label>
+              <input type="number" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 md:text-sm" id="min-order" placeholder="20.00" value="20">
             </div>
           </div>
-        @endforeach
-        
-        <!-- Novo bônus -->
-        <div class="grid grid-cols-3 gap-4 items-center p-3 border-2 border-dashed border-gray-300 rounded-lg">
-          <x-input type="number" name="bonus[new][qtd]" placeholder="Nova quantidade" />
-          <x-input type="number" name="bonus[new][valor]" step="0.01" placeholder="Novo bônus (R$)" />
-          <div class="text-right">
-            <x-badge type="info">Novo</x-badge>
+          <div class="space-y-4">
+            <label class="text-sm font-medium leading-none">Níveis de Fidelidade</label>
+            <div class="space-y-3">
+              <div class="flex items-center gap-4">
+                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary text-primary-foreground w-20 justify-center">Bronze</div>
+                <input type="number" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 md:text-sm w-32" placeholder="0" value="0">
+                <span class="text-sm text-muted-foreground">pontos</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground w-20 justify-center">Prata</div>
+                <input type="number" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 md:text-sm w-32" placeholder="500" value="500">
+                <span class="text-sm text-muted-foreground">pontos</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-warning text-warning-foreground w-20 justify-center">Ouro</div>
+                <input type="number" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 md:text-sm w-32" placeholder="1000" value="1000">
+                <span class="text-sm text-muted-foreground">pontos</span>
+              </div>
+            </div>
           </div>
+          <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2 w-full">Salvar Configurações</button>
         </div>
       </div>
-      
-      <div class="flex gap-2">
-        <x-button variant="primary" type="submit">
-          <i class="fas fa-save mr-2"></i> Atualizar Bônus por Pedidos
-        </x-button>
-        <x-button variant="secondary" type="button" onclick="addNewBonus()">
-          <i class="fas fa-plus mr-2"></i> Adicionar Mais
-        </x-button>
-      </div>
-    </form>
-  </x-card>
-
-  <!-- Resumo -->
-  <x-card class="mt-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-chart-pie text-purple-600 mr-3"></i>
-      <h2 class="text-lg font-semibold">Resumo do Programa</h2>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="text-center p-4 bg-orange-50 rounded-lg">
-        <div class="text-2xl font-bold text-orange-600">{{ $cashbackPercent ?? 0 }}%</div>
-        <div class="text-sm text-gray-600">Cashback por compra</div>
-      </div>
-      
-      <div class="text-center p-4 bg-blue-50 rounded-lg">
-        <div class="text-2xl font-bold text-blue-600">{{ $indicacaoPercent ?? 0 }}%</div>
-        <div class="text-sm text-gray-600">Bônus por indicação</div>
-      </div>
-      
-      <div class="text-center p-4 bg-green-50 rounded-lg">
-        <div class="text-2xl font-bold text-green-600">{{ count($bonusPedidos ?? []) }}</div>
-        <div class="text-sm text-gray-600">Marcas de bônus</div>
-      </div>
-    </div>
-  </x-card>
+  </div>
 </div>
-
-<script>
-function addNewBonus() {
-  const container = document.querySelector('.space-y-3');
-  const newBonus = document.createElement('div');
-  newBonus.className = 'grid grid-cols-3 gap-4 items-center p-3 border-2 border-dashed border-gray-300 rounded-lg';
-  newBonus.innerHTML = `
-    <input type="number" name="bonus[new][qtd]" placeholder="Nova quantidade" class="input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
-    <input type="number" name="bonus[new][valor]" step="0.01" placeholder="Novo bônus (R$)" class="input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
-    <div class="text-right">
-      <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Novo</span>
-    </div>
-  `;
-  container.appendChild(newBonus);
-}
-</script>
 @endsection

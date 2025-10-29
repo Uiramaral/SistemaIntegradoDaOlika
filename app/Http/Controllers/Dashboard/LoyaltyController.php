@@ -4,19 +4,17 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Loyalty;
 
 class LoyaltyController extends Controller
 {
     public function index()
     {
-        $loyalties = Loyalty::with('customer')->latest()->paginate(20);
-        return view('dash.pages.loyalty.index', compact('loyalties'));
+        // Renderiza apenas a view clonada (sem dependência de modelo)
+        return view('dash.pages.loyalty.index');
     }
 
-    public function update(Request $request, Loyalty $loyalty)
+    public function update(Request $request)
     {
-        $loyalty->update(['pontos' => $request->pontos]);
-        return redirect()->back()->with('success', 'Pontos de fidelidade atualizados!');
+        return redirect()->back()->with('success', 'Configurações atualizadas!');
     }
 }

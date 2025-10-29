@@ -716,7 +716,8 @@
         // ============================================
         
         // Função para abrir modal de recibo - DEFINIR PRIMEIRO para estar disponível globalmente
-        window.openReceiptModal = async function(orderId) {
+        // Definir tanto como window.openReceiptModal quanto como openReceiptModal diretamente
+        function openReceiptModal(orderId) {
             console.log('🔔 openReceiptModal chamado com orderId:', orderId);
             const modal = document.getElementById('receipt-modal');
             const content = document.getElementById('receipt-modal-content');
@@ -727,47 +728,56 @@
                 return;
             }
             
-            try {
-                // Mostrar modal com loading
-                modal.classList.remove('hidden');
-                content.innerHTML = '<div class="text-center p-8">Carregando...</div>';
-                
-                // Buscar conteúdo via AJAX
-                const url = `{{ route('dashboard.orders.receipt', '__ORDER__') }}`.replace('__ORDER__', orderId);
-                console.log('📡 Buscando recibo em:', url);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/html',
+            // Usar async/await dentro
+            (async () => {
+                try {
+                    // Mostrar modal com loading
+                    modal.classList.remove('hidden');
+                    content.innerHTML = '<div class="text-center p-8">Carregando...</div>';
+                    
+                    // Buscar conteúdo via AJAX
+                    const url = `{{ route('dashboard.orders.receipt', '__ORDER__') }}`.replace('__ORDER__', orderId);
+                    console.log('📡 Buscando recibo em:', url);
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html',
+                        }
+                    });
+                    
+                    console.log('📥 Resposta recebida:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar recibo: ' + response.status);
                     }
-                });
-                
-                console.log('📥 Resposta recebida:', response.status, response.statusText);
-                
-                if (!response.ok) {
-                    throw new Error('Erro ao carregar recibo: ' + response.status);
+                    
+                    const html = await response.text();
+                    content.innerHTML = html;
+                    console.log('✅ Recibo carregado com sucesso');
+                } catch (error) {
+                    console.error('❌ Erro ao carregar recibo:', error);
+                    content.innerHTML = '<div class="text-center p-8 text-red-600">Erro ao carregar recibo. Tente novamente.</div>';
                 }
-                
-                const html = await response.text();
-                content.innerHTML = html;
-                console.log('✅ Recibo carregado com sucesso');
-            } catch (error) {
-                console.error('❌ Erro ao carregar recibo:', error);
-                content.innerHTML = '<div class="text-center p-8 text-red-600">Erro ao carregar recibo. Tente novamente.</div>';
-            }
-        };
+            })();
+        }
+        
+        // Também expor no window para garantir
+        window.openReceiptModal = openReceiptModal;
         
         // Fechar modal de recibo
-        window.closeReceiptModal = function() {
+        function closeReceiptModal() {
             const modal = document.getElementById('receipt-modal');
             if (modal) {
                 modal.classList.add('hidden');
             }
-        };
+        }
+        
+        // Também expor no window
+        window.closeReceiptModal = closeReceiptModal;
         
         // Função para atualizar quantidade do item via AJAX - GLOBAL
-        window.updateItemQuantity = async function(orderId, itemId, delta) {
+        function updateItemQuantity(orderId, itemId, delta) {
             const button = event.target.closest('button');
             const quantitySpan = button.parentElement.querySelector('.item-quantity');
             const row = button.closest('tr[data-item-id]');
@@ -775,65 +785,71 @@
             // Desabilitar botão temporariamente
             button.disabled = true;
             
-            try {
-                // Construir URLs usando template com placeholders que serão substituídos
-                @php
-                    $addUrl = route('dashboard.orders.addItemQuantity', ['order' => 999999, 'item' => 888888]);
-                    $addUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $addUrl);
-                    $reduceUrl = route('dashboard.orders.reduceItemQuantity', ['order' => 999999, 'item' => 888888]);
-                    $reduceUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $reduceUrl);
-                @endphp
-                const addUrlTemplate = '{{ $addUrl }}';
-                const reduceUrlTemplate = '{{ $reduceUrl }}';
-                const url = delta > 0 
-                    ? addUrlTemplate.replace('__ORDER__', orderId).replace('__ITEM__', itemId)
-                    : reduceUrlTemplate.replace('__ORDER__', orderId).replace('__ITEM__', itemId);
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                });
+            // Usar async/await dentro
+            (async () => {
+                try {
+                    // Construir URLs usando template com placeholders que serão substituídos
+                    @php
+                        $addUrl = route('dashboard.orders.addItemQuantity', ['order' => 999999, 'item' => 888888]);
+                        $addUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $addUrl);
+                        $reduceUrl = route('dashboard.orders.reduceItemQuantity', ['order' => 999999, 'item' => 888888]);
+                        $reduceUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $reduceUrl);
+                    @endphp
+                    const addUrlTemplate = '{{ $addUrl }}';
+                    const reduceUrlTemplate = '{{ $reduceUrl }}';
+                    const url = delta > 0 
+                        ? addUrlTemplate.replace('__ORDER__', orderId).replace('__ITEM__', itemId)
+                        : reduceUrlTemplate.replace('__ORDER__', orderId).replace('__ITEM__', itemId);
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                    });
 
-                const data = await response.json();
+                    const data = await response.json();
 
-                if (data.success) {
-                    if (data.removed && data.item_id) {
-                        // Remover linha da tabela
-                        row.remove();
-                        // Verificar se não há mais itens
-                        const tbody = document.getElementById('items-tbody');
-                        if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
-                            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                    if (data.success) {
+                        if (data.removed && data.item_id) {
+                            // Remover linha da tabela
+                            row.remove();
+                            // Verificar se não há mais itens
+                            const tbody = document.getElementById('items-tbody');
+                            if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
+                                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                            }
+                        } else if (data.item) {
+                            // Atualizar quantidade e total do item
+                            quantitySpan.textContent = data.item.quantity;
+                            row.querySelector('.item-total-price').textContent = 'R$ ' + data.item.total_price;
                         }
-                    } else if (data.item) {
-                        // Atualizar quantidade e total do item
-                        quantitySpan.textContent = data.item.quantity;
-                        row.querySelector('.item-total-price').textContent = 'R$ ' + data.item.total_price;
+                        
+                        // Atualizar totais
+                        updateOrderTotals(data.order);
+                        
+                        // Mostrar mensagem de sucesso
+                        showSuccessMessage(delta > 0 ? 'Quantidade aumentada com sucesso!' : 'Quantidade reduzida com sucesso!');
+                    } else {
+                        showErrorMessage(data.error || 'Erro ao atualizar quantidade');
                     }
-                    
-                    // Atualizar totais
-                    updateOrderTotals(data.order);
-                    
-                    // Mostrar mensagem de sucesso
-                    showSuccessMessage(delta > 0 ? 'Quantidade aumentada com sucesso!' : 'Quantidade reduzida com sucesso!');
-                } else {
-                    showErrorMessage(data.error || 'Erro ao atualizar quantidade');
+                } catch (error) {
+                    console.error('Erro:', error);
+                    showErrorMessage('Erro ao atualizar quantidade. Tente novamente.');
+                } finally {
+                    button.disabled = false;
                 }
-            } catch (error) {
-                console.error('Erro:', error);
-                showErrorMessage('Erro ao atualizar quantidade. Tente novamente.');
-            } finally {
-                button.disabled = false;
-            }
-        };
+            })();
+        }
+        
+        // Expor no window também
+        window.updateItemQuantity = updateItemQuantity;
         
         // Função para remover item via AJAX - GLOBAL
-        window.removeItem = async function(orderId, itemId) {
+        function removeItem(orderId, itemId) {
             if (!confirm('Tem certeza que deseja remover este item completamente do pedido?')) {
                 return;
             }
@@ -841,45 +857,51 @@
             const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
             if (!row) return;
 
-            try {
-                @php
-                    $removeUrl = route('dashboard.orders.removeItem', ['order' => 999999, 'item' => 888888]);
-                    $removeUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $removeUrl);
-                @endphp
-                const url = '{{ $removeUrl }}'.replace('__ORDER__', orderId).replace('__ITEM__', itemId);
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                });
+            // Usar async/await dentro
+            (async () => {
+                try {
+                    @php
+                        $removeUrl = route('dashboard.orders.removeItem', ['order' => 999999, 'item' => 888888]);
+                        $removeUrl = str_replace(['999999', '888888'], ['__ORDER__', '__ITEM__'], $removeUrl);
+                    @endphp
+                    const url = '{{ $removeUrl }}'.replace('__ORDER__', orderId).replace('__ITEM__', itemId);
+                    const response = await fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                    });
 
-                const data = await response.json();
+                    const data = await response.json();
 
-                if (data.success) {
-                    // Remover linha da tabela
-                    row.remove();
-                    // Verificar se não há mais itens
-                    const tbody = document.getElementById('items-tbody');
-                    if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
-                        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                    if (data.success) {
+                        // Remover linha da tabela
+                        row.remove();
+                        // Verificar se não há mais itens
+                        const tbody = document.getElementById('items-tbody');
+                        if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
+                            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                        }
+                        
+                        // Atualizar totais
+                        updateOrderTotals(data.order);
+                        
+                        showSuccessMessage('Item removido com sucesso!');
+                    } else {
+                        showErrorMessage(data.error || 'Erro ao remover item');
                     }
-                    
-                    // Atualizar totais
-                    updateOrderTotals(data.order);
-                    
-                    showSuccessMessage('Item removido com sucesso!');
-                } else {
-                    showErrorMessage(data.error || 'Erro ao remover item');
+                } catch (error) {
+                    console.error('Erro:', error);
+                    showErrorMessage('Erro ao remover item. Tente novamente.');
                 }
-            } catch (error) {
-                console.error('Erro:', error);
-                showErrorMessage('Erro ao remover item. Tente novamente.');
-            }
-        };
+            })();
+        }
+        
+        // Expor no window também
+        window.removeItem = removeItem;
         
         // ============================================
         // HANDLERS DO FORMULÁRIO DE ADICIONAR ITEM

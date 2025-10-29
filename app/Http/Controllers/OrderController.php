@@ -21,7 +21,7 @@ class OrderController extends Controller
             ->orderByDesc('orders.id')
             ->paginate(12)
             ->withQueryString();
-        return view('dashboard.orders.index', compact('orders','q'));
+        return view('dash.pages.orders', compact('orders','q'));
     }
 
     public function show($orderId)
@@ -51,7 +51,7 @@ class OrderController extends Controller
             "{$address->street}, {$address->number} {$address->complement} - {$address->district}, {$address->city}-{$address->state}" : 
             'Endereço não informado';
 
-        return view('dashboard.orders.show', compact('order','items'));
+        return view('dash.pages.orders', compact('order','items'));
     }
 
     // Atualiza meta: status, pagamento, data/hora de entrega e observação.

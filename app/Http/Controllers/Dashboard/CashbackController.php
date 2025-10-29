@@ -3,88 +3,42 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cashback;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class CashbackController extends Controller
 {
     public function index()
     {
-        $cashbacks = DB::table('cashback as c')
-            ->leftJoin('customers as cust', 'cust.id', '=', 'c.customer_id')
-            ->select(
-                'c.*',
-                'cust.name as customer_name',
-                'cust.phone as customer_phone'
-            )
-            ->orderByDesc('c.id')
-            ->paginate(30);
-
-        return view('dashboard.cashback', compact('cashbacks'));
+        $cashbacks = Cashback::all();
+        return view('dash.pages.cashback.index', compact('cashbacks'));
     }
 
     public function create()
     {
-        $customers = DB::table('customers')->orderBy('name')->get();
-        return view('dashboard.cashback_form', ['customers' => $customers, 'cashback' => null]);
+        return view('dash.pages.cashback.create');
     }
 
-    public function store(Request $r)
+    public function store(Request $request)
     {
-        $data = $r->validate([
-            'customer_id' => 'required|integer|exists:customers,id',
-            'amount' => 'required|numeric|min:0',
-            'type' => 'required|string|in:credit,manual,bonus',
-            'description' => 'nullable|string|max:500',
-            'expires_at' => 'nullable|date',
-        ]);
-
-        $data['status'] = 'pending';
-        $data['created_at'] = now();
-        $data['updated_at'] = now();
-
-        DB::table('cashback')->insert($data);
-
-        return redirect()->route('dashboard.cashback')->with('ok', 'Cashback criado!');
+        Cashback::create($request->all());
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback criado com sucesso!');
     }
 
-    public function edit($id)
+    public function edit(Cashback $cashback)
     {
-        $cashback = DB::table('cashback')->find($id);
-        if (!$cashback) {
-            return redirect()->route('dashboard.cashback')->with('error', 'Cashback não encontrado');
-        }
-
-        $customers = DB::table('customers')->orderBy('name')->get();
-        return view('dashboard.cashback_form', ['cashback' => $cashback, 'customers' => $customers]);
+        return view('dash.pages.cashback.edit', compact('cashback'));
     }
 
-    public function update(Request $r, $id)
+    public function update(Request $request, Cashback $cashback)
     {
-        $cashback = DB::table('cashback')->find($id);
-        if (!$cashback) {
-            return redirect()->route('dashboard.cashback')->with('error', 'Cashback não encontrado');
-        }
-
-        $data = $r->validate([
-            'customer_id' => 'required|integer|exists:customers,id',
-            'amount' => 'required|numeric|min:0',
-            'type' => 'required|string|in:credit,manual,bonus',
-            'status' => 'required|string|in:pending,active,expired,used',
-            'description' => 'nullable|string|max:500',
-            'expires_at' => 'nullable|date',
-        ]);
-
-        $data['updated_at'] = now();
-        DB::table('cashback')->where('id', $id)->update($data);
-
-        return redirect()->route('dashboard.cashback')->with('ok', 'Cashback atualizado!');
+        $cashback->update($request->all());
+        return redirect()->route('dashboard.cashback')->with('success', 'Cashback atualizado com sucesso!');
     }
 
-    public function destroy($id)
+    public function destroy(Cashback $cashback)
     {
-        DB::table('cashback')->where('id', $id)->delete();
-        return redirect()->route('dashboard.cashback')->with('ok', 'Cashback excluído!');
+        $cashback->delete();
+        return redirect()->route('dashboard.cashback')->with('success', 'Cashback removido com sucesso!');
     }
 }
-

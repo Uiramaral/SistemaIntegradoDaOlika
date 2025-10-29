@@ -45,7 +45,7 @@ class ProductController extends Controller
             ->orderBy('is_active','desc')
             ->orderBy('name')
             ->paginate(12);
-        return view('dashboard.products.index', compact('products'));
+        return view('dash.pages.products', compact('products'));
     }
 
     public function toggle(\App\Models\Product $product)
@@ -66,7 +66,7 @@ class ProductController extends Controller
         $generated_preview       = $product->generateDefaultDescription(); // longa (site)
         $generated_label_preview = $product->generateLabelText();          // curta (rótulo)
 
-        return view('dashboard.products.edit', compact(
+        return view('dash.pages.products', compact(
             'product','allergens','categories','generated_preview','generated_label_preview'
         ));
     }

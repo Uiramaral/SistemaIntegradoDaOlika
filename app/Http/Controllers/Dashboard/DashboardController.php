@@ -4,203 +4,64 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Order;
-use App\Services\OrderStatusService;
 
 class DashboardController extends Controller
 {
-    public function kpisBase()
-    {
-        return [
-            'orders_today'    => DB::table('orders')->whereDate('created_at', today())->count(),
-            'paid_today'      => DB::table('orders')->whereDate('created_at', today())->where('status', 'paid')->count(),
-            'revenue_today'   => (float) DB::table('orders')->whereDate('created_at', today())->where('status', 'paid')->sum('final_amount'),
-            'waiting_payment' => DB::table('orders')->where('status', 'waiting_payment')->count(),
-        ];
-    }
-
     public function home()
     {
-        $today = \Carbon\Carbon::today();
-        
-        // Cards do topo
-        $totalHoje = DB::table('orders')->whereDate('created_at', $today)->sum('final_amount');
-        $pedidosHoje = DB::table('orders')->whereDate('created_at', $today)->count();
-        $pagosHoje = DB::table('orders')->whereDate('created_at', $today)->where('payment_status','paid')->count();
-        $pendentesPg = DB::table('orders')->whereDate('created_at', $today)->where('payment_status','pending')->count();
-        
-        // Pedidos recentes (com cliente)
-        $pedidosRecentes = \App\Models\Order::with('customer')
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
-        
-        // Top produtos (últimos 7 dias, por quantidade)
-        $desde = \Carbon\Carbon::now()->subDays(7);
-        $topProdutos = \App\Models\OrderItem::select([
-                'order_items.product_id',
-                DB::raw('SUM(order_items.quantity) as qty'),
-                DB::raw('SUM(order_items.total_price) as revenue')
-            ])
-            ->join('orders','orders.id','=','order_items.order_id')
-            ->where('orders.created_at','>=',$desde)
-            ->groupBy('order_items.product_id')
-            ->orderByDesc('qty')
-            ->with(['product' => function($q){
-                $q->select('id','name','price','image_url');
-            }])
-            ->limit(5)
-            ->get();
-
-        return view('dashboard.home_compact', [
-            'kpis' => [
-                'orders_today' => $pedidosHoje,
-                'revenue_today' => $totalHoje,
-                'paid_today' => $pagosHoje,
-                'waiting_payment' => $pendentesPg,
-            ],
-            'todayOrders' => $pedidosRecentes,
-            'statuses' => [],
-        ]);
+        try {
+            $todayOrders = Order::whereDate('created_at', today())->get();
+            
+            // Dados para o dashboard com tratamento de erro
+            $totalPedidos = Order::count();
+            $faturamento = Order::sum('total') ?? 0;
+            $novosClientes = \App\Models\Customer::whereDate('created_at', today())->count();
+            $ticketMedio = $totalPedidos > 0 ? $faturamento / $totalPedidos : 0;
+            
+            // Contagem por status
+            $statusCount = [
+                'pending' => Order::where('status', 'pending')->count(),
+                'confirmed' => Order::where('status', 'confirmed')->count(),
+                'preparing' => Order::where('status', 'preparing')->count(),
+                'delivered' => Order::where('status', 'delivered')->count(),
+            ];
+            
+            return view('dash.pages.dashboard.index', compact(
+                'todayOrders', 'totalPedidos', 'faturamento', 'novosClientes', 'ticketMedio', 'statusCount'
+            ));
+        } catch (\Exception $e) {
+            // Em caso de erro, retornar valores padrão
+            return view('dash.pages.dashboard.index', [
+                'todayOrders' => collect(),
+                'totalPedidos' => 0,
+                'faturamento' => 0,
+                'novosClientes' => 0,
+                'ticketMedio' => 0,
+                'statusCount' => [
+                    'pending' => 0,
+                    'confirmed' => 0,
+                    'preparing' => 0,
+                    'delivered' => 0,
+                ]
+            ]);
+        }
     }
 
     public function compact()
     {
-        $kpis = $this->kpisBase();
-
-        $todayOrders = DB::table('orders as o')
-            ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
-            ->select('o.*', 'c.name as customer_name', 'c.phone as customer_phone')
-            ->whereDate('o.created_at', today())
-            ->orderBy('o.status')
-            ->orderBy('o.id')
-            ->get();
-
-        $statuses = DB::table('order_statuses')->where('active', 1)->orderBy('id')->get();
-
-        return view('dashboard.home_compact', compact('kpis', 'todayOrders', 'statuses'));
-    }
-
-    public function orders()
-    {
-        $orders = Order::with('customer')
-            ->latest('created_at')->limit(50)->get();
-
-        return view('dashboard.orders', compact('orders'));
-    }
-
-    public function orderShow($order)
-    {
-        // Log para debug
-        \Log::info('orderShow called', [
-            'param' => $order,
-            'host' => request()->getHost(),
-            'uri'  => request()->getRequestUri(),
-        ]);
-
-        // Busca por order_number ou id (com agrupamento correto)
-        $orderModel = Order::with(['customer', 'items'])
-            ->where(function($q) use ($order) {
-                $q->where('order_number', $order)
-                  ->orWhere('id', $order);
-            })
-            ->firstOrFail();
-
-        \Log::info('LOADING VIEW: dashboard.order-show', [
-            'order_id' => $orderModel->id,
-            'order_number' => $orderModel->order_number ?? 'N/A',
-            'host' => request()->getHost(),
-            'uri'  => request()->getRequestUri(),
-        ]);
-        
-        return view('dashboard.order-show', ['order' => $orderModel]);
-    }
-
-    public function orderChangeStatus(Request $r, Order $order, OrderStatusService $oss)
-    {
-        $data = $r->validate([
-            'status_code' => 'required|exists:order_statuses,code',
-            'note' => 'nullable|string|max:255',
-        ]);
-
-        $oss->changeStatus($order, $data['status_code'], $data['note'], optional($r->user())->id);
-
-        return back()->with('ok', 'Status atualizado e notificações enviadas (se configurado).');
-    }
-
-    public function customers()
-    {
-        $customers = \App\Models\Customer::query()
-            ->withCount('orders')
-            ->withSum('orders as total_spent', 'final_amount')
-            ->addSelect([
-                'debts_sum' => \App\Models\CustomerDebt::selectRaw('
-                    COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - 
-                    COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0)
-                ')
-                    ->whereColumn('customer_id', 'customers.id')
-                    ->where('status', 'open')
-                    ->limit(1)
-            ])
-            ->orderBy('name')
-            ->get();
-
-        return view('dashboard.customers', compact('customers'));
-    }
-
-    public function products()
-    {
-        $products = DB::table('products')->orderBy('name')->paginate(30);
-
-        return view('dashboard.products', compact('products'));
-    }
-
-    public function categories()
-    {
-        $cats = DB::table('categories')->orderBy('name')->paginate(30);
-
-        return view('dashboard.categories', compact('cats'));
-    }
-
-    public function coupons()
-    {
-        $coupons = DB::table('coupons')->orderByDesc('id')->paginate(30);
-
-        return view('dashboard.coupons', compact('coupons'));
-    }
-
-    // Método removido - agora usa CashbackController
-
-    public function loyalty()
-    {
-        $rows = DB::table('loyalty_programs')->orderByDesc('id')->paginate(30);
-
-        return view('dashboard.loyalty', compact('rows'));
+        $todayOrders = Order::whereDate('created_at', today())->get();
+        return view('dash.pages.dashboard.compact', compact('todayOrders'));
     }
 
     public function reports()
     {
-        $last30 = now()->subDays(30);
+        $reports = Order::latest()->take(10)->get();
+        return view('dash.pages.reports.index', compact('reports'));
+    }
 
-        $sales = DB::table('orders')->where('status', 'paid')->where('created_at', '>=', $last30)->sum('final_amount');
-
-        $count = DB::table('orders')->where('status', 'paid')->where('created_at', '>=', $last30)->count();
-
-        $aov = $count ? $sales / $count : 0;
-
-        $top = DB::table('order_items')
-            ->join('products', 'products.id', '=', 'order_items.product_id')
-            ->select('products.name as product_name', DB::raw('SUM(order_items.quantity) as qty'))
-            ->whereIn('order_items.order_id', function ($q) use ($last30) {
-                $q->select('id')->from('orders')->where('created_at', '>=', $last30);
-            })
-            ->groupBy('products.name')
-            ->orderByDesc('qty')
-            ->limit(10)
-            ->get();
-
-        return view('dashboard.reports', compact('sales', 'count', 'aov', 'top'));
+    public function settings()
+    {
+        return view('dash.pages.settings.index');
     }
 }
-

@@ -18,12 +18,12 @@ class CustomersController extends Controller
             ->orderByDesc('id')
             ->paginate(30);
 
-        return view('dashboard.customers', compact('customers'));
+        return view('dash.pages.customers', compact('customers'));
     }
 
     public function create()
     {
-        return view('dashboard.customers_form', ['customer' => null]);
+        return view('dash.pages.customers', ['customer' => null]);
     }
 
     public function store(Request $r)
@@ -56,7 +56,7 @@ class CustomersController extends Controller
             ->orderByDesc('id')
             ->paginate(10);
 
-        return view('dashboard.customers_show', compact('customer', 'orders'));
+        return view('dash.pages.customers', compact('customer', 'orders'));
     }
 
     public function edit($id)
@@ -66,7 +66,7 @@ class CustomersController extends Controller
             return redirect()->route('dashboard.customers')->with('error', 'Cliente não encontrado');
         }
 
-        return view('dashboard.customers_form', ['customer' => $customer]);
+        return view('dash.pages.customers', ['customer' => $customer]);
     }
 
     public function update(Request $r, $id)

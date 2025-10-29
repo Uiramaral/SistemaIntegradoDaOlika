@@ -3,101 +3,51 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class CouponsController extends Controller
 {
     public function index()
     {
-        $coupons = DB::table('coupons')->orderByDesc('id')->paginate(30);
-        return view('dashboard.coupons', compact('coupons'));
+        $coupons = Coupon::all();
+        return view('dash.pages.coupons.index', compact('coupons'));
     }
 
     public function create()
     {
-        return view('dashboard.coupons_form', ['coupon' => null]);
+        return view('dash.pages.coupons.create');
     }
 
-    public function store(Request $r)
+    public function store(Request $request)
     {
-        $data = $r->validate([
-            'code' => 'required|string|max:50|unique:coupons,code',
-            'type' => 'required|string|in:fixed,percent',
-            'value' => 'required|numeric|min:0',
-            'minimum_amount' => 'nullable|numeric|min:0',
-            'usage_limit' => 'nullable|integer|min:0',
-            'usage_limit_per_customer' => 'nullable|integer|min:0',
-            'starts_at' => 'nullable|date',
-            'expires_at' => 'nullable|date',
-            'visibility' => 'nullable|string|in:public,targeted',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        $data['is_active'] = (int)($data['is_active'] ?? 1);
-        $data['created_at'] = now();
-        $data['updated_at'] = now();
-
-        DB::table('coupons')->insert($data);
-
-        return redirect()->route('dashboard.coupons')->with('ok', 'Cupom criado!');
+        Coupon::create($request->all());
+        return redirect()->route('dashboard.coupons')->with('success', 'Cupom criado com sucesso!');
     }
 
-    public function edit($id)
+    public function edit(Coupon $coupon)
     {
-        $coupon = DB::table('coupons')->find($id);
-        if (!$coupon) {
-            return redirect()->route('dashboard.coupons')->with('error', 'Cupom não encontrado');
-        }
-
-        return view('dashboard.coupons_form', ['coupon' => $coupon]);
+        return view('dash.pages.coupons.edit', compact('coupon'));
     }
 
-    public function update(Request $r, $id)
+    public function update(Request $request, Coupon $coupon)
     {
-        $coupon = DB::table('coupons')->find($id);
-        if (!$coupon) {
-            return redirect()->route('dashboard.coupons')->with('error', 'Cupom não encontrado');
-        }
-
-        $data = $r->validate([
-            'code' => 'required|string|max:50|unique:coupons,code,'.$id,
-            'type' => 'required|string|in:fixed,percent',
-            'value' => 'required|numeric|min:0',
-            'minimum_amount' => 'nullable|numeric|min:0',
-            'usage_limit' => 'nullable|integer|min:0',
-            'usage_limit_per_customer' => 'nullable|integer|min:0',
-            'starts_at' => 'nullable|date',
-            'expires_at' => 'nullable|date',
-            'visibility' => 'nullable|string|in:public,targeted',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        $data['updated_at'] = now();
-        DB::table('coupons')->where('id', $id)->update($data);
-
-        return redirect()->route('dashboard.coupons')->with('ok', 'Cupom atualizado!');
+        $coupon->update($request->all());
+        return redirect()->route('dashboard.coupons')->with('success', 'Cupom atualizado com sucesso!');
     }
 
-    public function destroy($id)
+    public function destroy(Coupon $coupon)
     {
-        DB::table('coupons')->where('id', $id)->delete();
-        return redirect()->route('dashboard.coupons')->with('ok', 'Cupom excluído!');
+        $coupon->delete();
+        return redirect()->route('dashboard.coupons')->with('success', 'Cupom removido com sucesso!');
     }
 
     public function toggleStatus($id)
     {
-        $coupon = DB::table('coupons')->find($id);
-        if (!$coupon) {
-            return back()->with('error', 'Cupom não encontrado');
-        }
+        $coupon = Coupon::findOrFail($id);
+        $coupon->active = !$coupon->active;
+        $coupon->save();
 
-        DB::table('coupons')->where('id', $id)->update([
-            'is_active' => (int)!$coupon->is_active,
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('ok', 'Status atualizado!');
+        return redirect()->route('dashboard.coupons')->with('success', 'Status do cupom atualizado!');
     }
 }
-

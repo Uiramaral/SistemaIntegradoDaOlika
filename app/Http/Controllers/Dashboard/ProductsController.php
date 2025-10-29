@@ -4,111 +4,51 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\Product;
 
 class ProductsController extends Controller
 {
     public function index()
     {
-        $products = DB::table('products')
-            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
-            ->select('products.*', 'categories.name as category_name')
-            ->orderBy('products.name')
-            ->paginate(30);
-
-        return view('dashboard.products', compact('products'));
+        $produtos = Product::with('categoria')->latest()->paginate(20);
+        return view('dash.pages.products.index', compact('produtos'));
     }
 
     public function create()
     {
-        $categories = DB::table('categories')->where('is_active', 1)->orderBy('name')->get();
-        return view('dashboard.products_form', ['categories' => $categories, 'product' => null]);
+        return view('dash.pages.products.create');
     }
 
-    public function store(Request $r)
+    public function store(Request $request)
     {
-        $data = $r->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'category_id' => 'nullable|integer|exists:categories,id',
-            'is_active' => 'nullable|boolean',
+            'price' => 'required|numeric',
         ]);
 
-        // Campo SKU opcional
-        if($r->has('sku')) $data['sku'] = $r->get('sku');
-
-        $data['is_active'] = (int)($data['is_active'] ?? 1);
-        $data['created_at'] = now();
-        $data['updated_at'] = now();
-
-        // Remove vazios
-        $data = array_filter($data, fn($v) => $v !== '' && $v !== null);
-
-        DB::table('products')->insert($data);
-
-        return redirect()->route('dashboard.products')->with('ok', 'Produto criado com sucesso!');
+        Product::create($data);
+        return redirect()->route('dashboard.products.index')->with('success', 'Produto criado com sucesso.');
     }
 
-    public function edit($id)
+    public function edit(Product $product)
     {
-        $product = DB::table('products')->find($id);
-        if (!$product) {
-            return redirect()->route('dashboard.products')->with('error', 'Produto não encontrado');
-        }
-
-        $categories = DB::table('categories')->where('is_active', 1)->orderBy('name')->get();
-        return view('dashboard.products_form', ['product' => $product, 'categories' => $categories]);
+        return view('dash.pages.products.edit', compact('product'));
     }
 
-    public function update(Request $r, $id)
+    public function update(Request $request, Product $product)
     {
-        $product = DB::table('products')->find($id);
-        if (!$product) {
-            return redirect()->route('dashboard.products')->with('error', 'Produto não encontrado');
-        }
-
-        $data = $r->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'category_id' => 'nullable|integer|exists:categories,id',
-            'is_active' => 'nullable|boolean',
+            'price' => 'required|numeric',
         ]);
 
-        // SKU opcional
-        if($r->has('sku')) $data['sku'] = $r->get('sku');
-
-        $data['is_active'] = (int)($data['is_active'] ?? 1);
-        $data['updated_at'] = now();
-
-        // Remove vazios
-        $data = array_filter($data, fn($v) => $v !== '' && $v !== null);
-
-        DB::table('products')->where('id', $id)->update($data);
-
-        return redirect()->route('dashboard.products')->with('ok', 'Produto atualizado!');
+        $product->update($data);
+        return redirect()->route('dashboard.products.index')->with('success', 'Produto atualizado com sucesso.');
     }
 
-    public function destroy($id)
+    public function destroy(Product $product)
     {
-        DB::table('products')->where('id', $id)->delete();
-        return redirect()->route('dashboard.products')->with('ok', 'Produto excluído!');
-    }
-
-    public function toggleStatus($id)
-    {
-        $product = DB::table('products')->find($id);
-        if (!$product) {
-            return back()->with('error', 'Produto não encontrado');
-        }
-
-        DB::table('products')->where('id', $id)->update([
-            'is_active' => (int)!$product->is_active,
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('ok', 'Status atualizado!');
+        $product->delete();
+        return redirect()->route('dashboard.products.index')->with('success', 'Produto removido com sucesso.');
     }
 }
-

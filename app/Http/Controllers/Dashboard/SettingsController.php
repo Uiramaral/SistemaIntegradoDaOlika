@@ -12,7 +12,7 @@ class SettingsController extends Controller
     {
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
 
-        return view('dashboard.settings_whatsapp', compact('row'));
+        return view('dash.pages.settings', compact('row'));
     }
 
     public function whatsappSave(Request $r)
@@ -105,7 +105,7 @@ class SettingsController extends Controller
     {
         $keys = DB::table('payment_settings')->pluck('value', 'key');
 
-        return view('dashboard.settings_mp', ['keys' => $keys]);
+        return view('dash.pages.settings', ['keys' => $keys]);
     }
 
     public function mpSave(Request $r)

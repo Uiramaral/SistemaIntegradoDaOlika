@@ -165,11 +165,25 @@ class Coupon extends Model
 
         // Verificar limite por cliente
         if ($this->usage_limit_per_customer && $customerId) {
-            $usedByCustomer = $this->orderCoupons()
-                ->whereHas('order', function ($q) use ($customerId) {
-                    $q->where('customer_id', $customerId);
-                })
-                ->count();
+            try {
+                // Tentar usar orderCoupons se a tabela existir
+                $usedByCustomer = $this->orderCoupons()
+                    ->whereHas('order', function ($q) use ($customerId) {
+                        $q->where('customer_id', $customerId);
+                    })
+                    ->count();
+            } catch (\Exception $e) {
+                // Se a tabela order_coupons não existir, usar orders diretamente
+                \Log::warning('Tabela order_coupons não encontrada, usando orders diretamente', [
+                    'coupon_code' => $this->code,
+                    'error' => $e->getMessage(),
+                ]);
+                
+                // Contar pedidos do cliente que usam este cupom
+                $usedByCustomer = \App\Models\Order::where('customer_id', $customerId)
+                    ->where('coupon_code', $this->code)
+                    ->count();
+            }
 
             if ($usedByCustomer >= $this->usage_limit_per_customer) {
                 return false;

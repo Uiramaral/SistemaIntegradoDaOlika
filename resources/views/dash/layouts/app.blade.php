@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="overflow-x-hidden">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'OLIKA Dashboard - Sistema de Gestão de Restaurante')</title>
     <meta name="description" content="Dashboard completo para gestão de restaurante com pedidos, produtos e relatórios em tempo real">
     <meta name="author" content="OLIKA">
@@ -55,6 +56,46 @@
         }
     </script>
     <style>
+        /* Prevenir scroll horizontal no mobile - Global */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+            position: relative;
+        }
+        
+        /* Garantir que todos os containers respeitem o viewport */
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* Prevenir elementos que possam causar overflow */
+        img, video, iframe, table, pre, code {
+            max-width: 100%;
+        }
+        
+        /* Garantir que tabelas sejam responsivas apenas quando necessário */
+        .overflow-x-auto table,
+        table.overflow-x-auto {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Em mobile, tabelas grandes podem ter scroll horizontal */
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+            }
+        }
+        
+        /* Containers principais */
+        .container, [class*="container"], [class*="max-w"] {
+            max-width: 100%;
+        }
+        
         :root {
             --background: 0 0% 100%;
             --foreground: 222.2 84% 4.9%;
@@ -137,7 +178,7 @@
             <!-- Overlay para mobile -->
             <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-200" onclick="toggleSidebar()"></div>
             
-            <div class="flex min-h-screen w-full bg-background">
+            <div class="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background">
                 <div class="group peer hidden text-sidebar-foreground md:block" data-state="expanded" data-collapsible="" data-variant="sidebar" data-side="left" id="desktop-sidebar">
                     <div class="relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 group-data-[collapsible=icon]:w-[--sidebar-width-icon]"></div>
                     <div class="fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l">
@@ -154,19 +195,19 @@
                                             @php
                                                 $currentRoute = request()->path();
                                                 $menuItems = [
-                                                    ['url' => '/', 'label' => 'Visão Geral', 'icon' => 'lucide-layout-dashboard'],
-                                                    ['url' => '/pdv', 'label' => 'PDV', 'icon' => 'lucide-shopping-cart'],
-                                                    ['url' => '/pedidos', 'label' => 'Pedidos', 'icon' => 'lucide-file-text'],
-                                                    ['url' => '/clientes', 'label' => 'Clientes', 'icon' => 'lucide-users'],
-                                                    ['url' => '/produtos', 'label' => 'Produtos', 'icon' => 'lucide-package'],
-                                                    ['url' => '/categorias', 'label' => 'Categorias', 'icon' => 'lucide-folder-tree'],
-                                                    ['url' => '/cupons', 'label' => 'Cupons', 'icon' => 'lucide-ticket'],
-                                                    ['url' => '/cashback', 'label' => 'Cashback', 'icon' => 'lucide-wallet'],
-                                                    ['url' => '/fidelidade', 'label' => 'Fidelidade', 'icon' => 'lucide-heart'],
-                                                    ['url' => '/relatorios', 'label' => 'Relatórios', 'icon' => 'lucide-chart-column'],
-                                                    ['url' => '/whatsapp', 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle'],
-                                                    ['url' => '/mercado-pago', 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card'],
-                                                    ['url' => '/status-templates', 'label' => 'Status & Templates', 'icon' => 'lucide-settings2'],
+                                                    ['url' => route('dashboard.index'), 'label' => 'Visão Geral', 'icon' => 'lucide-layout-dashboard'],
+                                                    ['url' => route('dashboard.pdv.index'), 'label' => 'PDV', 'icon' => 'lucide-shopping-cart'],
+                                                    ['url' => route('dashboard.orders.index'), 'label' => 'Pedidos', 'icon' => 'lucide-file-text'],
+                                                    ['url' => route('dashboard.customers.index'), 'label' => 'Clientes', 'icon' => 'lucide-users'],
+                                                    ['url' => route('dashboard.products.index'), 'label' => 'Produtos', 'icon' => 'lucide-package'],
+                                                    ['url' => route('dashboard.categories.index'), 'label' => 'Categorias', 'icon' => 'lucide-folder-tree'],
+                                                    ['url' => route('dashboard.coupons.index'), 'label' => 'Cupons', 'icon' => 'lucide-ticket'],
+                                                    ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet'],
+                                                    ['url' => route('dashboard.loyalty'), 'label' => 'Fidelidade', 'icon' => 'lucide-heart'],
+                                                    ['url' => route('dashboard.reports'), 'label' => 'Relatórios', 'icon' => 'lucide-chart-column'],
+                                                    ['url' => route('dashboard.settings.whatsapp'), 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle'],
+                                                    ['url' => route('dashboard.settings.mp'), 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card'],
+                                                    ['url' => route('dashboard.settings.status-templates'), 'label' => 'Status & Templates', 'icon' => 'lucide-settings2'],
                                                 ];
                                                 $iconMap = [
                                                     'lucide-layout-dashboard' => '<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>',
@@ -186,7 +227,9 @@
                                             @endphp
                                             @foreach($menuItems as $item)
                                                 @php
-                                                    $isActive = ($currentRoute === ltrim($item['url'], '/')) || ($currentRoute === '' && $item['url'] === '/');
+                                                    $itemPath = parse_url($item['url'], PHP_URL_PATH);
+                                                    $itemPath = ltrim($itemPath, '/');
+                                                    $isActive = ($currentRoute === $itemPath) || ($currentRoute === '' && $itemPath === '') || str_contains($currentRoute, $itemPath);
                                                     $activeClass = $isActive ? 'bg-accent text-accent-foreground font-medium' : '';
                                                 @endphp
                                                 <li data-sidebar="menu-item" class="group/menu-item relative">
@@ -245,9 +288,9 @@
                     </div>
                 </div>
                 
-                <div class="flex-1 flex flex-col w-full">
-                    <header class="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-                        <div class="flex h-16 items-center gap-4 px-4 md:px-6">
+                <div class="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
+                    <header class="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 w-full max-w-full overflow-x-hidden">
+                        <div class="flex h-16 items-center gap-4 px-4 md:px-6 max-w-full">
                             <button type="button" id="sidebar-toggle" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7 text-foreground" data-sidebar="trigger">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left">
                                     <rect width="18" height="18" x="3" y="3" rx="2"></rect>
@@ -256,9 +299,28 @@
                                 <span class="sr-only">Toggle Sidebar</span>
                             </button>
                             <div class="flex-1"></div>
+                            @auth
+                                <div class="flex items-center gap-3">
+                                    <div class="text-right hidden sm:block">
+                                        <p class="text-sm font-medium">{{ auth()->user()->name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ auth()->user()->email }}</p>
+                                    </div>
+                                    <form action="{{ route('auth.logout') }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out h-4 w-4">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                                <polyline points="16 17 21 12 16 7"></polyline>
+                                                <line x1="21" x2="9" y1="12" y2="12"></line>
+                                            </svg>
+                                            <span class="hidden sm:inline">Sair</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            @endauth
                         </div>
                     </header>
-                    <main class="flex-1 p-4 md:p-6 lg:p-8">
+                    <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden max-w-full">
                         @if(session('success'))
                             <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
                                 {{ session('success') }}

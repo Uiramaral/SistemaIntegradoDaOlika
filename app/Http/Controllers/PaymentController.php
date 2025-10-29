@@ -92,4 +92,111 @@ class PaymentController extends Controller
 
         return response()->json(['ok' => true, 'init_point' => $order->payment_link]);
     }
+
+    /**
+     * Exibe página de pagamento PIX
+     */
+    public function pixPayment(Order $order)
+    {
+        // Garantir que o pedido tem dados do PIX
+        if (!$order->pix_copy_paste && $order->payment_status !== 'paid') {
+            // Se não tiver PIX gerado, criar agora
+            $mp = new MercadoPagoApi();
+            
+            $payload = [
+                "transaction_amount" => (float)$order->final_amount,
+                "description" => "Pedido #{$order->order_number}",
+                "payment_method_id" => "pix",
+                "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
+                "payer" => [
+                    "email" => optional($order->customer)->email ?: "noemail@dummy.com",
+                    "first_name" => optional($order->customer)->name ?: "Cliente"
+                ],
+                "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
+            ];
+
+            $res = $mp->createPix($payload);
+
+            $qrBase64 = data_get($res, 'point_of_interaction.transaction_data.qr_code_base64');
+            $copiaCola = data_get($res, 'point_of_interaction.transaction_data.qr_code');
+            $paymentId = (string) data_get($res, 'id');
+            $status = (string) data_get($res, 'status');
+            $expiresAt = data_get($res, 'date_of_expiration');
+
+            $order->payment_id = $paymentId;
+            $order->payment_status = $status;
+            $order->pix_qr_base64 = $qrBase64;
+            $order->pix_copy_paste = $copiaCola;
+            $order->pix_expires_at = $expiresAt;
+            $order->payment_raw_response = json_encode($res);
+            $order->payment_method = 'pix';
+            $order->save();
+            
+            $order->refresh();
+        }
+
+        return view('payment.pix', compact('order'));
+    }
+
+    /**
+     * Checkout para cartão (redireciona para Mercado Pago)
+     */
+    public function checkout(Request $request, Order $order)
+    {
+        $method = $request->get('method', 'credit_card');
+        
+        // Criar preferência do Mercado Pago
+        $items = $order->items->map(function($item) {
+            return [
+                "title" => $item->custom_name ?? ($item->product->name ?? 'Produto'),
+                "quantity" => (int)$item->quantity,
+                "currency_id" => "BRL",
+                "unit_price" => (float)$item->unit_price,
+            ];
+        })->values()->all();
+
+        $mp = new MercadoPagoApi();
+
+        $res = $mp->createPreference([
+            "items" => $items,
+            "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
+            "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
+            "back_urls" => [
+                "success" => route('payment.success', $order),
+                "pending" => route('payment.success', $order),
+                "failure" => route('payment.failure', $order),
+            ],
+            "auto_return" => "approved",
+        ]);
+
+        $initPoint = data_get($res, 'init_point');
+        
+        if ($initPoint) {
+            $order->preference_id = data_get($res, 'id');
+            $order->payment_link = $initPoint;
+            $order->payment_method = $method;
+            $order->payment_raw_response = json_encode($res);
+            $order->save();
+            
+            return redirect($initPoint);
+        }
+
+        return redirect()->back()->with('error', 'Erro ao gerar link de pagamento');
+    }
+
+    /**
+     * Página de sucesso do pagamento
+     */
+    public function success(Order $order)
+    {
+        return view('payment.success', compact('order'));
+    }
+
+    /**
+     * Página de falha do pagamento
+     */
+    public function failure(Order $order)
+    {
+        return view('payment.failure', compact('order'));
+    }
 }

@@ -22,6 +22,7 @@ use App\Http\Controllers\ProductController;
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('auth.login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('auth.logout');
+Route::get('/logout', [LoginController::class, 'logout'])->name('auth.logout.get');
 
 // Registro de novos administradores
 Route::get('/register', [RegisterController::class, 'showForm'])->name('register.form');
@@ -34,7 +35,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
     
     // Views estáticas removidas - agora usando controllers com dados reais
-
+    
     // Recursos via controllers (CRUDs)
     Route::resource('products',  \App\Http\Controllers\Dashboard\ProductsController::class)->names([
         'index' => 'dashboard.products.index',
@@ -83,7 +84,27 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     ]);
     
     // Rotas adicionais para módulos
-    Route::get('/orders', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders');
+    Route::prefix('orders')->name('dashboard.orders.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('index');
+        Route::get('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'show'])->name('show');
+        Route::post('/{order}/status', [\App\Http\Controllers\Dashboard\OrdersController::class, 'updateStatus'])->name('updateStatus');
+        Route::put('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'update'])->name('update');
+        Route::post('/{order}/coupon', [\App\Http\Controllers\Dashboard\OrdersController::class, 'applyCoupon'])->name('applyCoupon');
+        Route::delete('/{order}/coupon', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeCoupon'])->name('removeCoupon');
+        Route::post('/{order}/delivery-fee', [\App\Http\Controllers\Dashboard\OrdersController::class, 'adjustDeliveryFee'])->name('adjustDeliveryFee');
+        Route::post('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'applyDiscount'])->name('applyDiscount');
+        Route::delete('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeDiscount'])->name('removeDiscount');
+        
+        // Rotas para edição de itens
+        Route::post('/{order}/items', [\App\Http\Controllers\Dashboard\OrdersController::class, 'addItem'])->name('addItem');
+        Route::post('/{order}/items/{item}/add', [\App\Http\Controllers\Dashboard\OrdersController::class, 'addItemQuantity'])->name('addItemQuantity');
+        Route::post('/{order}/items/{item}/reduce', [\App\Http\Controllers\Dashboard\OrdersController::class, 'reduceItemQuantity'])->name('reduceItemQuantity');
+        Route::post('/{order}/items/{item}/quantity', [\App\Http\Controllers\Dashboard\OrdersController::class, 'updateItemQuantity'])->name('updateItemQuantity');
+        Route::delete('/{order}/items/{item}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeItem'])->name('removeItem');
+        Route::get('/{order}/receipt', [\App\Http\Controllers\Dashboard\OrdersController::class, 'receipt'])->name('receipt');
+    });
+    
+    // Alias para manter compatibilidade
     Route::get('/loyalty', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
     Route::get('/reports', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
     Route::get('/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
@@ -107,20 +128,28 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
 
 // Rotas públicas de visual (ambiente local ou sem subdomínio)
 // Mapeiam exatamente os caminhos do site clonado para evitar 404
-Route::prefix('/')->group(function () {
-    Route::get('/', function () { return view('dash.pages.dashboard.index'); });
-    Route::get('/pdv', function () { return view('dash.pages.pdv.index'); });
-    Route::get('/pedidos', function () { return view('dash.pages.orders.index'); });
-    Route::get('/clientes', function () { return view('dash.pages.customers.index'); });
-    Route::get('/produtos', function () { return view('dash.pages.products.index'); });
-    Route::get('/categorias', function () { return view('dash.pages.categories.index'); });
-    Route::get('/cupons', function () { return view('dash.pages.coupons.index'); });
-    Route::get('/cashback', function () { return view('dash.pages.cashback.index'); });
-    Route::get('/fidelidade', function () { return view('dash.pages.loyalty.index'); });
-    Route::get('/relatorios', function () { return view('dash.pages.reports.index'); });
-    Route::get('/whatsapp', function () { return view('dash.pages.settings.whatsapp'); });
-    Route::get('/mercado-pago', function () { return view('dash.pages.settings.mercado-pago'); });
-    Route::get('/status-templates', function () { return view('dash.pages.settings.status-templates'); });
+// Adicionar middleware auth para exigir autenticação
+Route::prefix('/')->middleware('auth')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
+    Route::get('/pdv', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('dashboard.pdv.index');
+    Route::get('/pedidos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders.index');
+    Route::get('/clientes', [\App\Http\Controllers\Dashboard\CustomersController::class, 'index'])->name('dashboard.customers.index');
+    Route::get('/produtos', [\App\Http\Controllers\Dashboard\ProductsController::class, 'index'])->name('dashboard.products.index');
+    Route::get('/categorias', [\App\Http\Controllers\Dashboard\CategoriesController::class, 'index'])->name('dashboard.categories.index');
+    Route::get('/cupons', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('dashboard.coupons.index');
+    Route::get('/cashback', [\App\Http\Controllers\Dashboard\CashbackController::class, 'index'])->name('dashboard.cashback.index');
+    Route::get('/fidelidade', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
+    Route::get('/relatorios', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
+    Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
+    Route::get('/mercado-pago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
+    Route::get('/status-templates', function () { return view('dash.pages.settings.status-templates'); })->name('dashboard.settings.status-templates');
+});
+
+// Rotas do Cliente (visualização de pedidos)
+Route::prefix('customer')->name('customer.')->group(function () {
+    Route::get('/orders', [\App\Http\Controllers\Customer\OrdersController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [\App\Http\Controllers\Customer\OrdersController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/rate', [\App\Http\Controllers\Customer\OrdersController::class, 'rate'])->name('orders.rate');
 });
 
 // Subdomínio: Pedido (Loja)
@@ -146,6 +175,9 @@ Route::domain('pedido.menuolika.com.br')->group(function () {
 
     Route::prefix('payment')->group(function () {
         Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('payment.pix');
+        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('payment.checkout');
+        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('payment.success');
+        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('payment.failure');
     });
 
 });

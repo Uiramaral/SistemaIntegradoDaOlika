@@ -27,9 +27,12 @@ class MercadoPagoApi
     /** PIX direto (/v1/payments) */
     public function createPixPayment(array $order, array $payer): array
     {
+        // Usar descrição fornecida ou padrão
+        $description = $order['description'] ?? "Pedido #{$order['number']} - Olika";
+        
         $payload = [
             'transaction_amount' => (float)$order['total'],
-            'description'        => "Pedido #{$order['number']} - Olika",
+            'description'        => $description,
             'payment_method_id'  => 'pix',
             'installments'       => 1,
             'binary_mode'        => true,

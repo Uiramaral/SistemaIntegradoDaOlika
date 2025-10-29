@@ -13,7 +13,7 @@
             Dashboard
         </a>
         
-        <a href="{{ route('dashboard.orders') }}" 
+        <a href="{{ route('dashboard.orders.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('orders*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-shopping-cart mr-3"></i>
             Pedidos

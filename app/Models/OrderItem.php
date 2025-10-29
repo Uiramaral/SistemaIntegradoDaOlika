@@ -38,7 +38,17 @@ class OrderItem extends Model
      */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withDefault(function($product, $orderItem) {
+            // Se não tem product_id, é item avulso - não retornar default
+            if (!$orderItem->product_id) {
+                return null;
+            }
+            // Caso contrário, produto foi removido
+            return (object)[
+                'name' => 'Produto Removido',
+                'id' => null,
+            ];
+        });
     }
 
     /**

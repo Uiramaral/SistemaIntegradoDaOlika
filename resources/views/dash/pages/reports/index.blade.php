@@ -103,7 +103,7 @@
         </div>
       </div>
     </div>
-  </div>
+</div>
 
   <div class="grid gap-4 md:grid-cols-2">
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -125,7 +125,7 @@
           </button>
         </div>
       </div>
-    </div>
+</div>
 
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
       <div class="flex flex-col space-y-1.5 p-6">
@@ -147,6 +147,6 @@
         </div>
       </div>
     </div>
-  </div>
+</div>
 </div>
 @endsection

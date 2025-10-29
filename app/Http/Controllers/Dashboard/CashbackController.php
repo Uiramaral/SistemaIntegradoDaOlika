@@ -20,30 +20,24 @@ class CashbackController extends Controller
 
     public function store(Request $request)
     {
-        Cashback::create($request->all());
-        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback criado com sucesso!');
+        // Implementar criação de cashback quando o modelo existir
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Funcionalidade em desenvolvimento!');
     }
 
-    public function edit(Cashback $cashback)
+    public function edit($id)
     {
-        return view('dash.pages.cashback.edit', compact('cashback'));
+        return view('dash.pages.cashback.edit');
     }
 
-    public function update(Request $request, Cashback $cashback)
+    public function update(Request $request, $id)
     {
-        $data = $request->validate([
-            'valor' => 'required|numeric|min:0',
-            'status' => 'required|in:pending,approved,rejected',
-            'description' => 'nullable|string|max:500',
-        ]);
-
-        $cashback->update($data);
-        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback atualizado com sucesso!');
+        // Implementar atualização de cashback quando o modelo existir
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Funcionalidade em desenvolvimento!');
     }
 
-    public function destroy(Cashback $cashback)
+    public function destroy($id)
     {
-        $cashback->delete();
-        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback removido com sucesso!');
+        // Implementar exclusão de cashback quando o modelo existir
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Funcionalidade em desenvolvimento!');
     }
 }

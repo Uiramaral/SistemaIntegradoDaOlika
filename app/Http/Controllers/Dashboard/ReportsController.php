@@ -18,7 +18,7 @@ class ReportsController extends Controller
         $orders = Order::whereBetween('created_at', [$startDate, $endDate])->get();
         
         $totalOrders = $orders->count();
-        $totalAmount = $orders->sum('total');
+        $totalAmount = $orders->sum('final_amount');
         $averageTicket = $totalOrders > 0 ? $totalAmount / $totalOrders : 0;
         
         $statusSummary = $orders->groupBy('status')->map->count();

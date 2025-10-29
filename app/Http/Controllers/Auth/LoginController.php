@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Route;
 use App\Models\User;
 
 class LoginController extends Controller
@@ -48,8 +49,8 @@ class LoginController extends Controller
             // Regenerar session ID por segurança
             $request->session()->regenerate();
             
-            return redirect()->intended(route('dashboard.index'))
-                ->with('success', 'Login realizado com sucesso!');
+            // Redirecionar para a URL intencionada ou dashboard
+            return redirect()->intended('/')->with('success', 'Login realizado com sucesso!');
         }
 
         return back()

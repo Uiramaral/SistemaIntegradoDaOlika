@@ -22,7 +22,7 @@ class CouponsController extends Controller
     public function store(Request $request)
     {
         Coupon::create($request->all());
-        return redirect()->route('dashboard.coupons')->with('success', 'Cupom criado com sucesso!');
+        return redirect()->route('dashboard.coupons.index')->with('success', 'Cupom criado com sucesso!');
     }
 
     public function edit(Coupon $coupon)

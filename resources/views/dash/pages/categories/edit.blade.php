@@ -1,4 +1,4 @@
-@extends('dash.layouts.base')
+@extends('dash.layouts.app')
 
 @section('title', 'Editar Categoria')
 

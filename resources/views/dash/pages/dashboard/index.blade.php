@@ -7,7 +7,7 @@
     <div>
         <h1 class="text-3xl font-bold tracking-tight">Visão Geral</h1>
         <p class="text-muted-foreground">Acompanhe suas métricas e desempenho em tempo real</p>
-    </div>
+  </div>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
@@ -35,7 +35,7 @@
             <div class="p-6 pt-0">
                 <div class="text-2xl font-bold">0</div>
             </div>
-        </div>
+  </div>
 
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
@@ -47,8 +47,8 @@
             </div>
             <div class="p-6 pt-0">
                 <div class="text-2xl font-bold">0</div>
-            </div>
-        </div>
+          </div>
+      </div>
         
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
@@ -62,7 +62,7 @@
                 <div class="text-2xl font-bold">0</div>
             </div>
         </div>
-    </div>
+  </div>
 
     <div class="grid gap-4 lg:grid-cols-2">
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -100,6 +100,6 @@
                 </div>
             </div>
         </div>
-    </div>
+  </div>
 </div>
 @endsection

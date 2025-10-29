@@ -15,7 +15,7 @@ class DashboardController extends Controller
             
             // Dados para o dashboard com tratamento de erro
             $totalPedidos = Order::count();
-            $faturamento = Order::sum('total') ?? 0;
+            $faturamento = Order::sum('final_amount') ?? 0;
             $novosClientes = \App\Models\Customer::whereDate('created_at', today())->count();
             $ticketMedio = $totalPedidos > 0 ? $faturamento / $totalPedidos : 0;
             

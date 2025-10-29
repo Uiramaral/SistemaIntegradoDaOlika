@@ -22,7 +22,7 @@ class CategoriesController extends Controller
     public function store(Request $request)
     {
         Category::create($request->all());
-        return redirect()->route('dashboard.categories')->with('success', 'Categoria criada com sucesso!');
+        return redirect()->route('dashboard.categories.index')->with('success', 'Categoria criada com sucesso!');
     }
 
     public function edit(Category $category)

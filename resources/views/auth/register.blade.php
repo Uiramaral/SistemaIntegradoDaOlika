@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Login - Olika Admin')
+@section('title', 'Registro - Olika Admin')
 
 @section('content')
 <div class="min-h-screen flex items-center justify-center">
@@ -9,7 +9,7 @@
         <div class="text-center mb-8">
             <div class="text-4xl mb-4">🍞</div>
             <h1 class="text-2xl font-bold text-orange-600 mb-2">Olika Admin</h1>
-            <p class="text-gray-600">Faça login para acessar o painel</p>
+            <p class="text-gray-600">Criar nova conta de administrador</p>
         </div>
 
         <!-- Mensagens de Feedback -->
@@ -45,10 +45,25 @@
             </div>
         @endif
 
-        <!-- Formulário de Login -->
-        <form method="POST" action="{{ route('auth.login') }}">
+        <!-- Formulário de Registro -->
+        <form method="POST" action="{{ route('register') }}">
             @csrf
             
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" for="name">
+                    <i class="fas fa-user mr-2"></i>Nome Completo
+                </label>
+                <input 
+                    id="name" 
+                    name="name" 
+                    type="text" 
+                    required
+                    value="{{ old('name') }}"
+                    class="input"
+                    placeholder="Digite seu nome completo"
+                >
+            </div>
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2" for="email">
                     <i class="fas fa-envelope mr-2"></i>E-mail
@@ -64,7 +79,7 @@
                 >
             </div>
 
-            <div class="mb-6">
+            <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2" for="password">
                     <i class="fas fa-lock mr-2"></i>Senha
                 </label>
@@ -74,22 +89,40 @@
                     type="password" 
                     required
                     class="input"
-                    placeholder="Digite sua senha"
+                    placeholder="Mínimo 6 caracteres"
+                >
+                <p class="text-xs text-gray-500 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    A senha deve ter pelo menos 6 caracteres
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2" for="password_confirmation">
+                    <i class="fas fa-lock mr-2"></i>Confirmar Senha
+                </label>
+                <input 
+                    id="password_confirmation" 
+                    name="password_confirmation" 
+                    type="password" 
+                    required
+                    class="input"
+                    placeholder="Digite a senha novamente"
                 >
             </div>
 
-            <button type="submit" class="btn btn-primary w-full py-3 text-lg">
-                <i class="fas fa-sign-in-alt mr-2"></i>
-                Entrar
+            <button type="submit" class="btn btn-primary w-full py-3 text-lg mb-4">
+                <i class="fas fa-user-plus mr-2"></i>
+                Criar Conta
             </button>
         </form>
 
         <!-- Links Adicionais -->
-        <div class="mt-6 text-center">
+        <div class="text-center">
             <p class="text-gray-600 text-sm">
-                Não tem uma conta? 
-                <a href="{{ route('register.form') }}" class="text-orange-600 hover:text-orange-700 font-medium">
-                    Registrar-se
+                Já tem uma conta? 
+                <a href="{{ route('login') }}" class="text-orange-600 hover:text-orange-700 font-medium">
+                    Fazer Login
                 </a>
             </p>
         </div>
@@ -106,8 +139,38 @@
 
 @push('scripts')
 <script>
-    // Auto-focus no campo de email
-    document.getElementById('email').focus();
+    // Auto-focus no campo de nome
+    document.getElementById('name').focus();
+    
+    // Validação de senha em tempo real
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const confirmPassword = document.getElementById('password_confirmation');
+        
+        if (password.length < 6) {
+            this.style.borderColor = '#ef4444';
+        } else {
+            this.style.borderColor = '#10b981';
+        }
+        
+        // Verificar se as senhas coincidem
+        if (confirmPassword.value && password !== confirmPassword.value) {
+            confirmPassword.style.borderColor = '#ef4444';
+        } else if (confirmPassword.value) {
+            confirmPassword.style.borderColor = '#10b981';
+        }
+    });
+    
+    document.getElementById('password_confirmation').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = this.value;
+        
+        if (password !== confirmPassword) {
+            this.style.borderColor = '#ef4444';
+        } else {
+            this.style.borderColor = '#10b981';
+        }
+    });
     
     // Limpar mensagens após 5 segundos
     setTimeout(function() {

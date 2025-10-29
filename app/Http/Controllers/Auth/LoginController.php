@@ -12,32 +12,63 @@ use App\Models\User;
 
 class LoginController extends Controller
 {
+    /**
+     * Exibe o formulário de login
+     */
     public function showLoginForm()
     {
+        // Se já estiver logado, redireciona para o dashboard
+        if (Auth::check()) {
+            return redirect()->route('dashboard.index');
+        }
+        
         return view('auth.login');
     }
 
+    /**
+     * Processa o login do usuário
+     */
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required',
+            'password' => 'required|string|min:6',
+        ], [
+            'email.required' => 'O e-mail é obrigatório.',
+            'email.email' => 'Digite um e-mail válido.',
+            'password.required' => 'A senha é obrigatória.',
+            'password.min' => 'A senha deve ter pelo menos 6 caracteres.',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
-            Auth::login($user, true);
-            return redirect()->route('dashboard.index');
+            Auth::login($user, $request->has('remember'));
+            
+            // Regenerar session ID por segurança
+            $request->session()->regenerate();
+            
+            return redirect()->intended(route('dashboard.index'))
+                ->with('success', 'Login realizado com sucesso!');
         }
 
-        return back()->withErrors(['email' => 'Credenciais inválidas'])->withInput();
+        return back()
+            ->withErrors(['email' => 'Credenciais inválidas. Verifique seu e-mail e senha.'])
+            ->withInput($request->only('email'));
     }
 
-    public function logout()
+    /**
+     * Processa o logout do usuário
+     */
+    public function logout(Request $request)
     {
         Auth::logout();
-        Session::flush();
-        return Redirect::route('login');
+        
+        // Invalidar a sessão
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return redirect()->route('login')
+            ->with('success', 'Logout realizado com sucesso!');
     }
 }

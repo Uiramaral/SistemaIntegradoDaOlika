@@ -19,31 +19,31 @@
             Pedidos
         </a>
         
-        <a href="{{ route('dashboard.products') }}" 
+        <a href="{{ route('dashboard.products.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('products*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-utensils mr-3"></i>
             Produtos
         </a>
         
-        <a href="{{ route('dashboard.customers') }}" 
+        <a href="{{ route('dashboard.customers.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('customers*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-users mr-3"></i>
             Clientes
         </a>
         
-        <a href="{{ route('dashboard.categories') }}" 
+        <a href="{{ route('dashboard.categories.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('categories*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-tags mr-3"></i>
             Categorias
         </a>
         
-        <a href="{{ route('dashboard.coupons') }}" 
+        <a href="{{ route('dashboard.coupons.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('coupons*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-ticket-alt mr-3"></i>
             Cupons
         </a>
         
-        <a href="{{ route('dashboard.cashback') }}" 
+        <a href="{{ route('dashboard.cashback.index') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('cashback*') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-coins mr-3"></i>
             Cashback

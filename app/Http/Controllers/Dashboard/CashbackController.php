@@ -32,13 +32,19 @@ class CashbackController extends Controller
 
     public function update(Request $request, Cashback $cashback)
     {
-        $cashback->update($request->all());
-        return redirect()->route('dashboard.cashback')->with('success', 'Cashback atualizado com sucesso!');
+        $data = $request->validate([
+            'valor' => 'required|numeric|min:0',
+            'status' => 'required|in:pending,approved,rejected',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $cashback->update($data);
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback atualizado com sucesso!');
     }
 
     public function destroy(Cashback $cashback)
     {
         $cashback->delete();
-        return redirect()->route('dashboard.cashback')->with('success', 'Cashback removido com sucesso!');
+        return redirect()->route('dashboard.cashback.index')->with('success', 'Cashback removido com sucesso!');
     }
 }

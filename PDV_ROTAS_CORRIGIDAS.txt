@@ -1,6 +1,0 @@
-﻿âœ… PDV AJUSTADO:
-- Controller atualizado com mapeamento correto de rotas (api.customers.search, api.products.search, etc.)
-- CSS jÃ¡ presente no styles.css (regras .pdv-page)
-- Blade atualizada para ler endpoints via data-attributes
-
-PrÃ³ximos passos: testar busca de clientes/produtos no navegador!

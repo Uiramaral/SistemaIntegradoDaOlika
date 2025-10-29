@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
@@ -22,21 +23,17 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('auth.login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('auth.logout');
 
+// Registro de novos administradores
+Route::get('/register', [RegisterController::class, 'showForm'])->name('register.form');
+Route::post('/register', [RegisterController::class, 'register'])->name('register');
+
 // Subdomínio: Dashboard
 Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function () {
 
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
     
-    Route::view('/orders',     'dash.pages.orders')->name('dashboard.orders');
-    Route::view('/products',   'dash.pages.products')->name('dashboard.products');
-    Route::view('/categories', 'dash.pages.categories')->name('dashboard.categories');
-    Route::view('/coupons',    'dash.pages.coupons')->name('dashboard.coupons');
-    Route::view('/customers',  'dash.pages.customers')->name('dashboard.customers');
-    Route::view('/cashback',   'dash.pages.cashback')->name('dashboard.cashback');
-    Route::view('/loyalty',    'dash.pages.loyalty')->name('dashboard.loyalty');
-    Route::view('/reports',    'dash.pages.reports')->name('dashboard.reports');
-    Route::view('/settings',   'dash.pages.settings')->name('dashboard.settings');
+    // Views estáticas removidas - agora usando controllers com dados reais
 
     // Recursos via controllers (CRUDs)
     Route::resource('products',  \App\Http\Controllers\Dashboard\ProductsController::class)->names([
@@ -84,6 +81,12 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         'update' => 'dashboard.cashback.update',
         'destroy' => 'dashboard.cashback.destroy',
     ]);
+    
+    // Rotas adicionais para módulos
+    Route::get('/orders', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders');
+    Route::get('/loyalty', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
+    Route::get('/reports', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
+    Route::get('/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
     
     Route::get('/reports/export', [ReportsController::class, 'export'])->name('dashboard.reports.export');
 

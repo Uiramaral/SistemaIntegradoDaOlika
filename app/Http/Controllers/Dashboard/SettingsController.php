@@ -8,6 +8,26 @@ use Illuminate\Support\Facades\DB;
 
 class SettingsController extends Controller
 {
+    public function index()
+    {
+        // Buscar configurações do WhatsApp
+        $whatsappSettings = DB::table('whatsapp_settings')->where('active', 1)->first();
+        
+        // Buscar configurações de pagamento
+        $paymentSettings = DB::table('payment_settings')->pluck('value', 'key');
+        
+        // Configurações gerais da loja
+        $storeSettings = [
+            'store_name' => 'Olika',
+            'store_email' => 'contato@olika.com',
+            'store_phone' => '(11) 99999-9999',
+            'store_cnpj' => '00.000.000/0001-00',
+            'service_fee' => 0,
+            'min_order' => 0,
+        ];
+        
+        return view('dash.pages.settings.index', compact('whatsappSettings', 'paymentSettings', 'storeSettings'));
+    }
     public function whatsapp()
     {
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();

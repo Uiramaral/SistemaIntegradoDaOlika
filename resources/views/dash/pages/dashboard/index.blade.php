@@ -4,81 +4,76 @@
 @section('page_title', 'Dashboard')
 
 @section('content')
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-orange-600 mb-2">{{ $totalPedidos ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Total de Pedidos</div>
-    </x-card>
-    
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-green-600 mb-2">R$ {{ number_format($faturamento ?? 0, 2, ',', '.') }}</div>
-        <div class="text-sm text-gray-600">Faturamento</div>
-    </x-card>
-    
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-blue-600 mb-2">{{ $novosClientes ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Novos Clientes</div>
-    </x-card>
-    
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-purple-600 mb-2">R$ {{ number_format($ticketMedio ?? 0, 2, ',', '.') }}</div>
-        <div class="text-sm text-gray-600">Ticket Médio</div>
-    </x-card>
-</div>
+<div class="container-page">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Dashboard</h1>
+    <div class="text-sm text-gray-500">{{ Auth::user()->name ?? 'Admin' }} <i class="fas fa-bell ml-3"></i></div>
+  </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <x-card title="Pedidos por Status">
-        <div class="space-y-3">
-            @foreach($statusCount ?? [] as $status => $count)
-                <div class="flex justify-between items-center">
-                    <span class="capitalize">{{ $status }}</span>
-                    <span class="badge badge-info">{{ $count }}</span>
-                </div>
-            @endforeach
-        </div>
-    </x-card>
-    
-    <x-card title="Pedidos de Hoje">
-        @if(isset($todayOrders) && $todayOrders->count() > 0)
-            <div class="space-y-2">
-                @foreach($todayOrders->take(5) as $order)
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span class="text-sm">#OLK{{ str_pad($order->id, 5, '0', STR_PAD_LEFT) }}</span>
-                        <span class="text-sm font-medium">R$ {{ number_format($order->total ?? 0, 2, ',', '.') }}</span>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-gray-500 text-center py-4">Nenhum pedido hoje</p>
-        @endif
-    </x-card>
-</div>
+  @if(session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+  @endif
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-    <x-card title="Produtos Mais Vendidos">
-        <div class="space-y-2">
-            @forelse($topProducts ?? [] as $product)
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span class="text-sm">{{ $product->name ?? 'Produto' }}</span>
-                    <span class="text-sm font-medium">{{ $product->sales_count ?? 0 }} vendas</span>
-                </div>
-            @empty
-                <p class="text-gray-500 text-center py-4">Nenhum dado disponível</p>
-            @endforelse
-        </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <x-card-metric color="orange" value="{{ $totalPedidos ?? 0 }}" label="Total de Pedidos" />
+    <x-card-metric color="green" value="R$ {{ number_format($faturamento ?? 0, 2, ',', '.') }}" label="Faturamento" />
+    <x-card-metric color="blue" value="{{ $novosClientes ?? 0 }}" label="Novos Clientes" />
+    <x-card-metric color="purple" value="R$ {{ number_format($ticketMedio ?? 0, 2, ',', '.') }}" label="Ticket Médio" />
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <x-card>
+      <h3 class="text-lg font-semibold mb-4">Pedidos por Status</h3>
+      <div class="space-y-2">
+        @foreach($statusPedidos ?? [] as $status => $quantidade)
+          <div class="flex justify-between">
+            <span>{{ ucfirst($status) }}</span>
+            <x-badge type="info">{{ $quantidade }}</x-badge>
+          </div>
+        @endforeach
+      </div>
     </x-card>
-    
-    <x-card title="Clientes Ativos">
-        <div class="space-y-2">
-            @forelse($activeCustomers ?? [] as $customer)
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span class="text-sm">{{ $customer->nome ?? 'Cliente' }}</span>
-                    <span class="text-sm font-medium">{{ $customer->orders_count ?? 0 }} pedidos</span>
-                </div>
-            @empty
-                <p class="text-gray-500 text-center py-4">Nenhum cliente ativo</p>
-            @endforelse
-        </div>
+
+    <x-card>
+      <h3 class="text-lg font-semibold mb-4">Pedidos de Hoje</h3>
+      @if(isset($pedidosHoje) && count($pedidosHoje) > 0)
+        <ul class="space-y-2">
+          @foreach($pedidosHoje as $pedido)
+            <li class="text-sm text-gray-700">#{{ $pedido->id }} - {{ $pedido->cliente->nome ?? 'Cliente' }} - R$ {{ number_format($pedido->total ?? 0, 2, ',', '.') }}</li>
+          @endforeach
+        </ul>
+      @else
+        <p class="text-center text-gray-500">Nenhum pedido hoje</p>
+      @endif
     </x-card>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <x-card>
+      <h3 class="text-lg font-semibold mb-4">Produtos Mais Vendidos</h3>
+      @if(isset($maisVendidos) && count($maisVendidos) > 0)
+        <ul class="space-y-2">
+          @foreach($maisVendidos as $produto)
+            <li class="text-sm text-gray-700">{{ $produto->nome ?? $produto->name }} - {{ $produto->quantidade ?? $produto->sales_count ?? 0 }} vendidos</li>
+          @endforeach
+        </ul>
+      @else
+        <p class="text-center text-gray-500">Nenhum dado disponível</p>
+      @endif
+    </x-card>
+
+    <x-card>
+      <h3 class="text-lg font-semibold mb-4">Clientes Ativos</h3>
+      @if(isset($clientesAtivos) && count($clientesAtivos) > 0)
+        <ul class="space-y-2">
+          @foreach($clientesAtivos as $cliente)
+            <li class="text-sm text-gray-700">{{ $cliente->nome ?? $cliente->name }}</li>
+          @endforeach
+        </ul>
+      @else
+        <p class="text-center text-gray-500">Nenhum cliente ativo</p>
+      @endif
+    </x-card>
+  </div>
 </div>
 @endsection

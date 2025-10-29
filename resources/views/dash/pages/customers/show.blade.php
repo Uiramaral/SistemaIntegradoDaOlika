@@ -1,52 +1,78 @@
-{{-- resources/views/dash/pages/customers/show.blade.php --}}
+@extends('layouts.admin')
 
-@extends('dash.layouts.app')
-
-@section('title', 'Cliente: ' . $customer->name)
+@section('title', 'Cliente: ' . $customer->nome)
+@section('page_title', 'Cliente: ' . $customer->nome)
 
 @section('content')
-<div class="mb-4">
-    <h1 class="text-2xl font-bold">Cliente: {{ $customer->name }}</h1>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-2">Informações</h2>
-        <ul class="text-sm text-gray-700">
-            <li><strong>ID:</strong> {{ $customer->id }}</li>
-            <li><strong>Nome:</strong> {{ $customer->name }}</li>
-            <li><strong>Email:</strong> {{ $customer->email }}</li>
-            <li><strong>Telefone:</strong> {{ $customer->phone }}</li>
-            <li><strong>CPF:</strong> {{ $customer->cpf }}</li>
-            <li><strong>Saldo Fiado:</strong> R$ {{ number_format($customer->balance, 2, ',', '.') }}</li>
-            <li><strong>Último pedido:</strong> {{ optional($customer->last_order)->created_at?->format('d/m/Y H:i') ?? 'N/A' }}</li>
-        </ul>
+<div class="container-page">
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">{{ $customer->nome }}</h1>
+      <p class="text-sm text-gray-500">Telefone: {{ $customer->telefone }}</p>
     </div>
+    <a href="{{ route('dashboard.customers.edit', $customer) }}" class="btn btn-secondary">
+      <i class="fas fa-edit mr-2"></i> Editar
+    </a>
+  </div>
 
-    <div class="bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-2">Editar Cliente</h2>
-        <form method="POST" action="{{ route('dashboard.customers.update', $customer) }}">
-            @csrf
-            <div class="mb-2">
-                <label class="block text-sm">Nome</label>
-                <input type="text" name="name" class="form-input w-full" value="{{ old('name', $customer->name) }}">
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm">Email</label>
-                <input type="email" name="email" class="form-input w-full" value="{{ old('email', $customer->email) }}">
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm">Telefone</label>
-                <input type="text" name="phone" class="form-input w-full" value="{{ old('phone', $customer->phone) }}">
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm">CPF</label>
-                <input type="text" name="cpf" class="form-input w-full" value="{{ old('cpf', $customer->cpf) }}">
-            </div>
-            <div class="text-right">
-                <button type="submit" class="btn btn-primary">Salvar</button>
-            </div>
-        </form>
-    </div>
+  <x-card class="mb-6">
+    <h2 class="text-lg font-semibold mb-4">Dados do Cliente</h2>
+    <ul class="text-sm text-gray-700 space-y-2">
+      <li><strong>Nome:</strong> {{ $customer->nome }}</li>
+      <li><strong>Telefone:</strong> {{ $customer->telefone ?? '—' }}</li>
+      <li><strong>Endereço:</strong> {{ $customer->endereco ?? '—' }}</li>
+      <li><strong>Fiado:</strong>
+        @if(($customer->fiado ?? 0) > 0)
+          <x-badge type="danger">R$ {{ number_format($customer->fiado, 2, ',', '.') }}</x-badge>
+        @else
+          <x-badge type="success">R$ 0,00</x-badge>
+        @endif
+      </li>
+    </ul>
+  </x-card>
+
+  <x-card>
+    <h2 class="text-lg font-semibold mb-4">Últimos Pedidos</h2>
+    @if(isset($customer->orders) && $customer->orders->isEmpty())
+      <div class="text-center py-8">
+        <i class="fas fa-shopping-cart text-4xl text-gray-400 mb-4"></i>
+        <p class="text-gray-500 text-lg">Nenhum pedido encontrado.</p>
+        <p class="text-gray-400 text-sm mt-2">Este cliente ainda não fez nenhum pedido.</p>
+      </div>
+    @else
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+          <thead>
+            <tr class="bg-gray-50 text-left text-sm font-medium text-gray-600">
+              <th class="px-4 py-3">Pedido</th>
+              <th class="px-4 py-3">Data</th>
+              <th class="px-4 py-3">Total</th>
+              <th class="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm text-gray-700">
+            @foreach($customer->orders ?? [] as $order)
+              <tr class="border-t hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium">#{{ $order->id }}</td>
+                <td class="px-4 py-3">{{ $order->created_at->format('d/m/Y H:i') }}</td>
+                <td class="px-4 py-3 font-medium">R$ {{ number_format($order->total ?? 0, 2, ',', '.') }}</td>
+                <td class="px-4 py-3">
+                  @php
+                    $statusType = match($order->status ?? 'pending') {
+                      'completed', 'delivered' => 'success',
+                      'pending', 'processing' => 'warning',
+                      'cancelled', 'rejected' => 'danger',
+                      default => 'info'
+                    };
+                  @endphp
+                  <x-badge type="{{ $statusType }}">{{ ucfirst($order->status ?? 'Pendente') }}</x-badge>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    @endif
+  </x-card>
 </div>
 @endsection

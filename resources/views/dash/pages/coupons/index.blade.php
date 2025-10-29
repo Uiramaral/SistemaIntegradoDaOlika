@@ -4,110 +4,96 @@
 @section('page_title', 'Cupons')
 
 @section('content')
-<div class="mb-6">
-    <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-            <input type="text" placeholder="Buscar cupons..." class="input" id="search-coupons">
-        </div>
-        <div class="flex gap-2">
-            <select class="input" id="status-filter">
-                <option value="">Todos os status</option>
-                <option value="active">Ativos</option>
-                <option value="inactive">Inativos</option>
-                <option value="expired">Expirados</option>
-            </select>
-            <x-button href="/coupons/create" variant="primary">
-                <i class="fas fa-plus"></i> Novo Cupom
-            </x-button>
-        </div>
+<div class="container-page">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Cupons</h1>
+    <a href="{{ route('dashboard.coupons.create') }}" class="btn btn-primary">
+      <i class="fas fa-plus mr-2"></i> Novo Cupom
+    </a>
+  </div>
+
+  @if(session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+  @endif
+
+  @if(session('error'))
+    <x-alert type="error">{{ session('error') }}</x-alert>
+  @endif
+
+  @if(isset($coupons) && $coupons->isEmpty())
+    <x-card>
+      <div class="text-center py-8">
+        <i class="fas fa-ticket-alt text-4xl text-gray-400 mb-4"></i>
+        <p class="text-gray-500 text-lg">Nenhum cupom cadastrado.</p>
+        <p class="text-gray-400 text-sm mt-2">Comece criando seu primeiro cupom de desconto.</p>
+      </div>
+    </x-card>
+  @else
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white shadow-md rounded-lg">
+        <thead>
+          <tr class="bg-gray-100 text-left text-sm font-medium text-gray-600">
+            <th class="px-4 py-3">Código</th>
+            <th class="px-4 py-3">Tipo</th>
+            <th class="px-4 py-3">Valor</th>
+            <th class="px-4 py-3">Público</th>
+            <th class="px-4 py-3">Uso Único</th>
+            <th class="px-4 py-3">Ativo</th>
+            <th class="px-4 py-3">Usos</th>
+            <th class="px-4 py-3 text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm text-gray-700">
+          @foreach($coupons ?? [] as $coupon)
+            <tr class="border-t hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-3 font-mono font-semibold text-orange-600">{{ $coupon->codigo }}</td>
+              <td class="px-4 py-3">
+                <x-badge type="{{ $coupon->tipo == 'porcentagem' ? 'info' : 'warning' }}">
+                  {{ $coupon->tipo == 'porcentagem' ? 'Percentual' : 'Valor Fixo' }}
+                </x-badge>
+              </td>
+              <td class="px-4 py-3 font-medium">
+                {{ $coupon->tipo == 'porcentagem' ? $coupon->valor . '%' : 'R$ ' . number_format($coupon->valor, 2, ',', '.') }}
+              </td>
+              <td class="px-4 py-3">
+                <x-badge type="{{ $coupon->publico ? 'success' : 'gray' }}">
+                  {{ $coupon->publico ? 'Sim' : 'Não' }}
+                </x-badge>
+              </td>
+              <td class="px-4 py-3">
+                <x-badge type="{{ $coupon->uso_unico ? 'warning' : 'info' }}">
+                  {{ $coupon->uso_unico ? 'Sim' : 'Não' }}
+                </x-badge>
+              </td>
+              <td class="px-4 py-3">
+                <x-badge type="{{ $coupon->ativo ? 'success' : 'danger' }}">
+                  {{ $coupon->ativo ? 'Ativo' : 'Inativo' }}
+                </x-badge>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-sm">{{ $coupon->usos_count ?? 0 }} / {{ $coupon->limite_usos ?? '∞' }}</span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex justify-end gap-2">
+                  <a href="{{ route('dashboard.coupons.show', $coupon) }}" class="text-orange-600 hover:text-orange-800 hover:underline text-sm">
+                    <i class="fas fa-eye mr-1"></i> Ver
+                  </a>
+                  <a href="{{ route('dashboard.coupons.edit', $coupon) }}" class="text-blue-600 hover:text-blue-800 hover:underline text-sm">
+                    <i class="fas fa-edit mr-1"></i> Editar
+                  </a>
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
     </div>
+
+    @if(isset($coupons) && $coupons->hasPages())
+      <div class="mt-6">
+        {{ $coupons->links() }}
+      </div>
+    @endif
+  @endif
 </div>
-
-<x-card title="Lista de Cupons">
-    <x-table :headers="['Código', 'Descrição', 'Desconto', 'Validade', 'Usos', 'Status', 'Ações']" :actions="false">
-        @forelse($coupons ?? [] as $coupon)
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 border-b">
-                    <div class="font-mono font-medium text-orange-600">{{ $coupon->code ?? '—' }}</div>
-                </td>
-                <td class="px-4 py-3 border-b">{{ Str::limit($coupon->description ?? 'Sem descrição', 40) }}</td>
-                <td class="px-4 py-3 border-b">
-                    <span class="font-medium text-green-600">
-                        @if($coupon->type === 'percentage')
-                            {{ $coupon->discount ?? 0 }}%
-                        @else
-                            R$ {{ number_format($coupon->discount ?? 0, 2, ',', '.') }}
-                        @endif
-                    </span>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    @if($coupon->expires_at ?? false)
-                        {{ \Carbon\Carbon::parse($coupon->expires_at)->format('d/m/Y') }}
-                    @else
-                        <span class="text-gray-400">Sem validade</span>
-                    @endif
-                </td>
-                <td class="px-4 py-3 border-b">
-                    <span class="badge badge-info">{{ $coupon->usage_count ?? 0 }}/{{ $coupon->usage_limit ?? '∞' }}</span>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    @php
-                        $isExpired = $coupon->expires_at && \Carbon\Carbon::parse($coupon->expires_at)->isPast();
-                        $isActive = ($coupon->active ?? false) && !$isExpired;
-                    @endphp
-                    <span class="badge {{ $isActive ? 'badge-success' : ($isExpired ? 'badge-danger' : 'badge-warning') }}">
-                        {{ $isActive ? 'Ativo' : ($isExpired ? 'Expirado' : 'Inativo') }}
-                    </span>
-                </td>
-                <td class="px-4 py-3 border-b text-right">
-                    <div class="flex gap-2 justify-end">
-                        <x-button href="/coupons/{{ $coupon->id }}" variant="secondary" size="sm">
-                            <i class="fas fa-eye"></i>
-                        </x-button>
-                        <x-button href="/coupons/{{ $coupon->id }}/edit" variant="primary" size="sm">
-                            <i class="fas fa-edit"></i>
-                        </x-button>
-                        <x-button variant="danger" size="sm" onclick="confirmDelete({{ $coupon->id }})">
-                            <i class="fas fa-trash"></i>
-                        </x-button>
-                    </div>
-                </td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
-                    Nenhum cupom encontrado
-                </td>
-            </tr>
-        @endforelse
-    </x-table>
-</x-card>
-
-@push('scripts')
-<script>
-    function confirmDelete(couponId) {
-        if (confirm('Tem certeza que deseja excluir este cupom?')) {
-            fetch(`/coupons/${couponId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            }).then(() => {
-                location.reload();
-            });
-        }
-    }
-    
-    // Filtros dinâmicos
-    document.getElementById('search-coupons').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const rows = document.querySelectorAll('tbody tr');
-        
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-</script>
-@endpush
 @endsection

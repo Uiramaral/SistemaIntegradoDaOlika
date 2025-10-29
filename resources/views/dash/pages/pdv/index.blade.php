@@ -1,316 +1,242 @@
 @extends('layouts.admin')
 
-@section('title', 'PDV')
-@section('page_title', 'Ponto de Venda')
+@section('title', 'PDV - Ponto de Venda')
+@section('page_title', 'PDV - Ponto de Venda')
 
 @section('content')
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2">
-        <x-card title="Buscar Produtos">
-            <div class="mb-4">
-                <input type="text" id="product-search" class="input" placeholder="Digite o nome ou código do produto" autofocus>
-            </div>
-            
-            <div class="h-96 overflow-y-auto border rounded-lg">
-                <div id="products-list" class="p-4">
-                    <p class="text-gray-500 text-center">Digite para buscar produtos...</p>
-                </div>
-            </div>
-        </x-card>
+<div class="container-page">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">PDV - Ponto de Venda</h1>
+    <p class="text-gray-600 mt-2">Sistema integrado para vendas presenciais</p>
+  </div>
+
+  @if(session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+  @endif
+
+  @if(session('error'))
+    <x-alert type="error">{{ session('error') }}</x-alert>
+  @endif
+
+  <!-- Cliente e Carrinho -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Cliente -->
+    <x-card>
+      <div class="flex items-center mb-4">
+        <i class="fas fa-user text-blue-600 mr-3"></i>
+        <h2 class="text-lg font-semibold">Cliente</h2>
+      </div>
+      
+      <form id="form-cliente" class="space-y-3">
+        <x-form-group label="Buscar Cliente">
+          <x-input type="text" placeholder="Digite nome ou telefone" id="cliente-busca" />
+          <div id="sugestoes-cliente" class="hidden mt-2 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            <!-- Sugestões aparecerão aqui -->
+          </div>
+        </x-form-group>
+
+        <div id="cliente-dados" class="space-y-3 hidden">
+          <x-form-group label="Nome">
+            <x-input type="text" placeholder="Nome completo" id="cliente-nome" />
+          </x-form-group>
+          
+          <x-form-group label="Telefone">
+            <x-input type="text" placeholder="(11) 99999-9999" id="cliente-telefone" />
+          </x-form-group>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <x-form-group label="CEP">
+              <x-input type="text" placeholder="00000-000" id="cliente-cep" />
+            </x-form-group>
+            <x-form-group label="Número">
+              <x-input type="text" placeholder="123" id="cliente-numero" />
+            </x-form-group>
+          </div>
+          
+          <x-form-group label="Rua">
+            <x-input type="text" placeholder="Nome da rua" id="cliente-rua" disabled />
+          </x-form-group>
+          
+          <x-form-group label="Bairro">
+            <x-input type="text" placeholder="Nome do bairro" id="cliente-bairro" disabled />
+          </x-form-group>
+          
+          <x-form-group label="Cidade">
+            <x-input type="text" placeholder="Nome da cidade" id="cliente-cidade" disabled />
+          </x-form-group>
+          
+          <div class="flex gap-2">
+            <x-button variant="success" size="sm" type="button" id="btn-salvar-cliente">
+              <i class="fas fa-save mr-1"></i> Salvar
+            </x-button>
+            <x-button variant="secondary" size="sm" type="button" id="btn-limpar-cliente">
+              <i class="fas fa-times mr-1"></i> Limpar
+            </x-button>
+          </div>
+        </div>
+      </form>
+    </x-card>
+
+    <!-- Carrinho -->
+    <x-card class="lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center">
+          <i class="fas fa-shopping-cart text-orange-600 mr-3"></i>
+          <h2 class="text-lg font-semibold">Carrinho</h2>
+        </div>
+        <x-badge type="info" id="contador-itens">0 itens</x-badge>
+      </div>
+      
+      <div id="lista-itens" class="space-y-3 min-h-32">
+        <div class="text-center py-8 text-gray-500">
+          <i class="fas fa-shopping-cart text-3xl mb-2"></i>
+          <p>Nenhum item no carrinho</p>
+          <p class="text-sm">Adicione produtos para começar a venda</p>
+        </div>
+      </div>
+
+      <!-- Cupons e Descontos -->
+      <div class="mt-6 pt-4 border-t">
+        <h3 class="text-md font-semibold mb-3">Cupons e Descontos</h3>
         
-        <x-card title="Itens do Pedido" class="mt-6">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-sm font-medium text-gray-700 border-b">Produto</th>
-                            <th class="px-4 py-3 text-sm font-medium text-gray-700 border-b">Qtd</th>
-                            <th class="px-4 py-3 text-sm font-medium text-gray-700 border-b">Preço</th>
-                            <th class="px-4 py-3 text-sm font-medium text-gray-700 border-b">Total</th>
-                            <th class="px-4 py-3 text-sm font-medium text-gray-700 border-b"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="cart-items">
-                        <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                Nenhum item adicionado
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </x-card>
-    </div>
-    
-    <div class="space-y-6">
-        <x-card title="Cliente">
-            <div class="mb-4">
-                <input type="text" id="customer-search" class="input" placeholder="Buscar cliente...">
-            </div>
-            <select id="customer-select" class="input w-full">
-                <option value="">Cliente Avulso</option>
-                @foreach($customers ?? [] as $customer)
-                    <option value="{{ $customer->id }}">{{ $customer->nome ?? 'Cliente' }}</option>
-                @endforeach
-            </select>
-            <div id="customer-info" class="mt-2 text-sm text-gray-600 hidden">
-                <div class="p-2 bg-gray-50 rounded">
-                    <div class="font-medium" id="customer-name"></div>
-                    <div class="text-gray-500" id="customer-details"></div>
-                </div>
-            </div>
-        </x-card>
+        <div class="flex gap-2 mb-3">
+          <x-input type="text" placeholder="Código do cupom" id="cupom" class="flex-1" />
+          <x-button variant="secondary" id="btn-aplicar-cupom">
+            <i class="fas fa-ticket-alt mr-1"></i> Aplicar
+          </x-button>
+        </div>
         
-        <x-card title="Resumo do Pedido">
-            <div class="space-y-3">
-                <div class="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span id="subtotal">R$ 0,00</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Taxa de Serviço:</span>
-                    <span id="service-fee">R$ 0,00</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Taxa de Entrega:</span>
-                    <span id="delivery-fee">R$ 0,00</span>
-                </div>
-                <div class="flex justify-between font-bold text-lg border-t pt-3">
-                    <span>Total:</span>
-                    <span id="total">R$ 0,00</span>
-                </div>
-            </div>
-            
-            <div class="mt-6 space-y-2">
-                <x-button variant="success" size="lg" class="w-full" onclick="finalizeOrder()">
-                    <i class="fas fa-check"></i> Finalizar Venda
-                </x-button>
-                <x-button variant="secondary" class="w-full" onclick="clearCart()">
-                    <i class="fas fa-trash"></i> Limpar Carrinho
-                </x-button>
-            </div>
-        </x-card>
+        <div class="grid grid-cols-2 gap-3">
+          <x-form-group label="Desconto R$">
+            <x-input type="number" step="0.01" placeholder="0.00" id="desconto-reais" />
+          </x-form-group>
+          <x-form-group label="Desconto %">
+            <x-input type="number" step="0.1" placeholder="0.0" id="desconto-pct" />
+          </x-form-group>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="mt-6 pt-4 border-t">
+        <div class="flex justify-between items-center text-lg">
+          <span class="font-semibold">Total:</span>
+          <span class="text-2xl font-bold text-orange-600" id="total-geral">R$ 0,00</span>
+        </div>
+        <div class="text-sm text-gray-500 mt-1">
+          <span id="desconto-aplicado">Sem desconto</span>
+        </div>
+      </div>
+    </x-card>
+  </div>
+
+  <!-- Produtos e Finalização -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Produtos -->
+    <x-card class="lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center">
+          <i class="fas fa-box text-green-600 mr-3"></i>
+          <h2 class="text-lg font-semibold">Produtos</h2>
+        </div>
+        <x-badge type="success" id="contador-produtos">0 produtos</x-badge>
+      </div>
+      
+      <x-form-group label="Buscar Produtos">
+        <x-input type="text" placeholder="Digite o nome do produto" id="busca-produto" />
+      </x-form-group>
+      
+      <div id="lista-produtos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+        <!-- Cards de produtos carregados por JS -->
+        <div class="col-span-full text-center py-8 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+          <p>Carregando produtos...</p>
+        </div>
+      </div>
+    </x-card>
+
+    <!-- Finalizar -->
+    <x-card>
+      <div class="flex items-center mb-4">
+        <i class="fas fa-credit-card text-purple-600 mr-3"></i>
+        <h2 class="text-lg font-semibold">Finalizar Venda</h2>
+      </div>
+      
+      <div class="space-y-3">
+        <x-button variant="success" size="lg" class="w-full" id="btn-pagar">
+          <i class="fas fa-credit-card mr-2"></i> Pagamento com Mercado Pago
+        </x-button>
         
-        <x-card title="Atalhos">
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span>Buscar produto:</span>
-                    <span class="font-mono bg-gray-100 px-2 py-1 rounded">Enter</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Limpar carrinho:</span>
-                    <span class="font-mono bg-gray-100 px-2 py-1 rounded">Esc</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Finalizar venda:</span>
-                    <span class="font-mono bg-gray-100 px-2 py-1 rounded">F2</span>
-                </div>
-            </div>
-        </x-card>
-    </div>
+        <x-button variant="info" size="lg" class="w-full" id="btn-whatsapp">
+          <i class="fab fa-whatsapp mr-2"></i> Enviar pedido por WhatsApp
+        </x-button>
+        
+        <x-button variant="warning" size="lg" class="w-full" id="btn-fiado">
+          <i class="fas fa-hand-holding-usd mr-2"></i> Venda no Fiado
+        </x-button>
+        
+        <x-button variant="danger" size="lg" class="w-full" id="btn-cancelar">
+          <i class="fas fa-times mr-2"></i> Cancelar Venda
+        </x-button>
+      </div>
+      
+      <!-- Resumo da Venda -->
+      <div class="mt-6 pt-4 border-t">
+        <h3 class="text-md font-semibold mb-3">Resumo</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span>Subtotal:</span>
+            <span id="subtotal">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Desconto:</span>
+            <span id="desconto-total" class="text-green-600">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between font-semibold border-t pt-2">
+            <span>Total:</span>
+            <span id="total-final">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+    </x-card>
+  </div>
 </div>
 
-@push('scripts')
-<script>
-    let cart = [];
-    let currentCustomer = null;
-    
-    // Configurações
-    const settings = {
-        serviceFee: {{ $settings['service_fee'] ?? 0 }},
-        deliveryFee: {{ $settings['delivery_fee'] ?? 0 }}
-    };
-    
-    // Buscar produtos
-    document.getElementById('product-search').addEventListener('input', function() {
-        const query = this.value;
-        if (query.length < 2) {
-            document.getElementById('products-list').innerHTML = '<p class="text-gray-500 text-center">Digite pelo menos 2 caracteres...</p>';
-            return;
-        }
-        
-        // Simular busca de produtos
-        const products = [
-            { id: 1, name: 'Hambúrguer Clássico', price: 25.90, code: 'HB001' },
-            { id: 2, name: 'Pizza Margherita', price: 35.90, code: 'PZ001' },
-            { id: 3, name: 'Batata Frita', price: 12.90, code: 'BF001' },
-            { id: 4, name: 'Refrigerante', price: 6.90, code: 'RF001' }
-        ];
-        
-        const filteredProducts = products.filter(p => 
-            p.name.toLowerCase().includes(query.toLowerCase()) || 
-            p.code.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        if (filteredProducts.length === 0) {
-            document.getElementById('products-list').innerHTML = '<p class="text-gray-500 text-center">Nenhum produto encontrado</p>';
-            return;
-        }
-        
-        let html = '<div class="space-y-2">';
-        filteredProducts.forEach(product => {
-            html += `
-                <div class="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer" onclick="addToCart(${product.id}, '${product.name}', ${product.price})">
-                    <div>
-                        <div class="font-medium">${product.name}</div>
-                        <div class="text-sm text-gray-500">${product.code}</div>
-                    </div>
-                    <div class="text-green-600 font-medium">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        
-        document.getElementById('products-list').innerHTML = html;
-    });
-    
-    // Adicionar ao carrinho
-    function addToCart(id, name, price) {
-        const existingItem = cart.find(item => item.id === id);
-        
-        if (existingItem) {
-            existingItem.quantity += 1;
-        } else {
-            cart.push({ id, name, price, quantity: 1 });
-        }
-        
-        updateCartDisplay();
-        updateTotals();
-    }
-    
-    // Remover do carrinho
-    function removeFromCart(id) {
-        cart = cart.filter(item => item.id !== id);
-        updateCartDisplay();
-        updateTotals();
-    }
-    
-    // Atualizar quantidade
-    function updateQuantity(id, quantity) {
-        if (quantity <= 0) {
-            removeFromCart(id);
-            return;
-        }
-        
-        const item = cart.find(item => item.id === id);
-        if (item) {
-            item.quantity = quantity;
-            updateCartDisplay();
-            updateTotals();
-        }
-    }
-    
-    // Atualizar exibição do carrinho
-    function updateCartDisplay() {
-        const tbody = document.getElementById('cart-items');
-        
-        if (cart.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum item adicionado</td></tr>';
-            return;
-        }
-        
-        let html = '';
-        cart.forEach(item => {
-            const total = item.price * item.quantity;
-            html += `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 border-b font-medium">${item.name}</td>
-                    <td class="px-4 py-3 border-b">
-                        <div class="flex items-center">
-                            <button onclick="updateQuantity(${item.id}, ${item.quantity - 1})" class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">-</button>
-                            <span class="mx-2">${item.quantity}</span>
-                            <button onclick="updateQuantity(${item.id}, ${item.quantity + 1})" class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">+</button>
-                        </div>
-                    </td>
-                    <td class="px-4 py-3 border-b">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
-                    <td class="px-4 py-3 border-b font-medium">R$ ${total.toFixed(2).replace('.', ',')}</td>
-                    <td class="px-4 py-3 border-b text-right">
-                        <button onclick="removeFromCart(${item.id})" class="text-red-600 hover:text-red-800">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
-    }
-    
-    // Atualizar totais
-    function updateTotals() {
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const serviceFeeAmount = subtotal * (settings.serviceFee / 100);
-        const total = subtotal + serviceFeeAmount + settings.deliveryFee;
-        
-        document.getElementById('subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-        document.getElementById('service-fee').textContent = `R$ ${serviceFeeAmount.toFixed(2).replace('.', ',')}`;
-        document.getElementById('delivery-fee').textContent = `R$ ${settings.deliveryFee.toFixed(2).replace('.', ',')}`;
-        document.getElementById('total').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-    }
-    
-    // Limpar carrinho
-    function clearCart() {
-        if (confirm('Limpar carrinho?')) {
-            cart = [];
-            updateCartDisplay();
-            updateTotals();
-        }
-    }
-    
-    // Finalizar pedido
-    function finalizeOrder() {
-        if (cart.length === 0) {
-            alert('Adicione pelo menos um item ao carrinho');
-            return;
-        }
-        
-        const customerId = document.getElementById('customer-select').value;
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
-        // Simular finalização
-        if (confirm(`Finalizar pedido de R$ ${total.toFixed(2).replace('.', ',')}?`)) {
-            alert('Pedido finalizado com sucesso!');
-            clearCart();
-        }
-    }
-    
-    // Atalhos de teclado
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            clearCart();
-        } else if (e.key === 'F2') {
-            e.preventDefault();
-            finalizeOrder();
-        }
-    });
-    
-    // Buscar cliente
-    document.getElementById('customer-search').addEventListener('input', function() {
-        const query = this.value.toLowerCase();
-        const select = document.getElementById('customer-select');
-        const options = select.querySelectorAll('option');
-        
-        options.forEach(option => {
-            if (option.value === '') return;
-            const text = option.textContent.toLowerCase();
-            option.style.display = text.includes(query) ? '' : 'none';
-        });
-    });
-    
-    // Selecionar cliente
-    document.getElementById('customer-select').addEventListener('change', function() {
-        const customerId = this.value;
-        const customerInfo = document.getElementById('customer-info');
-        
-        if (customerId) {
-            // Simular dados do cliente
-            document.getElementById('customer-name').textContent = this.options[this.selectedIndex].textContent;
-            document.getElementById('customer-details').textContent = 'Cliente cadastrado';
-            customerInfo.classList.remove('hidden');
-        } else {
-            customerInfo.classList.add('hidden');
-        }
-    });
-</script>
-@endpush
+<!-- Modal de Confirmação -->
+<div id="modal-confirmacao" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+      <h3 class="text-lg font-semibold mb-4" id="modal-titulo">Confirmar Ação</h3>
+      <p class="text-gray-600 mb-6" id="modal-mensagem">Tem certeza que deseja continuar?</p>
+      <div class="flex gap-2 justify-end">
+        <x-button variant="secondary" id="btn-modal-cancelar">Cancelar</x-button>
+        <x-button variant="primary" id="btn-modal-confirmar">Confirmar</x-button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
+
+@push('styles')
+<style>
+  .produto-card {
+    @apply bg-white border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer;
+  }
+  .produto-card:hover {
+    @apply border-orange-300;
+  }
+  .item-carrinho {
+    @apply bg-gray-50 border rounded-lg p-3 flex items-center justify-between;
+  }
+  .sugestao-cliente {
+    @apply p-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0;
+  }
+  .sugestao-cliente:hover {
+    @apply bg-orange-50;
+  }
+</style>
+@endpush
+
+@push('scripts')
+<script src="{{ asset('js/pdv.js') }}"></script>
+@endpush

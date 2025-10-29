@@ -1,149 +1,175 @@
 @extends('layouts.admin')
 
 @section('title', 'Fidelidade')
-@section('page_title', 'Fidelidade')
+@section('page_title', 'Programa de Fidelidade')
 
 @section('content')
-<div class="mb-6">
-    <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-            <input type="text" placeholder="Buscar clientes..." class="input" id="search-loyalty">
-        </div>
-        <div class="flex gap-2">
-            <select class="input" id="points-filter">
-                <option value="">Todos os pontos</option>
-                <option value="high">Alto (500+)</option>
-                <option value="medium">Médio (100-499)</option>
-                <option value="low">Baixo (0-99)</option>
-            </select>
-        </div>
+<div class="container-page">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">Programa de Fidelidade</h1>
+    <p class="text-gray-600 mt-2">Configure os benefícios do programa de fidelidade para seus clientes</p>
+  </div>
+
+  @if(session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+  @endif
+
+  @if(session('error'))
+    <x-alert type="error">{{ session('error') }}</x-alert>
+  @endif
+
+  @if ($errors->any())
+    <x-alert type="danger">
+      <ul class="list-disc pl-5 text-sm">
+        @foreach ($errors->all() as $error)
+          <li>{{ $error }}</li>
+        @endforeach
+      </ul>
+    </x-alert>
+  @endif
+
+  <!-- Cashback -->
+  <x-card class="mb-6">
+    <div class="flex items-center mb-4">
+      <i class="fas fa-coins text-orange-600 mr-3"></i>
+      <h2 class="text-lg font-semibold">Cashback</h2>
     </div>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-blue-600 mb-2">{{ $totalPoints ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Total de Pontos</div>
-    </x-card>
+    <p class="text-sm text-gray-600 mb-4">Configure o percentual de cashback que os clientes recebem em cada compra.</p>
     
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-green-600 mb-2">{{ $activeMembers ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Membros Ativos</div>
-    </x-card>
-    
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-purple-600 mb-2">{{ $redeemedPoints ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Pontos Resgatados</div>
-    </x-card>
-    
-    <x-card class="text-center">
-        <div class="text-3xl font-bold text-orange-600 mb-2">{{ $averagePoints ?? 0 }}</div>
-        <div class="text-sm text-gray-600">Média por Cliente</div>
-    </x-card>
-</div>
-
-<x-card title="Programa de Fidelidade">
-    <x-table :headers="['Cliente', 'Pontos Atuais', 'Nível', 'Última Atividade', 'Ações']" :actions="false">
-        @forelse($loyalties ?? [] as $loyalty)
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 border-b">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full mr-3 flex items-center justify-center">
-                            <i class="fas fa-star text-blue-600"></i>
-                        </div>
-                        <div>
-                            <div class="font-medium">{{ $loyalty->customer->nome ?? 'Cliente' }}</div>
-                            <div class="text-sm text-gray-500">{{ $loyalty->customer->email ?? '—' }}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    <span class="text-2xl font-bold text-blue-600">{{ $loyalty->pontos ?? 0 }}</span>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    @php
-                        $points = $loyalty->pontos ?? 0;
-                        $level = $points >= 1000 ? 'gold' : ($points >= 500 ? 'silver' : 'bronze');
-                        $levelClass = match($level) {
-                            'gold' => 'badge-warning',
-                            'silver' => 'badge-info',
-                            'bronze' => 'badge-secondary',
-                            default => 'badge-secondary'
-                        };
-                        $levelName = match($level) {
-                            'gold' => 'Ouro',
-                            'silver' => 'Prata',
-                            'bronze' => 'Bronze',
-                            default => 'Bronze'
-                        };
-                    @endphp
-                    <span class="badge {{ $levelClass }}">{{ $levelName }}</span>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    @if($loyalty->last_activity ?? false)
-                        {{ \Carbon\Carbon::parse($loyalty->last_activity)->format('d/m/Y') }}
-                    @else
-                        <span class="text-gray-400">Nunca</span>
-                    @endif
-                </td>
-                <td class="px-4 py-3 border-b text-right">
-                    <div class="flex gap-2 justify-end">
-                        <x-button href="/loyalty/{{ $loyalty->id }}" variant="secondary" size="sm">
-                            <i class="fas fa-eye"></i>
-                        </x-button>
-                        <x-button href="/loyalty/{{ $loyalty->id }}/edit" variant="primary" size="sm">
-                            <i class="fas fa-edit"></i>
-                        </x-button>
-                        <x-button href="/loyalty/{{ $loyalty->id }}/redeem" variant="success" size="sm">
-                            <i class="fas fa-gift"></i>
-                        </x-button>
-                    </div>
-                </td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                    Nenhum registro de fidelidade encontrado
-                </td>
-            </tr>
-        @endforelse
-    </x-table>
-</x-card>
-
-<x-card title="Configurações do Programa" class="mt-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Pontos por Real</label>
-            <input type="number" class="input" value="{{ $settings['points_per_real'] ?? 1 }}" placeholder="Ex: 1">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Pontos para Resgate</label>
-            <input type="number" class="input" value="{{ $settings['points_for_redeem'] ?? 100 }}" placeholder="Ex: 100">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Valor do Resgate</label>
-            <input type="number" class="input" value="{{ $settings['redeem_value'] ?? 10 }}" placeholder="Ex: 10">
-        </div>
-    </div>
-    <div class="mt-4">
-        <x-button variant="primary">
-            <i class="fas fa-save"></i> Salvar Configurações
+    <form method="POST" action="{{ route('dashboard.loyalty.update.cashback') }}" class="space-y-4">
+      @csrf
+      <x-form-group label="% de Cashback por compra">
+        <x-input type="number" name="percentual" step="0.1" value="{{ old('percentual', $cashbackPercent ?? 0) }}" placeholder="0.0" />
+        <p class="text-xs text-gray-500 mt-1">Não inclui taxa de entrega nem descontos aplicados.</p>
+      </x-form-group>
+      
+      <div class="flex gap-2">
+        <x-button variant="primary" type="submit">
+          <i class="fas fa-save mr-2"></i> Atualizar Cashback
         </x-button>
-    </div>
-</x-card>
+        <x-button variant="secondary" type="button" onclick="document.querySelector('input[name=\"percentual\"]').value = '0'">
+          <i class="fas fa-times mr-2"></i> Limpar
+        </x-button>
+      </div>
+    </form>
+  </x-card>
 
-@push('scripts')
-<script>
-    // Filtros dinâmicos
-    document.getElementById('search-loyalty').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const rows = document.querySelectorAll('tbody tr');
+  <!-- Indicação -->
+  <x-card class="mb-6">
+    <div class="flex items-center mb-4">
+      <i class="fas fa-users text-blue-600 mr-3"></i>
+      <h2 class="text-lg font-semibold">Indicação de Clientes</h2>
+    </div>
+    <p class="text-sm text-gray-600 mb-4">Configure o bônus para clientes que indicam novos compradores.</p>
+    
+    <form method="POST" action="{{ route('dashboard.loyalty.update.indicacao') }}" class="space-y-4">
+      @csrf
+      <x-form-group label="% de bônus por compra do indicado">
+        <x-input type="number" name="percentual_indicacao" step="0.1" value="{{ old('percentual_indicacao', $indicacaoPercent ?? 0) }}" placeholder="0.0" />
+        <p class="text-xs text-gray-500 mt-1">Valor baseado no total da compra do indicado, sem entrega nem cupons.</p>
+      </x-form-group>
+      
+      <div class="flex gap-2">
+        <x-button variant="primary" type="submit">
+          <i class="fas fa-save mr-2"></i> Atualizar Bônus de Indicação
+        </x-button>
+        <x-button variant="secondary" type="button" onclick="document.querySelector('input[name=\"percentual_indicacao\"]').value = '0'">
+          <i class="fas fa-times mr-2"></i> Limpar
+        </x-button>
+      </div>
+    </form>
+  </x-card>
+
+  <!-- Bônus por Pedidos -->
+  <x-card>
+    <div class="flex items-center mb-4">
+      <i class="fas fa-gift text-green-600 mr-3"></i>
+      <h2 class="text-lg font-semibold">Bônus por Quantidade de Pedidos</h2>
+    </div>
+    <p class="text-sm text-gray-600 mb-4">Configure bônus especiais baseados no número de pedidos realizados pelo cliente.</p>
+    
+    <form method="POST" action="{{ route('dashboard.loyalty.update.bonus') }}" class="space-y-4">
+      @csrf
+      
+      <div class="space-y-3">
+        <div class="grid grid-cols-3 gap-4 text-sm font-medium text-gray-600 mb-2">
+          <div>Quantidade de Pedidos</div>
+          <div>Valor do Bônus (R$)</div>
+          <div class="text-right">Ações</div>
+        </div>
         
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
+        @foreach($bonusPedidos ?? [] as $i => $bonus)
+          <div class="grid grid-cols-3 gap-4 items-center p-3 bg-gray-50 rounded-lg">
+            <x-input type="number" name="bonus[{{ $i }}][qtd]" value="{{ $bonus['qtd'] }}" placeholder="Ex: 5" />
+            <x-input type="number" name="bonus[{{ $i }}][valor]" step="0.01" value="{{ $bonus['valor'] }}" placeholder="Ex: 10.00" />
+            <div class="text-right">
+              <x-button variant="danger" size="sm" type="button" onclick="this.closest('.grid').remove()">
+                <i class="fas fa-trash"></i>
+              </x-button>
+            </div>
+          </div>
+        @endforeach
+        
+        <!-- Novo bônus -->
+        <div class="grid grid-cols-3 gap-4 items-center p-3 border-2 border-dashed border-gray-300 rounded-lg">
+          <x-input type="number" name="bonus[new][qtd]" placeholder="Nova quantidade" />
+          <x-input type="number" name="bonus[new][valor]" step="0.01" placeholder="Novo bônus (R$)" />
+          <div class="text-right">
+            <x-badge type="info">Novo</x-badge>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex gap-2">
+        <x-button variant="primary" type="submit">
+          <i class="fas fa-save mr-2"></i> Atualizar Bônus por Pedidos
+        </x-button>
+        <x-button variant="secondary" type="button" onclick="addNewBonus()">
+          <i class="fas fa-plus mr-2"></i> Adicionar Mais
+        </x-button>
+      </div>
+    </form>
+  </x-card>
+
+  <!-- Resumo -->
+  <x-card class="mt-6">
+    <div class="flex items-center mb-4">
+      <i class="fas fa-chart-pie text-purple-600 mr-3"></i>
+      <h2 class="text-lg font-semibold">Resumo do Programa</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="text-center p-4 bg-orange-50 rounded-lg">
+        <div class="text-2xl font-bold text-orange-600">{{ $cashbackPercent ?? 0 }}%</div>
+        <div class="text-sm text-gray-600">Cashback por compra</div>
+      </div>
+      
+      <div class="text-center p-4 bg-blue-50 rounded-lg">
+        <div class="text-2xl font-bold text-blue-600">{{ $indicacaoPercent ?? 0 }}%</div>
+        <div class="text-sm text-gray-600">Bônus por indicação</div>
+      </div>
+      
+      <div class="text-center p-4 bg-green-50 rounded-lg">
+        <div class="text-2xl font-bold text-green-600">{{ count($bonusPedidos ?? []) }}</div>
+        <div class="text-sm text-gray-600">Marcas de bônus</div>
+      </div>
+    </div>
+  </x-card>
+</div>
+
+<script>
+function addNewBonus() {
+  const container = document.querySelector('.space-y-3');
+  const newBonus = document.createElement('div');
+  newBonus.className = 'grid grid-cols-3 gap-4 items-center p-3 border-2 border-dashed border-gray-300 rounded-lg';
+  newBonus.innerHTML = `
+    <input type="number" name="bonus[new][qtd]" placeholder="Nova quantidade" class="input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
+    <input type="number" name="bonus[new][valor]" step="0.01" placeholder="Novo bônus (R$)" class="input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
+    <div class="text-right">
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Novo</span>
+    </div>
+  `;
+  container.appendChild(newBonus);
+}
 </script>
-@endpush
 @endsection

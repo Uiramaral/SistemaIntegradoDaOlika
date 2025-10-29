@@ -4,102 +4,75 @@
 @section('page_title', 'Produtos')
 
 @section('content')
-<div class="mb-6">
-    <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-            <input type="text" placeholder="Buscar produtos..." class="input" id="search-products">
-        </div>
-        <div class="flex gap-2">
-            <select class="input" id="category-filter">
-                <option value="">Todas as categorias</option>
-                @foreach($categories ?? [] as $category)
-                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                @endforeach
-            </select>
-            <x-button href="/products/create" variant="primary">
-                <i class="fas fa-plus"></i> Novo Produto
-            </x-button>
-        </div>
+<div class="container-page">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Produtos</h1>
+    <a href="{{ route('dashboard.products.create') }}" class="btn btn-primary">
+      <i class="fas fa-plus mr-2"></i> Novo Produto
+    </a>
+  </div>
+
+  @if(session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+  @endif
+
+  @if(session('error'))
+    <x-alert type="error">{{ session('error') }}</x-alert>
+  @endif
+
+  @if(isset($products) && $products->isEmpty())
+    <x-card>
+      <div class="text-center py-8">
+        <i class="fas fa-utensils text-4xl text-gray-400 mb-4"></i>
+        <p class="text-gray-500 text-lg">Nenhum produto cadastrado.</p>
+        <p class="text-gray-400 text-sm mt-2">Comece adicionando seu primeiro produto.</p>
+      </div>
+    </x-card>
+  @else
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @foreach($products ?? [] as $product)
+        <x-card class="flex gap-4 p-4">
+          <img src="{{ $product->cover_image ?? '/img/placeholder.png' }}" class="w-20 h-20 rounded-xl object-cover border" alt="Produto">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="font-bold text-base">{{ $product->name }}</h3>
+              @if($product->gluten_free ?? false)
+                <x-badge type="warning">
+                  <i class="fas fa-wheat-awn-circle-exclamation mr-1"></i> Sem glúten
+                </x-badge>
+              @endif
+              @if(!($product->is_active ?? true))
+                <x-badge type="gray">Inativo</x-badge>
+              @else
+                <x-badge type="success">Ativo</x-badge>
+              @endif
+            </div>
+            <div class="text-sm text-slate-500 mb-2">{{ $product->category->name ?? '—' }}</div>
+            <div class="mt-2 text-sm flex items-center gap-6">
+              <strong>R$ {{ number_format($product->price ?? 0, 2, ',', '.') }}</strong>
+              <span>Estoque: {{ $product->stock ?? 0 }}</span>
+            </div>
+            <div class="mt-3 flex gap-2">
+              <form method="POST" action="{{ route('dashboard.products.toggle', $product) }}" class="inline">
+                @csrf
+                <x-button variant="secondary" size="sm" type="submit">
+                  {{ ($product->is_active ?? true) ? 'Inativar' : 'Ativar' }}
+                </x-button>
+              </form>
+              <a href="{{ route('dashboard.products.edit', $product) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit mr-1"></i> Editar
+              </a>
+            </div>
+          </div>
+        </x-card>
+      @endforeach
     </div>
+
+    @if(isset($products) && $products->hasPages())
+      <div class="mt-6">
+        {{ $products->links() }}
+      </div>
+    @endif
+  @endif
 </div>
-
-<x-card title="Lista de Produtos">
-    <x-table :headers="['Nome', 'Categoria', 'Preço', 'Status', 'Ações']" :actions="false">
-        @forelse($produtos ?? [] as $produto)
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 border-b">
-                    <div class="flex items-center">
-                        @if($produto->image ?? false)
-                            <img src="{{ $produto->image }}" alt="{{ $produto->name }}" class="w-10 h-10 rounded-lg object-cover mr-3">
-                        @else
-                            <div class="w-10 h-10 bg-gray-200 rounded-lg mr-3 flex items-center justify-center">
-                                <i class="fas fa-image text-gray-400"></i>
-                            </div>
-                        @endif
-                        <div>
-                            <div class="font-medium">{{ $produto->name ?? '—' }}</div>
-                            <div class="text-sm text-gray-500">{{ Str::limit($produto->description ?? '', 50) }}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-4 py-3 border-b">
-                    <span class="badge badge-info">{{ $produto->categoria->name ?? 'Sem categoria' }}</span>
-                </td>
-                <td class="px-4 py-3 border-b font-medium text-green-600">R$ {{ number_format($produto->price ?? 0, 2, ',', '.') }}</td>
-                <td class="px-4 py-3 border-b">
-                    <span class="badge {{ ($produto->active ?? false) ? 'badge-success' : 'badge-danger' }}">
-                        {{ ($produto->active ?? false) ? 'Ativo' : 'Inativo' }}
-                    </span>
-                </td>
-                <td class="px-4 py-3 border-b text-right">
-                    <div class="flex gap-2 justify-end">
-                        <x-button href="/products/{{ $produto->id }}" variant="secondary" size="sm">
-                            <i class="fas fa-eye"></i>
-                        </x-button>
-                        <x-button href="/products/{{ $produto->id }}/edit" variant="primary" size="sm">
-                            <i class="fas fa-edit"></i>
-                        </x-button>
-                        <x-button variant="danger" size="sm" onclick="confirmDelete({{ $produto->id }})">
-                            <i class="fas fa-trash"></i>
-                        </x-button>
-                    </div>
-                </td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                    Nenhum produto encontrado
-                </td>
-            </tr>
-        @endforelse
-    </x-table>
-</x-card>
-
-@push('scripts')
-<script>
-    function confirmDelete(productId) {
-        if (confirm('Tem certeza que deseja excluir este produto?')) {
-            fetch(`/products/${productId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            }).then(() => {
-                location.reload();
-            });
-        }
-    }
-    
-    // Filtros dinâmicos
-    document.getElementById('search-products').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const rows = document.querySelectorAll('tbody tr');
-        
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-</script>
-@endpush
 @endsection

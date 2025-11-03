@@ -205,6 +205,7 @@
                                                     ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet'],
                                                     ['url' => route('dashboard.loyalty'), 'label' => 'Fidelidade', 'icon' => 'lucide-heart'],
                                                     ['url' => route('dashboard.reports'), 'label' => 'Relatórios', 'icon' => 'lucide-chart-column'],
+                                                    ['url' => route('dashboard.settings'), 'label' => 'Configurações', 'icon' => 'lucide-settings2'],
                                                     ['url' => route('dashboard.settings.whatsapp'), 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle'],
                                                     ['url' => route('dashboard.settings.mp'), 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card'],
                                                     ['url' => route('dashboard.settings.status-templates'), 'label' => 'Status & Templates', 'icon' => 'lucide-settings2'],

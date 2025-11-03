@@ -18,7 +18,7 @@ class Address extends Model
         'street',
         'number',
         'complement',
-        'district',
+        'neighborhood',
         'city',
         'state',
     ];
@@ -48,7 +48,7 @@ class Address extends Model
             $this->street,
             $this->number ? "nº {$this->number}" : null,
             $this->complement,
-            $this->district,
+            $this->neighborhood,
             $this->city,
             $this->state,
         ]);

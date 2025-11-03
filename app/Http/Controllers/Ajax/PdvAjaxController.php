@@ -36,7 +36,7 @@ class PdvAjaxController extends Controller
         if(strlen($q) < 2) return response()->json(['items'=>[]]);
 
         $rows = DB::table('customers')
-            ->select('id','name','phone','email','cep','street','number','complement','district','city','state')
+            ->select('id','name','phone','email','zip_code','address','neighborhood','city','state')
             ->where(function($w) use ($q){
                 $w->where('name','like',"%{$q}%")
                   ->orWhere('phone','like',"%{$q}%")
@@ -45,6 +45,8 @@ class PdvAjaxController extends Controller
             ->limit(12)->get();
 
         $items = $rows->map(function($c){
+            // A tabela customers tem estrutura diferente de addresses
+            // Extrair informações básicas do campo address (texto) se necessário
             return [
                 'id'    => $c->id,
                 'label' => "{$c->name} · {$c->phone}",
@@ -52,8 +54,13 @@ class PdvAjaxController extends Controller
                 'phone' => $c->phone,
                 'email' => $c->email,
                 'address'=>[
-                    'cep'=>$c->cep,'street'=>$c->street,'number'=>$c->number,'complement'=>$c->complement,
-                    'district'=>$c->district,'city'=>$c->city,'state'=>$c->state,
+                    'cep'=>$c->zip_code ?? null,
+                    'street'=>$c->address ?? null, // customers.address é um campo texto
+                    'number'=>null,
+                    'complement'=>null,
+                    'district'=>$c->neighborhood ?? null, // API retorna 'district' mas BD usa 'neighborhood'
+                    'city'=>$c->city ?? null,
+                    'state'=>$c->state ?? null,
                 ],
             ];
         });

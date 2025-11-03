@@ -10,12 +10,12 @@ class CustomerController extends Controller
     public function index()
     {
         $customers = Customer::latest()->paginate(20);
-        return view('dash.pages.customers.index', compact('customers'));
+        return view('dashboard.customers.index', compact('customers'));
     }
 
     public function create()
     {
-        return view('dash.pages.customers.create');
+        return view('dashboard.customers.create');
     }
 
     public function store(Request $request)
@@ -32,7 +32,7 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
-        return view('dash.pages.customers.edit', compact('customer'));
+        return view('dashboard.customers.edit', compact('customer'));
     }
 
     public function update(Request $request, Customer $customer)

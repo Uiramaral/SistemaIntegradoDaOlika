@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('street');
             $table->string('number');
             $table->string('complement')->nullable();
-            $table->string('district')->nullable();
+            $table->string('neighborhood')->nullable();
             $table->string('city');
             $table->string('state', 2);
             $table->timestamps();

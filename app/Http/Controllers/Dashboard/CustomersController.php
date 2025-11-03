@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\CustomerCashback;
 
 class CustomersController extends Controller
 {
@@ -29,12 +30,12 @@ class CustomersController extends Controller
             ->orderByDesc('id')
             ->paginate(30);
 
-        return view('dash.pages.customers.index', compact('customers', 'search'));
+        return view('dashboard.customers.index', compact('customers', 'search'));
     }
 
     public function create()
     {
-        return view('dash.pages.customers.index', ['customer' => null]);
+        return view('dashboard.customers.create');
     }
 
     public function store(Request $r)
@@ -45,12 +46,27 @@ class CustomersController extends Controller
             'phone' => 'required|string|max:20',
             'cpf' => 'nullable|string|max:14',
             'birth_date' => 'nullable|date',
+            'cashback_balance' => 'nullable|numeric|min:0',
         ]);
 
+        $cashbackBalance = $r->input('cashback_balance', 0);
+        
         $data['created_at'] = now();
         $data['updated_at'] = now();
+        unset($data['cashback_balance']); // Remover do array de dados do cliente
 
-        DB::table('customers')->insert($data);
+        $customerId = DB::table('customers')->insertGetId($data);
+
+        // Criar transação de cashback inicial se o valor foi informado
+        if ($cashbackBalance > 0) {
+            \App\Models\CustomerCashback::create([
+                'customer_id' => $customerId,
+                'order_id' => null,
+                'amount' => (float)$cashbackBalance,
+                'type' => 'credit',
+                'description' => 'Saldo inicial de cashback',
+            ]);
+        }
 
         return redirect()->route('dashboard.customers.index')->with('success', 'Cliente criado com sucesso!');
     }
@@ -67,7 +83,7 @@ class CustomersController extends Controller
             ->orderByDesc('id')
             ->paginate(10);
 
-        return view('dash.pages.customers.show', compact('customer', 'orders'));
+        return view('dashboard.customers.show', compact('customer', 'orders'));
     }
 
     public function edit($id)
@@ -77,7 +93,7 @@ class CustomersController extends Controller
             return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
         }
 
-        return view('dash.pages.customers.edit', compact('customer'));
+        return view('dashboard.customers.edit', compact('customer'));
     }
 
     public function update(Request $r, $id)
@@ -93,10 +109,41 @@ class CustomersController extends Controller
             'phone' => 'required|string|max:20',
             'cpf' => 'nullable|string|max:14',
             'birth_date' => 'nullable|date',
+            'cashback_balance' => 'nullable|numeric|min:0',
         ]);
 
+        $targetCashbackBalance = (float)($r->input('cashback_balance', 0) ?? 0);
+        
         $data['updated_at'] = now();
+        unset($data['cashback_balance']); // Remover do array de dados do cliente
+        
         DB::table('customers')->where('id', $id)->update($data);
+
+        // Ajustar cashback se o valor foi informado e é diferente do saldo atual
+        $currentBalance = \App\Models\CustomerCashback::getBalance($id);
+        $difference = $targetCashbackBalance - $currentBalance;
+        
+        if (abs($difference) > 0.01) { // Tolerância de 1 centavo para diferenças de arredondamento
+            if ($difference > 0) {
+                // Adicionar cashback
+                \App\Models\CustomerCashback::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => $difference,
+                    'type' => 'credit',
+                    'description' => 'Ajuste manual de cashback',
+                ]);
+            } else {
+                // Remover cashback (débito)
+                \App\Models\CustomerCashback::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => abs($difference),
+                    'type' => 'debit',
+                    'description' => 'Ajuste manual de cashback',
+                ]);
+            }
+        }
 
         return redirect()->route('dashboard.customers.index')->with('success', 'Cliente atualizado com sucesso!');
     }

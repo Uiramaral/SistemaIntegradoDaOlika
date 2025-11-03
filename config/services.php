@@ -31,4 +31,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // BotConversa Webhook configuration
+    'botconversa' => [
+        'webhook_url' => env('BOTCONVERSA_WEBHOOK_URL', null),
+        'token' => env('BOTCONVERSA_TOKEN', null),
+        // opcional: webhook específico para pedidos pagos
+        'paid_webhook' => env('BOTCONVERSA_PAID_WEBHOOK_URL', null),
+    ],
+
 ];

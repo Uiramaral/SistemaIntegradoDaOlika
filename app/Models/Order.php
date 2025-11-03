@@ -26,6 +26,8 @@ class Order extends Model
         'discount_original_value',
         'manual_discount_type',
         'manual_discount_value',
+        'cashback_used',
+        'cashback_earned',
         'final_amount',
         'payment_method',
         'payment_provider',
@@ -57,6 +59,29 @@ class Order extends Model
         'scheduled_delivery_at' => 'datetime',
         'payment_raw_response' => 'array',
     ];
+
+    /**
+     * Mutator para normalizar valores de status para o ENUM válido da tabela orders.
+     * Aceita códigos vindos de order_statuses e converte para o ENUM permitido.
+     */
+    public function setStatusAttribute($value): void
+    {
+        $mapping = [
+            'pending' => 'pending',
+            'waiting_payment' => 'pending',
+            'paid' => 'confirmed',
+            'confirmed' => 'confirmed',
+            'preparing' => 'preparing',
+            'out_for_delivery' => 'ready',
+            'ready' => 'ready',
+            'delivered' => 'delivered',
+            'cancelled' => 'cancelled',
+        ];
+
+        $normalized = $mapping[$value] ?? $value;
+        $valid = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
+        $this->attributes['status'] = in_array($normalized, $valid, true) ? $normalized : 'pending';
+    }
 
     /**
      * Relacionamento com cliente

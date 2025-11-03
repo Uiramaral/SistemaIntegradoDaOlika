@@ -42,7 +42,7 @@ class OrdersController extends Controller
 
         $orders = $query->paginate(20)->withQueryString();
 
-        return view('dash.pages.orders.index', compact('orders'));
+        return view('dashboard.orders.index', compact('orders'));
     }
 
     public function show(Order $order)
@@ -102,7 +102,7 @@ class OrdersController extends Controller
         // Buscar configurações do sistema
         $settings = \App\Models\Setting::getSettings();
 
-        return view('dash.pages.orders.show', compact(
+        return view('dashboard.orders.show', compact(
             'order',
             'statusHistory',
             'availableStatuses',
@@ -122,19 +122,43 @@ class OrdersController extends Controller
         try {
             DB::beginTransaction();
 
+            // Mapear código de order_statuses para valores válidos do ENUM orders.status
+            $statusMapping = [
+                'pending' => 'pending',
+                'waiting_payment' => 'pending',
+                'paid' => 'confirmed',
+                'confirmed' => 'confirmed',
+                'preparing' => 'preparing',
+                'out_for_delivery' => 'ready',
+                'ready' => 'ready',
+                'delivered' => 'delivered',
+                'cancelled' => 'cancelled',
+            ];
+
+            // Obter o código do status recebido
+            $requestedStatusCode = $request->status;
+            
+            // Mapear para o valor válido do ENUM
+            $enumStatus = $statusMapping[$requestedStatusCode] ?? $requestedStatusCode;
+            
+            // Validar se o status mapeado é válido para o ENUM
+            $validEnumValues = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
+            if (!in_array($enumStatus, $validEnumValues)) {
+                throw new \InvalidArgumentException("Status inválido: {$requestedStatusCode}");
+            }
+
             $oldStatus = $order->status;
-            $order->status = $request->status;
+            $order->status = $enumStatus;
             $order->save();
 
-            // Registrar no histórico
+            // Registrar no histórico (usar o código original, não o mapeado)
             DB::table('order_status_history')->insert([
                 'order_id' => $order->id,
                 'old_status' => $oldStatus,
-                'new_status' => $request->status,
+                'new_status' => $requestedStatusCode, // Usar o código original para o histórico
                 'note' => $request->note,
                 'user_id' => auth()->check() ? auth()->id() : null,
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             DB::commit();
@@ -249,6 +273,11 @@ class OrdersController extends Controller
                         'unit_price' => floatval($item->unit_price),
                     ];
                 })->toArray(),
+                'discount_amount' => floatval($order->discount_amount ?? 0),
+                'coupon_code' => $order->coupon_code ?? null,
+                'discount_type' => $order->discount_type ?? null,
+                'delivery_fee' => floatval($order->delivery_fee ?? 0),
+                'notification_url' => route('webhooks.mercadopago'),
             ];
             
             $payer = [
@@ -299,7 +328,16 @@ class OrdersController extends Controller
                         'unit_price' => floatval($item->unit_price),
                     ];
                 })->toArray(),
+                'discount_amount' => floatval($order->discount_amount ?? 0),
+                'coupon_code' => $order->coupon_code ?? null,
+                'discount_type' => $order->discount_type ?? null,
+                'delivery_fee' => floatval($order->delivery_fee ?? 0),
                 'notification_url' => route('webhooks.mercadopago'),
+                'back_urls' => [
+                    'success' => route('dashboard.orders.show', $order),
+                    'failure' => route('dashboard.orders.show', $order),
+                    'pending' => route('dashboard.orders.show', $order),
+                ],
             ];
             
             $payer = [
@@ -1242,10 +1280,41 @@ class OrdersController extends Controller
         
         // Se for requisição AJAX, retornar apenas o conteúdo HTML do modal
         if (request()->ajax() || request()->wantsJson()) {
-            return view('dash.pages.orders.receipt-modal', compact('order', 'statusHistory', 'settings'));
+            return view('dashboard.orders.receipt-modal', compact('order', 'statusHistory', 'settings'));
         }
         
-        return view('dash.pages.orders.receipt', compact('order', 'statusHistory', 'settings'));
+        return view('dashboard.orders.receipt', compact('order', 'statusHistory', 'settings'));
+    }
+
+    /**
+     * Exibe recibo fiscal para impressão
+     */
+    public function fiscalReceipt(Order $order)
+    {
+        $order->load([
+            'customer',
+            'address',
+            'items.product',
+            'payment',
+            'orderDeliveryFee'
+        ]);
+        
+        return view('dashboard.orders.fiscal-receipt', compact('order'));
+    }
+
+    /**
+     * Gera comandos ESC/POS para impressão fiscal
+     */
+    public function fiscalReceiptEscPos(Order $order)
+    {
+        $printerService = new \App\Services\FiscalPrinterService();
+        $result = $printerService->sendToPrinter($order, 'thermal');
+        
+        if (!$result['success']) {
+            return response()->json($result, 500);
+        }
+        
+        return response()->json($result);
     }
 
     /**

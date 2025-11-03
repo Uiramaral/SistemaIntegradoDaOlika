@@ -21,7 +21,7 @@
             </div>
         </div>
         <div class="flex gap-2">
-            <button type="button" onclick="openReceiptModal({{ $order->id }})" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+            <button type="button" id="btn-open-receipt" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt">
                     <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2Z"></path>
                     <path d="M14 8H8"></path>
@@ -53,7 +53,7 @@
         <div class="flex flex-col space-y-1.5 p-6">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
-                <button type="button" onclick="document.getElementById('add-item-modal').classList.remove('hidden')" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
+                <button type="button" id="btn-open-add-item-modal" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
                         <path d="M5 12h14"></path>
                         <path d="M12 5v14"></path>
@@ -97,13 +97,13 @@
                                 </td>
                                 <td class="p-4 align-middle text-center">
                                     <div class="flex items-center justify-center gap-2">
-                                        <button type="button" onclick="updateItemQuantity({{ $order->id }}, {{ $item->id }}, -1)" class="inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" title="Reduzir quantidade">
+                                        <button type="button" class="btn-decrease-quantity inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="-1" title="Reduzir quantidade">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus">
                                                 <path d="M5 12h14"></path>
                                             </svg>
                                         </button>
                                         <span class="font-semibold min-w-[2rem] text-center item-quantity">{{ $item->quantity }}</span>
-                                        <button type="button" onclick="updateItemQuantity({{ $order->id }}, {{ $item->id }}, 1)" class="inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" title="Aumentar quantidade">
+                                        <button type="button" class="btn-increase-quantity inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="1" title="Aumentar quantidade">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
                                                 <path d="M5 12h14"></path>
                                                 <path d="M12 5v14"></path>
@@ -114,7 +114,7 @@
                                 <td class="p-4 align-middle text-right item-unit-price">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
                                 <td class="p-4 align-middle text-right font-semibold item-total-price">R$ {{ number_format($item->total_price, 2, ',', '.') }}</td>
                                 <td class="p-4 align-middle text-center">
-                                    <button type="button" onclick="removeItem({{ $order->id }}, {{ $item->id }})" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" title="Remover item">
+                                    <button type="button" class="btn-remove-item inline-flex items-center justify-center rounded-md p-2 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" title="Remover item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
                                             <path d="M3 6h18"></path>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
@@ -513,6 +513,7 @@
             <div class="p-6 pt-0">
                 <form action="{{ route('dashboard.orders.update', $order->id) }}" method="POST" class="space-y-4">
             @csrf
+            @method('PUT')
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Observações Internas</label>
                         <textarea name="notes" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações visíveis apenas para a equipe...">{{ $order->notes }}</textarea>
@@ -620,7 +621,7 @@
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Adicionar Item ao Pedido</h3>
-                    <button type="button" onclick="document.getElementById('add-item-modal').classList.add('hidden')" class="text-muted-foreground hover:text-foreground">
+                    <button type="button" id="btn-close-add-item-modal-header" class="text-muted-foreground hover:text-foreground">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                             <path d="M18 6 6 18"></path>
                             <path d="M6 6l12 12"></path>
@@ -636,7 +637,7 @@
                             <label class="block text-sm font-medium mb-2">Produto *</label>
                             <select id="product-select" name="product_id" required class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                 <option value="">Selecione um produto</option>
-                                <option value="loose_item">Item Avulso</option>
+                                {{-- <option value="loose_item">Item Avulso</option> --}}
                                 @foreach($availableProducts as $product)
                                     <option value="{{ $product->id }}" data-price="{{ $product->price }}">
                                         {{ $product->name }} - R$ {{ number_format($product->price, 2, ',', '.') }}
@@ -645,10 +646,8 @@
                             </select>
                         </div>
 
-                        <!-- Campos para Item Avulso (ocultos por padrão) -->
-                        <!-- IMPORTANTE: Campos sempre têm 'name' para serem enviados no formulário -->
-                        <!-- O JavaScript apenas controla a visibilidade e qual conjunto de campos é usado -->
-                        <div id="loose-item-fields" class="hidden space-y-4">
+                        {{-- Campos para Item Avulso (Temporariamente desabilitado) --}}
+                        {{-- <div id="loose-item-fields" class="hidden space-y-4">
                             <div>
                                 <label class="block text-sm font-medium mb-2">Nome do Item *</label>
                                 <input type="text" id="loose-item-name" name="custom_name" maxlength="255" placeholder="Ex: Molho de pimenta" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -668,7 +667,7 @@
                                 <label class="block text-sm font-medium mb-2">Descrição (opcional)</label>
                                 <textarea id="loose-item-description" name="special_instructions" rows="2" maxlength="500" placeholder="Ex: Molho artesanal, picante" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Campos para Produto Normal (visíveis por padrão) -->
                         <div id="normal-item-fields">
@@ -696,7 +695,7 @@
                     </div>
 
                     <div class="flex gap-3 mt-6">
-                        <button type="button" onclick="document.getElementById('add-item-modal').classList.add('hidden')" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+                        <button type="button" id="btn-close-add-item-modal-footer" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
                             Cancelar
                         </button>
                         <button type="submit" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
@@ -778,9 +777,24 @@
         
         // Função para atualizar quantidade do item via AJAX - GLOBAL
         function updateItemQuantity(orderId, itemId, delta) {
-            const button = event.target.closest('button');
+            // Encontrar o botão correto baseado no delta
+            const buttonSelector = delta > 0 
+                ? `.btn-increase-quantity[data-item-id="${itemId}"]`
+                : `.btn-decrease-quantity[data-item-id="${itemId}"]`;
+            const button = document.querySelector(buttonSelector);
+            
+            if (!button) {
+                console.error('Botão não encontrado:', buttonSelector);
+                return;
+            }
+            
             const quantitySpan = button.parentElement.querySelector('.item-quantity');
             const row = button.closest('tr[data-item-id]');
+            
+            if (!quantitySpan || !row) {
+                console.error('Elementos relacionados não encontrados');
+                return;
+            }
             
             // Desabilitar botão temporariamente
             button.disabled = true;
@@ -907,34 +921,23 @@
         // HANDLERS DO FORMULÁRIO DE ADICIONAR ITEM
         // ============================================
         
+        // Item Avulso temporariamente desabilitado
         // Gerenciar exibição de campos para Item Avulso vs Produto Normal
-        // Este handler apenas muda a UI, a configuração real de campos é feita no submit
         document.getElementById('product-select')?.addEventListener('change', function(e) {
             console.log('🔵 Select mudou:', e.target.value);
-            const isLooseItem = e.target.value === 'loose_item';
-            const looseFields = document.getElementById('loose-item-fields');
+            // const isLooseItem = e.target.value === 'loose_item';
             const normalFields = document.getElementById('normal-item-fields');
-            const productSelect = document.getElementById('product-select');
             
-            if (isLooseItem) {
-                // Mostrar campos de item avulso
-                if (looseFields) looseFields.classList.remove('hidden');
-                // Ocultar campos normais
-                if (normalFields) normalFields.classList.add('hidden');
-            } else {
-                // Ocultar campos de item avulso
-                if (looseFields) looseFields.classList.add('hidden');
-                // Mostrar campos normais
-                if (normalFields) normalFields.classList.remove('hidden');
-                
-                // Preencher preço unitário automaticamente ao selecionar produto
-                const option = e.target.options[e.target.selectedIndex];
-                const price = option.dataset.price;
-                const unitPriceInput = document.getElementById('unit_price');
-                if (price && unitPriceInput && !unitPriceInput.value) {
-                    unitPriceInput.value = parseFloat(price).toFixed(2);
-                }
+            // Preencher preço unitário automaticamente ao selecionar produto
+            const option = e.target.options[e.target.selectedIndex];
+            const price = option.dataset.price;
+            const unitPriceInput = document.getElementById('unit_price');
+            if (price && unitPriceInput && !unitPriceInput.value) {
+                unitPriceInput.value = parseFloat(price).toFixed(2);
             }
+            
+            // Garantir que campos normais estão visíveis
+            if (normalFields) normalFields.classList.remove('hidden');
         });
         
         // Função para inicializar handlers do formulário
@@ -956,106 +959,27 @@
             
             console.log('✅ Formulário encontrado, configurando handlers');
             const productSelect = document.getElementById('product-select');
-            const looseNameEl = document.getElementById('loose-item-name');
-            const loosePriceEl = document.getElementById('loose-item-price');
-            const looseQuantityEl = document.getElementById('loose-item-quantity');
-            const looseDescriptionEl = document.getElementById('loose-item-description');
+            // Item Avulso temporariamente desabilitado
+            // const looseNameEl = document.getElementById('loose-item-name');
+            // const loosePriceEl = document.getElementById('loose-item-price');
+            // const looseQuantityEl = document.getElementById('loose-item-quantity');
+            // const looseDescriptionEl = document.getElementById('loose-item-description');
             const normalQuantityEl = document.getElementById('quantity');
             const normalUnitPriceEl = document.getElementById('unit_price');
             const normalInstructionsEl = document.getElementById('special_instructions');
             
             console.log('🔍 Elementos DOM encontrados:', {
                 productSelect: !!productSelect,
-                looseNameEl: !!looseNameEl,
-                loosePriceEl: !!loosePriceEl,
-                looseQuantityEl: !!looseQuantityEl,
-                looseDescriptionEl: !!looseDescriptionEl,
                 normalQuantityEl: !!normalQuantityEl,
                 normalUnitPriceEl: !!normalUnitPriceEl,
             });
             
-            if (!productSelect || !looseNameEl || !loosePriceEl || !looseQuantityEl) {
+            if (!productSelect || !normalQuantityEl) {
                 console.error('❌ ERRO: Elementos DOM essenciais não encontrados!');
                 return false;
             }
             
-            // Função para configurar campos baseado no tipo de item
-            // Como agora os campos de item avulso SEMPRE têm 'name', apenas controlamos os campos normais
-            function configureFieldsForLooseItem(isLooseItem) {
-                if (isLooseItem) {
-                    // Item Avulso: garantir que campos de item avulso estão corretos
-                    if (looseNameEl) {
-                        looseNameEl.setAttribute('required', 'required');
-                    }
-                    if (loosePriceEl) {
-                        loosePriceEl.setAttribute('required', 'required');
-                    }
-                    if (looseQuantityEl) {
-                        looseQuantityEl.setAttribute('required', 'required');
-                    }
-                    
-                    // Remover name E required dos campos normais (para não enviar duplicados)
-                    if (normalQuantityEl) {
-                        normalQuantityEl.removeAttribute('name');
-                        normalQuantityEl.removeAttribute('required');
-                    }
-                    if (normalUnitPriceEl) {
-                        normalUnitPriceEl.removeAttribute('name');
-                        normalUnitPriceEl.removeAttribute('required');
-                    }
-                    if (normalInstructionsEl) {
-                        normalInstructionsEl.removeAttribute('name');
-                    }
-                    
-                    // Remove name do select - será criado um hidden com valor 'loose_item'
-                    if (productSelect) {
-                        productSelect.removeAttribute('name');
-                    }
-                } else {
-                    // Produto Normal: remover required dos campos de item avulso (mas manter name para caso de erro)
-                    if (looseNameEl) {
-                        looseNameEl.removeAttribute('required');
-                        looseNameEl.removeAttribute('name'); // Remover name para não enviar
-                    }
-                    if (loosePriceEl) {
-                        loosePriceEl.removeAttribute('required');
-                        loosePriceEl.removeAttribute('name'); // Remover name para não enviar
-                    }
-                    if (looseQuantityEl) {
-                        looseQuantityEl.removeAttribute('required');
-                        looseQuantityEl.removeAttribute('name'); // Remover name para não enviar
-                    }
-                    if (looseDescriptionEl) {
-                        looseDescriptionEl.removeAttribute('name'); // Remover name para não enviar
-                    }
-                    
-                    // Restaurar campos normais
-                    if (productSelect) {
-                        productSelect.setAttribute('name', 'product_id');
-                    }
-                    if (normalQuantityEl) {
-                        normalQuantityEl.setAttribute('name', 'quantity');
-                        normalQuantityEl.setAttribute('required', 'required');
-                    }
-                    if (normalUnitPriceEl) {
-                        normalUnitPriceEl.setAttribute('name', 'unit_price');
-                    }
-                    if (normalInstructionsEl) {
-                        normalInstructionsEl.setAttribute('name', 'special_instructions');
-                    }
-                }
-            }
-            
-            // Configurar campos quando o select muda
-            if (productSelect) {
-                // Configurar campos iniciais (produto normal por padrão)
-                configureFieldsForLooseItem(false);
-                
-                productSelect.addEventListener('change', function() {
-                    const isLooseItem = this.value === 'loose_item';
-                    configureFieldsForLooseItem(isLooseItem);
-                });
-            }
+            // Item Avulso temporariamente desabilitado - função configureFieldsForLooseItem comentada
             
             // Flag para evitar loop infinito no submit
             let isSubmitting = false;
@@ -1074,238 +998,21 @@
                     return true;
                 }
                 
-                const isLooseItem = productSelect && productSelect.value === 'loose_item';
-                console.log('🔍 Tipo de item identificado:', {
-                    isLooseItem,
-                    productSelect_value: productSelect?.value
-                });
+                // Item Avulso temporariamente desabilitado
+                // const isLooseItem = productSelect && productSelect.value === 'loose_item';
                 
                 // IMPORTANTE: SEMPRE prevenir o submit primeiro para configurar campos
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('🛑 Submit prevenido');
                 
-                // Configurar campos ANTES de processar
-                configureFieldsForLooseItem(isLooseItem);
-                
-                if (isLooseItem) {
-                    console.group('🔵 ===== DEBUG ITEM AVULSO - INÍCIO =====');
-                    console.log('📍 PONTO 1: Identificação', {
-                        isLooseItem: true,
-                        timestamp: new Date().toISOString()
-                    });
-                    
-                    // Verificar elementos DOM
-                    console.log('📍 PONTO 2: Verificação de Elementos DOM', {
-                        looseNameEl_exists: !!looseNameEl,
-                        looseNameEl_element: looseNameEl,
-                        loosePriceEl_exists: !!loosePriceEl,
-                        loosePriceEl_element: loosePriceEl,
-                        looseQuantityEl_exists: !!looseQuantityEl,
-                        looseQuantityEl_element: looseQuantityEl,
-                        looseDescriptionEl_exists: !!looseDescriptionEl,
-                    });
-                    
-                    // Validação para item avulso (já prevenimos o submit acima)
-                    if (!looseNameEl || !looseNameEl.value.trim()) {
-                        console.error('❌ ERRO: Nome do item vazio', {
-                            looseNameEl,
-                            value: looseNameEl?.value,
-                            trimmed: looseNameEl?.value?.trim()
-                        });
-                        alert('Por favor, preencha o nome do item.');
-                        if (looseNameEl) looseNameEl.focus();
-                        console.groupEnd();
-                        return false;
-                    }
-                    
-                    if (!loosePriceEl || !loosePriceEl.value || parseFloat(loosePriceEl.value) <= 0) {
-                        console.error('❌ ERRO: Valor do item inválido', {
-                            loosePriceEl,
-                            value: loosePriceEl?.value,
-                            parsed: parseFloat(loosePriceEl?.value)
-                        });
-                        alert('Por favor, preencha um valor válido para o item.');
-                        if (loosePriceEl) loosePriceEl.focus();
-                        console.groupEnd();
-                        return false;
-                    }
-                    
-                    if (!looseQuantityEl || !looseQuantityEl.value || parseInt(looseQuantityEl.value) < 1) {
-                        console.error('❌ ERRO: Quantidade inválida', {
-                            looseQuantityEl,
-                            value: looseQuantityEl?.value,
-                            parsed: parseInt(looseQuantityEl?.value)
-                        });
-                        alert('Por favor, preencha uma quantidade válida.');
-                        if (looseQuantityEl) looseQuantityEl.focus();
-                        console.groupEnd();
-                        return false;
-                    }
-                    
-                    // Capturar valores ANTES de qualquer manipulação
-                    console.log('📍 PONTO 3: Capturando valores dos campos', {
-                        antes_de_trim: {
-                            nameRaw: looseNameEl.value,
-                            priceRaw: loosePriceEl.value,
-                            qtyRaw: looseQuantityEl.value,
-                            descRaw: looseDescriptionEl?.value
-                        }
-                    });
-                    
-                    const nameValue = looseNameEl.value.trim();
-                    const priceValue = loosePriceEl.value;
-                    const qtyValue = looseQuantityEl.value;
-                    const descValue = looseDescriptionEl ? looseDescriptionEl.value.trim() : '';
-                    
-                    console.log('📍 PONTO 4: Valores após processamento', {
-                        nameValue,
-                        priceValue,
-                        qtyValue,
-                        descValue,
-                        nameValue_type: typeof nameValue,
-                        priceValue_type: typeof priceValue,
-                        nameValue_length: nameValue?.length,
-                        nameValue_empty: nameValue === '',
-                        nameValue_null: nameValue === null,
-                        nameValue_undefined: nameValue === undefined
-                    });
-                    
-                    // Verificar se os valores estão válidos
-                    if (!nameValue || nameValue === '') {
-                        console.error('❌ ERRO CRÍTICO: nameValue está vazio após trim!', {
-                            original: looseNameEl.value,
-                            trimmed: nameValue
-                        });
-                    }
-                    
-                    if (!priceValue || priceValue === '' || parseFloat(priceValue) <= 0) {
-                        console.error('❌ ERRO CRÍTICO: priceValue está inválido!', {
-                            original: loosePriceEl.value,
-                            processed: priceValue,
-                            parsed: parseFloat(priceValue)
-                        });
-                    }
-                    
-                    // SOLUÇÃO: Usar AJAX para garantir que os dados sejam enviados corretamente
-                    const formAction = this.getAttribute('action');
-                    const formMethod = this.getAttribute('method') || 'POST';
-                    
-                    console.log('📍 PONTO 5: Preparando requisição AJAX', {
-                        formAction,
-                        formMethod,
-                        form_element: this
-                    });
-                    
-                    // Criar FormData manualmente com TODOS os valores
-                    const formDataToSend = new FormData();
-                    
-                    // Token CSRF
-                    const csrfToken = this.querySelector('input[name="_token"]');
-                    console.log('📍 PONTO 6: Token CSRF', {
-                        csrfToken_exists: !!csrfToken,
-                        csrfToken_value: csrfToken?.value
-                    });
-                    
-                    if (csrfToken) {
-                        formDataToSend.append('_token', csrfToken.value);
-                        console.log('✅ Token CSRF adicionado ao FormData');
-                    } else {
-                        console.error('❌ ERRO: Token CSRF não encontrado!');
-                    }
-                    
-                    // Dados do item avulso
-                    console.log('📍 PONTO 7: Adicionando dados ao FormData', {
-                        product_id: 'loose_item',
-                        custom_name: nameValue,
-                        unit_price: priceValue,
-                        quantity: qtyValue,
-                        special_instructions: descValue
-                    });
-                    
-                    formDataToSend.append('product_id', 'loose_item');
-                    formDataToSend.append('custom_name', nameValue);
-                    formDataToSend.append('unit_price', priceValue);
-                    formDataToSend.append('quantity', qtyValue);
-                    if (descValue) {
-                        formDataToSend.append('special_instructions', descValue);
-                    }
-                    
-                    // Verificar o que está no FormData
-                    console.log('📍 PONTO 8: Verificando FormData antes de enviar');
-                    for (let [key, value] of formDataToSend.entries()) {
-                        console.log(`  FormData[${key}]:`, value, `(tipo: ${typeof value}, length: ${value?.length || 'N/A'})`);
-                    }
-                    
-                    console.log('📍 PONTO 9: Enviando requisição AJAX');
-                    console.log('✅ Item Avulso - Enviando via AJAX:', {
-                        product_id: 'loose_item',
-                        custom_name: nameValue,
-                        unit_price: priceValue,
-                        quantity: qtyValue,
-                        special_instructions: descValue,
-                        url: formAction
-                    });
-                    
-                    // Enviar via fetch (AJAX)
-                    fetch(formAction, {
-                        method: formMethod,
-                        body: formDataToSend,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        }
-                    })
-                    .then(response => {
-                        console.log('📍 PONTO 10: Resposta recebida', {
-                            status: response.status,
-                            statusText: response.statusText,
-                            headers: Object.fromEntries(response.headers.entries())
-                        });
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('📍 PONTO 11: Dados parseados do servidor', {
-                            success: data.success,
-                            data: data
-                        });
-                        
-                        if (data.success) {
-                            console.log('✅ SUCESSO: Item adicionado!', data);
-                            // Sucesso - recarregar página ou atualizar interface
-                            window.location.reload();
-                        } else {
-                            console.error('❌ ERRO: Resposta do servidor indicou falha', data);
-                            // Erros de validação
-                            if (data.errors) {
-                                alert('Erros: ' + Object.values(data.errors).flat().join(', '));
-                            } else {
-                                alert(data.error || 'Erro ao adicionar item');
-                            }
-                        }
-                        console.groupEnd();
-                    })
-                    .catch(error => {
-                        console.error('❌ ERRO CRÍTICO: Erro na requisição AJAX', {
-                            error,
-                            message: error.message,
-                            stack: error.stack
-                        });
-                        alert('Erro ao adicionar item. Tente novamente.');
-                        console.groupEnd();
-                    });
-                    
-                    // NÃO fazer submit tradicional - já enviamos via AJAX
-                    console.log('📍 PONTO 12: Finalizando - não fazer submit tradicional');
-                    console.groupEnd();
+                // Item Avulso temporariamente desabilitado - lógica comentada
+                // Produto normal - validar que um produto foi selecionado
+                if (!productSelect || !productSelect.value || productSelect.value === '' || productSelect.value === 'loose_item') {
+                    alert('Por favor, selecione um produto válido.');
+                    if (productSelect) productSelect.focus();
                     return false;
-                } else {
-                    // Produto normal - validar que um produto foi selecionado
-                    if (!productSelect || !productSelect.value || productSelect.value === '' || productSelect.value === 'loose_item') {
-                        alert('Por favor, selecione um produto válido.');
-                        if (productSelect) productSelect.focus();
-                        return false;
-                    }
+                }
                     
                     // Garantir que select tem name="product_id"
                     if (productSelect && !productSelect.hasAttribute('name')) {
@@ -1316,11 +1023,7 @@
                     const existingHiddens = this.querySelectorAll('input[name="product_id"][type="hidden"]');
                     existingHiddens.forEach(hidden => hidden.remove());
                     
-                    // Remover name dos campos de item avulso para não serem enviados
-                    if (looseNameEl) looseNameEl.removeAttribute('name');
-                    if (loosePriceEl) loosePriceEl.removeAttribute('name');
-                    if (looseQuantityEl) looseQuantityEl.removeAttribute('name');
-                    if (looseDescriptionEl) looseDescriptionEl.removeAttribute('name');
+                    // Item Avulso temporariamente desabilitado - remoção de names comentada
                     
                     // Garantir que campos normais tenham name
                     if (normalQuantityEl) normalQuantityEl.setAttribute('name', 'quantity');
@@ -1344,81 +1047,151 @@
                     // Se chegou até aqui, campos estão corretos - permitir submit
                     isSubmitting = true;
                     this.submit();
-                }
             });
             
             // Marcar como inicializado para evitar múltiplas inicializações
             addItemForm.dataset.initialized = 'true';
             console.log('✅ Handlers configurados com sucesso!');
             return true;
-        } else {
-            console.error('❌ ERRO CRÍTICO: Formulário não encontrado!');
-            console.log('Tentando encontrar novamente após 500ms...');
-            setTimeout(() => {
-                const formAgain = document.querySelector('form[action*="addItem"]');
-                console.log('Segunda tentativa:', formAgain);
-                if (!formAgain) {
-                    console.error('❌ Formulário ainda não encontrado após delay');
-                    console.log('Todos os formulários na página:', document.querySelectorAll('form'));
-                } else {
-                    initAddItemForm();
-                }
-            }, 500);
-            return false;
-        }
         }
         
         // Tentar inicializar imediatamente
         initAddItemForm();
         
         // Também inicializar quando o modal for aberto
-        const openModalBtn = document.querySelector('button[onclick*="add-item-modal"].classList.remove');
+        const openModalBtn = document.getElementById('btn-open-add-item-modal');
         if (openModalBtn) {
-            const originalOnClick = openModalBtn.getAttribute('onclick');
-            openModalBtn.removeAttribute('onclick');
             openModalBtn.addEventListener('click', function() {
-                document.getElementById('add-item-modal').classList.remove('hidden');
+                const modal = document.getElementById('add-item-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
                 // Aguardar um pouco para o DOM atualizar e então inicializar
                 setTimeout(() => {
                     initAddItemForm();
                 }, 100);
             });
-        } else {
-            // Fallback: observar quando o modal é aberto
-            const modal = document.getElementById('add-item-modal');
-            if (modal) {
-                const observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                            if (!modal.classList.contains('hidden')) {
-                                console.log('📂 Modal foi aberto, inicializando formulário...');
-                                setTimeout(() => {
-                                    initAddItemForm();
-                                }, 100);
-                            }
-                        }
-                    });
-                });
-                observer.observe(modal, { attributes: true });
-            }
         }
 
         
-        // Fechar modal ao clicar fora - executar quando o DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // EVENT LISTENERS - Substituir onclick inline
+        // ============================================
+
+        function setupInteractionHandlers() {
+            if (window.__orderPageHandlersInitialized__) {
+                return;
+            }
+            window.__orderPageHandlersInitialized__ = true;
+            console.log('🔧 Configurando event listeners...');
+            
+            // Botão de abrir recibo
+            const btnOpenReceipt = document.getElementById('btn-open-receipt');
+            if (btnOpenReceipt) {
+                btnOpenReceipt.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-order-id');
+                    if (orderId) {
+                        openReceiptModal(parseInt(orderId));
+                    }
+                });
+                console.log('✅ Event listener do botão de recibo configurado');
+            }
+            
+            // Botão de fechar recibo (no header do modal)
+            const btnCloseReceipt = document.getElementById('btn-close-receipt-modal');
+            if (btnCloseReceipt) {
+                btnCloseReceipt.addEventListener('click', function() {
+                    closeReceiptModal();
+                });
+                console.log('✅ Event listener do botão de fechar recibo configurado');
+            }
+            
+            // Fechar modal de recibo ao clicar fora
             const receiptModal = document.getElementById('receipt-modal');
             if (receiptModal) {
                 receiptModal.addEventListener('click', function(e) {
                     if (e.target === this) {
-                        window.closeReceiptModal();
+                        closeReceiptModal();
                     }
                 });
-                console.log('✅ Event listener do modal de recibo configurado');
-            } else {
-                console.error('❌ Modal de recibo não encontrado no DOMContentLoaded');
+                console.log('✅ Event listener de fechar modal ao clicar fora configurado');
             }
-        });
-        // Funções updateItemQuantity e removeItem já estão definidas como globais acima (linhas 770 e 836)
+            
+            // Botões de aumentar/diminuir quantidade (usar event delegation para itens dinâmicos)
+            const itemsTbody = document.getElementById('items-tbody');
+            if (itemsTbody) {
+                itemsTbody.addEventListener('click', function(e) {
+                    // Botão de diminuir quantidade
+                    if (e.target.closest('.btn-decrease-quantity')) {
+                        const btn = e.target.closest('.btn-decrease-quantity');
+                        const orderId = parseInt(btn.getAttribute('data-order-id'));
+                        const itemId = parseInt(btn.getAttribute('data-item-id'));
+                        const delta = parseInt(btn.getAttribute('data-delta'));
+                        if (orderId && itemId && delta) {
+                            updateItemQuantity(orderId, itemId, delta);
+                        }
+                    }
+                    // Botão de aumentar quantidade
+                    if (e.target.closest('.btn-increase-quantity')) {
+                        const btn = e.target.closest('.btn-increase-quantity');
+                        const orderId = parseInt(btn.getAttribute('data-order-id'));
+                        const itemId = parseInt(btn.getAttribute('data-item-id'));
+                        const delta = parseInt(btn.getAttribute('data-delta'));
+                        if (orderId && itemId && delta) {
+                            updateItemQuantity(orderId, itemId, delta);
+                        }
+                    }
+                    // Botão de remover item
+                    if (e.target.closest('.btn-remove-item')) {
+                        const btn = e.target.closest('.btn-remove-item');
+                        const orderId = parseInt(btn.getAttribute('data-order-id'));
+                        const itemId = parseInt(btn.getAttribute('data-item-id'));
+                        if (orderId && itemId) {
+                            removeItem(orderId, itemId);
+                        }
+                    }
+                });
+                console.log('✅ Event listeners de quantidade e remover item configurados (delegation)');
+            }
+            
+            // Botão de abrir modal de adicionar item
+            const btnOpenAddItem = document.getElementById('btn-open-add-item-modal');
+            if (btnOpenAddItem) {
+                btnOpenAddItem.addEventListener('click', function() {
+                    const modal = document.getElementById('add-item-modal');
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                    }
+                });
+                console.log('✅ Event listener do botão de abrir modal de adicionar item configurado');
+            }
+            
+            // Botões de fechar modal de adicionar item
+            const btnCloseAddItemHeader = document.getElementById('btn-close-add-item-modal-header');
+            const btnCloseAddItemFooter = document.getElementById('btn-close-add-item-modal-footer');
+            const closeAddItemModal = function() {
+                const modal = document.getElementById('add-item-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+            };
+            
+            if (btnCloseAddItemHeader) {
+                btnCloseAddItemHeader.addEventListener('click', closeAddItemModal);
+            }
+            if (btnCloseAddItemFooter) {
+                btnCloseAddItemFooter.addEventListener('click', closeAddItemModal);
+            }
+            console.log('✅ Event listeners dos botões de fechar modal de adicionar item configurados');
+            
+            console.log('✅ Todos os event listeners configurados com sucesso!');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupInteractionHandlers);
+        } else {
+            setupInteractionHandlers();
+        }
 
         // Função para atualizar totais do pedido
         function updateOrderTotals(orderData) {
@@ -1480,7 +1253,7 @@
         <div class="bg-background rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div class="flex items-center justify-between p-4 border-b">
                 <h2 class="text-lg font-semibold">Recibo do Pedido</h2>
-                <button type="button" onclick="closeReceiptModal()" class="text-muted-foreground hover:text-foreground">
+                <button type="button" id="btn-close-receipt-modal" class="text-muted-foreground hover:text-foreground">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
                         <path d="M6 6l12 12"></path>

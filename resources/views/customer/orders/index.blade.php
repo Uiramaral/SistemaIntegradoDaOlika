@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seus Pedidos - OLIKA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: 24 95% 53%;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#7A5230', // Marrom Olika
+                            foreground: '#fff',
+                        },
+                    },
+                },
+            },
         }
-    </style>
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
@@ -18,11 +27,11 @@
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-orange-600">OLIKA</h1>
+                    <h1 class="text-2xl font-bold text-primary">OLIKA</h1>
                     <p class="text-sm text-gray-600">Olá, {{ $customer->name }}</p>
                 </div>
                 <a href="{{ route('customer.orders.index', ['phone' => request('phone')]) }}" 
-                   class="text-gray-600 hover:text-orange-600">
+                   class="text-gray-600 hover:text-primary">
                     <i class="fas fa-home"></i>
                 </a>
             </div>
@@ -195,7 +204,7 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Comentário (opcional)</label>
                     <textarea name="comment" rows="4" maxlength="1000" 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                               placeholder="Conte-nos sua experiência com este pedido..."></textarea>
                 </div>
 
@@ -205,7 +214,7 @@
                         Cancelar
                     </button>
                     <button type="submit" 
-                            class="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                            class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
                         Enviar Avaliação
                     </button>
                 </div>
@@ -221,7 +230,7 @@
                 <span class="text-xs">menu</span>
             </a>
             <a href="{{ route('customer.orders.index', ['phone' => request('phone')]) }}" 
-               class="flex flex-col items-center text-orange-600">
+               class="flex flex-col items-center text-primary">
                 <i class="fas fa-shopping-bag text-xl mb-1"></i>
                 <span class="text-xs">pedidos</span>
             </a>

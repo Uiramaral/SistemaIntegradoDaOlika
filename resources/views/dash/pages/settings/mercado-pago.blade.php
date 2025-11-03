@@ -91,7 +91,8 @@
                     <h3 class="text-2xl font-semibold leading-none tracking-tight">Configurações da Integração</h3>
                     <p class="text-sm text-muted-foreground">Configure suas credenciais do Mercado Pago</p>
                 </div>
-                <div class="p-6 pt-0 space-y-6">
+                <form action="{{ route('dashboard.settings.mp.save') }}" method="POST" class="p-6 pt-0 space-y-6">
+                    @csrf
                     <div class="flex items-center justify-between p-4 border rounded-lg">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -109,12 +110,12 @@
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="public-key">Public Key</label>
-                        <input class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        <input name="mercadopago_public_key" value="{{ $keys['mercadopago_public_key'] ?? '' }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
                         <p class="text-sm text-muted-foreground">Encontre suas credenciais no painel do Mercado Pago</p>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="access-token">Access Token</label>
-                        <input type="password" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="access-token" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        <input name="mercadopago_access_token" value="{{ $keys['mercadopago_access_token'] ?? '' }}" type="password" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="access-token" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
                     </div>
                     <div class="space-y-4">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Configurações de Pagamento</label>
@@ -124,9 +125,10 @@
                                     <p class="font-medium">Modo de Produção</p>
                                     <p class="text-sm text-muted-foreground">Processar pagamentos reais</p>
                                 </div>
-                                <button type="button" role="switch" aria-checked="false" data-state="unchecked" value="on" class="peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50">
-                                    <span data-state="unchecked" class="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"></span>
-                                </button>
+                                <select name="mercadopago_environment" class="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <option value="sandbox" {{ ($keys['mercadopago_environment'] ?? 'sandbox') === 'sandbox' ? 'selected' : '' }}>Sandbox</option>
+                                    <option value="production" {{ ($keys['mercadopago_environment'] ?? '') === 'production' ? 'selected' : '' }}>Produção</option>
+                                </select>
                             </div>
                             <div class="flex items-center justify-between">
                                 <div>
@@ -149,14 +151,17 @@
                         </div>
                     </div>
                     <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="webhook-url">Webhook URL (opcional)</label>
+                        <input name="mercadopago_webhook_url" value="{{ $keys['mercadopago_webhook_url'] ?? '' }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="webhook-url" placeholder="https://dashboard.menuolika.com.br/webhook/mercadopago">
+                    </div>
+                    <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="max-installments">Número Máximo de Parcelas</label>
                         <input type="number" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" id="max-installments" min="1" max="12" value="12">
                     </div>
                     <div class="flex gap-3">
-                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex-1">Conectar Mercado Pago</button>
-                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Salvar</button>
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex-1">Salvar</button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 

@@ -91,6 +91,7 @@ Route::prefix('pdv')->name('api.pdv.')->group(function () {
     Route::get('/products/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('products.search');
     Route::post('/coupons/validate', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('coupons.validate');
     Route::post('/orders', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeOrder'])->name('orders.store');
+    Route::post('/calculate-delivery-fee', [\App\Http\Controllers\Dashboard\PDVController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
     
     // Rota de cálculo de frete por distância
     Route::get('/calc-frete', function(\Illuminate\Http\Request $r){

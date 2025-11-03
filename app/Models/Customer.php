@@ -22,6 +22,8 @@ class Customer extends Authenticatable
         'city',
         'state',
         'zip_code',
+        'custom_delivery_fee',
+        'custom_delivery_note',
         'birth_date',
         'preferences',
         'password',
@@ -42,6 +44,7 @@ class Customer extends Authenticatable
         'last_order_at' => 'datetime',
         'total_spent' => 'decimal:2',
         'loyalty_balance' => 'decimal:2',
+        'custom_delivery_fee' => 'decimal:2',
     ];
 
     /**
@@ -66,6 +69,22 @@ class Customer extends Authenticatable
     public function debts(): HasMany
     {
         return $this->hasMany(CustomerDebt::class);
+    }
+
+    /**
+     * Relacionamento com transações de cashback
+     */
+    public function cashbackTransactions(): HasMany
+    {
+        return $this->hasMany(CustomerCashback::class);
+    }
+
+    /**
+     * Obter saldo de cashback disponível
+     */
+    public function getCashbackBalanceAttribute(): float
+    {
+        return CustomerCashback::getBalance($this->id);
     }
 
     /**

@@ -27,6 +27,8 @@ class Coupon extends Model
         'visibility',
         'target_customer_id',
         'private_description',
+        'first_order_only',
+        'free_shipping_only',
     ];
 
     protected $casts = [
@@ -35,6 +37,8 @@ class Coupon extends Model
         'is_active' => 'boolean',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        'first_order_only' => 'boolean',
+        'free_shipping_only' => 'boolean',
     ];
 
     /**
@@ -89,6 +93,58 @@ class Coupon extends Model
     public function scopePublic($query)
     {
         return $query->where('visibility', 'public');
+    }
+
+    /**
+     * Verifica se o cupom é elegível para um pedido específico
+     */
+    public function isEligibleFor($customerId = null, $subtotal = 0, $deliveryFee = 0, $isFirstOrder = false): bool
+    {
+        if (!$this->isValid($customerId)) {
+            return false;
+        }
+
+        // Verificar se é apenas para primeiro pedido
+        if ($this->first_order_only && !$isFirstOrder) {
+            return false;
+        }
+
+        // Verificar se é apenas para frete grátis
+        if ($this->free_shipping_only) {
+            // Se não há frete no pedido, cupom não é elegível
+            if ($deliveryFee <= 0) {
+                return false;
+            }
+            // Verificar se já tem frete grátis por valor mínimo (buscar config)
+            try {
+                $keyCol = collect(['key','name','config_key'])->first(fn($c)=> \Illuminate\Support\Facades\Schema::hasColumn('settings',$c));
+                $valCol = collect(['value','val','config_value'])->first(fn($c)=> \Illuminate\Support\Facades\Schema::hasColumn('settings',$c));
+                
+                if ($keyCol && $valCol) {
+                    $minFreeShipping = \DB::table('settings')
+                        ->where($keyCol, 'free_shipping_min_total')
+                        ->value($valCol);
+                    
+                    if ($minFreeShipping && (float)$subtotal >= (float)$minFreeShipping) {
+                        return false; // Já tem frete grátis por valor
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignorar erro
+            }
+        }
+
+        // Verificar valor mínimo
+        if ($this->minimum_amount && $subtotal < $this->minimum_amount) {
+            \Log::info('Coupon isEligibleFor: Valor mínimo não atendido', [
+                'coupon_code' => $this->code,
+                'minimum_amount' => $this->minimum_amount,
+                'subtotal' => $subtotal,
+            ]);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -169,7 +225,8 @@ class Coupon extends Model
                 // Tentar usar orderCoupons se a tabela existir
                 $usedByCustomer = $this->orderCoupons()
                     ->whereHas('order', function ($q) use ($customerId) {
-                        $q->where('customer_id', $customerId);
+                        $q->where('customer_id', $customerId)
+                          ->whereIn('payment_status', ['approved', 'paid']); // Apenas pedidos pagos
                     })
                     ->count();
             } catch (\Exception $e) {
@@ -179,9 +236,11 @@ class Coupon extends Model
                     'error' => $e->getMessage(),
                 ]);
                 
-                // Contar pedidos do cliente que usam este cupom
+                // Contar apenas pedidos PAGOS do cliente que usam este cupom
+                // Pedidos pendentes não contam como uso do cupom
                 $usedByCustomer = \App\Models\Order::where('customer_id', $customerId)
                     ->where('coupon_code', $this->code)
+                    ->whereIn('payment_status', ['approved', 'paid']) // Apenas pedidos pagos
                     ->count();
             }
 

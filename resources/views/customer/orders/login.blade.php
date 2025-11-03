@@ -5,18 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Pedidos - OLIKA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root {
-            --primary: 24 95% 53%;
-            --primary-foreground: 0 0% 100%;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#7A5230', // Marrom Olika
+                            foreground: '#fff',
+                        },
+                    },
+                },
+            },
         }
-    </style>
+    </script>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md">
         <div class="bg-white rounded-lg shadow-lg p-8">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-orange-600 mb-2">OLIKA</h1>
+                <h1 class="text-3xl font-bold text-primary mb-2">OLIKA</h1>
                 <p class="text-gray-600">Acesse seus pedidos</p>
             </div>
 
@@ -30,12 +38,12 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Telefone ou E-mail</label>
                     <input type="text" id="identifier" name="identifier" placeholder="(11) 99999-9999 ou email@exemplo.com" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                            required>
                 </div>
 
                 <button type="submit" 
-                        class="w-full bg-orange-600 text-white py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors">
+                        class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
                     Acessar Meus Pedidos
                 </button>
             </form>

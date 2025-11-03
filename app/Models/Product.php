@@ -29,10 +29,9 @@ class Product extends Model
         'is_featured',
         'is_available',
         'preparation_time',
-        'allergens',
         'nutritional_info',
         'sort_order',
-        'variants',
+        'weight_grams',
     ];
 
     protected $casts = [
@@ -42,8 +41,8 @@ class Product extends Model
         'gluten_free' => 'boolean',
         'contamination_risk' => 'boolean',
         'nutritional_info' => 'array',
-        'variants' => 'array',
         'price' => 'decimal:2',
+        'weight_grams' => 'integer',
     ];
 
     /**
@@ -63,11 +62,19 @@ class Product extends Model
     }
 
     /**
+     * Variações (ex.: 500g, 1kg, Chocolate, Frutas)
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order');
+    }
+
+    /**
      * Relacionamento com alérgenos
      */
     public function allergens()
     {
-        return $this->belongsToMany(Allergen::class, 'product_allergen');
+        return $this->belongsToMany(Allergen::class, 'product_allergen')->withTimestamps();
     }
 
     /**
@@ -92,6 +99,23 @@ class Product extends Model
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true);
+    }
+
+    /**
+     * Scope para produtos compráveis (preço base > 0 ou possui variação ativa com preço > 0)
+     */
+    public function scopePurchasable($query)
+    {
+        return $query->where(function($q){
+            $q->where('price', '>', 0)
+              ->orWhereExists(function($sq){
+                  $sq->selectRaw('1')
+                      ->from('product_variants as pv')
+                      ->whereColumn('pv.product_id', 'products.id')
+                      ->where('pv.is_active', true)
+                      ->where('pv.price', '>', 0);
+              });
+        });
     }
 
     /**
@@ -127,11 +151,20 @@ class Product extends Model
      */
     public function getAllergenTextAttribute()
     {
-        $names = $this->allergens->pluck('name')->filter()->values()->all();
         $parts = [];
-
-        if (!empty($names)) {
-            $parts[] = 'Contém: '.implode(', ', $names).'.';
+        
+        // Verificar se o relacionamento está carregado e tem dados
+        if ($this->relationLoaded('allergens') && $this->allergens) {
+            $names = $this->allergens->pluck('name')->filter()->values()->all();
+            if (!empty($names)) {
+                $parts[] = 'Contém: '.implode(', ', $names).'.';
+            }
+        } elseif (!$this->relationLoaded('allergens')) {
+            // Se não estiver carregado, tentar carregar
+            $names = $this->allergens()->pluck('name')->filter()->values()->all();
+            if (!empty($names)) {
+                $parts[] = 'Contém: '.implode(', ', $names).'.';
+            }
         }
 
         if ($this->gluten_free) {
@@ -159,7 +192,14 @@ class Product extends Model
         $risk   = array_key_exists('contamination_risk', $override ?? []) ? (bool)$override['contamination_risk'] : (bool)$this->contamination_risk;
 
         // nomes dos alérgenos (override -> current)
-        $allergenNames = $override['allergen_names'] ?? $this->allergens->pluck('name')->values()->all();
+        $allergenNames = [];
+        if (isset($override['allergen_names'])) {
+            $allergenNames = $override['allergen_names'];
+        } elseif ($this->relationLoaded('allergens') && $this->allergens) {
+            $allergenNames = $this->allergens->pluck('name')->values()->all();
+        } elseif (!$this->relationLoaded('allergens')) {
+            $allergenNames = $this->allergens()->pluck('name')->values()->all();
+        }
 
         $lines = [];
 
@@ -214,7 +254,14 @@ class Product extends Model
         $gf   = array_key_exists('gluten_free', $override ?? []) ? (bool)$override['gluten_free'] : (bool)$this->gluten_free;
         $risk = array_key_exists('contamination_risk', $override ?? []) ? (bool)$override['contamination_risk'] : (bool)$this->contamination_risk;
 
-        $allergenNames = $override['allergen_names'] ?? $this->allergens->pluck('name')->values()->all();
+        $allergenNames = [];
+        if (isset($override['allergen_names'])) {
+            $allergenNames = $override['allergen_names'];
+        } elseif ($this->relationLoaded('allergens') && $this->allergens) {
+            $allergenNames = $this->allergens->pluck('name')->values()->all();
+        } elseif (!$this->relationLoaded('allergens')) {
+            $allergenNames = $this->allergens()->pluck('name')->values()->all();
+        }
 
         $parts = [];
 

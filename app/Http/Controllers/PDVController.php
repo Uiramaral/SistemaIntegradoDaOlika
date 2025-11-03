@@ -138,7 +138,7 @@ class PDVController extends Controller
                 ];
             }
             elseif ($data['payment_method'] === 'link_mp') {
-                $pref = $mp->createPaymentLink($order, $customer, $data['items'], [
+                $pref = $mp->createPaymentLinkFromOrder($order, $customer, $data['items'], [
                     'exclude_payment_types' => ['ticket'], // boleto fora
                     'installments'          => 1,          // sem parcelas na UI
                 ]);

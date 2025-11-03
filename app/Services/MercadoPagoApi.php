@@ -2,25 +2,40 @@
 
 namespace App\Services;
 
+use App\Models\PaymentSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MercadoPagoApi
 {
     private string $base = 'https://api.mercadopago.com';
-    private string $token;
+    private ?string $token;
     private bool $production;
 
     public function __construct()
     {
-        // lê de settings() ou .env; se tiver tabela settings/payment_settings use um Config repository
-        $env = config('payments.mp.environment', env('MP_ENV', 'production'));
+        // Busca do banco de dados (tabela payment_settings)
+        $this->token = PaymentSetting::getMercadoPagoToken();
+        $env = PaymentSetting::getMercadoPagoEnvironment();
         $this->production = $env === 'production';
-        $this->token = config('payments.mp.access_token', env('MP_ACCESS_TOKEN'));
+        
+        // Fallback para .env se não encontrar no banco
+        if (empty($this->token)) {
+            $this->token = config('payments.mp.access_token', env('MP_ACCESS_TOKEN')) ?: null;
+        }
+        
+        if (empty($this->token)) {
+            throw new \RuntimeException('Mercado Pago access token não configurado. Configure em Dashboard > Configurações > Mercado Pago ou MP_ACCESS_TOKEN no .env');
+        }
     }
 
     private function client()
     {
+        if (empty($this->token)) {
+            throw new \RuntimeException('Mercado Pago access token não disponível.');
+        }
         return Http::withToken($this->token)->acceptJson()->asJson()->timeout(25);
     }
 
@@ -30,9 +45,53 @@ class MercadoPagoApi
         // Usar descrição fornecida ou padrão
         $description = $order['description'] ?? "Pedido #{$order['number']} - Olika";
         
+        // Preparar itens incluindo desconto se houver
+        $items = array_map(fn($i)=>[
+            'title'=>$i['title'],'quantity'=>(int)$i['quantity'],'unit_price'=>(float)$i['unit_price']
+        ], $order['items'] ?? []);
+
+        // Adicionar desconto como item negativo se disponível
+        if (isset($order['discount_amount']) && (float)$order['discount_amount'] > 0) {
+            $items[] = [
+                'title' => $order['coupon_code'] 
+                    ? "Desconto - Cupom {$order['coupon_code']}" 
+                    : 'Desconto',
+                'quantity' => 1,
+                'unit_price' => -((float)$order['discount_amount']), // Negativo para desconto
+            ];
+        }
+        // Adicionar entrega como item positivo quando houver
+        if (isset($order['delivery_fee']) && (float)$order['delivery_fee'] > 0) {
+            $items[] = [
+                'title' => 'Entrega',
+                'quantity' => 1,
+                'unit_price' => (float)$order['delivery_fee'],
+            ];
+        }
+        
+        $customerName = trim(($payer['first_name'] ?? '').' '.($payer['last_name'] ?? '')) ?: null;
+        $orderNumber = $order['number'] ?? null;
+        $finalDescription = $description;
+        if ($orderNumber || $customerName) {
+            $finalDescription = trim("Pedido #{$orderNumber} - ".$customerName);
+        }
+        
+        // Em SANDBOX, forçar valor pequeno aleatório (R$ 0,01 a R$ 0,10)
+        $sandboxAmount = null;
+        if (!$this->production) {
+            $sandboxAmount = mt_rand(1, 10) / 100; // 0.01 .. 0.10
+        }
+
+        // external_reference com prefixo configurável
+        $extRef = (string)($order['number'] ?? '');
+        $prefix = $this->flexSetting('order_number_prefix');
+        if ($prefix && !Str::startsWith($extRef, $prefix)) {
+            $extRef = $prefix.$extRef;
+        }
+
         $payload = [
-            'transaction_amount' => (float)$order['total'],
-            'description'        => $description,
+            'transaction_amount' => $sandboxAmount !== null ? $sandboxAmount : (float)$order['total'],
+            'description'        => $finalDescription ?: $description,
             'payment_method_id'  => 'pix',
             'installments'       => 1,
             'binary_mode'        => true,
@@ -46,14 +105,29 @@ class MercadoPagoApi
                 ],
             ],
             'additional_info' => [
-                'items' => array_map(fn($i)=>[
-                    'title'=>$i['title'],'quantity'=>(int)$i['quantity'],'unit_price'=>(float)$i['unit_price']
-                ], $order['items'] ?? []),
+                // Mercado Pago não aceita 'summary' neste objeto (causava 400)
+                'items' => $items,
             ],
-            'external_reference' => (string)$order['number'],
+            'external_reference' => $extRef,
             'notification_url'   => $order['notification_url'] ?? null,
             'statement_descriptor'=> 'OLIKA',
         ];
+
+        // Adicionar metadata sobre cupom/desconto se disponível
+        $metadata = [];
+        if (isset($order['coupon_code'])) {
+            $metadata['coupon_code'] = $order['coupon_code'];
+        }
+        if (isset($order['discount_amount'])) {
+            $metadata['discount_amount'] = (float)$order['discount_amount'];
+            $metadata['discount_type'] = $order['discount_type'] ?? null;
+        }
+        if (isset($order['delivery_fee'])) {
+            $metadata['delivery_fee'] = (float)$order['delivery_fee'];
+        }
+        if (!empty($metadata)) {
+            $payload['metadata'] = $metadata;
+        }
 
         $res = $this->client()->post($this->base.'/v1/payments', $payload);
         if ($res->failed()) return ['ok'=>false,'status'=>$res->status(),'error'=>$res->json()];
@@ -74,7 +148,35 @@ class MercadoPagoApi
             'title'=>$i['title'],'quantity'=>(int)$i['quantity'],'unit_price'=>(float)$i['unit_price'],'currency_id'=>'BRL'
         ], $order['items'] ?? []);
         if (empty($items)) {
-            $items[] = ['title'=>"Pedido #".($order['number'] ?? Str::upper(Str::random(6))),'quantity'=>1,'unit_price'=>(float)$order['total'],'currency_id'=>'BRL'];
+            $items[] = ['title'=>"Pedido #".($order['number'] ?? Str::upper(Str::random(6))).($payer['first_name']?" - {$payer['first_name']}" : ''),'quantity'=>1,'unit_price'=>(float)$order['total'],'currency_id'=>'BRL'];
+        }
+
+        // Incluir entrega como item quando houver
+        if (isset($order['delivery_fee']) && (float)$order['delivery_fee'] > 0) {
+            $items[] = [
+                'title' => 'Entrega',
+                'quantity' => 1,
+                'unit_price' => (float)$order['delivery_fee'],
+                'currency_id' => 'BRL',
+            ];
+        }
+
+        // Em SANDBOX, força valor pequeno aleatório 0,01 a 0,10 no total dos itens
+        if (!$this->production) {
+            $sandboxAmount = mt_rand(1,10) / 100; // 0.01..0.10
+            $items = [[
+                'title' => 'SANDBOX TEST - Valor simbólico',
+                'quantity' => 1,
+                'unit_price' => $sandboxAmount,
+                'currency_id' => 'BRL',
+            ]];
+        }
+
+        // external_reference com prefixo
+        $extRef = (string)($order['number'] ?? '');
+        $prefix = $this->flexSetting('order_number_prefix');
+        if ($prefix && !Str::startsWith($extRef, $prefix)) {
+            $extRef = $prefix.$extRef;
         }
 
         $payload = [
@@ -85,7 +187,7 @@ class MercadoPagoApi
                 'phone'=>isset($payer['phone'])?['number'=>$payer['phone']]:null,
                 'identification'=>isset($payer['doc_number'])?['type'=>$payer['doc_type']??'CPF','number'=>$payer['doc_number']]:null,
             ],
-            'external_reference'=>(string)$order['number'],
+            'external_reference'=>$extRef,
             'notification_url'=>$order['notification_url'] ?? null,
             'back_urls'=>[
                 'success'=>$order['back_urls']['success'] ?? url('/pagamento/sucesso'),
@@ -102,6 +204,32 @@ class MercadoPagoApi
             'statement_descriptor'=>'OLIKA',
             'binary_mode'=>true,
         ];
+
+        // Adicionar informações de desconto/cupom se disponíveis
+        if (isset($order['discount_amount']) && (float)$order['discount_amount'] > 0) {
+            $discountItem = [
+                'title' => $order['coupon_code'] 
+                    ? "Desconto - Cupom {$order['coupon_code']}" 
+                    : 'Desconto',
+                'quantity' => 1,
+                'unit_price' => -((float)$order['discount_amount']),
+                'currency_id' => 'BRL',
+            ];
+            $payload['items'][] = $discountItem;
+        }
+
+        // Adicionar metadata com resumo/identificação
+        $metadata = $order['metadata'] ?? [];
+        $metadata['summary'] = [
+            'subtotal' => array_reduce($order['items'] ?? [], fn($c,$i)=>$c + ((float)$i['unit_price']*(int)$i['quantity']), 0.0),
+            'delivery_fee' => (float)($order['delivery_fee'] ?? 0),
+            'discount_amount' => (float)($order['discount_amount'] ?? 0),
+            'total' => (float)$order['total']
+        ];
+        if (isset($order['coupon_code'])) { $metadata['coupon_code'] = $order['coupon_code']; }
+        if (isset($order['number'])) { $metadata['order_number'] = (string)$order['number']; }
+        if (!empty($payer['first_name']) || !empty($payer['last_name'])) { $metadata['customer_name'] = trim(($payer['first_name']??'').' '.($payer['last_name']??'')); }
+        $payload['metadata'] = array_merge($payload['metadata'] ?? [], $metadata);
 
         $res = $this->client()->post($this->base.'/checkout/preferences', $payload);
         if ($res->failed()) return ['ok'=>false,'status'=>$res->status(),'error'=>$res->json()];
@@ -126,8 +254,8 @@ class MercadoPagoApi
         return $res->json();
     }
 
-    /** Gera link (checkout) para cartão (crédito/débito) e PIX dentro do mesmo link */
-    public function createPaymentLink($order, $customer, array $items, array $opts = []): array
+    /** Gera link (checkout) para cartão (crédito/débito) e PIX dentro do mesmo link - Versão com objetos Order */
+    public function createPaymentLinkFromOrder($order, $customer, array $items, array $opts = []): array
     {
         $payload = [
             'title'       => 'Pedido ' . $order->order_number,
@@ -135,6 +263,10 @@ class MercadoPagoApi
             'unit_price'  => (float) $order->final_amount,
             'currency_id' => 'BRL',
         ];
+
+        $prefix = $this->flexSetting('order_number_prefix');
+        $extRef = (string)($order->order_number ?? $order->id);
+        if ($prefix && !Str::startsWith($extRef, $prefix)) { $extRef = $prefix.$extRef; }
 
         $body = [
             'items' => [$payload],
@@ -205,10 +337,25 @@ class MercadoPagoApi
 
     private function headers(): array
     {
+        if (empty($this->token)) {
+            throw new \RuntimeException('Mercado Pago access token não disponível.');
+        }
         return [
             'Authorization' => "Bearer {$this->token}",
             'Content-Type'  => 'application/json',
         ];
+    }
+
+    private function flexSetting(string $key): ?string
+    {
+        try{
+            if (!Schema::hasTable('settings')) return null;
+            $keyCol = collect(['key','name','config_key','setting_key','option','option_name'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+            $valCol = collect(['value','val','config_value','content','data','option_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+            if (!$keyCol || !$valCol) return null;
+            $val = DB::table('settings')->where($keyCol,$key)->value($valCol);
+            return $val !== null ? (string)$val : null;
+        }catch(\Throwable $e){ return null; }
     }
 }
 

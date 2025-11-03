@@ -5,11 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedido {{ $order->order_number }} - OLIKA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root {
-            --primary: 24 95% 53%;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#7A5230', // Marrom Olika
+                            foreground: '#fff',
+                        },
+                    },
+                },
+            },
         }
-    </style>
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
@@ -17,11 +27,11 @@
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex items-center gap-3">
                 <a href="{{ route('customer.orders.index', ['phone' => request('phone')]) }}" 
-                   class="text-gray-600 hover:text-orange-600">
+                   class="text-gray-600 hover:text-primary">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="text-xl font-bold text-orange-600">Pedido {{ $order->order_number }}</h1>
+                    <h1 class="text-xl font-bold text-primary">Pedido {{ $order->order_number }}</h1>
                     <p class="text-xs text-gray-600">{{ $order->created_at->format('d/m/Y H:i') }}</p>
                 </div>
             </div>
@@ -74,95 +84,173 @@
             </div>
         </div>
 
-        <!-- Itens do Pedido -->
+        <!-- Dados do Cliente e Entrega -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-            <h2 class="text-lg font-semibold mb-4">Itens do Pedido</h2>
-            <div class="space-y-3">
-                @foreach($order->items as $item)
-                <div class="flex justify-between pb-3 border-b last:border-0">
-                    <div>
-                        <p class="font-medium">
-                            {{ $item->quantity }}x 
-                            @if(!$item->product_id && $item->custom_name)
-                                Item Avulso - {{ $item->custom_name }}
-                            @elseif($item->custom_name)
-                                {{ $item->custom_name }}
-                            @elseif($item->product)
-                                {{ $item->product->name }}
-                            @else
-                                Produto
+            <h2 class="text-lg font-semibold mb-4">Dados do Pedido</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-gray-600">Número do Pedido</p>
+                    <p class="font-medium">{{ $order->order_number }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Forma de Pagamento</p>
+                    <p class="font-medium">{{ strtoupper($order->payment_method ?? '—') }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Cliente</p>
+                    <p class="font-medium">{{ optional($order->customer)->name ?? '—' }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Telefone</p>
+                    <p class="font-medium">{{ optional($order->customer)->phone ?? '—' }}</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <p class="text-gray-600">Endereço de Entrega</p>
+                    @php($addr = $order->address)
+                    <p class="font-medium">
+                        @if($addr)
+                            {{ trim(($addr->street ?? '').', '.($addr->number ?? '')) }}
+                            @if(!empty($addr->neighborhood)), {{ $addr->neighborhood }} @endif
+                            @if(!empty($addr->city)), {{ $addr->city }} @endif
+                            @if(!empty($addr->state)), {{ $addr->state }} @endif
+                            @if(!empty($addr->zipcode)), CEP {{ $addr->zipcode }} @endif
+                        @else
+                            —
+                        @endif
+                    </p>
+                </div>
+                @if($order->scheduled_delivery_at)
+                <div class="sm:col-span-2">
+                    <p class="text-gray-600">Entrega Agendada</p>
+                    <p class="font-medium">{{ $order->scheduled_delivery_at->format('d/m/Y \à\s H:i') }}</p>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Resumo Completo do Pedido -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+            <h2 class="text-lg font-semibold mb-4">Resumo do Pedido</h2>
+            
+            <!-- Itens do Pedido -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Itens</h3>
+                <div class="space-y-3">
+                    @foreach($order->items as $item)
+                    <div class="pb-3 border-b last:border-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <div class="flex-1">
+                                <p class="font-medium text-sm">
+                                    {{ $item->quantity }}x 
+                                    @if(!$item->product_id && $item->custom_name)
+                                        Item Avulso - {{ $item->custom_name }}
+                                    @elseif($item->custom_name)
+                                        {{ $item->custom_name }}
+                                    @elseif($item->product)
+                                        {{ $item->product->name }}
+                                    @else
+                                        Produto
+                                    @endif
+                                </p>
+                                @if($item->special_instructions)
+                                <div class="mt-1 p-2 bg-yellow-50 border-l-2 border-yellow-400 rounded">
+                                    <p class="text-xs text-gray-700">
+                                        <span class="font-semibold">Observação:</span> {{ $item->special_instructions }}
+                                    </p>
+                                </div>
+                                @endif
+                            </div>
+                            <div class="text-right ml-4">
+                                <p class="text-xs text-gray-500">R$ {{ number_format($item->unit_price, 2, ',', '.') }} cada</p>
+                                <p class="font-semibold text-sm">R$ {{ number_format($item->total_price, 2, ',', '.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Resumo Financeiro -->
+            <div class="pt-4 border-t">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Valores</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Subtotal dos produtos:</span>
+                        <span class="font-medium">R$ {{ number_format($order->total_amount ?? 0, 2, ',', '.') }}</span>
+                    </div>
+                    @if($order->delivery_fee > 0)
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Taxa de Entrega:</span>
+                        <span class="font-medium">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</span>
+                    </div>
+                    @elseif($order->total_amount > 0)
+                    <div class="flex justify-between text-green-700">
+                        <span class="text-gray-600">Taxa de Entrega:</span>
+                        <span class="font-medium">Grátis</span>
+                    </div>
+                    @endif
+                    @if($order->discount_amount > 0)
+                    <div class="flex justify-between text-green-700">
+                        <span>
+                            Desconto
+                            @if($order->coupon_code)
+                                (Cupom: {{ $order->coupon_code }})
                             @endif
+                            :
+                        </span>
+                        <span class="font-medium">- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    @if(($order->cashback_used ?? 0) > 0)
+                    <div class="flex justify-between text-green-700">
+                        <span>Cashback Utilizado:</span>
+                        <span class="font-medium">- R$ {{ number_format($order->cashback_used, 2, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    @if(($order->cashback_earned ?? 0) > 0)
+                    <div class="flex justify-between text-xs text-gray-500 mt-2 pt-2 border-t">
+                        <span>Cashback que você ganhará:</span>
+                        <span class="font-medium">R$ {{ number_format($order->cashback_earned, 2, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between text-lg font-bold pt-3 mt-2 border-t">
+                        <span>Total Pago:</span>
+                        <span class="text-primary">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observações Gerais do Pedido -->
+            @if($order->notes || $order->delivery_instructions || $order->observations)
+            <div class="pt-4 mt-4 border-t">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Observações Gerais</h3>
+                <div class="space-y-2 text-sm">
+                    @if($order->notes)
+                    <div class="p-2 bg-blue-50 border-l-2 border-blue-400 rounded">
+                        <p class="text-gray-700">
+                            <span class="font-semibold">Notas:</span> {{ $order->notes }}
                         </p>
-                        @if($item->special_instructions)
-                        <p class="text-xs text-gray-500 mt-1">Obs: {{ $item->special_instructions }}</p>
-                        @endif
-                        <p class="text-xs text-gray-500">R$ {{ number_format($item->unit_price, 2, ',', '.') }} cada</p>
                     </div>
-                    <div class="text-right">
-                        <p class="font-semibold">R$ {{ number_format($item->total_price, 2, ',', '.') }}</p>
+                    @endif
+                    @if($order->delivery_instructions)
+                    <div class="p-2 bg-purple-50 border-l-2 border-purple-400 rounded">
+                        <p class="text-gray-700">
+                            <span class="font-semibold">Instruções de Entrega:</span> {{ $order->delivery_instructions }}
+                        </p>
                     </div>
+                    @endif
+                    @if($order->observations)
+                    <div class="p-2 bg-gray-50 border-l-2 border-gray-400 rounded">
+                        <p class="text-gray-700">
+                            <span class="font-semibold">Observações:</span> {{ $order->observations }}
+                        </p>
+                    </div>
+                    @endif
                 </div>
-                @endforeach
             </div>
+            @endif
         </div>
 
-        <!-- Resumo Financeiro -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-            <h2 class="text-lg font-semibold mb-4">Resumo</h2>
-            <div class="space-y-2">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Subtotal:</span>
-                    <span>R$ {{ number_format($order->total_amount ?? 0, 2, ',', '.') }}</span>
-                </div>
-                @if($order->delivery_fee > 0)
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Taxa de Entrega:</span>
-                    <span>R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</span>
-                </div>
-                @endif
-                @if($order->discount_amount > 0)
-                <div class="flex justify-between text-sm text-green-600">
-                    <span>
-                        Desconto
-                        @if($order->coupon_code)
-                            ({{ $order->coupon_code }})
-                        @endif
-                        :
-                    </span>
-                    <span>- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</span>
-                </div>
-                @endif
-                <div class="flex justify-between text-lg font-bold pt-2 border-t">
-                    <span>Total:</span>
-                    <span class="text-orange-600">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Informações Adicionais -->
-        @if($order->delivery_address || $order->notes || $order->delivery_instructions)
-        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-            <h2 class="text-lg font-semibold mb-4">Informações Adicionais</h2>
-            @if($order->delivery_address)
-            <div class="mb-3">
-                <p class="text-sm font-medium text-gray-700 mb-1">Endereço de Entrega:</p>
-                <p class="text-sm text-gray-600">{{ $order->delivery_address }}</p>
-            </div>
-            @endif
-            @if($order->notes)
-            <div class="mb-3">
-                <p class="text-sm font-medium text-gray-700 mb-1">Observações:</p>
-                <p class="text-sm text-gray-600">{{ $order->notes }}</p>
-            </div>
-            @endif
-            @if($order->delivery_instructions)
-            <div>
-                <p class="text-sm font-medium text-gray-700 mb-1">Instruções de Entrega:</p>
-                <p class="text-sm text-gray-600">{{ $order->delivery_instructions }}</p>
-            </div>
-            @endif
-        </div>
-        @endif
 
         <!-- Histórico -->
         @if($statusHistory && $statusHistory->count() > 0)
@@ -171,7 +259,7 @@
             <div class="space-y-3">
                 @foreach($statusHistory as $history)
                 <div class="flex items-start gap-3">
-                    <div class="w-2 h-2 bg-orange-600 rounded-full mt-2"></div>
+                    <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
                     <div>
                         <p class="text-sm font-medium">{{ \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') }}</p>
                         <p class="text-xs text-gray-600">
@@ -222,7 +310,7 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Comentário (opcional)</label>
                     <textarea name="comment" rows="4" maxlength="1000" 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                               placeholder="Conte-nos sua experiência com este pedido...">{{ $rating->comment ?? '' }}</textarea>
                 </div>
 
@@ -232,7 +320,7 @@
                         Cancelar
                     </button>
                     <button type="submit" 
-                            class="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                            class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
                         {{ $rating ? 'Atualizar Avaliação' : 'Enviar Avaliação' }}
                     </button>
                 </div>
@@ -248,7 +336,7 @@
                 <span class="text-xs">menu</span>
             </a>
             <a href="{{ route('customer.orders.index', ['phone' => request('phone')]) }}" 
-               class="flex flex-col items-center text-orange-600">
+               class="flex flex-col items-center text-primary">
                 <i class="fas fa-shopping-bag text-xl mb-1"></i>
                 <span class="text-xs">pedidos</span>
             </a>

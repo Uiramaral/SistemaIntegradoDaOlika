@@ -52,13 +52,36 @@ class FiscalPrinterService
             $commands[] = "\x1B\x45\x01"; // BOLD ON
             $commands[] = "ENTREGA:\n";
             $commands[] = "\x1B\x45\x00"; // BOLD OFF
-            $commands[] = $this->wrapText($order->address->address . ", " . $order->address->number, 32) . "\n";
+            $street = $order->address->street ?? $order->address->address ?? '';
+            $commands[] = $this->wrapText($street . ", " . $order->address->number, 32) . "\n";
             if ($order->address->complement) {
                 $commands[] = $this->wrapText($order->address->complement, 32) . "\n";
             }
             $commands[] = $this->wrapText($order->address->neighborhood, 32) . "\n";
             $commands[] = $order->address->city . " - " . $order->address->state . "\n";
-            $commands[] = "CEP: " . $order->address->zip_code . "\n";
+            // Tentar CEP do address primeiro, depois do customer como fallback
+            $cep = $order->address->cep ?? $order->address->zip_code ?? $order->customer->zip_code ?? '';
+            if ($cep) {
+                $commands[] = "CEP: " . $cep . "\n";
+            }
+            $commands[] = "\n";
+        } elseif ($order->customer) {
+            // Se não houver address, usar dados do customer
+            $commands[] = "\x1B\x45\x01"; // BOLD ON
+            $commands[] = "ENTREGA:\n";
+            $commands[] = "\x1B\x45\x00"; // BOLD OFF
+            if ($order->customer->address) {
+                $commands[] = $this->wrapText($order->customer->address, 32) . "\n";
+            }
+            if ($order->customer->neighborhood) {
+                $commands[] = $this->wrapText($order->customer->neighborhood, 32) . "\n";
+            }
+            if ($order->customer->city && $order->customer->state) {
+                $commands[] = $order->customer->city . " - " . $order->customer->state . "\n";
+            }
+            if ($order->customer->zip_code) {
+                $commands[] = "CEP: " . $order->customer->zip_code . "\n";
+            }
             $commands[] = "\n";
         }
         
@@ -100,8 +123,18 @@ class FiscalPrinterService
             $discount = number_format($order->discount_amount, 2, ',', '.');
             if ($order->coupon_code) {
                 $commands[] = "CUPOM " . $order->coupon_code . ":\n";
+            } elseif ($order->manual_discount_type) {
+                $discountType = strtoupper($order->manual_discount_type === 'percentage' ? 'DESC. %' : 'DESC. FIXO');
+                $commands[] = $discountType . ":\n";
+            } else {
+                $commands[] = "DESCONTO:\n";
             }
             $commands[] = "DESCONTO:   -R$ " . str_pad($discount, 10, ' ', STR_PAD_LEFT) . "\n";
+        }
+        
+        if ($order->cashback_used > 0) {
+            $cashback = number_format($order->cashback_used, 2, ',', '.');
+            $commands[] = "CASHBACK:   -R$ " . str_pad($cashback, 10, ' ', STR_PAD_LEFT) . "\n";
         }
         
         $commands[] = "\n";
@@ -114,6 +147,18 @@ class FiscalPrinterService
         $commands[] = "\x1B\x61\x00"; // Alinhar à esquerda
         $commands[] = "\n";
         
+        // Entrega agendada
+        if ($order->scheduled_delivery_at) {
+            $scheduledDate = \Carbon\Carbon::parse($order->scheduled_delivery_at);
+            $commands[] = "--------------------------------\n";
+            $commands[] = "\x1B\x45\x01"; // BOLD ON
+            $commands[] = "ENTREGA AGENDADA:\n";
+            $commands[] = "\x1B\x45\x00"; // BOLD OFF
+            $commands[] = $scheduledDate->format('d/m/Y') . " as " . $scheduledDate->format('H:i') . "\n";
+            $commands[] = "--------------------------------\n";
+            $commands[] = "\n";
+        }
+        
         // Forma de pagamento
         $commands[] = "--------------------------------\n";
         $commands[] = "\x1B\x45\x01"; // BOLD ON
@@ -123,7 +168,14 @@ class FiscalPrinterService
         $commands[] = $paymentMethod . "\n";
         
         $paymentStatus = $order->payment_status ?? 'pending';
-        if ($paymentStatus === 'paid' || $paymentStatus === 'approved') {
+        $orderStatus = $order->status ?? 'pending';
+        
+        // Se o status do pedido for "confirmed" e payment_status ainda não estiver pago, considerar como pago
+        if ($orderStatus === 'confirmed' && ($paymentStatus === 'pending' || $paymentStatus === null)) {
+            $paymentStatus = 'paid';
+        }
+        
+        if ($paymentStatus === 'paid' || $paymentStatus === 'approved' || $orderStatus === 'confirmed') {
             $commands[] = "STATUS: PAGO\n";
         } else {
             $commands[] = "STATUS: PENDENTE\n";
@@ -145,7 +197,10 @@ class FiscalPrinterService
         $commands[] = "\x1B\x61\x01"; // Centralizar
         $commands[] = "OBRIGADO PELA PREFERENCIA!\n";
         $commands[] = "\n";
-        $commands[] = "www.olika.com.br\n";
+        $commands[] = "www.menuolika.com.br\n";
+        $commands[] = "\n";
+        $commands[] = "WhatsApp:\n";
+        $commands[] = "(71) 98701-9420\n";
         $commands[] = "\n";
         $commands[] = "\n";
         $commands[] = "\n";
@@ -153,6 +208,8 @@ class FiscalPrinterService
         // Cortar papel
         $commands[] = "\x1D\x56\x41\x03"; // GS V A - Cortar parcialmente (3mm)
         
+        // Implodir comandos mantendo a integridade dos bytes binários
+        // NÃO converter encoding pois isso pode corromper comandos ESC/POS
         return implode('', $commands);
     }
     
@@ -177,11 +234,12 @@ class FiscalPrinterService
             if ($printerType === 'thermal') {
                 $commands = $this->generateEscPosReceipt($order);
                 
+                // Garantir que os comandos sejam uma string binária limpa
+                // Não incluir 'raw' na resposta JSON pois pode causar problemas de serialização
                 return [
                     'success' => true,
                     'type' => 'escpos',
                     'data' => base64_encode($commands),
-                    'raw' => $commands,
                 ];
             }
             

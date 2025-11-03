@@ -16,24 +16,49 @@ class WhatsAppService
     public function __construct()
     {
         try {
-        $row = DB::table('whatsapp_settings')->where('active',1)->first();
+            // Tentar buscar com active=1 primeiro, depois sem filtro
+            $row = DB::table('whatsapp_settings')
+                ->where(function($q) {
+                    $q->where('active', 1)
+                      ->orWhereNull('active'); // Aceitar registros sem campo active também
+                })
+                ->first();
+            
+            // Se não encontrou com active, buscar qualquer registro
+            if (!$row) {
+                $row = DB::table('whatsapp_settings')->first();
+            }
+            
             if(!$row){
                 // Log apenas em debug - não é um erro, é um estado esperado quando não configurado
                 Log::debug('WhatsAppService: configuração não encontrada (whatsapp_settings). Serviço desativado.');
                 return; // mantém $enabled=false
             }
-            $this->baseUrl  = rtrim((string) $row->api_url, '/');
-            $this->apiKey   = trim((string) $row->api_key);
-            $this->instance = trim((string) $row->instance_name);
-        $this->senderName = $row->sender_name ?: 'Olika Bot';
+            
+            $this->baseUrl  = rtrim((string) ($row->api_url ?? ''), '/');
+            $this->apiKey   = trim((string) ($row->api_key ?? ''));
+            $this->instance = trim((string) ($row->instance_name ?? ''));
+            $this->senderName = ($row->sender_name ?? null) ?: 'Olika Bot';
+            
             if($this->baseUrl && $this->apiKey && $this->instance){
                 $this->enabled = true;
+                Log::info('WhatsAppService: Configuração carregada com sucesso', [
+                    'instance' => $this->instance,
+                    'base_url' => $this->baseUrl
+                ]);
             } else {
-                // Log apenas em debug - não é um erro, é um estado esperado quando não configurado
-                Log::debug('WhatsAppService: api_url/api_key/instance_name ausentes. Serviço desativado.');
+                // Log detalhado do que está faltando
+                Log::warning('WhatsAppService: Configuração incompleta. Serviço desativado.', [
+                    'has_api_url' => !empty($this->baseUrl),
+                    'has_api_key' => !empty($this->apiKey),
+                    'has_instance' => !empty($this->instance),
+                ]);
             }
         } catch (\Throwable $e) {
-            Log::error('WhatsAppService init error: '.$e->getMessage());
+            Log::error('WhatsAppService init error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             $this->enabled = false;
         }
     }

@@ -27,7 +27,11 @@
             margin: 0 auto;
             padding: 5mm;
             background: white;
-            color: #000;
+            color: #000000 !important;
+        }
+        
+        * {
+            color: #000000 !important;
         }
         
         .receipt {
@@ -36,7 +40,7 @@
         
         .header {
             text-align: center;
-            border-bottom: 1px dashed #000;
+            border-bottom: 2px solid #000000;
             padding-bottom: 5px;
             margin-bottom: 5px;
         }
@@ -46,15 +50,17 @@
             font-weight: bold;
             margin: 5px 0;
             text-transform: uppercase;
+            color: #000000 !important;
         }
         
         .header .subtitle {
             font-size: 11px;
             margin-bottom: 5px;
+            color: #000000 !important;
         }
         
         .divider {
-            border-top: 1px dashed #000;
+            border-top: 1px solid #000000;
             margin: 5px 0;
         }
         
@@ -67,11 +73,18 @@
             text-transform: uppercase;
             font-size: 11px;
             margin-bottom: 3px;
+            color: #000000 !important;
         }
         
         .info-line {
             font-size: 11px;
             margin: 2px 0;
+            color: #000000 !important;
+        }
+        
+        .info-line strong {
+            color: #000000 !important;
+            font-weight: bold;
         }
         
         .items-table {
@@ -83,14 +96,16 @@
         
         .items-table th {
             text-align: left;
-            border-bottom: 1px dashed #000;
+            border-bottom: 1px solid #000000;
             padding: 2px 0;
             font-weight: bold;
+            color: #000000 !important;
         }
         
         .items-table td {
             padding: 2px 0;
             vertical-align: top;
+            color: #000000 !important;
         }
         
         .items-table .item-name {
@@ -110,13 +125,14 @@
         .item-obs {
             font-size: 10px;
             font-style: italic;
-            color: #666;
+            color: #000000 !important;
             margin-left: 10px;
+            font-weight: normal;
         }
         
         .totals {
             margin-top: 5px;
-            border-top: 1px dashed #000;
+            border-top: 1px solid #000000;
             padding-top: 5px;
         }
         
@@ -125,23 +141,34 @@
             justify-content: space-between;
             font-size: 11px;
             margin: 2px 0;
+            color: #000000 !important;
         }
         
         .total-final {
-            border-top: 2px solid #000;
-            border-bottom: 2px solid #000;
+            border-top: 2px solid #000000;
+            border-bottom: 2px solid #000000;
             padding: 3px 0;
             margin: 5px 0;
             font-weight: bold;
             font-size: 14px;
+            color: #000000 !important;
+        }
+        
+        .total-final span {
+            color: #000000 !important;
         }
         
         .footer {
             text-align: center;
             margin-top: 10px;
             padding-top: 5px;
-            border-top: 1px dashed #000;
+            border-top: 1px solid #000000;
             font-size: 10px;
+            color: #000000 !important;
+        }
+        
+        .footer div {
+            color: #000000 !important;
         }
         
         .print-actions {
@@ -169,7 +196,8 @@
 </head>
 <body>
     <div class="no-print print-actions">
-        <button onclick="window.print()">🖨️ Imprimir</button>
+        <button id="btn-print-escpos" onclick="printViaEscPos()">🖨️ Imprimir via ESC/POS (Melhor Qualidade)</button>
+        <button onclick="window.print()">🖨️ Imprimir (Navegador)</button>
         <button onclick="window.close()">✖️ Fechar</button>
     </div>
     
@@ -199,13 +227,18 @@
         @if($order->address)
         <div class="section">
             <div class="section-title">ENTREGA</div>
-            <div class="info-line">{{ $order->address->address }}, {{ $order->address->number }}</div>
+            <div class="info-line">{{ $order->address->street ?? $order->address->address ?? '' }}, {{ $order->address->number ?? '' }}</div>
             @if($order->address->complement)
             <div class="info-line">{{ $order->address->complement }}</div>
             @endif
-            <div class="info-line">{{ $order->address->neighborhood }}</div>
-            <div class="info-line">{{ $order->address->city }} - {{ $order->address->state }}</div>
-            <div class="info-line">CEP: {{ $order->address->zip_code }}</div>
+            <div class="info-line">{{ $order->address->neighborhood ?? '' }}</div>
+            <div class="info-line">{{ $order->address->city ?? '' }} - {{ $order->address->state ?? '' }}</div>
+            @php
+                $cep = $order->address->cep ?? $order->address->zip_code ?? $order->customer->zip_code ?? null;
+            @endphp
+            @if($cep)
+            <div class="info-line">CEP: {{ $cep }}</div>
+            @endif
         </div>
         @endif
         
@@ -254,11 +287,19 @@
                 <span>
                     @if($order->coupon_code)
                         CUPOM {{ $order->coupon_code }}:
+                    @elseif($order->manual_discount_type)
+                        DESCONTO {{ strtoupper($order->manual_discount_type === 'percentage' ? 'PERCENTUAL' : 'FIXO') }}:
                     @else
                         DESCONTO:
                     @endif
                 </span>
                 <span>-R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</span>
+            </div>
+            @endif
+            @if($order->cashback_used > 0)
+            <div class="total-line">
+                <span>CASHBACK UTILIZADO:</span>
+                <span>-R$ {{ number_format($order->cashback_used, 2, ',', '.') }}</span>
             </div>
             @endif
             <div class="total-line total-final">
@@ -269,6 +310,15 @@
         
         <div class="divider"></div>
         
+        @if($order->scheduled_delivery_at)
+        <div class="section">
+            <div class="section-title">ENTREGA AGENDADA</div>
+            <div class="info-line">
+                <strong>{{ \Carbon\Carbon::parse($order->scheduled_delivery_at)->format('d/m/Y') }} às {{ \Carbon\Carbon::parse($order->scheduled_delivery_at)->format('H:i') }}</strong>
+            </div>
+        </div>
+        @endif
+        
         <div class="section">
             <div class="section-title">PAGAMENTO</div>
             <div class="info-line">
@@ -276,7 +326,15 @@
             </div>
             <div class="info-line">
                 STATUS: 
-                @if($order->payment_status === 'paid' || $order->payment_status === 'approved')
+                @php
+                    $paymentStatus = $order->payment_status ?? 'pending';
+                    $orderStatus = $order->status ?? 'pending';
+                    // Se o status do pedido for "confirmed" e payment_status ainda não estiver pago, considerar como pago
+                    if ($orderStatus === 'confirmed' && ($paymentStatus === 'pending' || $paymentStatus === null)) {
+                        $paymentStatus = 'paid';
+                    }
+                @endphp
+                @if($paymentStatus === 'paid' || $paymentStatus === 'approved' || $orderStatus === 'confirmed')
                     PAGO
                 @else
                     PENDENTE
@@ -295,11 +353,189 @@
         
         <div class="footer">
             <div>OBRIGADO PELA PREFERÊNCIA!</div>
-            <div style="margin-top: 5px;">www.olika.com.br</div>
+            <div style="margin-top: 5px;">www.menuolika.com.br</div>
+            <div style="margin-top: 5px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://wa.me/5571987019420" alt="WhatsApp QR Code" style="width: 60px; height: 60px; margin: 5px auto; display: block;">
+            </div>
+            <div style="margin-top: 5px;">WhatsApp: (71) 98701-9420</div>
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
     <script>
+        let qzConnected = false;
+        
+        // Verificar se QZ Tray está realmente conectado
+        function isQZTrayConnected() {
+            try {
+                return typeof qz !== 'undefined' && 
+                       qz !== null && 
+                       qz.websocket !== null && 
+                       qz.websocket.isActive();
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // Conectar ao QZ Tray (mesma lógica do monitor que funciona)
+        async function connectQZTray() {
+            try {
+                // Verificar se o objeto qz existe
+                if (typeof qz === 'undefined' || qz === null) {
+                    throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
+                }
+
+                // Verificar se já está conectado
+                if (isQZTrayConnected()) {
+                    qzConnected = true;
+                    console.log('✅ QZ Tray já estava conectado');
+                    return true;
+                }
+
+                // Tentar conectar
+                await qz.websocket.connect();
+                
+                // Verificar novamente se realmente conectou
+                if (isQZTrayConnected()) {
+                    qzConnected = true;
+                    console.log('✅ QZ Tray conectado com sucesso');
+                    return true;
+                } else {
+                    throw new Error('Falha ao verificar conexão após tentativa de conexão');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao conectar QZ Tray:', error);
+                qzConnected = false;
+                throw error; // Re-throw para tratamento no chamador
+            }
+        }
+        
+        // Imprimir via ESC/POS (melhor qualidade)
+        async function printViaEscPos() {
+            const orderId = {{ $order->id }};
+            
+            // Verificar se QZ Tray está disponível
+            if (typeof qz === 'undefined') {
+                alert('❌ QZ Tray não está carregado. Certifique-se de que:\n\n1. O QZ Tray está instalado\n2. O QZ Tray está rodando\n3. Você permitiu o acesso no navegador');
+                return;
+            }
+            
+            // Verificar/conectar ao QZ Tray
+            if (!isQZTrayConnected()) {
+                try {
+                    const connected = await connectQZTray();
+                    if (!connected) {
+                        alert('❌ Não foi possível conectar ao QZ Tray. Certifique-se de que o QZ Tray está instalado e rodando.');
+                        return;
+                    }
+                } catch (error) {
+                    alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message + '\n\nCertifique-se de que:\n1. O QZ Tray está instalado\n2. O QZ Tray está rodando\n3. Você permitiu o acesso no navegador');
+                    return;
+                }
+            }
+            
+            try {
+                // Obter impressoras
+                const printers = await qz.printers.find();
+                if (!printers || printers.length === 0) {
+                    alert('Nenhuma impressora encontrada. Configure o QZ Tray.');
+                    return;
+                }
+                
+                // Se houver múltiplas impressoras, permitir seleção
+                let printer;
+                if (printers.length > 1) {
+                    const printerNames = printers.map((p, i) => `${i + 1}. ${p}`);
+                    const selected = prompt(`Selecione a impressora:\n\n${printerNames.join('\n')}\n\nDigite o número:`, '1');
+                    const index = parseInt(selected) - 1;
+                    if (isNaN(index) || index < 0 || index >= printers.length) {
+                        alert('Seleção inválida. Usando primeira impressora.');
+                        printer = printers[0];
+                    } else {
+                        printer = printers[index];
+                    }
+                } else {
+                    printer = printers[0];
+                }
+                
+                console.log('🖨️ Usando impressora:', printer);
+                
+                // Buscar dados ESC/POS do backend
+                const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar dados: ${response.status}`);
+                }
+                
+                const orderData = await response.json();
+                
+                if (!orderData.success || !orderData.data) {
+                    throw new Error('Dados inválidos recebidos do servidor');
+                }
+                
+                // Decodificar base64 e converter para array de bytes
+                const binaryString = atob(orderData.data);
+                const bytes = [];
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes.push(binaryString.charCodeAt(i) & 0xFF);
+                }
+                
+                console.log('📦 Enviando', bytes.length, 'bytes para impressora:', printer);
+                
+                // Verificar primeiros bytes para debug
+                if (bytes.length >= 2) {
+                    console.log('🔍 Primeiros bytes:', 
+                        '0x' + bytes[0].toString(16).padStart(2, '0'),
+                        '0x' + bytes[1].toString(16).padStart(2, '0'),
+                        bytes[0] === 0x1B && bytes[1] === 0x40 ? '✅ ESC @' : '❌');
+                }
+                
+                // Verificar se os bytes estão corretos antes de enviar
+                console.log('📤 Preparando envio para impressora...', {
+                    printer: printer,
+                    bytesLength: bytes.length,
+                    firstBytes: bytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+                    isValidEscPos: bytes[0] === 0x1B && bytes[1] === 0x40
+                });
+                
+                // Configurar impressão (mesmo método do teste que funciona)
+                const printConfig = qz.configs.create(printer);
+                
+                // IMPORTANTE: O teste funciona enviando array de bytes diretamente
+                // Mas vamos tentar também como string binária se o array não funcionar
+                console.log('🚀 Enviando dados para impressora (método array de bytes)...');
+                
+                // Tentar primeiro como array de bytes (como no teste)
+                try {
+                    await qz.print(printConfig, bytes);
+                    console.log('✅ Dados enviados como array de bytes');
+                } catch (arrayError) {
+                    console.warn('⚠️ Erro ao enviar como array, tentando como string binária...', arrayError);
+                    // Fallback: converter para string binária (como fazemos no monitor)
+                    const binaryString = String.fromCharCode.apply(null, bytes);
+                    await qz.print(printConfig, binaryString);
+                    console.log('✅ Dados enviados como string binária');
+                }
+                
+                // Verificar se a impressora é virtual (PDF) - isso pode ser o problema
+                const printerLower = printer.toLowerCase();
+                if (printerLower.includes('pdf') || printerLower.includes('virtual') || printerLower.includes('document')) {
+                    alert('⚠️ ATENÇÃO: Você selecionou uma impressora virtual (PDF/Documentos).\n\nSelecione a impressora térmica física para imprimir o recibo.');
+                } else {
+                    alert('✅ Recibo enviado para impressão com sucesso!\n\nSe não imprimiu, verifique:\n1. A impressora está ligada e com papel\n2. A impressora não está em modo "Pausa"\n3. Verifique a fila de impressão do Windows');
+                }
+            } catch (error) {
+                console.error('Erro ao imprimir:', error);
+                console.error('Stack:', error.stack);
+                alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido') + '\n\nVerifique o console do navegador (F12) para mais detalhes.');
+            }
+        }
+        
         // Auto-imprimir se for impressão automática
         @if(request()->get('auto_print'))
         window.onload = function() {

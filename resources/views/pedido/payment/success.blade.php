@@ -45,27 +45,6 @@
     </div>
     @endif
 
-    <div class="space-y-3">
-        @if(isset($order))
-        <a href="{{ url('/dashboard/orders/' . $order->id . '/fiscal-receipt') }}" target="_blank" class="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors">
-            🖨️ Imprimir Recibo Fiscal
-        </a>
-        @endif
-        <a href="{{ route('pedido.index') }}" class="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors">
-            Continuar Comprando
-        </a>
-        <div>
-            <a href="#" class="text-gray-600 hover:text-primary text-sm">Acompanhar Pedido</a>
-        </div>
-    </div>
-    
-    @if(isset($order))
-    <script>
-        // Auto-imprimir recibo após 1 segundo (opcional)
-        // Descomente a linha abaixo se quiser impressão automática
-        // setTimeout(() => window.open('{{ url("/dashboard/orders/" . $order->id . "/fiscal-receipt?auto_print=1") }}', '_blank'), 1000);
-    </script>
-    @endif
 </div>
 @endsection
 

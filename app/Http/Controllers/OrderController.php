@@ -178,7 +178,7 @@ class OrderController extends Controller
                 'eligible_count' => $eligibleCoupons->count(),
                 'customer_id' => $customerId,
                 'is_first_order' => $isFirstOrder,
-                'subtotal' => $subtotal,
+            'subtotal' => $subtotal,
                 'delivery_fee' => $estimatedDeliveryFee,
                 'has_free_shipping_by_value' => $hasFreeShippingByValue,
             ]);
@@ -224,7 +224,7 @@ class OrderController extends Controller
             // Mantém padrão se houver erro
         }
         $slotCapacity = max(1, $slotCapacity);
-
+        
         for ($i = $advanceDays; $i <= $advanceDays + 13; $i++) { // 2 semanas à frente
             $checkDate = $today->copy()->addDays($i);
             $dayOfWeek = strtolower($checkDate->format('l')); // monday, tuesday, etc
@@ -264,8 +264,8 @@ class OrderController extends Controller
                     }
                     
                     if (!empty($slots)) {
-                        $availableDates[] = [
-                            'date' => $checkDate->format('Y-m-d'),
+                    $availableDates[] = [
+                        'date' => $checkDate->format('Y-m-d'),
                             'label' => $checkDate->format('d/m/Y'),
                             'day_name' => $checkDate->locale('pt_BR')->dayName,
                             'slots' => $slots,
@@ -358,12 +358,12 @@ class OrderController extends Controller
 
             if (!$address) {
                 $address = Address::create([
-                    'customer_id' => $customer->id,
-                    'street' => $validated['street'],
-                    'number' => $validated['number'],
-                    'complement' => $validated['complement'] ?? null,
+                'customer_id' => $customer->id,
+                'street' => $validated['street'],
+                'number' => $validated['number'],
+                'complement' => $validated['complement'] ?? null,
                     'neighborhood' => $validated['neighborhood'],
-                    'city' => $validated['city'],
+                'city' => $validated['city'],
                     'state' => $validated['state'],
                     'cep' => $validated['zip_code'],
                 ]);
@@ -535,7 +535,7 @@ class OrderController extends Controller
                         if (Schema::hasTable('settings')) {
                             if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
                                 $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
-                            } else {
+                        } else {
                                 $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
                                 $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
                                 if ($keyCol && $valCol) {
@@ -638,7 +638,7 @@ class OrderController extends Controller
                 $productName = $product ? $product->name : "Produto #{$productId}";
 
                 OrderItem::create([
-                    'order_id' => $order->id,
+                        'order_id' => $order->id,
                     'product_id' => $productId ?: null,
                     'variant_id' => $variantId,
                     'quantity' => $qty,
@@ -686,7 +686,7 @@ class OrderController extends Controller
             // Redirecionar para página de pagamento
             if ($validated['payment_method'] === 'pix') {
                 return redirect()->route('pedido.payment.pix', ['order' => $order->id]);
-            } else {
+                } else {
                 return redirect()->route('pedido.payment.checkout', ['order' => $order->id]);
             }
 
@@ -739,7 +739,7 @@ class OrderController extends Controller
         
         // Log para debug (remover em produção se necessário)
         \Log::debug('OrderController: Validação de token PDV', [
-            'order_id' => $order->id,
+                        'order_id' => $order->id,
             'order_number' => $orderNumber,
             'token_recebido' => $token,
             'token_esperado' => $expectedToken,
@@ -1173,7 +1173,7 @@ class OrderController extends Controller
                             $couponMessage = 'Este cupom é válido apenas para primeiro pedido.';
                         } elseif ($coupon->free_shipping_only && $deliveryFee <= 0) {
                             $couponMessage = 'Este cupom é válido apenas para pedidos com taxa de entrega.';
-                        } else {
+            } else {
                             $couponMessage = 'Cupom não é elegível para este pedido.';
                         }
                         \Log::warning('calculateDiscounts: Cupom não elegível (cliente identificado)', [

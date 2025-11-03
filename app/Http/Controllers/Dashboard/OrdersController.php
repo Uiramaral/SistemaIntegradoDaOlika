@@ -122,6 +122,18 @@ class OrdersController extends Controller
         try {
             DB::beginTransaction();
 
+            // Recarregar order para garantir dados atualizados
+            $order->refresh();
+
+            // Obter o código do status recebido
+            $requestedStatusCode = $request->status;
+            
+            // Verificar se é um código de order_statuses ou um status direto do ENUM
+            $statusRecord = DB::table('order_statuses')
+                ->where('code', $requestedStatusCode)
+                ->where('active', 1)
+                ->first();
+
             // Mapear código de order_statuses para valores válidos do ENUM orders.status
             $statusMapping = [
                 'pending' => 'pending',
@@ -135,10 +147,8 @@ class OrdersController extends Controller
                 'cancelled' => 'cancelled',
             ];
 
-            // Obter o código do status recebido
-            $requestedStatusCode = $request->status;
-            
-            // Mapear para o valor válido do ENUM
+            // Se for um código de order_statuses, usar o código diretamente
+            // Se não, mapear para o valor válido do ENUM
             $enumStatus = $statusMapping[$requestedStatusCode] ?? $requestedStatusCode;
             
             // Validar se o status mapeado é válido para o ENUM
@@ -147,25 +157,44 @@ class OrdersController extends Controller
                 throw new \InvalidArgumentException("Status inválido: {$requestedStatusCode}");
             }
 
+            // Atualizar status do pedido
             $oldStatus = $order->status;
+            
+            // Se o status for "confirmed" ou "paid", atualizar payment_status também
+            if ($enumStatus === 'confirmed' || $requestedStatusCode === 'paid') {
+                if ($order->payment_status !== 'paid' && $order->payment_status !== 'approved') {
+                    $order->payment_status = 'paid';
+                }
+            }
+            
+            // Usar OrderStatusService para atualizar status, histórico e notificações
+            $orderStatusService = new \App\Services\OrderStatusService();
+            
+            // Primeiro atualizar o status no pedido manualmente para garantir mapeamento correto
             $order->status = $enumStatus;
             $order->save();
-
-            // Registrar no histórico (usar o código original, não o mapeado)
-            DB::table('order_status_history')->insert([
-                'order_id' => $order->id,
-                'old_status' => $oldStatus,
-                'new_status' => $requestedStatusCode, // Usar o código original para o histórico
-                'note' => $request->note,
-                'user_id' => auth()->check() ? auth()->id() : null,
-                'created_at' => now(),
-            ]);
+            
+            // Depois usar o serviço para notificações (ele verificará se já foi atualizado)
+            // Passar o código original (requestedStatusCode) para buscar as configurações corretas
+            $orderStatusService->changeStatus(
+                $order->fresh(), // Garantir que está com o status atualizado
+                $requestedStatusCode, // Usar o código original para buscar configurações do order_statuses
+                $request->note,
+                auth()->check() ? auth()->id() : null,
+                false // Não pular histórico, mas o serviço já verifica duplicação
+            );
 
             DB::commit();
 
             return redirect()->back()->with('success', 'Status do pedido atualizado com sucesso!');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erro ao atualizar status do pedido', [
+                'order_id' => $order->id,
+                'status' => $request->status,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()->with('error', 'Erro ao atualizar status: ' . $e->getMessage());
         }
     }
@@ -1307,6 +1336,14 @@ class OrdersController extends Controller
      */
     public function fiscalReceiptEscPos(Order $order)
     {
+        $order->load([
+            'customer',
+            'address',
+            'items.product',
+            'payment',
+            'orderDeliveryFee'
+        ]);
+        
         $printerService = new \App\Services\FiscalPrinterService();
         $result = $printerService->sendToPrinter($order, 'thermal');
         
@@ -1314,7 +1351,79 @@ class OrdersController extends Controller
             return response()->json($result, 500);
         }
         
+        // Adicionar informações adicionais para o monitor
+        $result['order_id'] = $order->id;
+        $result['order_number'] = $order->order_number;
+        $result['status'] = $order->status;
+        $result['payment_status'] = $order->payment_status;
+        $result['created_at'] = $order->created_at->toIso8601String();
+        
         return response()->json($result);
+    }
+
+    /**
+     * Exibe página de monitor de impressão
+     */
+    public function printerMonitor()
+    {
+        return view('dashboard.orders.printer-monitor');
+    }
+
+    /**
+     * API para monitor de impressão buscar pedidos não impressos
+     */
+    public function getOrdersForPrint(Request $request)
+    {
+        try {
+            $query = Order::with(['customer', 'address'])
+                ->where('status', 'confirmed')
+                ->orderBy('created_at', 'desc')
+                ->limit(20);
+
+            // Filtrar por status de pagamento: aceitar 'paid' ou 'approved'
+            if ($request->has('payment_status')) {
+                $paymentStatus = $request->payment_status;
+                if ($paymentStatus === 'paid') {
+                    // Buscar tanto 'paid' quanto 'approved' (ambos são pagos)
+                    $query->whereIn('payment_status', ['paid', 'approved']);
+                } else {
+                    $query->where('payment_status', $paymentStatus);
+                }
+            }
+
+            $orders = $query->get(['id', 'order_number', 'status', 'payment_status', 'created_at']);
+
+            Log::info('OrdersController: getOrdersForPrint - Pedidos encontrados', [
+                'total' => $orders->count(),
+                'ids' => $orders->pluck('id')->toArray(),
+                'order_numbers' => $orders->pluck('order_number')->toArray(),
+                'payment_statuses' => $orders->pluck('payment_status')->toArray()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'orders' => $orders->map(function($order) {
+                    return [
+                        'id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'status' => $order->status,
+                        'payment_status' => $order->payment_status,
+                        'created_at' => $order->created_at->toIso8601String(),
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar pedidos para impressão', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao buscar pedidos',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

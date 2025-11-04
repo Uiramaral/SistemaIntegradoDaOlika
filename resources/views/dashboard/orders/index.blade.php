@@ -156,4 +156,325 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+(function() {
+    'use strict';
+    
+    // Configurações
+    const POLL_INTERVAL = 5000; // 5 segundos
+    const ANIMATION_DURATION = 500;
+    
+    // Estado da atualização
+    let lastOrderId = {{ $orders->isNotEmpty() ? $orders->first()->id : 0 }};
+    let lastOrderCreatedAt = '{{ $orders->isNotEmpty() ? $orders->first()->created_at->toIso8601String() : '' }}';
+    let pollingInterval = null;
+    let isPolling = false;
+    let knownOrderIds = new Set();
+    let orderDataMap = new Map(); // Armazenar dados dos pedidos para comparar mudanças
+    
+    // Inicializar IDs conhecidos e dados
+    @foreach($orders as $order)
+        knownOrderIds.add({{ $order->id }});
+        orderDataMap.set({{ $order->id }}, {
+            status: '{{ $order->status }}',
+            payment_status: '{{ $order->payment_status }}',
+            updated_at: '{{ $order->updated_at->toIso8601String() }}'
+        });
+    @endforeach
+    
+    // Função para criar uma linha de pedido
+    function createOrderRow(order) {
+        const row = document.createElement('tr');
+        row.className = 'border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50 new-order-highlight';
+        row.dataset.orderId = order.id;
+        
+        row.innerHTML = `
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">${order.order_number}</td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                <div>
+                    <div class="font-medium">${escapeHtml(order.customer_name)}</div>
+                    ${order.customer_phone ? `<div class="text-xs text-muted-foreground">${escapeHtml(order.customer_phone)}</div>` : ''}
+                </div>
+            </td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-semibold">R$ ${formatMoney(order.total_amount)}</td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${order.status_color}">${escapeHtml(order.status_label)}</div>
+            </td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${order.payment_color}">${escapeHtml(order.payment_label)}</div>
+            </td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                ${order.created_at_human}
+                <div class="text-xs">${order.created_at_formatted}</div>
+            </td>
+            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                <div class="flex gap-2 justify-end">
+                    <a href="${order.fiscal_receipt_url}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                    </a>
+                    <a href="${order.show_url}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver detalhes</a>
+                </div>
+            </td>
+        `;
+        
+        return row;
+    }
+    
+    // Função para escapar HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Função para formatar dinheiro
+    function formatMoney(value) {
+        return parseFloat(value).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    
+    // Função para buscar novos pedidos
+    async function fetchNewOrders() {
+        if (isPolling) return;
+        
+        isPolling = true;
+        
+        try {
+            // Coletar IDs dos pedidos exibidos na página
+            const displayedOrderIds = Array.from(knownOrderIds);
+            
+            const params = new URLSearchParams({
+                last_order_id: lastOrderId,
+                last_order_created_at: lastOrderCreatedAt,
+            });
+            
+            // Adicionar IDs conhecidos para verificar atualizações
+            displayedOrderIds.forEach(id => {
+                params.append('known_order_ids[]', id);
+            });
+            
+            // Adicionar filtros da página se houver
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('q')) {
+                params.append('q', urlParams.get('q'));
+            }
+            if (urlParams.has('status')) {
+                params.append('status', urlParams.get('status'));
+            }
+            
+            const response = await fetch('{{ route("dashboard.orders.newOrders") }}?' + params.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar novos pedidos');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const tbody = document.querySelector('tbody');
+                if (!tbody) return;
+                
+                let newOrdersCount = 0;
+                let updatedOrdersCount = 0;
+                
+                // Processar novos pedidos
+                if (data.orders && data.orders.length > 0) {
+                    const trulyNewOrders = data.orders.filter(order => !knownOrderIds.has(order.id));
+                    
+                    if (trulyNewOrders.length > 0) {
+                        // Adicionar novos pedidos no topo da tabela
+                        trulyNewOrders.reverse().forEach(order => {
+                            const row = createOrderRow(order);
+                            tbody.insertBefore(row, tbody.firstChild);
+                            knownOrderIds.add(order.id);
+                            orderDataMap.set(order.id, {
+                                status: order.status,
+                                payment_status: order.payment_status,
+                                updated_at: order.updated_at
+                            });
+                            newOrdersCount++;
+                        });
+                        
+                        // Atualizar referências
+                        if (trulyNewOrders.length > 0) {
+                            const newestOrder = trulyNewOrders[trulyNewOrders.length - 1];
+                            lastOrderId = Math.max(lastOrderId, newestOrder.id);
+                            lastOrderCreatedAt = newestOrder.created_at;
+                        }
+                        
+                        // Mostrar notificação
+                        if (newOrdersCount > 0) {
+                            showNotification(`${newOrdersCount} novo${newOrdersCount > 1 ? 's' : ''} pedido${newOrdersCount > 1 ? 's' : ''}!`);
+                        }
+                    }
+                }
+                
+                // Processar pedidos atualizados
+                if (data.updated_orders && data.updated_orders.length > 0) {
+                    data.updated_orders.forEach(order => {
+                        const existingRow = tbody.querySelector(`tr[data-order-id="${order.id}"]`);
+                        const oldData = orderDataMap.get(order.id);
+                        
+                        // Verificar se houve mudança
+                        if (oldData && (
+                            oldData.status !== order.status ||
+                            oldData.payment_status !== order.payment_status ||
+                            oldData.updated_at !== order.updated_at
+                        )) {
+                            if (existingRow) {
+                                // Atualizar linha existente
+                                const newRow = createOrderRow(order);
+                                newRow.classList.add('updated-order-highlight');
+                                existingRow.replaceWith(newRow);
+                                updatedOrdersCount++;
+                                
+                                // Animação de atualização
+                                setTimeout(() => {
+                                    newRow.style.animation = 'highlightUpdatedOrder 1s ease-out';
+                                    setTimeout(() => {
+                                        newRow.classList.remove('updated-order-highlight');
+                                        newRow.style.animation = '';
+                                    }, 1000);
+                                }, 100);
+                            }
+                            
+                            // Atualizar dados no mapa
+                            orderDataMap.set(order.id, {
+                                status: order.status,
+                                payment_status: order.payment_status,
+                                updated_at: order.updated_at
+                            });
+                        }
+                    });
+                }
+                
+                // Remover linha vazia se existir
+                const emptyRow = tbody.querySelector('td[colspan="7"]');
+                if (emptyRow && emptyRow.closest('tr')) {
+                    emptyRow.closest('tr').remove();
+                }
+                
+                // Animação de destaque para novos pedidos
+                const newRows = tbody.querySelectorAll('.new-order-highlight');
+                newRows.forEach((row, index) => {
+                    setTimeout(() => {
+                        row.style.animation = 'highlightNewOrder 2s ease-out';
+                        setTimeout(() => {
+                            row.classList.remove('new-order-highlight');
+                            row.style.animation = '';
+                        }, 2000);
+                    }, index * 100);
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar novos pedidos:', error);
+        } finally {
+            isPolling = false;
+        }
+    }
+    
+    // Função para mostrar notificação
+    function showNotification(message) {
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-right';
+        notification.textContent = message;
+        notification.style.animation = 'slideInRight 0.3s ease-out';
+        
+        document.body.appendChild(notification);
+        
+        // Remover após 3 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    }
+    
+    // Iniciar polling quando a página carregar
+    function startPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
+        
+        // Primeira verificação após 2 segundos
+        setTimeout(fetchNewOrders, 2000);
+        
+        // Depois verificar a cada X segundos
+        pollingInterval = setInterval(fetchNewOrders, POLL_INTERVAL);
+    }
+    
+    // Parar polling quando a página perder foco (economizar recursos)
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        } else {
+            if (!pollingInterval) {
+                startPolling();
+            }
+        }
+    });
+    
+    // Iniciar quando DOM estiver pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startPolling);
+    } else {
+        startPolling();
+    }
+    
+    // Adicionar estilos CSS para animação
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes highlightNewOrder {
+            0% { background-color: rgba(34, 197, 94, 0.3); }
+            100% { background-color: transparent; }
+        }
+        @keyframes highlightUpdatedOrder {
+            0% { background-color: rgba(59, 130, 246, 0.3); }
+            50% { background-color: rgba(59, 130, 246, 0.5); }
+            100% { background-color: transparent; }
+        }
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        .new-order-highlight {
+            animation: highlightNewOrder 2s ease-out;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+</script>
+@endpush
 @endsection

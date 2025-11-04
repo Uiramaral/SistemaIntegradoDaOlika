@@ -24,7 +24,7 @@
         </div>
     @endif
 
-    <form action="{{ route('dashboard.products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('dashboard.products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6 pb-24">
         @csrf
         
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -190,6 +190,11 @@
                         <span class="text-sm">Produto ativo</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="only_pdv" value="1" @checked(old('only_pdv', false)) class="rounded border-gray-300">
+                        <span class="text-sm">Apenas PDV (ocultar do catálogo público)</span>
+                        <span class="text-xs text-muted-foreground">(marque para mostrar apenas no PDV)</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="is_available" value="1" @checked(old('is_available', true)) class="rounded border-gray-300">
                         <span class="text-sm">Produto disponível</span>
                     </label>
@@ -200,26 +205,50 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Título SEO</label>
-                    <input type="text" name="seo_title" value="{{ old('seo_title') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium">Título SEO</label>
+                        <button type="button" id="generateSeoBtn" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M2 12h20"></path>
+                            </svg>
+                            Gerar com IA
+                        </button>
+                    </div>
+                    <input type="text" name="seo_title" id="seo_title" value="{{ old('seo_title') }}" maxlength="60" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <p class="text-xs text-muted-foreground mt-1"><span id="seo_title_count">0</span>/60 caracteres</p>
                     @error('seo_title')<span class="text-sm text-red-600">{{ $message }}</span>@enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Descrição SEO</label>
-                    <textarea name="seo_description" rows="3" class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{{ old('seo_description') }}</textarea>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium">Descrição SEO</label>
+                        <button type="button" id="generateSeoDescBtn" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M2 12h20"></path>
+                            </svg>
+                            Gerar com IA
+                        </button>
+                    </div>
+                    <textarea name="seo_description" id="seo_description" rows="3" maxlength="160" class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{{ old('seo_description') }}</textarea>
+                    <p class="text-xs text-muted-foreground mt-1"><span id="seo_desc_count">0</span>/160 caracteres</p>
                     @error('seo_description')<span class="text-sm text-red-600">{{ $message }}</span>@enderror
                 </div>
             </div>
         </div>
 
-        <div class="flex justify-end gap-4">
-            <a href="{{ route('dashboard.products.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                Cancelar
-            </a>
-            <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                Criar Produto
-            </button>
+        <!-- Barra de ações fixa (sticky) -->
+        <div class="sticky bottom-0 bg-white border-t shadow-lg p-4 z-40 mt-8">
+            <div class="flex justify-end gap-4">
+                <a href="{{ route('dashboard.products.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Cancelar
+                </a>
+                <button type="submit" name="action" value="save" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Criar Produto
+                </button>
+                <button type="submit" name="action" value="save_ai" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                    🤖 Criar + IA
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -679,7 +708,105 @@ function reindexVariants() {
     }
   });
 }
-document.addEventListener('DOMContentLoaded',()=>{ /* inicia vazio */ });
+// Atualizar contadores de caracteres
+function updateCharCounters() {
+  const seoTitle = document.getElementById('seo_title');
+  const seoDesc = document.getElementById('seo_description');
+  const titleCount = document.getElementById('seo_title_count');
+  const descCount = document.getElementById('seo_desc_count');
+  
+  if (seoTitle && titleCount) {
+    titleCount.textContent = seoTitle.value.length;
+  }
+  if (seoDesc && descCount) {
+    descCount.textContent = seoDesc.value.length;
+  }
+}
+
+// Gerar SEO via IA
+async function generateSEO() {
+  const name = document.querySelector('input[name="name"]')?.value;
+  const description = document.querySelector('textarea[name="description"]')?.value || '';
+  const categoryId = document.querySelector('select[name="category_id"]')?.value || null;
+  const price = document.querySelector('input[name="price"]')?.value || null;
+  const ingredients = document.querySelector('textarea[name="ingredients"]')?.value || '';
+  
+  if (!name) {
+    alert('Por favor, preencha o nome do produto primeiro.');
+    return;
+  }
+  
+  const btn = document.getElementById('generateSeoBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="animate-spin">⏳</span> Gerando...';
+  
+  try {
+    const response = await fetch('{{ route("dashboard.products.generateSEO") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        description,
+        category_id: categoryId ? parseInt(categoryId) : null,
+        price: price ? parseFloat(price) : null,
+        ingredients
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      if (data.seo_title) {
+        document.getElementById('seo_title').value = data.seo_title;
+      }
+      if (data.seo_description) {
+        document.getElementById('seo_description').value = data.seo_description;
+      }
+      updateCharCounters();
+      alert('SEO gerado com sucesso!');
+    } else {
+      alert(data.message || 'Erro ao gerar SEO. Tente novamente.');
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    alert('Erro ao gerar SEO. Verifique sua conexão e tente novamente.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Atualizar contadores ao carregar
+  updateCharCounters();
+  
+  // Atualizar contadores ao digitar
+  const seoTitle = document.getElementById('seo_title');
+  const seoDesc = document.getElementById('seo_description');
+  
+  if (seoTitle) {
+    seoTitle.addEventListener('input', updateCharCounters);
+  }
+  if (seoDesc) {
+    seoDesc.addEventListener('input', updateCharCounters);
+  }
+  
+  // Botões de gerar SEO
+  const generateSeoBtn = document.getElementById('generateSeoBtn');
+  const generateSeoDescBtn = document.getElementById('generateSeoDescBtn');
+  
+  if (generateSeoBtn) {
+    generateSeoBtn.addEventListener('click', generateSEO);
+  }
+  if (generateSeoDescBtn) {
+    generateSeoDescBtn.addEventListener('click', generateSEO);
+  }
+});
 </script>
 @endpush
 

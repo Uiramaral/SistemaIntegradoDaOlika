@@ -368,9 +368,9 @@ async function printOrder(orderData) {
         const printer = config.printer || printers[0];
         console.log('🖨️ Usando impressora:', printer);
         
-        // Decodificar dados ESC/POS de base64 e converter para array de bytes
-        // USAR ARRAY DE BYTES (método do teste que funciona)
-        let bytes = [];
+        // Decodificar dados ESC/POS de base64 e converter para Uint8Array
+        // MANTER COMO Uint8Array para dados binários RAW
+        let bytes = null;
         try {
             console.log('📦 Recebendo dados do backend...');
             console.log('📦 Tamanho base64:', orderData.data ? orderData.data.length : 0);
@@ -392,48 +392,61 @@ async function printOrder(orderData) {
                 console.log('✅ Validação: String binária começa corretamente com ESC @');
             }
             
-            // Converter string binária para array de bytes (EXATAMENTE COMO NO TESTE)
-            console.log('🔄 Convertendo para array de bytes (método do teste)...');
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes.push(binaryString.charCodeAt(i) & 0xFF);
+            // Converter string binária para Uint8Array (para validação)
+            console.log('🔄 Convertendo para Uint8Array...');
+            const len = binaryString.length;
+            const bytesUint8 = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytesUint8[i] = binaryString.charCodeAt(i);
             }
             
-            console.log('✅ Array criado:', bytes.length, 'bytes');
-            
-            // Validar novamente no array
-            if (bytes.length >= 2 && bytes[0] === 0x1B && bytes[1] === 0x40) {
-                console.log('✅ Validação final: Array começa corretamente com ESC @');
+            // Validar se começa com ESC @
+            if (bytesUint8.length < 2 || bytesUint8[0] !== 0x1B || bytesUint8[1] !== 0x40) {
+                console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
+                console.error('❌ Primeiros bytes:', 
+                    Array.from(bytesUint8.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
             } else {
-                console.error('❌ Validação final FALHOU! Primeiros bytes:', 
-                    bytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                console.log('✅ Validação: Uint8Array começa corretamente com ESC @');
             }
+            
+            // CORRETO: Converter Uint8Array → Array JavaScript simples (QZ Tray precisa de Array, não Uint8Array)
+            bytes = Array.from(bytesUint8);
+            
+            console.log('✅ Array criado:', bytes.length, 'bytes', Array.isArray(bytes) ? '(Array)' : '(outro tipo)');
             
         } catch (e) {
             console.error('❌ Erro crítico ao processar dados:', e);
             throw new Error('Erro ao processar dados para impressão: ' + e.message);
         }
         
-        // Verificar se o array não está vazio
-        if (bytes.length === 0) {
+        // Verificar se o Array não está vazio
+        if (!bytes || bytes.length === 0) {
             throw new Error('Array de bytes está vazio após conversão');
         }
         
-        // Configurar impressão (EXATAMENTE COMO NO TESTE)
-        const printConfig = qz.configs.create(printer);
+        // Verificar se é realmente Array JavaScript
+        if (!Array.isArray(bytes)) {
+            throw new Error('Dados não são Array. Tipo: ' + typeof bytes);
+        }
         
-        console.log('📤 Preparando envio para impressora...', { 
+        // Configurar impressão RAW (Array de bytes + encoding RAW)
+        const printConfig = qz.configs.create(printer, { encoding: 'RAW' });
+        
+        console.log('📤 Preparando envio RAW para impressora...', { 
             printer, 
             bytesLength: bytes.length,
+            isArray: Array.isArray(bytes),
+            firstBytes: bytes.slice(0, 10),
             orderId: orderData.order_id,
             orderNumber: orderData.order_number
         });
         
-        // ENVIAR ARRAY DE BYTES DIRETAMENTE (como no teste que funciona)
-        console.log('🚀 Enviando array de bytes diretamente (método do teste)...');
+        // ENVIAR Array JavaScript simples (QZ Tray espera Array, não Uint8Array)
+        console.log('🚀 Enviando dados RAW (Array) para impressora...');
         
         try {
             const printResult = await qz.print(printConfig, bytes);
-            console.log('✅ Comando de impressão enviado com sucesso!');
+            console.log('✅ Comando de impressão RAW enviado com sucesso!');
             console.log('✅ Resultado:', printResult);
             
             // Aguardar um pouco para verificar se realmente imprimiu

@@ -16,22 +16,29 @@ class OrdersController extends Controller
      */
     public function index(Request $request)
     {
-        // Buscar cliente pelo telefone (apenas telefone, sem necessidade de login)
-        $phone = $request->get('phone');
+        // Buscar telefone: primeiro da query string, depois do cookie
+        $phone = $request->get('phone') ?: $request->cookie('customer_phone');
         
-        // Se não tiver telefone na URL, mostrar tela simples de entrada
+        // Se não tiver telefone, mostrar tela simples de entrada
         if (!$phone) {
             return view('customer.orders.login');
         }
 
         // Buscar cliente pelo telefone (normalizar removendo caracteres não numéricos)
         $phoneNormalized = preg_replace('/\D/', '', $phone);
+        
+        // Se veio da query string, salvar telefone normalizado no cookie (30 dias)
+        if ($request->get('phone')) {
+            cookie()->queue('customer_phone', $phoneNormalized, 60 * 24 * 30);
+        }
         $customer = Customer::whereRaw('REPLACE(REPLACE(REPLACE(phone, "(", ""), ")", ""), "-", "") = ?', [$phoneNormalized])
             ->orWhere('phone', $phone)
             ->orWhere('phone', $phoneNormalized)
             ->first();
 
         if (!$customer) {
+            // Limpar cookie se cliente não encontrado
+            cookie()->queue(cookie()->forget('customer_phone'));
             return view('customer.orders.login', ['error' => 'Cliente não encontrado. Verifique seu telefone.']);
         }
 
@@ -55,8 +62,8 @@ class OrdersController extends Controller
      */
     public function show(Request $request, $orderNumber)
     {
-        // Buscar cliente pelo telefone
-        $phone = $request->get('phone');
+        // Buscar telefone: primeiro da query string, depois do cookie
+        $phone = $request->get('phone') ?: $request->cookie('customer_phone');
         
         if (!$phone) {
             return redirect()->route('customer.orders.index')->with('error', 'Telefone necessário para acessar.');
@@ -70,6 +77,7 @@ class OrdersController extends Controller
             ->first();
 
         if (!$customer) {
+            cookie()->queue(cookie()->forget('customer_phone'));
             return redirect()->route('customer.orders.index')->with('error', 'Cliente não encontrado.');
         }
 
@@ -97,13 +105,12 @@ class OrdersController extends Controller
     public function rate(Request $request, $orderNumber)
     {
         $request->validate([
-            'phone' => 'required',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
         ]);
 
-        // Buscar cliente pelo telefone
-        $phone = $request->get('phone');
+        // Buscar telefone: primeiro da query string, depois do cookie
+        $phone = $request->get('phone') ?: $request->cookie('customer_phone');
         
         if (!$phone) {
             return redirect()->back()->with('error', 'Telefone necessário.');
@@ -117,6 +124,7 @@ class OrdersController extends Controller
             ->first();
 
         if (!$customer) {
+            cookie()->queue(cookie()->forget('customer_phone'));
             return redirect()->back()->with('error', 'Cliente não encontrado.');
         }
 

@@ -30,10 +30,47 @@
         if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
         elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
         $img = $img ?? asset('images/produto-placeholder.jpg');
+        
+        // Preload das primeiras 3 imagens (fold acima) para carregamento mais rápido
+        $shouldPreload = $loop->index < 3;
+        // Lazy load a partir da 6ª imagem (primeiras 5 carregam imediatamente)
+        $isLazy = $loop->index >= 6;
     @endphp
+    @if($shouldPreload)
+    <link rel="preload" as="image" href="{{ $img }}" fetchpriority="high">
+    @endif
     <div class="product-item text-card-foreground group overflow-hidden border shadow-sm hover:shadow-xl transition-all duration-300 bg-card rounded-2xl cursor-pointer" data-category-id="{{ $product->category_id ?? '0' }}" onclick="openQuickView({{ $product->id }})">
         <div class="aspect-square overflow-hidden bg-muted relative">
-            <img src="{{ $img }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none">
+            <!-- Placeholder com blur (sempre visível até imagem carregar) -->
+            <div class="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200" id="placeholder-{{ $product->id }}">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                    </svg>
+                </div>
+            </div>
+            <img 
+                @if($isLazy)
+                data-src="{{ $img }}" 
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect fill='%23f3f4f6' width='400' height='400'/%3E%3C/svg%3E"
+                loading="lazy"
+                @else
+                src="{{ $img }}" 
+                loading="eager"
+                @endif
+                alt="{{ $product->name }}" 
+                decoding="async"
+                fetchpriority="{{ $loop->index < 3 ? 'high' : 'auto' }}"
+                width="400"
+                height="400"
+                class="h-full w-full object-cover transition-opacity duration-300 group-hover:scale-110 pointer-events-none"
+                style="opacity: 0;"
+                onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                data-product-id="{{ $product->id }}"
+            >
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
         <div class="p-2.5 sm:p-3 flex flex-col gap-1.5">
@@ -70,6 +107,57 @@
 
 @push('scripts')
 <script>
+// Otimização de carregamento de imagens com Intersection Observer
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar imagens lazy quando estiverem próximas da viewport
+    const lazyImages = document.querySelectorAll('img[data-src]');
+    
+    if (lazyImages.length > 0 && 'IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    const dataSrc = img.getAttribute('data-src');
+                    
+                    if (dataSrc) {
+                        // Carregar imagem
+                        img.src = dataSrc;
+                        img.removeAttribute('data-src');
+                        
+                        // Quando carregar, mostrar com fade-in
+                        img.onload = function() {
+                            this.style.opacity = '1';
+                            const productId = this.getAttribute('data-product-id');
+                            const placeholder = document.getElementById('placeholder-' + productId);
+                            if (placeholder) {
+                                placeholder.style.display = 'none';
+                            }
+                        };
+                        
+                        // Parar de observar esta imagem
+                        observer.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            // Carregar quando estiver a 300px da viewport (mais cedo para melhor UX)
+            rootMargin: '300px 0px',
+            threshold: 0.01
+        });
+        
+        lazyImages.forEach(img => imageObserver.observe(img));
+    } else if (lazyImages.length > 0) {
+        // Fallback: carregar todas as imagens lazy se não houver Intersection Observer
+        lazyImages.forEach(img => {
+            const dataSrc = img.getAttribute('data-src');
+            if (dataSrc) {
+                img.src = dataSrc;
+                img.removeAttribute('data-src');
+            }
+        });
+    }
+});
+
 // Popular sidebar com categorias e atualizar título
 document.addEventListener('DOMContentLoaded', function() {
     const categoriesList = document.getElementById('categoriesList');

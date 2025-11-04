@@ -200,6 +200,7 @@
                                                     ['url' => route('dashboard.orders.index'), 'label' => 'Pedidos', 'icon' => 'lucide-file-text'],
                                                     ['url' => route('dashboard.customers.index'), 'label' => 'Clientes', 'icon' => 'lucide-users'],
                                                     ['url' => route('dashboard.products.index'), 'label' => 'Produtos', 'icon' => 'lucide-package'],
+                                                    ['url' => route('dashboard.wholesale-prices.index'), 'label' => 'Preços de Revenda', 'icon' => 'lucide-dollar-sign'],
                                                     ['url' => route('dashboard.categories.index'), 'label' => 'Categorias', 'icon' => 'lucide-folder-tree'],
                                                     ['url' => route('dashboard.coupons.index'), 'label' => 'Cupons', 'icon' => 'lucide-ticket'],
                                                     ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet'],

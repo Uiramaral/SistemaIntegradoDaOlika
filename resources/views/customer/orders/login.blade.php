@@ -55,7 +55,7 @@
     </div>
     
     <script>
-        // Enviar apenas telefone (sem email)
+        // Enviar apenas telefone (sem email) e salvar cookie
         document.getElementById('login-form').addEventListener('submit', function(e) {
             const identifier = document.getElementById('identifier').value.trim();
             
@@ -68,6 +68,21 @@
             phoneInput.name = 'phone';
             phoneInput.value = phoneNormalized;
             this.appendChild(phoneInput);
+            
+            // Salvar telefone no cookie (30 dias)
+            document.cookie = `customer_phone=${phoneNormalized}; path=/; max-age=${60 * 60 * 24 * 30}`;
+        });
+        
+        // Tentar preencher telefone do cookie se existir
+        document.addEventListener('DOMContentLoaded', function() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'customer_phone' && value) {
+                    document.getElementById('identifier').value = value;
+                    break;
+                }
+            }
         });
     </script>
 </body>

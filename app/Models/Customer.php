@@ -29,6 +29,8 @@ class Customer extends Authenticatable
         'password',
         'cpf',
         'is_active',
+        'is_wholesale',
+        'total_debts',
     ];
 
     protected $hidden = [
@@ -40,10 +42,12 @@ class Customer extends Authenticatable
         'preferences' => 'array',
         'birth_date' => 'date',
         'is_active' => 'boolean',
+        'is_wholesale' => 'boolean',
         'email_verified_at' => 'datetime',
         'last_order_at' => 'datetime',
         'total_spent' => 'decimal:2',
         'loyalty_balance' => 'decimal:2',
+        'total_debts' => 'decimal:2',
         'custom_delivery_fee' => 'decimal:2',
     ];
 
@@ -85,6 +89,14 @@ class Customer extends Authenticatable
     public function getCashbackBalanceAttribute(): float
     {
         return CustomerCashback::getBalance($this->id);
+    }
+
+    /**
+     * Obter saldo de débitos pendentes (pagamento postergado)
+     */
+    public function getDebtsBalanceAttribute(): float
+    {
+        return CustomerDebt::getBalance($this->id);
     }
 
     /**

@@ -1,9 +1,19 @@
 @extends('pedido.layout')
 
-@section('title', $product->name . ' - Olika')
+@php
+    $img = $product->image_url;
+    if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
+    elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+    $img = $img ?? asset('images/produto-placeholder.jpg');
+@endphp
+
+@section('title', ($product->seo_title ?? $product->name) . ($product->seo_title ? '' : ' - Olika'))
+@section('description', $product->seo_description ?? ($product->description ? mb_substr(strip_tags($product->description), 0, 160) : 'Pães artesanais com fermentação natural. Peça online 24h por dia. Tradição e qualidade em cada fornada.'))
+@section('og_type', 'product')
+@section('og_image', $img)
 
 @section('content')
-<div class="max-w-4xl mx-auto overflow-x-hidden">
+<div class="max-w-4xl mx-auto overflow-x-hidden pb-32">
     <!-- Breadcrumb -->
     <nav class="mb-6 text-sm text-gray-600">
         <a href="{{ route('pedido.index') }}" class="hover:text-primary">Cardápio</a>
@@ -18,13 +28,26 @@
     <!-- Product Details -->
     <div class="grid md:grid-cols-2 gap-6 md:gap-8 mb-12">
         <!-- Image -->
-        <div class="aspect-square rounded-lg overflow-hidden bg-gray-100">
+        <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 relative">
             @php
                 $img = $product->image_url;
                 if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
                 elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+                $img = $img ?? asset('images/produto-placeholder.jpg');
             @endphp
-            <img src="{{ $img ?? asset('images/produto-placeholder.jpg') }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
+            <link rel="preload" as="image" href="{{ $img }}" fetchpriority="high">
+            <div class="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse" id="product-image-placeholder"></div>
+            <img 
+                src="{{ $img }}" 
+                alt="{{ $product->name }}" 
+                class="w-full h-full object-cover relative z-10"
+                style="opacity: 0; transition: opacity 0.4s;"
+                onload="this.style.opacity='1'; document.getElementById('product-image-placeholder').style.display='none';"
+                onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; document.getElementById('product-image-placeholder').style.display='none';"
+                width="600"
+                height="600"
+                fetchpriority="high"
+            >
         </div>
 
         <!-- Info -->

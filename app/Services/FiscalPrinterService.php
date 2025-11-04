@@ -210,7 +210,23 @@ class FiscalPrinterService
         
         // Implodir comandos mantendo a integridade dos bytes binários
         // NÃO converter encoding pois isso pode corromper comandos ESC/POS
-        return implode('', $commands);
+        $output = implode('', $commands);
+        
+        // DEBUG: Verificar se os primeiros bytes são ESC @ (0x1B 0x40)
+        if (strlen($output) >= 2) {
+            $firstByte = ord($output[0]);
+            $secondByte = ord($output[1]);
+            if ($firstByte !== 0x1B || $secondByte !== 0x40) {
+                Log::warning('FiscalPrinterService: Comandos ESC/POS não começam com ESC @', [
+                    'first_byte' => '0x' . dechex($firstByte),
+                    'second_byte' => '0x' . dechex($secondByte),
+                    'expected' => '0x1B 0x40',
+                    'output_length' => strlen($output)
+                ]);
+            }
+        }
+        
+        return $output;
     }
     
     /**

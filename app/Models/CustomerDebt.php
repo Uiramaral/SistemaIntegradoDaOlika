@@ -38,5 +38,30 @@ class CustomerDebt extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    /**
+     * Calcular saldo de débitos pendentes de um cliente
+     * Retorna o total de débitos abertos (status='open') menos créditos abertos
+     */
+    public static function getBalance($customerId): float
+    {
+        if (!$customerId) {
+            return 0.0;
+        }
+        
+        $debits = self::where('customer_id', $customerId)
+            ->where('type', 'debit')
+            ->where('status', 'open')
+            ->sum('amount');
+        
+        $credits = self::where('customer_id', $customerId)
+            ->where('type', 'credit')
+            ->where('status', 'open')
+            ->sum('amount');
+        
+        $balance = max(0, (float)$debits - (float)$credits);
+        
+        return $balance;
+    }
 }
 

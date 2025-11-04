@@ -17,7 +17,7 @@ class MenuApiController extends Controller
         $categories = Category::active()
             ->ordered()
             ->with(['products' => function ($query) {
-                $query->active()->available()->purchasable()->ordered();
+                $query->active()->showInCatalog()->available()->purchasable()->ordered();
             }])
             ->get();
 
@@ -34,6 +34,7 @@ class MenuApiController extends Controller
     {
         $products = $category->products()
             ->active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
             ->ordered()
@@ -50,7 +51,7 @@ class MenuApiController extends Controller
      */
     public function products(Request $request)
     {
-        $query = Product::active()->available()->purchasable()->ordered();
+        $query = Product::active()->showInCatalog()->available()->purchasable()->ordered();
 
         // Filtro por categoria
         if ($request->has('category_id')) {
@@ -98,6 +99,7 @@ class MenuApiController extends Controller
     public function featured()
     {
         $products = Product::active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
             ->featured()
@@ -130,6 +132,7 @@ class MenuApiController extends Controller
               ->orWhere('description', 'like', "%{$query}%");
         })
         ->active()
+        ->showInCatalog()
         ->available()
         ->purchasable()
         ->ordered()

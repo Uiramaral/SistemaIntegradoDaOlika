@@ -45,6 +45,143 @@ class OrdersController extends Controller
         return view('dashboard.orders.index', compact('orders'));
     }
 
+    /**
+     * Buscar novos pedidos via AJAX para atualização automática
+     * Também retorna pedidos atualizados (mudança de status/pagamento)
+     */
+    public function getNewOrders(Request $request)
+    {
+        try {
+            // Pegar o ID do último pedido conhecido (ou timestamp)
+            $lastOrderId = $request->input('last_order_id', 0);
+            $lastOrderCreatedAt = $request->input('last_order_created_at');
+            $knownOrderIds = $request->input('known_order_ids', []); // IDs dos pedidos já exibidos na página
+            
+            // Buscar novos pedidos (criados após o último conhecido)
+            $newOrdersQuery = Order::with(['customer', 'address', 'payment'])
+                ->orderBy('created_at', 'desc');
+            
+            if ($lastOrderId > 0) {
+                $newOrdersQuery->where('id', '>', $lastOrderId);
+            } elseif ($lastOrderCreatedAt) {
+                try {
+                    $timestamp = \Carbon\Carbon::parse($lastOrderCreatedAt);
+                    $newOrdersQuery->where('created_at', '>', $timestamp);
+                } catch (\Exception $e) {
+                    $newOrdersQuery->limit(10);
+                }
+            } else {
+                $newOrdersQuery->limit(10);
+            }
+            
+            // Buscar pedidos atualizados (mudança de status ou pagamento)
+            // Pegar os últimos 50 pedidos para verificar atualizações
+            $updatedOrdersQuery = Order::with(['customer', 'address', 'payment'])
+                ->whereIn('id', $knownOrderIds)
+                ->orderBy('updated_at', 'desc')
+                ->limit(50);
+            
+            // Aplicar mesmos filtros da busca principal se houver
+            if ($request->has('q') && $request->q) {
+                $search = $request->q;
+                $newOrdersQuery->where(function($q) use ($search) {
+                    $q->where('order_number', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($c) use ($search) {
+                          $c->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                      });
+                });
+                $updatedOrdersQuery->where(function($q) use ($search) {
+                    $q->where('order_number', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($c) use ($search) {
+                          $c->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                      });
+                });
+            }
+            
+            if ($request->has('status') && $request->status) {
+                $newOrdersQuery->where('status', $request->status);
+                $updatedOrdersQuery->where('status', $request->status);
+            }
+            
+            $newOrders = $newOrdersQuery->get();
+            $updatedOrders = $updatedOrdersQuery->get();
+            
+            // Função auxiliar para formatar pedido
+            $formatOrder = function($order) {
+                $statusColors = [
+                    'pending' => 'bg-muted text-muted-foreground',
+                    'confirmed' => 'bg-primary text-primary-foreground',
+                    'preparing' => 'bg-warning text-warning-foreground',
+                    'ready' => 'bg-primary/80 text-primary-foreground',
+                    'delivered' => 'bg-success text-success-foreground',
+                    'cancelled' => 'bg-destructive text-destructive-foreground',
+                ];
+                $statusLabel = [
+                    'pending' => 'Pendente',
+                    'confirmed' => 'Confirmado',
+                    'preparing' => 'Em Preparo',
+                    'ready' => 'Pronto',
+                    'delivered' => 'Entregue',
+                    'cancelled' => 'Cancelado',
+                ];
+                $paymentStatusColors = [
+                    'pending' => 'bg-muted text-muted-foreground',
+                    'paid' => 'bg-success text-success-foreground',
+                    'approved' => 'bg-success text-success-foreground',
+                    'failed' => 'bg-destructive text-destructive-foreground',
+                    'refunded' => 'bg-warning text-warning-foreground',
+                ];
+                $paymentStatusLabel = [
+                    'pending' => 'Pendente',
+                    'paid' => 'Pago',
+                    'approved' => 'Pago',
+                    'failed' => 'Falhou',
+                    'refunded' => 'Reembolsado',
+                ];
+                
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_name' => $order->customer->name ?? 'Cliente não informado',
+                    'customer_phone' => $order->customer->phone ?? null,
+                    'total_amount' => $order->final_amount ?? $order->total_amount ?? 0,
+                    'status' => $order->status,
+                    'status_color' => $statusColors[$order->status] ?? 'bg-muted text-muted-foreground',
+                    'status_label' => $statusLabel[$order->status] ?? ucfirst($order->status),
+                    'payment_status' => $order->payment_status,
+                    'payment_color' => $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground',
+                    'payment_label' => $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status),
+                    'created_at' => $order->created_at->toIso8601String(),
+                    'created_at_human' => $order->created_at->diffForHumans(),
+                    'created_at_formatted' => $order->created_at->format('d/m/Y H:i'),
+                    'updated_at' => $order->updated_at->toIso8601String(),
+                    'show_url' => route('dashboard.orders.show', $order->id),
+                    'fiscal_receipt_url' => route('dashboard.orders.fiscalReceipt', $order->id),
+                ];
+            };
+            
+            return response()->json([
+                'success' => true,
+                'orders' => $newOrders->map($formatOrder),
+                'updated_orders' => $updatedOrders->map($formatOrder),
+                'count' => $newOrders->count(),
+                'updated_count' => $updatedOrders->count(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('OrdersController: Erro ao buscar novos pedidos', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao buscar novos pedidos',
+            ], 500);
+        }
+    }
+
     public function show(Order $order)
     {
         $order->load([
@@ -1448,5 +1585,250 @@ class OrdersController extends Controller
         }
         
         $order->save();
+    }
+
+    /**
+     * Estornar pedido - cancelar venda e reverter tudo relacionado
+     */
+    public function refund(Request $request, Order $order)
+    {
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Recarregar order para garantir dados atualizados
+            $order->refresh();
+
+            // Verificar se já foi estornado
+            if ($order->payment_status === 'refunded') {
+                return redirect()->back()->with('error', 'Este pedido já foi estornado.');
+            }
+
+            // Verificar se foi pago
+            $wasPaid = in_array(strtolower($order->payment_status), ['paid', 'approved']);
+            
+            if (!$wasPaid) {
+                return redirect()->back()->with('error', 'Apenas pedidos pagos podem ser estornados.');
+            }
+
+            $reason = $request->input('reason', 'Estorno solicitado pelo operador');
+
+            // 0. Estornar pagamento no Mercado Pago (se houver payment_id)
+            if ($order->payment_id && $order->payment_provider === 'mercadopago') {
+                try {
+                    $mercadoPagoService = new \App\Services\MercadoPagoApiService();
+                    $refundResult = $mercadoPagoService->refundPayment($order->payment_id);
+                    
+                    if ($refundResult['success']) {
+                        \Log::info('Estorno: Pagamento estornado no Mercado Pago', [
+                            'order_id' => $order->id,
+                            'payment_id' => $order->payment_id,
+                            'refund_id' => $refundResult['refund_id'] ?? null,
+                        ]);
+                    } else {
+                        // Se falhar o estorno no MP, ainda continuar com as reversões internas
+                        // mas registrar o erro
+                        \Log::warning('Estorno: Falha ao estornar no Mercado Pago, continuando com reversões internas', [
+                            'order_id' => $order->id,
+                            'payment_id' => $order->payment_id,
+                            'error' => $refundResult['error'] ?? 'Erro desconhecido',
+                            'details' => $refundResult['details'] ?? null,
+                        ]);
+                        
+                        // Não bloquear o processo, mas adicionar ao motivo
+                        $reason .= ' [ATENÇÃO: Estorno no Mercado Pago pode ter falhado - verificar manualmente]';
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Estorno: Exceção ao estornar no Mercado Pago', [
+                        'order_id' => $order->id,
+                        'payment_id' => $order->payment_id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    
+                    // Não bloquear o processo, mas adicionar ao motivo
+                    $reason .= ' [ATENÇÃO: Erro ao estornar no Mercado Pago - verificar manualmente]';
+                }
+            } elseif ($order->payment_provider && $order->payment_provider !== 'mercadopago') {
+                \Log::warning('Estorno: Provedor de pagamento não suporta estorno automático', [
+                    'order_id' => $order->id,
+                    'payment_provider' => $order->payment_provider,
+                ]);
+                $reason .= ' [ATENÇÃO: Estorno manual necessário para este provedor de pagamento]';
+            } elseif (!$order->payment_id) {
+                \Log::info('Estorno: Pedido sem payment_id, pulando estorno no provedor', [
+                    'order_id' => $order->id,
+                ]);
+            }
+
+            // 1. Reverter cashback usado (devolver ao cliente)
+            if ($order->cashback_used > 0 && $order->customer_id) {
+                try {
+                    \App\Models\CustomerCashback::createCredit(
+                        $order->customer_id,
+                        $order->id,
+                        $order->cashback_used,
+                        "Estorno: Devolução de cashback usado no pedido #{$order->order_number}"
+                    );
+                    \Log::info('Estorno: Cashback usado revertido', [
+                        'order_id' => $order->id,
+                        'amount' => $order->cashback_used
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Estorno: Erro ao reverter cashback usado', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 2. Remover cashback ganho (debitar do cliente)
+            if ($order->cashback_earned > 0 && $order->customer_id) {
+                try {
+                    \App\Models\CustomerCashback::createDebit(
+                        $order->customer_id,
+                        $order->id,
+                        $order->cashback_earned,
+                        "Estorno: Remoção de cashback ganho no pedido #{$order->order_number}"
+                    );
+                    \Log::info('Estorno: Cashback ganho removido', [
+                        'order_id' => $order->id,
+                        'amount' => $order->cashback_earned
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Estorno: Erro ao remover cashback ganho', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 3. Reverter uso de cupom
+            if ($order->coupon_code && $order->customer_id) {
+                try {
+                    $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
+                    if ($coupon) {
+                        // Decrementar contador de uso
+                        $coupon->decrement('used_count');
+                        
+                        // Remover registro de uso do cupom
+                        if (\Schema::hasTable('order_coupons')) {
+                            \App\Models\OrderCoupon::where('order_id', $order->id)->delete();
+                        }
+                        
+                        // Remover registro de uso se existir tabela coupon_usages
+                        if (\Schema::hasTable('coupon_usages')) {
+                            \DB::table('coupon_usages')
+                                ->where('order_id', $order->id)
+                                ->delete();
+                        }
+                        
+                        \Log::info('Estorno: Uso de cupom revertido', [
+                            'order_id' => $order->id,
+                            'coupon_code' => $order->coupon_code
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Estorno: Erro ao reverter uso de cupom', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 4. Reverter pontos de fidelidade
+            if ($order->customer_id) {
+                try {
+                    $loyaltyTransactions = \App\Models\LoyaltyTransaction::where('order_id', $order->id)
+                        ->where('type', 'earned')
+                        ->get();
+                    
+                    foreach ($loyaltyTransactions as $transaction) {
+                        // Marcar transação como inativa
+                        $transaction->update(['is_active' => false]);
+                        
+                        // Criar transação de ajuste para reverter pontos
+                        // Usar 'adjustment' que é um tipo válido no enum
+                        \App\Models\LoyaltyTransaction::create([
+                            'customer_id' => $order->customer_id,
+                            'order_id' => $order->id,
+                            'type' => 'adjustment',
+                            'points' => -abs($transaction->points), // Negativo para reverter
+                            'value' => $transaction->value,
+                            'description' => "Estorno: Reversão de pontos do pedido #{$order->order_number}",
+                            'is_active' => true,
+                        ]);
+                    }
+                    
+                    \Log::info('Estorno: Pontos de fidelidade revertidos', [
+                        'order_id' => $order->id,
+                        'transactions_count' => $loyaltyTransactions->count()
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Estorno: Erro ao reverter pontos de fidelidade', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 5. Atualizar status do pedido
+            $order->payment_status = 'refunded';
+            $order->status = 'cancelled';
+            $order->save();
+
+            // 6. Registrar no histórico de status
+            try {
+                DB::table('order_status_history')->insert([
+                    'order_id' => $order->id,
+                    'old_status' => $order->getOriginal('status') ?? 'pending',
+                    'new_status' => 'cancelled',
+                    'note' => $reason,
+                    'user_id' => auth()->check() ? auth()->id() : null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                \Log::warning('Estorno: Erro ao registrar histórico', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp/BotConversa)
+            try {
+                $orderStatusService = new \App\Services\OrderStatusService();
+                $orderStatusService->changeStatus($order, 'cancelled', $reason, auth()->check() ? auth()->id() : null, false);
+            } catch (\Exception $e) {
+                \Log::warning('Estorno: Erro ao enviar notificação via OrderStatusService', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            \Log::info('Estorno realizado com sucesso', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'reason' => $reason,
+                'user_id' => auth()->check() ? auth()->id() : null
+            ]);
+
+            return redirect()->back()->with('success', 'Pedido estornado com sucesso! Todas as transações relacionadas foram revertidas.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erro ao estornar pedido', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erro ao estornar pedido: ' . $e->getMessage());
+        }
     }
 }

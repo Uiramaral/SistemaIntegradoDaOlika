@@ -40,7 +40,7 @@
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <p class="text-sm text-blue-800">
             <strong>O que acontece agora?</strong><br>
-            Você receberá um e-mail de confirmação em breve. Acompanhe o status do seu pedido e receba notificações sobre a entrega.
+            Você receberá uma mensagem de confirmação em breve. Acompanhe o status do seu pedido e receba notificações sobre a entrega no whatsapp.
         </p>
     </div>
     @endif

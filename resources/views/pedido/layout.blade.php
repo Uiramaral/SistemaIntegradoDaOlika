@@ -6,6 +6,25 @@
     <title>@yield('title', 'Olika - Pães Artesanais | Cardápio Digital')</title>
     <meta name="description" content="@yield('description', 'Pães artesanais com fermentação natural. Peça online 24h por dia. Tradição e qualidade em cada fornada.')">
     
+    {{-- Open Graph / Facebook --}}
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta property="og:title" content="@yield('title', 'Olika - Pães Artesanais | Cardápio Digital')">
+    <meta property="og:description" content="@yield('description', 'Pães artesanais com fermentação natural. Peça online 24h por dia. Tradição e qualidade em cada fornada.')">
+    <meta property="og:url" content="{{ url()->current() }}">
+    @hasSection('og_image')
+    <meta property="og:image" content="@yield('og_image')">
+    @else
+    <meta property="og:image" content="{{ asset('images/logo-olika.png') }}">
+    @endif
+    
+    {{-- Twitter Card --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('title', 'Olika - Pães Artesanais | Cardápio Digital')">
+    <meta name="twitter:description" content="@yield('description', 'Pães artesanais com fermentação natural. Peça online 24h por dia. Tradição e qualidade em cada fornada.')">
+    @hasSection('og_image')
+    <meta name="twitter:image" content="@yield('og_image')">
+    @endif
+    
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,12 +71,44 @@
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
+      /* Mobile: eliminar espaço em branco extra */
+      @media (max-width: 768px) {
+        html {
+          height: 100%;
+          overflow-x: hidden;
+        }
+        body {
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          overflow-x: hidden;
+          padding-bottom: 0 !important;
+        }
+        /* Garantir que não há espaço extra após a navegação */
+        nav.fixed.bottom-0 {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          margin-bottom: 0 !important;
+          padding-bottom: 0 !important;
+        }
+        /* Remover qualquer espaço extra após elementos fixos */
+        #cartBottomBar {
+          margin-bottom: 0 !important;
+          padding-bottom: 0 !important;
+        }
+        /* Garantir que o body não tenha altura mínima que cause espaço extra */
+        body > div {
+          min-height: auto !important;
+        }
+      }
     </style>
     
     @stack('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body class="min-h-screen bg-background font-sans" style="font-family: 'Inter', sans-serif;">
+<body class="bg-background font-sans" style="font-family: 'Inter', sans-serif;">
     
     @php
         // Contagem do carrinho
@@ -87,7 +138,7 @@
     @endphp
 
     <!-- Layout Principal: Sidebar + Main -->
-    <div class="flex min-h-screen">
+    <div class="flex">
         
         
         
@@ -104,26 +155,13 @@
                     $bannerPath = 'uploads/branding/banner.png';
                 }
             @endphp
-            <div class="relative h-[200px] bg-gradient-to-r from-[#7A5230] to-[#5E3E23] flex items-center justify-center overflow-hidden">
+            <div class="relative h-[120px] bg-gradient-to-r from-[#7A5230] to-[#5E3E23] flex items-center justify-center overflow-hidden">
                 @if($bannerPath)
                     <div class="absolute inset-0 bg-center bg-cover opacity-20" style="background-image: url('{{ asset('storage/'.$bannerPath) }}');"></div>
                 @else
                     <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1200&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
                 @endif
 
-                <!-- Carrinho no topo do banner - fixo durante scroll -->
-                <a href="{{ route('pedido.cart.index') }}" class="fixed top-3 right-4 z-50 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-white/30 bg-white/80 hover:bg-white h-10 w-10 shadow-sm backdrop-blur">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-[#5E3E23]">
-                        <circle cx="8" cy="21" r="1"></circle>
-                        <circle cx="19" cy="21" r="1"></circle>
-                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-                    </svg>
-                    @if($cartCount > 0)
-                    <div class="absolute -right-2 -top-2 h-5 w-5 rounded-full bg-[#7A5230] text-white text-xs flex items-center justify-center font-semibold">
-                        {{ $cartCount }}
-                    </div>
-                    @endif
-                </a>
 
                 <div class="relative z-10 text-white">
                     @php 
@@ -132,19 +170,19 @@
                         if (\Storage::disk('public')->exists('uploads/branding/logo.png')) { $logoSquare = 'uploads/branding/logo.png'; }
                         elseif (\Storage::disk('public')->exists('uploads/branding/logo.jpg')) { $logoSquare = 'uploads/branding/logo.jpg'; }
                     @endphp
-                    <div class="mx-auto flex items-center justify-center gap-3">
+                    <div class="mx-auto flex items-center justify-center gap-2">
                         @if($logoSquare)
-                            <div class="h-[80px] w-[80px] rounded-full overflow-hidden bg-white/90 shadow">
+                            <div class="h-[50px] w-[50px] rounded-full overflow-hidden bg-white/90 shadow">
                                 <img src="{{ asset('storage/'.$logoSquare) }}" alt="Olika" class="w-full h-full object-cover">
                             </div>
                         @else
-                            <div class="h-[80px] w-[80px] rounded-full bg-white/90 flex items-center justify-center shadow">
-                                <span class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#7A5230] to-[#5E3E23] bg-clip-text text-transparent">O</span>
+                            <div class="h-[50px] w-[50px] rounded-full bg-white/90 flex items-center justify-center shadow">
+                                <span class="text-2xl font-bold bg-gradient-to-r from-[#7A5230] to-[#5E3E23] bg-clip-text text-transparent">O</span>
                             </div>
                         @endif
                         <div class="leading-tight text-center md:text-left">
-                            <h1 class="text-3xl md:text-4xl font-bold drop-shadow">Olika</h1>
-                            <p class="text-base md:text-lg drop-shadow">Pães Artesanais</p>
+                            <h1 class="text-2xl md:text-3xl font-bold drop-shadow">Olika</h1>
+                            <p class="text-sm md:text-base drop-shadow">Pães Artesanais</p>
                         </div>
                     </div>
                 </div>
@@ -235,33 +273,71 @@
             @endif
             
             <!-- Content Area -->
-            <div class="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div class="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 {{ request()->routeIs('pedido.checkout*') || request()->routeIs('pedido.payment*') ? 'pb-8' : ($cartCount > 0 ? 'pb-28 sm:pb-28' : 'pb-20 sm:pb-20') }}">
                 <div class="max-w-7xl mx-auto">
                     @yield('content')
                 </div>
             </div>
         </main>
         
-        
-        
-        <!-- Botão Flutuante Carrinho (só para menu) -->
+        <!-- Navegação Inferior (Menu, Pedidos, Ver carrinho) -->
         @if(!request()->routeIs('pedido.checkout*') && !request()->routeIs('pedido.payment*') && !request()->routeIs('pedido.cart.index'))
-        <button 
-            id="cartButton"
-            class="fixed bottom-6 right-6 z-50 inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-16 px-6 rounded-2xl shadow-2xl hover:shadow-xl transition-all duration-300 hover:scale-105 gap-3"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
-                <circle cx="8" cy="21" r="1"></circle>
-                <circle cx="19" cy="21" r="1"></circle>
-                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-            </svg>
-            <span class="font-semibold">Carrinho</span>
-            @if($cartCount > 0)
-            <span id="cartBadgeFloating" class="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-primary text-xs font-bold flex items-center justify-center border-2 border-primary">
-                {{ $cartCount }}
-            </span>
-            @endif
-        </button>
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50" style="bottom: 0 !important; margin-bottom: 0 !important;">
+            <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-around">
+                <a href="{{ route('pedido.index') }}" class="flex flex-col items-center gap-1 py-2 {{ request()->routeIs('pedido.index') || request()->routeIs('pedido.menu.*') ? 'text-primary' : 'text-gray-600' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    <span class="text-xs font-medium">Menu</span>
+                </a>
+                <a href="{{ route('customer.orders.index') }}" class="flex flex-col items-center gap-1 py-2 {{ request()->routeIs('customer.orders.*') ? 'text-primary' : 'text-gray-600' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 relative">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    </svg>
+                    <span class="text-xs font-medium">Pedidos</span>
+                </a>
+                <a href="{{ route('pedido.cart.index') }}" class="flex flex-col items-center gap-1 py-2 {{ request()->routeIs('pedido.cart.index') ? 'text-primary' : 'text-gray-600' }} relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+                    @if($cartCount > 0)
+                    <div id="navCartBadge" class="absolute top-0 right-0 h-5 w-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold transform translate-x-1 -translate-y-1 shadow-sm" style="min-width: 20px;">
+                        {{ $cartCount }}
+                    </div>
+                    @else
+                    <div id="navCartBadge" class="absolute top-0 right-0 h-5 w-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold transform translate-x-1 -translate-y-1 shadow-sm hidden" style="min-width: 20px;"></div>
+                    @endif
+                    <span class="text-xs font-medium">Ver carrinho</span>
+                </a>
+            </div>
+        </nav>
+        @endif
+        
+        <!-- Barra Inferior do Carrinho (só exibe se houver itens) - POSICIONADA ACIMA DA NAVEGAÇÃO -->
+        @if(!request()->routeIs('pedido.checkout*') && !request()->routeIs('pedido.payment*') && !request()->routeIs('pedido.cart.index'))
+        <div id="cartBottomBar" class="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 {{ $cartCount > 0 ? '' : 'hidden' }}" style="bottom: 60px;">
+            <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs sm:text-sm font-medium text-gray-900 leading-tight">Subtotal</div>
+                    <div class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate" id="cartBottomTotal">R$ 0,00</div>
+                    <div class="text-xs text-gray-500 leading-tight whitespace-nowrap" id="cartBottomItems">0 itens</div>
+                </div>
+                <a href="{{ route('pedido.cart.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-11 sm:h-12 px-4 sm:px-6 flex-shrink-0 relative">
+                    <span class="relative">
+                        Ver carrinho
+                        @if($cartCount > 0)
+                        <span class="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-white text-primary text-xs flex items-center justify-center font-bold border-2 border-primary" id="cartBottomBarBadge">{{ $cartCount }}</span>
+                        @endif
+                    </span>
+                </a>
+            </div>
+        </div>
         @endif
         
         <!-- Drawer do Carrinho (slide-in da direita) -->
@@ -386,14 +462,62 @@
           }
         }
         
-        // Badge flutuante
-        const floatingBadge = document.getElementById('cartBadgeFloating');
-        if (floatingBadge) {
+        // Badge no botão "Ver carrinho" da navegação inferior
+        const navCartBadge = document.getElementById('navCartBadge');
+        if (navCartBadge) {
           if ((count||0) > 0) {
-            floatingBadge.textContent = count;
-            floatingBadge.style.display = 'flex';
+            navCartBadge.textContent = count;
+            navCartBadge.classList.remove('hidden');
+            navCartBadge.style.display = 'flex';
           } else {
-            floatingBadge.style.display = 'none';
+            navCartBadge.classList.add('hidden');
+            navCartBadge.style.display = 'none';
+          }
+        }
+        
+        // Atualizar barra inferior do carrinho
+        const cartBottomBar = document.getElementById('cartBottomBar');
+        if (cartBottomBar) {
+          if ((count||0) > 0) {
+            cartBottomBar.classList.remove('hidden');
+            // Buscar dados do carrinho para atualizar total
+            fetch('{{ route('pedido.cart.items') }}', {
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            }).then(res => res.json()).then(data => {
+              if (data && data.items && data.items.length > 0) {
+                const total = data.items.reduce((sum, item) => {
+                  return sum + (parseFloat(item.price || 0) * parseInt(item.qty || 1));
+                }, 0);
+                const itemCount = data.items.reduce((sum, item) => sum + parseInt(item.qty || 1), 0);
+                
+                const totalEl = document.getElementById('cartBottomTotal');
+                const itemsEl = document.getElementById('cartBottomItems');
+                const badgeEl = document.getElementById('cartBottomBarBadge');
+                
+                if (totalEl) totalEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+                if (itemsEl) itemsEl.textContent = itemCount + (itemCount === 1 ? ' item' : ' itens');
+                if (badgeEl) {
+                  badgeEl.textContent = itemCount;
+                  badgeEl.style.display = itemCount > 0 ? 'flex' : 'none';
+                } else if (itemCount > 0) {
+                  // Criar badge se não existir
+                  const cartButton = cartBottomBar.querySelector('a[href*="cart"]');
+                  if (cartButton) {
+                    const badge = document.createElement('span');
+                    badge.id = 'cartBottomBarBadge';
+                    badge.className = 'absolute -top-2 -right-2 h-5 w-5 rounded-full bg-white text-primary text-xs flex items-center justify-center font-bold border-2 border-primary';
+                    badge.textContent = itemCount;
+                    badge.style.minWidth = '20px';
+                    const span = cartButton.querySelector('span.relative');
+                    if (span) {
+                      span.appendChild(badge);
+                    }
+                  }
+                }
+              }
+            }).catch(e => console.error('Erro ao atualizar barra do carrinho:', e));
+          } else {
+            cartBottomBar.classList.add('hidden');
           }
         }
       }

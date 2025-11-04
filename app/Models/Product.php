@@ -18,6 +18,7 @@ class Product extends Model
         'price',
         'stock',
         'is_active',
+        'show_in_catalog',
         'gluten_free',
         'contamination_risk',
         'cover_image',
@@ -38,6 +39,7 @@ class Product extends Model
         'is_featured' => 'boolean',
         'is_available' => 'boolean',
         'is_active' => 'boolean',
+        'show_in_catalog' => 'boolean',
         'gluten_free' => 'boolean',
         'contamination_risk' => 'boolean',
         'nutritional_info' => 'array',
@@ -70,6 +72,14 @@ class Product extends Model
     }
 
     /**
+     * Preços de revenda
+     */
+    public function wholesalePrices(): HasMany
+    {
+        return $this->hasMany(ProductWholesalePrice::class)->orderBy('min_quantity');
+    }
+
+    /**
      * Relacionamento com alérgenos
      */
     public function allergens()
@@ -99,6 +109,14 @@ class Product extends Model
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true);
+    }
+
+    /**
+     * Scope para produtos que aparecem no catálogo público
+     */
+    public function scopeShowInCatalog($query)
+    {
+        return $query->where('show_in_catalog', true);
     }
 
     /**

@@ -15,6 +15,12 @@
     <form id="checkoutForm" method="POST" action="{{ route('pedido.checkout.store') }}">
         @csrf
         
+        <!-- Campos hidden para dados de desconto de frete -->
+        <input type="hidden" name="delivery_fee" id="hidden_delivery_fee" value="0">
+        <input type="hidden" name="base_delivery_fee" id="hidden_base_delivery_fee" value="0">
+        <input type="hidden" name="delivery_discount_percent" id="hidden_delivery_discount_percent" value="0">
+        <input type="hidden" name="delivery_discount_amount" id="hidden_delivery_discount_amount" value="0">
+        
         <div class="grid lg:grid-cols-[1fr_400px] gap-4 sm:gap-6 lg:gap-8 w-full">
             <!-- Coluna Esquerda: Formulário -->
             <div class="space-y-4 sm:space-y-6 w-full">
@@ -50,7 +56,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2">Número *</label>
-                                <input type="text" name="number" id="number" value="{{ old('number', $prefill['number'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                                <input type="text" name="number" id="number" value="{{ old('number', $prefill['number'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" inputmode="numeric" pattern="[0-9]*">
                             </div>
                         </div>
                         
@@ -238,8 +244,8 @@
                         </div>
                     </div>
 
-                    <div class="w-full mt-6">
-                        <button type="submit" id="btn-finalize-order" class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <div class="w-full mt-6 relative z-10">
+                        <button type="submit" id="btn-finalize-order" class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative z-10" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent;" disabled>
                             Finalizar Pedido
                         </button>
                         <p id="frete-pending-message" class="mt-2 text-xs text-yellow-600 hidden text-center">
@@ -278,11 +284,16 @@ function updateFinalizeButtonState() {
     }
     
         // Verificar se o frete está no DOM (backup check)
+        const deliveryFeeElement = document.getElementById('summaryDeliveryFee');
+        const deliveryFeeText = deliveryFeeElement?.textContent?.trim() || '';
         const deliveryFeeInDOM = parseFloat(
-            document.getElementById('summaryDeliveryFee')?.textContent
+            deliveryFeeText
                 .replace(/[^\d,]/g, '')
                 .replace(',', '.') || '0'
         ) || 0;
+        
+        // Verificar se o texto é "Grátis" (indica que frete foi calculado e é zero)
+        const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
         
         // Verificar se endereço está completo (CEP, número, rua, bairro, cidade, estado)
         const hasNumber = document.getElementById('number')?.value.trim().length > 0;
@@ -302,10 +313,10 @@ function updateFinalizeButtonState() {
         }
         
         // Se o frete foi calculado (flag = true) OU se há um valor de frete no DOM (mesmo que 0 = grátis)
-        // IMPORTANTE: Se deliveryFeeInDOM existe no DOM, significa que o frete foi calculado
-        // Mesmo que seja 0 (grátis), isso significa que foi calculado
+        // IMPORTANTE: Se deliveryFeeInDOM existe no DOM OU se o texto é "Grátis", significa que o frete foi calculado
         const freteFoiCalculado = window.checkoutData.freteCalculado === true || 
-                                   (deliveryFeeInDOM !== null && !isNaN(deliveryFeeInDOM) && document.getElementById('summaryDeliveryFee')?.textContent.trim().length > 0);
+                                   isGratis ||
+                                   (deliveryFeeText.length > 0 && deliveryFeeElement && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
         
         if (!freteFoiCalculado) {
             btnFinalize.disabled = true;
@@ -316,10 +327,10 @@ function updateFinalizeButtonState() {
         } else {
             // Frete calculado (flag OU valor no DOM), habilitar botão
             // Se o frete está no DOM mas a flag não foi marcada, marcar agora
-            if (!window.checkoutData.freteCalculado && document.getElementById('summaryDeliveryFee')?.textContent.trim().length > 0) {
+            if (!window.checkoutData.freteCalculado && (deliveryFeeText.length > 0 || isGratis)) {
                 window.checkoutData.freteCalculado = true;
-                window.checkoutData.deliveryFee = deliveryFeeInDOM;
-                console.log('updateFinalizeButtonState: Frete detectado no DOM, marcando como calculado:', deliveryFeeInDOM);
+                window.checkoutData.deliveryFee = isGratis ? 0 : deliveryFeeInDOM;
+                console.log('updateFinalizeButtonState: Frete detectado no DOM, marcando como calculado:', isGratis ? 0 : deliveryFeeInDOM);
             }
             btnFinalize.disabled = false;
             if (messagePending) messagePending.classList.add('hidden');
@@ -386,8 +397,19 @@ document.getElementById('applyCouponBtn')?.addEventListener('click', async funct
 });
 
 // Função para atualizar resumo do pedido
+// Flag para prevenir chamadas simultâneas
+let updateOrderSummaryRunning = false;
+
 async function updateOrderSummary(subtotal = null, deliveryFee = null) {
-    // Priorizar parâmetros passados, depois window.checkoutData, depois elementos do DOM
+    // Prevenir chamadas simultâneas
+    if (updateOrderSummaryRunning) {
+        console.log('updateOrderSummary: Já executando, ignorando chamada');
+        return;
+    }
+    updateOrderSummaryRunning = true;
+
+    try {
+        // Priorizar parâmetros passados, depois window.checkoutData, depois elementos do DOM
     const currentSubtotal = parseFloat(subtotal) || parseFloat(window.checkoutData?.subtotal) || parseFloat(document.getElementById('summarySubtotal')?.textContent?.replace(/[^\d,]/g, '')?.replace(',', '.')) || 0;
     
     // Priorizar o parâmetro deliveryFee se foi passado (não-null), senão usar outras fontes
@@ -439,6 +461,10 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         const couponMessage = data.coupon_message || null;
         const cashbackUsed = parseFloat(data.cashback_used || 0);
         const cashbackEarned = parseFloat(data.cashback_earned || 0);
+        const eligibleCoupons = data.eligible_coupons || [];
+        let deliveryDiscountPercent = parseFloat(data.delivery_discount_percent || 0);
+        let deliveryDiscountAmount = parseFloat(data.delivery_discount_amount || 0);
+        let baseDeliveryFee = parseFloat(data.base_delivery_fee || data.delivery_fee || 0);
         
         // Log detalhado para debug
         console.log('updateOrderSummary: Valores recebidos do backend', {
@@ -493,10 +519,16 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         // Atualizar display
         document.getElementById('summarySubtotal').textContent = `R$ ${Number(currentSubtotal).toFixed(2).replace('.', ',')}`;
         
-        // Exibir desconto de frete se houver (vem de window.checkoutData após buscarCep)
-        const deliveryDiscountAmount = window.checkoutData?.deliveryDiscountAmount || 0;
-        const deliveryDiscountPercent = window.checkoutData?.deliveryDiscountPercent || 0;
-        const baseDeliveryFee = window.checkoutData?.baseDeliveryFee || currentDeliveryFee;
+        // Exibir desconto de frete se houver (vem do backend via calculateDiscounts)
+        // Usar nullish coalescing (??) para não usar valores antigos quando o valor é 0
+        // Priorizar dados do backend, depois window.checkoutData apenas se backend não retornou nada
+        deliveryDiscountAmount = deliveryDiscountAmount ?? window.checkoutData?.deliveryDiscountAmount ?? 0;
+        deliveryDiscountPercent = deliveryDiscountPercent ?? window.checkoutData?.deliveryDiscountPercent ?? 0;
+        baseDeliveryFee = baseDeliveryFee ?? window.checkoutData?.baseDeliveryFee ?? currentDeliveryFee;
+
+        // NÃO calcular desconto automaticamente - apenas usar valores do backend
+        // Se o backend não retornou desconto, não há desconto
+        // Remover a lógica de cálculo automático que estava causando desconto incorreto
         
         if (deliveryDiscountAmount > 0) {
             const discountRow = document.getElementById('summaryDeliveryDiscountRow');
@@ -509,12 +541,19 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         }
         
         // Mostrar frete final (já com desconto aplicado)
-        if (currentDeliveryFee <= 0 && baseDeliveryFee > 0) {
+        // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
+        if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
+            // Frete grátis por desconto de 100%
             document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
             document.getElementById('summaryDeliveryFee').classList.add('text-green-700');
-        } else {
+        } else if (currentDeliveryFee > 0) {
+            // Há frete a pagar
             document.getElementById('summaryDeliveryFee').textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
             document.getElementById('summaryDeliveryFee').classList.remove('text-green-700');
+        } else {
+            // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
+            document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
+            document.getElementById('summaryDeliveryFee').classList.add('text-green-700');
         }
         
         // Marcar como calculado SEMPRE que recebemos um valor (mesmo 0 = grátis)
@@ -575,18 +614,27 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         // Log final do total
         console.log('updateOrderSummary: Total final calculado e exibido:', total);
         
+        // Atualizar combobox de cupons baseado nos cupons elegíveis
+        updateCouponsCombobox(eligibleCoupons);
+        
         // Atualizar dados globais (preservar dados de desconto de frete se existirem)
         window.checkoutData = { 
             subtotal: Number(currentSubtotal), 
             deliveryFee: Number(currentDeliveryFee), 
-            baseDeliveryFee: window.checkoutData?.baseDeliveryFee || Number(currentDeliveryFee),
-            deliveryDiscountPercent: window.checkoutData?.deliveryDiscountPercent || 0,
-            deliveryDiscountAmount: window.checkoutData?.deliveryDiscountAmount || 0,
+            baseDeliveryFee: baseDeliveryFee,
+            deliveryDiscountPercent: deliveryDiscountPercent,
+            deliveryDiscountAmount: deliveryDiscountAmount,
             couponDiscount: Number(couponDiscount),
             cashbackUsed: Number(cashbackUsed),
             cashbackEarned: Number(cashbackEarned),
             total: Number(total)
         };
+        
+        // Atualizar campos hidden do formulário com dados de desconto de frete
+        document.getElementById('hidden_delivery_fee').value = Number(currentDeliveryFee).toFixed(2);
+        document.getElementById('hidden_base_delivery_fee').value = Number(baseDeliveryFee || currentDeliveryFee).toFixed(2);
+        document.getElementById('hidden_delivery_discount_percent').value = Number(deliveryDiscountPercent || 0).toFixed(0);
+        document.getElementById('hidden_delivery_discount_amount').value = Number(deliveryDiscountAmount || 0).toFixed(2);
         
         // Verificação de consistência: alertar se houver discrepância
         const expectedTotal = currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed;
@@ -602,23 +650,32 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             });
         }
     } catch (error) {
+        console.error('Erro ao processar resposta do servidor:', error);
+        // Fallback: manter valores atuais sem atualizar
+    }
+    } catch (error) {
         console.error('Erro ao calcular descontos:', error);
         // Fallback simples
         const simpleTotal = Number(currentSubtotal) + Number(currentDeliveryFee);
         if (document.getElementById('summaryTotal')) {
             document.getElementById('summaryTotal').textContent = `R$ ${simpleTotal.toFixed(2).replace('.', ',')}`;
         }
+    } finally {
+        // Sempre resetar a flag
+        updateOrderSummaryRunning = false;
     }
 }
 
 // Atualizar ao mudar email/telefone
 // Função para preencher endereço quando cliente é identificado
 async function loadCustomerAddress(phone, email) {
+    console.log('loadCustomerAddress: Chamada recebida', { phone, email });
+
     if (!phone && !email) {
         console.log('loadCustomerAddress: Nenhum telefone ou email fornecido');
         return;
     }
-    
+
     console.log('loadCustomerAddress: Buscando cliente', { phone, email });
     
     try {
@@ -682,7 +739,9 @@ async function loadCustomerAddress(phone, email) {
             if (customer.number) {
                 const numberField = document.getElementById('number');
                 if (numberField && !numberField.value.trim()) {
-                    numberField.value = customer.number;
+                    // Filtrar apenas números do número do endereço
+                    const numberOnly = String(customer.number).replace(/\D/g, '');
+                    numberField.value = numberOnly;
                     filledAny = true;
                 }
             }
@@ -723,20 +782,40 @@ async function loadCustomerAddress(phone, email) {
                     }
                 }, 300);
             } else if (customer.zip_code && filledAny) {
-                // Se já tem CEP preenchido, calcular frete automaticamente
-                console.log('loadCustomerAddress: CEP já preenchido, calculando frete automaticamente');
+                // Se já tem CEP preenchido, SEMPRE recalcular frete automaticamente
+                // Isso garante que o frete seja atualizado mesmo em pedidos subsequentes
+                console.log('loadCustomerAddress: CEP já preenchido, SEMPRE recalcular frete automaticamente');
                 setTimeout(async () => {
                     const zipCodeField = document.getElementById('zip_code');
                     if (zipCodeField && zipCodeField.value.trim()) {
                         const cep = zipCodeField.value.replace(/\D/g, '');
                         if (cep.length === 8) {
-                            // Buscar CEP e calcular frete - buscarCep já marca freteCalculado quando bem-sucedido
+                            // Sempre buscar CEP e recalcular frete, mesmo que já esteja preenchido
+                            // Resetar flag para forçar recálculo
+                            window.checkoutData.freteCalculado = false;
                             if (typeof buscarCep === 'function') {
                                 await buscarCep(); // buscarCep já calcula o frete automaticamente e marca a flag
                             }
                         }
                     }
                 }, 500);
+            } else if (customer.zip_code && !filledAny) {
+                // Se o CEP já estava preenchido mas não preencheu nada novo, mesmo assim recalcular frete
+                // Isso garante que pedidos subsequentes sempre tenham o frete recalculado
+                console.log('loadCustomerAddress: CEP já estava preenchido, forçando recálculo do frete');
+                setTimeout(async () => {
+                    const zipCodeField = document.getElementById('zip_code');
+                    if (zipCodeField && zipCodeField.value.trim()) {
+                        const cep = zipCodeField.value.replace(/\D/g, '');
+                        if (cep.length === 8) {
+                            // Resetar flag e recalcular frete
+                            window.checkoutData.freteCalculado = false;
+                            if (typeof buscarCep === 'function') {
+                                await buscarCep();
+                            }
+                        }
+                    }
+                }, 700);
             }
             
             if (filledAny) {
@@ -764,8 +843,47 @@ document.getElementById('customer_phone')?.addEventListener('blur', async functi
     updateOrderSummary();
 });
 
+// Filtrar campo número para aceitar apenas números
+const numberField = document.getElementById('number');
+if (numberField) {
+    // Filtro em tempo real: remover qualquer caractere não numérico
+    numberField.addEventListener('input', function(e) {
+        // Remover todos os caracteres não numéricos
+        const value = e.target.value.replace(/\D/g, '');
+        if (e.target.value !== value) {
+            e.target.value = value;
+        }
+    });
+    
+    // Filtro ao colar (paste)
+    numberField.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const numbersOnly = pastedText.replace(/\D/g, '');
+        const currentValue = e.target.value;
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        e.target.value = currentValue.substring(0, start) + numbersOnly + currentValue.substring(end);
+        e.target.setSelectionRange(start + numbersOnly.length, start + numbersOnly.length);
+    });
+    
+    // Garantir que o valor inicial também seja filtrado
+    if (numberField.value) {
+        const filteredValue = numberField.value.replace(/\D/g, '');
+        if (numberField.value !== filteredValue) {
+            numberField.value = filteredValue;
+        }
+    }
+}
+
 // Recalcular cashback quando número do endereço mudar (pode afetar frete)
 document.getElementById('number')?.addEventListener('blur', async function() {
+    // Garantir que o valor final seja apenas números
+    const value = this.value.replace(/\D/g, '');
+    if (this.value !== value) {
+        this.value = value;
+    }
+    
     // Se o frete já foi calculado, recalcular resumo para garantir cashback atualizado
     if (window.checkoutData.freteCalculado) {
         await updateOrderSummary();
@@ -776,8 +894,16 @@ document.getElementById('number')?.addEventListener('blur', async function() {
 (function() {
     const zipCodeInput = document.getElementById('zip_code');
     const cepFeedback = document.getElementById('cepFeedback');
-    
-    if (!zipCodeInput) return;
+
+    console.log('CEP: Inicializando busca automática de CEP', {
+        zipCodeInput: !!zipCodeInput,
+        cepFeedback: !!cepFeedback
+    });
+
+    if (!zipCodeInput) {
+        console.warn('CEP: Campo zip_code não encontrado');
+        return;
+    }
     
     let timeoutId = null;
     
@@ -812,7 +938,10 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     
     async function buscarCep() {
         const cep = zipCodeInput.value.replace(/\D/g, '');
+        console.log('buscarCep: Iniciando busca para CEP:', cep);
+
         if (cep.length !== 8) {
+            console.warn('buscarCep: CEP inválido, deve ter 8 dígitos');
             cepFeedback.textContent = 'CEP deve ter 8 dígitos';
             cepFeedback.className = 'text-xs text-red-500 mt-1';
             window.checkoutData.freteCalculado = false;
@@ -925,6 +1054,12 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                     window.checkoutData.deliveryDiscountPercent = discountPercent;
                     window.checkoutData.deliveryDiscountAmount = discountAmount;
                     
+                    // Atualizar campos hidden do formulário
+                    document.getElementById('hidden_delivery_fee').value = deliveryFee.toFixed(2);
+                    document.getElementById('hidden_base_delivery_fee').value = baseDeliveryFee.toFixed(2);
+                    document.getElementById('hidden_delivery_discount_percent').value = discountPercent.toFixed(0);
+                    document.getElementById('hidden_delivery_discount_amount').value = discountAmount.toFixed(2);
+                    
                     // Atualizar o resumo com o novo frete
                     await updateOrderSummary(null, deliveryFee);
                     
@@ -1006,6 +1141,16 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     
     // Filtrar cupons ao carregar a página e atualizar resumo
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded: Checkout inicializando...');
+
+        // Verificar se elementos essenciais existem
+        const btnFinalize = document.getElementById('btn-finalize-order');
+        const zipCodeInput = document.getElementById('zip_code');
+        console.log('DOMContentLoaded: Elementos encontrados:', {
+            btnFinalize: !!btnFinalize,
+            zipCodeInput: !!zipCodeInput
+        });
+
         // Preencher cupom aplicado se existir (pedido do PDV)
         @if(isset($appliedCouponCode) && !empty($appliedCouponCode))
         const appliedCoupon = '{{ $appliedCouponCode }}';
@@ -1029,20 +1174,22 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         }
         @endif
         
-        // PRIMEIRO: Verificar se o frete já está calculado no DOM
+        // PRIMEIRO: Verificar se o frete já está calculado no DOM (mas SEMPRE recalcular para garantir valor atualizado)
         const deliveryFeeElement = document.getElementById('summaryDeliveryFee');
         let freteJaCalculado = false;
         if (deliveryFeeElement) {
             const deliveryFeeText = deliveryFeeElement.textContent;
             const deliveryFee = parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
             
-            // Se já existe um frete calculado e maior que 0, marcar como calculado
-            if (deliveryFee > 0) {
-                window.checkoutData.freteCalculado = true;
-                window.checkoutData.deliveryFee = deliveryFee;
+            // Se já existe um frete calculado, marcar temporariamente como calculado
+            // MAS: vamos sempre recalcular para garantir que o valor está atualizado em pedidos subsequentes
+            if (deliveryFee >= 0 && deliveryFeeText.trim().length > 0) {
+                // Temporariamente marcar como calculado apenas para não bloquear o botão inicialmente
+                // Mas será recalculado para garantir valor atualizado
                 freteJaCalculado = true;
-                console.log('DOMContentLoaded: Frete já calculado detectado:', deliveryFee);
+                console.log('DOMContentLoaded: Frete detectado no DOM (será recalculado):', deliveryFee);
                 // Atualizar estado do botão IMEDIATAMENTE se frete já está calculado
+                // Mas será recalculado para garantir valor atualizado
                 updateFinalizeButtonState();
             }
             
@@ -1051,19 +1198,18 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             }
         }
         
+        // IMPORTANTE: Sempre resetar a flag para forçar recálculo em pedidos subsequentes
+        // Isso garante que o frete seja sempre atualizado, mesmo quando já está preenchido
+        window.checkoutData.freteCalculado = false;
+        
         // Se cliente já foi identificado (telefone/email preenchidos), carregar endereço automaticamente
         const customerPhone = document.getElementById('customer_phone')?.value || '';
         const customerEmail = document.getElementById('customer_email')?.value || '';
         if (customerPhone || customerEmail) {
             console.log('DOMContentLoaded: Cliente já identificado, carregando endereço', { customerPhone, customerEmail });
-            // loadCustomerAddress pode calcular o frete, então aguardar antes de verificar estado do botão
-            // MAS: Se o frete já está calculado, não deixar loadCustomerAddress sobrescrever
+            // loadCustomerAddress irá calcular o frete automaticamente
+            // NÃO preservar frete antigo - sempre recalcular para garantir valor atualizado
             loadCustomerAddress(customerPhone, customerEmail).then(() => {
-                // Preservar estado do frete se já estava calculado
-                if (freteJaCalculado && window.checkoutData.deliveryFee > 0) {
-                    window.checkoutData.freteCalculado = true;
-                    console.log('DOMContentLoaded: Preservando frete já calculado após loadCustomerAddress');
-                }
                 // Após carregar endereço, dar um tempo para buscarCep executar se foi chamado
                 setTimeout(() => {
                     updateFinalizeButtonState();
@@ -1089,21 +1235,23 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                     });
                 }, 300);
             } else {
-                // Endereço já preenchido
-                if (!freteJaCalculado) {
-                    // Apenas calcular frete se ainda não foi calculado
-                    const currentFee = parseFloat(window.checkoutData.deliveryFee) || 0;
-                    if (currentFee <= 0 && typeof buscarCep === 'function') {
-                        console.log('DOMContentLoaded: CEP preenchido sem frete, calculando...');
-                        // Chamar apenas a parte de cálculo de frete, sem buscar endereço novamente
-                        buscarCep().then(() => {
-                            updateFinalizeButtonState();
-                        });
-                    } else {
+                // Endereço já preenchido - SEMPRE recalcular frete para garantir valor atualizado
+                // Não importa se já foi calculado antes - sempre recalcular em pedidos subsequentes
+                console.log('DOMContentLoaded: Endereço já preenchido, mas SEMPRE recalcular frete para garantir valor atualizado');
+                // Resetar flag para forçar recálculo
+                window.checkoutData.freteCalculado = false;
+                
+                // Sempre recalcular o frete, mesmo que já tenha sido calculado antes
+                // Isso garante que pedidos subsequentes sempre tenham o frete atualizado
+                const zipCodeDigits = zipCodeField.value.replace(/\D/g, '');
+                if (zipCodeDigits.length === 8 && typeof buscarCep === 'function') {
+                    console.log('DOMContentLoaded: CEP preenchido, recalculando frete mesmo que endereço já esteja preenchido...');
+                    // Chamar buscarCep que irá recalcular o frete mesmo que o endereço já esteja preenchido
+                    buscarCep().then(() => {
                         updateFinalizeButtonState();
-                    }
+                    });
                 } else {
-                    // Frete já calculado, apenas atualizar estado do botão
+                    // Se não tem CEP válido, apenas atualizar estado do botão
                     updateFinalizeButtonState();
                 }
             }
@@ -1115,35 +1263,264 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         updateFinalizeButtonState();
         
         // Atualizar resumo ao carregar para mostrar cashback ganho
-        // MAS: Se frete já estava calculado, não deixar updateOrderSummary sobrescrever
+        // MAS: NÃO preservar frete antigo - sempre recalcular para garantir valor atualizado
         updateOrderSummary().then(() => {
-            // Preservar frete calculado após updateOrderSummary
-            if (freteJaCalculado && window.checkoutData.deliveryFee > 0) {
-                window.checkoutData.freteCalculado = true;
-                console.log('DOMContentLoaded: Preservando frete já calculado após updateOrderSummary');
-                updateFinalizeButtonState();
-            }
+            // Não preservar frete antigo - ele será recalculado pelas funções acima
+            // Apenas atualizar estado do botão
+            updateFinalizeButtonState();
         });
+        
+        // Verificação periódica no mobile para garantir que o botão seja habilitado
+        // (pode ser necessário devido a problemas de sincronização no mobile)
+        if (window.innerWidth <= 768) {
+            setInterval(() => {
+                const btn = document.getElementById('btn-finalize-order');
+                if (btn && btn.disabled) {
+                    // Verificar se deveria estar habilitado
+                    updateFinalizeButtonState();
+                }
+            }, 2000); // Verificar a cada 2 segundos
+        }
     });
     
     // Buscar ao sair do campo (blur) também
     zipCodeInput.addEventListener('blur', function() {
         const cep = this.value.replace(/\D/g, '');
+        console.log('CEP blur: Verificando CEP', cep);
         if (cep.length === 8) {
+            console.log('CEP blur: Chamando buscarCep');
+            buscarCep();
+        } else {
+            console.log('CEP blur: CEP incompleto, ignorando');
+        }
+    });
+    
+    // Buscar quando o campo mudar (change) - disparado quando navegador preenche automaticamente
+    zipCodeInput.addEventListener('change', function() {
+        const cep = this.value.replace(/\D/g, '');
+        console.log('CEP change: Verificando CEP', cep);
+        if (cep.length === 8 && !window.checkoutData.freteCalculado) {
+            console.log('CEP change: Chamando buscarCep (CEP completo e frete não calculado)');
             buscarCep();
         }
     });
+    
+    // Verificar quando o campo recebe foco e já tem valor completo
+    zipCodeInput.addEventListener('focus', function() {
+        const cep = this.value.replace(/\D/g, '');
+        console.log('CEP focus: Verificando CEP', cep);
+        if (cep.length === 8 && !window.checkoutData.freteCalculado) {
+            console.log('CEP focus: CEP completo mas frete não calculado, chamando buscarCep');
+            buscarCep();
+        }
+    });
+    
+    // Verificar CEP no carregamento da página (caso já esteja preenchido)
+    function verificarCepAoCarregar() {
+        const cep = zipCodeInput.value.replace(/\D/g, '');
+        console.log('Verificando CEP ao carregar:', cep);
+        if (cep.length === 8) {
+            // Verificar se o endereço já está preenchido (indicando que CEP já foi buscado)
+            const hasAddress = document.getElementById('address')?.value.trim().length > 0;
+            const hasNeighborhood = document.getElementById('neighborhood')?.value.trim().length > 0;
+            
+            // SEMPRE recalcular o frete quando o CEP está preenchido, mesmo que o endereço já esteja preenchido
+            // Isso garante que o frete seja atualizado para pedidos subsequentes
+            if (!hasAddress || !window.checkoutData.freteCalculado) {
+                console.log('CEP ao carregar: CEP completo mas endereço/frete não calculado, buscando CEP e frete');
+                // Resetar flag para forçar recálculo
+                window.checkoutData.freteCalculado = false;
+                // Aguardar um pouco para garantir que outros scripts já inicializaram
+                setTimeout(() => {
+                    buscarCep();
+                }, 500);
+            } else {
+                console.log('CEP ao carregar: CEP completo e endereço já preenchido, mas SEMPRE recalcular frete para garantir valor atualizado');
+                // SEMPRE recalcular o frete, mesmo que o endereço já esteja preenchido
+                // Isso é necessário porque o frete pode mudar entre pedidos ou o valor pode estar desatualizado
+                // Resetar flag para forçar recálculo
+                window.checkoutData.freteCalculado = false;
+                setTimeout(async () => {
+                    const zipCodeDigits = zipCodeInput.value.replace(/\D/g, '');
+                    if (zipCodeDigits.length === 8) {
+                        const customerPhone = document.querySelector('input[name="customer_phone"]')?.value || '';
+                        const customerEmail = document.querySelector('input[name="customer_email"]')?.value || '';
+                        
+                        console.log('CEP ao carregar: Recalculando frete para CEP:', zipCodeDigits);
+                        
+                        try {
+                            const feeResponse = await fetch('{{ route("pedido.cart.calculateDeliveryFee") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ 
+                                    zipcode: zipCodeDigits, 
+                                    customer_phone: customerPhone, 
+                                    customer_email: customerEmail 
+                                })
+                            });
+                            
+                            const feeData = await feeResponse.json();
+                            console.log('CEP ao carregar: Resposta do cálculo de frete:', feeData);
+                            
+                            if (feeData.success && feeData.delivery_fee !== undefined) {
+                                const deliveryFee = parseFloat(feeData.delivery_fee) || 0;
+                                const baseDeliveryFee = parseFloat(feeData.base_delivery_fee || feeData.delivery_fee) || 0;
+                                const discountPercent = parseFloat(feeData.discount_percent || 0) || 0;
+                                const discountAmount = parseFloat(feeData.discount_amount || 0) || 0;
+                                
+                                console.log('CEP ao carregar: Frete recalculado:', {
+                                    deliveryFee,
+                                    baseDeliveryFee,
+                                    discountPercent,
+                                    discountAmount
+                                });
+                                
+                                window.checkoutData.freteCalculado = true;
+                                window.checkoutData.deliveryFee = deliveryFee;
+                                window.checkoutData.baseDeliveryFee = baseDeliveryFee;
+                                window.checkoutData.deliveryDiscountPercent = discountPercent;
+                                window.checkoutData.deliveryDiscountAmount = discountAmount;
+                                
+                                document.getElementById('hidden_delivery_fee').value = deliveryFee.toFixed(2);
+                                document.getElementById('hidden_base_delivery_fee').value = baseDeliveryFee.toFixed(2);
+                                document.getElementById('hidden_delivery_discount_percent').value = discountPercent.toFixed(0);
+                                document.getElementById('hidden_delivery_discount_amount').value = discountAmount.toFixed(2);
+                                
+                                await updateOrderSummary(null, deliveryFee);
+                                updateFinalizeButtonState();
+                            } else {
+                                console.warn('CEP ao carregar: Falha ao calcular frete:', feeData.message || 'Resposta inválida');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao calcular frete ao carregar:', error);
+                        }
+                    }
+                }, 1000);
+            }
+        }
+    }
+    
+    // Executar verificação quando DOM estiver pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', verificarCepAoCarregar);
+    } else {
+        // DOM já está pronto, executar após um pequeno delay para garantir que outros scripts inicializaram
+        setTimeout(verificarCepAoCarregar, 1000);
+    }
+
+    // Tornar buscarCep disponível globalmente para debug
+    window.buscarCep = buscarCep;
 })();
 
+// Função para validar cupom antes do submit
+async function validateCouponBeforeSubmit() {
+    const couponCode = document.getElementById('applied_coupon_code')?.value?.trim() || '';
+    
+    // Se não há cupom, não precisa validar
+    if (!couponCode) {
+        return { valid: true };
+    }
+    
+    try {
+        const customerEmail = document.querySelector('input[name="customer_email"]')?.value || '';
+        const customerPhone = document.querySelector('input[name="customer_phone"]')?.value || '';
+        const currentDeliveryFee = parseFloat(window.checkoutData?.deliveryFee) || parseFloat(document.getElementById('summaryDeliveryFee')?.textContent?.replace(/[^\d,]/g, '')?.replace(',', '.')) || 0;
+        
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const response = await fetch('{{ route("pedido.checkout.calculate-discounts") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                customer_email: customerEmail,
+                customer_phone: customerPhone,
+                coupon_code: couponCode,
+                delivery_fee: currentDeliveryFee,
+                use_cashback: false, // Não usar cashback na validação
+            })
+        });
+        
+        const data = await response.json();
+        const couponDiscount = parseFloat(data.coupon_discount || 0);
+        const couponMessage = data.coupon_message || null;
+        
+        // Se não há desconto E há mensagem de erro, o cupom é inválido
+        if (couponDiscount === 0 && couponMessage && typeof couponMessage === 'string' && couponMessage.trim() !== '') {
+            // Cupom inválido - limpar campos
+            document.getElementById('applied_coupon_code').value = '';
+            document.getElementById('coupon_code_public').value = '';
+            document.getElementById('coupon_code_private').value = '';
+            
+            // Mostrar mensagem ao usuário
+            const couponFeedback = document.getElementById('couponFeedback');
+            if (couponFeedback) {
+                couponFeedback.textContent = couponMessage.trim();
+                couponFeedback.className = 'text-sm mt-2 text-red-600';
+            }
+            
+            // Atualizar resumo sem o cupom
+            await updateOrderSummary();
+            
+            return { 
+                valid: false, 
+                message: couponMessage.trim() 
+            };
+        }
+        
+        // Se há desconto ou não há mensagem de erro, o cupom é válido
+        return { valid: true };
+    } catch (error) {
+        console.error('Erro ao validar cupom antes do submit:', error);
+        // Em caso de erro, permitir continuar (o backend também validará)
+        return { valid: true };
+    }
+}
+
 // Validação antes do submit
-document.getElementById('checkoutForm')?.addEventListener('submit', function(e) {
+document.getElementById('checkoutForm')?.addEventListener('submit', async function(e) {
+    // IMPORTANTE: Prevenir submit padrão até validar cupom
+    e.preventDefault();
+    
+    // Primeiro: validar cupom se houver
+    const couponValidation = await validateCouponBeforeSubmit();
+    if (!couponValidation.valid) {
+        // Cupom inválido já foi removido e mensagem mostrada
+        console.log('Submit: Cupom inválido removido, continuando sem cupom');
+        // Aguardar um pouco para o usuário ver a mensagem
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    // Garantir que o cupom foi removido dos campos antes de continuar
+    const appliedCoupon = document.getElementById('applied_coupon_code')?.value?.trim() || '';
+    const publicCoupon = document.getElementById('coupon_code_public')?.value?.trim() || '';
+    const privateCoupon = document.getElementById('coupon_code_private')?.value?.trim() || '';
+    
+    // Se ainda há cupom após validação, remover manualmente
+    if (appliedCoupon && !couponValidation.valid) {
+        document.getElementById('applied_coupon_code').value = '';
+        document.getElementById('coupon_code_public').value = '';
+        document.getElementById('coupon_code_private').value = '';
+        console.log('Submit: Removendo cupom inválido dos campos antes de submeter');
+    }
+    
+    // Agora prosseguir com a validação normal e submit
     // Verificar se o frete foi calculado
     // Verificar também no DOM para ter certeza (backup)
-    const deliveryFeeText = document.getElementById('summaryDeliveryFee')?.textContent || '';
+    const deliveryFeeText = document.getElementById('summaryDeliveryFee')?.textContent?.trim() || '';
     const deliveryFeeInDOM = parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    // Frete calculado = flag true OU existe valor no DOM (mesmo que seja 0 = grátis)
+    const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
+    
+    // Frete calculado = flag true OU existe valor no DOM (mesmo que seja 0 = grátis) OU texto é "Grátis"
     const freteCalculado = window.checkoutData.freteCalculado === true || 
-                           (deliveryFeeText.trim().length > 0 && !isNaN(deliveryFeeInDOM));
+                           isGratis ||
+                           (deliveryFeeText.length > 0 && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
     
     console.log('Submit: Verificando frete', {
         freteCalculado: window.checkoutData.freteCalculado,
@@ -1247,7 +1624,121 @@ document.getElementById('checkoutForm')?.addEventListener('submit', function(e) 
         slotError.classList.add('hidden');
     }
     
+    // Se chegou até aqui, todas as validações passaram
+    // Submeter o formulário manualmente
+    console.log('Submit: Todas as validações passaram, submetendo formulário');
+    const form = document.getElementById('checkoutForm');
+    if (form) {
+        // Criar um novo evento de submit para garantir que o formulário seja processado
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+        
+        // Não prevenir o novo evento - deixar o formulário ser submetido normalmente
+        // Mas primeiro precisamos remover o preventDefault do evento original
+        // Então vamos submeter diretamente
+        form.submit();
+    }
+    
+    return false; // Já submetemos manualmente, não precisa do submit padrão
+});
+
+// Listener direto no botão para mobile (garantir que funciona mesmo se submit event não disparar)
+document.getElementById('btn-finalize-order')?.addEventListener('click', function(e) {
+    console.log('Botão clicado diretamente:', {
+        disabled: this.disabled,
+        type: this.type,
+        form: this.form
+    });
+    
+    // Se o botão está disabled, prevenir clique
+    if (this.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Botão está disabled, bloqueando clique');
+        
+        // Verificar por que está disabled e mostrar mensagem
+        const deliveryFeeText = document.getElementById('summaryDeliveryFee')?.textContent?.trim() || '';
+        const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
+        const freteCalculado = window.checkoutData.freteCalculado === true || isGratis;
+        
+        if (!freteCalculado) {
+            alert('Por favor, aguarde o cálculo do frete de entrega antes de finalizar o pedido.');
+        } else {
+            // Forçar atualização do estado do botão
+            updateFinalizeButtonState();
+            // Se ainda estiver disabled após atualização, tentar submeter o form manualmente
+            setTimeout(() => {
+                if (!this.disabled && this.form) {
+                    this.form.requestSubmit();
+                }
+            }, 100);
+        }
+        return false;
+    }
+    
+    // Se não está disabled, permitir que o submit event do form seja disparado
     return true;
 });
+
+// Listener adicional para touch events no mobile
+document.getElementById('btn-finalize-order')?.addEventListener('touchend', function(e) {
+    console.log('Touch event no botão:', {
+        disabled: this.disabled,
+        type: this.type
+    });
+    
+    // Se não está disabled, disparar submit do form
+    if (!this.disabled && this.form) {
+        // Pequeno delay para garantir que o click event também seja processado
+        setTimeout(() => {
+            if (!this.disabled) {
+                this.form.requestSubmit();
+            }
+        }, 50);
+    }
+}, { passive: true });
+
+// Função para atualizar dinamicamente o combobox de cupons
+function updateCouponsCombobox(eligibleCoupons) {
+    const couponsSection = document.getElementById('couponsAvailableSection');
+    const couponsSeparator = document.getElementById('couponsSeparator');
+    const couponSelect = document.getElementById('coupon_code_public');
+
+    if (!couponsSection || !couponsSeparator || !couponSelect) {
+        console.warn('updateCouponsCombobox: Elementos do combobox não encontrados');
+        return;
+    }
+
+    // Se não há cupons elegíveis, esconder o combobox
+    if (!eligibleCoupons || eligibleCoupons.length === 0) {
+        couponsSection.style.display = 'none';
+        couponsSeparator.style.display = 'none';
+        console.log('updateCouponsCombobox: Nenhum cupom elegível, combobox oculto');
+        return;
+    }
+
+    // Se há cupons elegíveis, mostrar o combobox e popular com os cupons
+    console.log('updateCouponsCombobox: Cupons elegíveis encontrados:', eligibleCoupons.length);
+
+    // Limpar opções existentes (manter apenas a primeira)
+    couponSelect.innerHTML = '<option value="">Selecione um cupom</option>';
+
+    // Adicionar cupons elegíveis
+    eligibleCoupons.forEach(coupon => {
+        const option = document.createElement('option');
+        option.value = coupon.code;
+        option.setAttribute('data-discount', coupon.formatted_value);
+        option.textContent = `${coupon.name} - ${coupon.formatted_value}`;
+        if (coupon.minimum_amount) {
+            option.textContent += ` (Mín: R$ ${Number(coupon.minimum_amount).toFixed(2).replace('.', ',')})`;
+        }
+        couponSelect.appendChild(option);
+    });
+
+    // Mostrar o combobox
+    couponsSection.style.display = 'block';
+    couponsSeparator.style.display = 'block';
+
+    console.log('updateCouponsCombobox: Combobox atualizado com', eligibleCoupons.length, 'cupons');
+}
 </script>
 @endpush

@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Blade;
+use App\Models\CustomerDebt;
+use App\Observers\CustomerDebtObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,5 +33,8 @@ class AppServiceProvider extends ServiceProvider
             $u = auth()->user();
             return $u && (empty($roles) || in_array($u->role, $roles));
         });
+
+        // Registrar observer para atualizar saldo de débitos
+        CustomerDebt::observe(CustomerDebtObserver::class);
     }
 }

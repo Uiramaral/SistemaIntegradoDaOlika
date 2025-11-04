@@ -18,13 +18,33 @@
                 <p class="text-muted-foreground">Detalhes do cliente</p>
             </div>
     </div>
-        <a href="{{ route('dashboard.customers.edit', $customer->id) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            Editar Cliente
-    </a>
+        <div class="flex gap-2">
+            @php
+                $pendingDebtsCount = \App\Models\CustomerDebt::where('customer_id', $customer->id)
+                    ->where('type', 'debit')
+                    ->where('status', 'open')
+                    ->count();
+            @endphp
+            @if($pendingDebtsCount > 0)
+            <form action="{{ route('dashboard.customers.sendPendingOrders', $customer->id) }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" onclick="return confirm('Deseja enviar os resumos de {{ $pendingDebtsCount }} pedido(s) pendente(s) para {{ $customer->name }}?')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
+                        <path d="m22 2-7 20-4-9-9-4Z"></path>
+                        <path d="M22 2 11 13"></path>
+                    </svg>
+                    Enviar Pedidos Pendentes ({{ $pendingDebtsCount }})
+                </button>
+            </form>
+            @endif
+            <a href="{{ route('dashboard.customers.edit', $customer->id) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Editar Cliente
+            </a>
+        </div>
   </div>
 
     <!-- Dados do Cliente -->
@@ -55,7 +75,23 @@
                     <p class="text-sm font-medium text-muted-foreground mb-1">Data de Nascimento</p>
                     <p class="text-base">{{ \Carbon\Carbon::parse($customer->birth_date)->format('d/m/Y') }}</p>
                 </div>
-        @endif
+                @endif
+                @php
+                    $debtsBalance = \App\Models\CustomerDebt::getBalance($customer->id);
+                    $cashbackBalance = \App\Models\CustomerCashback::getBalance($customer->id);
+                @endphp
+                <div>
+                    <p class="text-sm font-medium text-muted-foreground mb-1">Saldo de Cashback</p>
+                    <p class="text-base font-semibold text-green-600">R$ {{ number_format($cashbackBalance, 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-muted-foreground mb-1">Saldo de Débitos</p>
+                    @if($debtsBalance > 0)
+                        <p class="text-base font-semibold text-red-600">R$ {{ number_format($debtsBalance, 2, ',', '.') }}</p>
+                    @else
+                        <p class="text-base text-muted-foreground">R$ 0,00</p>
+                    @endif
+                </div>
             </div>
         </div>
     </div>

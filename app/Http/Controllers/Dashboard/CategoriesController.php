@@ -53,10 +53,12 @@ class CategoriesController extends Controller
             'image_url' => 'nullable|url|max:500',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'display_type' => 'nullable|in:grid,list_horizontal,list_vertical',
         ]);
 
         $validated['is_active'] = (bool)($request->input('is_active', true));
         $validated['sort_order'] = (int)($request->input('sort_order', 0));
+        $validated['display_type'] = $request->input('display_type', 'grid');
 
         Category::create($validated);
 
@@ -77,10 +79,12 @@ class CategoriesController extends Controller
             'image_url' => 'nullable|url|max:500',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'display_type' => 'nullable|in:grid,list_horizontal,list_vertical',
         ]);
 
         $validated['is_active'] = (bool)($request->input('is_active', false));
         $validated['sort_order'] = (int)($request->input('sort_order', 0));
+        $validated['display_type'] = $request->input('display_type', 'grid');
 
         $category->update($validated);
 

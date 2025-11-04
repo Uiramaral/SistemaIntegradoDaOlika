@@ -46,6 +46,47 @@
                         $cashbackUsed = (float) ($order->cashback_used ?? 0);
                         $totalDiscounts = $couponDiscount + $cashbackUsed;
                         $final = (float) ($order->final_amount ?? ($subtotal + $deliveryFee - $totalDiscounts));
+                        
+                        // Calcular desconto de frete progressivo - APENAS usar dados reais salvos
+                        $deliveryDiscountAmount = 0;
+                        $deliveryDiscountPercent = 0;
+                        $baseDeliveryFee = $deliveryFee; // Valor base para exibição (sem desconto)
+                        
+                        // Tentar obter do relacionamento OrderDeliveryFee (única fonte confiável)
+                        if ($order->orderDeliveryFee) {
+                            $calculatedFee = (float) ($order->orderDeliveryFee->calculated_fee ?? 0);
+                            $finalFee = (float) ($order->orderDeliveryFee->final_fee ?? $deliveryFee);
+                            
+                            // Se temos calculated_fee, usar ele como base (mesmo sem desconto)
+                            if ($calculatedFee > 0) {
+                                $baseDeliveryFee = $calculatedFee;
+                            }
+                            
+                            // Só calcular desconto se houver diferença real entre calculado e final
+                            // E se o valor calculado for maior que o final (indicando desconto aplicado)
+                            if ($calculatedFee > $finalFee && $calculatedFee > 0 && $finalFee >= 0) {
+                                $deliveryDiscountAmount = $calculatedFee - $finalFee;
+                                if ($deliveryDiscountAmount > 0.01) { // Só se o desconto for significativo (> 1 centavo)
+                                    $deliveryDiscountPercent = round(($deliveryDiscountAmount / $calculatedFee) * 100);
+                                    // Quando houver desconto, usar o valor base (calculated_fee) para exibição
+                                    $baseDeliveryFee = $calculatedFee;
+                                    // O deliveryFee já está correto (final_fee com desconto aplicado)
+                                    // e será usado no cálculo do total
+                                } else {
+                                    $deliveryDiscountAmount = 0;
+                                    $deliveryDiscountPercent = 0;
+                                }
+                            }
+                        }
+                        
+                        // Se baseDeliveryFee ainda é 0 mas deliveryFee não é 0, pode ser um pedido antigo
+                        // Nesse caso, usar deliveryFee como base
+                        if ($baseDeliveryFee == 0 && $deliveryFee > 0) {
+                            $baseDeliveryFee = $deliveryFee;
+                        }
+                        
+                        // NÃO fazer estimativas - apenas usar dados reais salvos
+                        // Se não houver dados salvos de desconto, não mostrar desconto
                     @endphp
 
                     @if($items && count($items))
@@ -67,15 +108,52 @@
                             <span class="text-gray-600">Subtotal</span>
                             <span class="font-medium">R$ {{ number_format($subtotal, 2, ',', '.') }}</span>
                         </div>
-                        @if($deliveryFee > 0)
+                        @if($deliveryDiscountAmount > 0 && $baseDeliveryFee > $deliveryFee)
+                        {{-- Quando há desconto, mostrar valor original riscado e valor com desconto --}}
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Taxa de Entrega</span>
+                            <span class="font-medium line-through text-gray-400">R$ {{ number_format($baseDeliveryFee, 2, ',', '.') }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-green-700">
+                            <span>Entrega com desconto no frete{{ $deliveryDiscountPercent > 0 ? ' (' . $deliveryDiscountPercent . '%)' : '' }}</span>
+                            <span class="font-medium">R$ {{ number_format($deliveryFee, 2, ',', '.') }}</span>
+                        </div>
+                        @elseif($baseDeliveryFee > 0)
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Taxa de Entrega</span>
+                            <span class="font-medium">R$ {{ number_format($baseDeliveryFee, 2, ',', '.') }}</span>
+                        </div>
+                        @elseif($baseDeliveryFee == 0 && $deliveryFee == 0 && $subtotal > 0)
+                        {{-- Só mostrar "Grátis" se realmente confirmado que é grátis --}}
+                        @if($order->orderDeliveryFee)
+                            @if(($order->orderDeliveryFee->calculated_fee ?? 0) == 0 && ($order->orderDeliveryFee->final_fee ?? 0) == 0)
+                            {{-- Confirmado que é grátis pelo OrderDeliveryFee (calculated_fee = 0 e final_fee = 0) --}}
+                            <div class="flex items-center justify-between text-green-700">
+                                <span class="text-gray-600">Taxa de Entrega</span>
+                                <span class="font-medium">Grátis</span>
+                            </div>
+                            @elseif($order->orderDeliveryFee->is_free_delivery ?? false)
+                            {{-- Confirmado que é grátis pela flag is_free_delivery --}}
+                            <div class="flex items-center justify-between text-green-700">
+                                <span class="text-gray-600">Taxa de Entrega</span>
+                                <span class="font-medium">Grátis</span>
+                            </div>
+                            @endif
+                        @else
+                        {{-- Não há OrderDeliveryFee - não assumir que é grátis, pode ser pedido antigo sem dados salvos --}}
+                        {{-- Não mostrar nada ou mostrar R$ 0,00 se deliveryFee realmente é 0 --}}
+                        @if($deliveryFee == 0)
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Taxa de Entrega</span>
+                            <span class="font-medium">R$ 0,00</span>
+                        </div>
+                        @endif
+                        @endif
+                        @elseif($baseDeliveryFee == 0 && $deliveryFee > 0)
+                        {{-- Se baseDeliveryFee é 0 mas deliveryFee não é, mostrar o deliveryFee --}}
                         <div class="flex items-center justify-between">
                             <span class="text-gray-600">Taxa de Entrega</span>
                             <span class="font-medium">R$ {{ number_format($deliveryFee, 2, ',', '.') }}</span>
-                        </div>
-                        @elseif($deliveryFee == 0 && $subtotal > 0)
-                        <div class="flex items-center justify-between text-green-700">
-                            <span class="text-gray-600">Taxa de Entrega</span>
-                            <span class="font-medium">Grátis</span>
                         </div>
                         @endif
                         @if($couponDiscount > 0)
@@ -131,7 +209,7 @@
         </div>
 
         <div class="text-center">
-            <p class="text-sm text-gray-600 mb-4">Após o pagamento, você será redirecionado automaticamente.</p>
+            <p class="text-sm text-gray-600 mb-4">Após o pagamento, você será notificado automaticamente.</p>
             <button onclick="checkPaymentStatus()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                 Verificar Status do Pagamento
             </button>

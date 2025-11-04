@@ -155,7 +155,12 @@ class CartController extends Controller
 
     public function count(Request $request)
     {
-        [$count] = $this->cartSummary($this->getCartFromSession());
+        // Otimização: calcular count diretamente da sessão sem queries pesadas
+        $cart = $this->getCartFromSession();
+        $count = 0;
+        foreach ($cart as $item) {
+            $count += (int)($item['qty'] ?? 0);
+        }
         return response()->json(['success' => true, 'count' => $count]);
     }
 
@@ -178,6 +183,7 @@ class CartController extends Controller
         // Catálogo resumido (até 30 itens ativos) sem itens já no carrinho, incluindo descrição
         $inCartIds = array_map(fn($it)=>(int)$it['product_id'], $items);
         $catalog = Product::where('is_active', true)
+            ->where('show_in_catalog', true)
             ->whereNotIn('id', $inCartIds)
             ->orderBy('sort_order')->orderBy('name')
             ->limit(30)->get(['id','name','price','description'])
@@ -259,12 +265,21 @@ class CartController extends Controller
         $price     = (float) $request->input('price', 0);
         $specialInstructions = $request->input('special_instructions', '');
 
-        // Se o preço não veio, tenta calcular com base em variação/produto
+        // Se o preço não veio, tenta calcular com base em variação/produto (apenas se necessário)
+        // Otimização: só fazer query se realmente precisar do preço
         if ($price <= 0) {
-            $product = \App\Models\Product::find($productId);
-            $variant = $variantId ? \App\Models\ProductVariant::find($variantId) : null;
-            if ($variant) { $price = (float)$variant->price; }
-            elseif ($product) { $price = (float)$product->price; }
+            // Usar query otimizada para buscar apenas o que precisa
+            if ($variantId) {
+                $price = (float) \App\Models\ProductVariant::where('id', $variantId)
+                    ->where('is_active', true)
+                    ->value('price') ?? 0;
+            }
+            
+            if ($price <= 0) {
+                $price = (float) \App\Models\Product::where('id', $productId)
+                    ->where('is_active', true)
+                    ->value('price') ?? 0;
+            }
         }
 
         if ($price <= 0) {
@@ -303,15 +318,31 @@ class CartController extends Controller
 
         $this->saveCartToSession($cart);
 
-        // Calcular total de itens para badge
-        $cartCount = $this->getCartFromSession();
+        // Calcular total de itens para badge (otimizado - sem query adicional)
         $totalItems = 0;
-        foreach ($cartCount as $item) {
+        foreach ($cart as $item) {
             $totalItems += $item['qty'];
+        }
+
+        // Rastrear evento de adição ao carrinho
+        try {
+            \App\Models\AnalyticsEvent::trackAddToCart($productId, [
+                'variant_id' => $variantId,
+                'quantity' => $qty,
+                'price' => $price,
+                'total_items' => $totalItems,
+            ]);
+        } catch (\Exception $e) {
+            // Não bloquear se falhar o tracking
+            \Log::warning('Erro ao rastrear adição ao carrinho', [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $payload = [
             'ok' => true,
+            'success' => true,
             'message' => 'Item adicionado ao carrinho',
             'cart_count' => $totalItems,
         ];

@@ -25,7 +25,8 @@ class CustomersController extends Controller
         
         $customers = $query->select('customers.*', 
                 DB::raw('(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id) as total_orders'),
-                DB::raw('(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND payment_status = "paid") as total_spent')
+                DB::raw('(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND payment_status = "paid") as total_spent'),
+                DB::raw('(SELECT COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0) FROM customer_debts WHERE customer_debts.customer_id = customers.id AND status = "open") as total_debts')
             )
             ->orderByDesc('id')
             ->paginate(30);
@@ -47,12 +48,14 @@ class CustomersController extends Controller
             'cpf' => 'nullable|string|max:14',
             'birth_date' => 'nullable|date',
             'cashback_balance' => 'nullable|numeric|min:0',
+            'is_wholesale' => 'nullable|boolean',
         ]);
 
         $cashbackBalance = $r->input('cashback_balance', 0);
         
         $data['created_at'] = now();
         $data['updated_at'] = now();
+        $data['is_wholesale'] = $r->has('is_wholesale') ? 1 : 0;
         unset($data['cashback_balance']); // Remover do array de dados do cliente
 
         $customerId = DB::table('customers')->insertGetId($data);
@@ -73,7 +76,7 @@ class CustomersController extends Controller
 
     public function show($id)
     {
-        $customer = DB::table('customers')->find($id);
+        $customer = \App\Models\Customer::find($id);
         if (!$customer) {
             return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
         }
@@ -110,11 +113,13 @@ class CustomersController extends Controller
             'cpf' => 'nullable|string|max:14',
             'birth_date' => 'nullable|date',
             'cashback_balance' => 'nullable|numeric|min:0',
+            'is_wholesale' => 'nullable|boolean',
         ]);
 
         $targetCashbackBalance = (float)($r->input('cashback_balance', 0) ?? 0);
         
         $data['updated_at'] = now();
+        $data['is_wholesale'] = $r->has('is_wholesale') ? 1 : 0;
         unset($data['cashback_balance']); // Remover do array de dados do cliente
         
         DB::table('customers')->where('id', $id)->update($data);

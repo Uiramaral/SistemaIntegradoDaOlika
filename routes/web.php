@@ -172,6 +172,9 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
                 'update' => 'dashboard.products.update',
                 'destroy' => 'dashboard.products.destroy',
             ]);
+            // Rota para gerar SEO via IA
+            Route::post('products/generate-seo', [\App\Http\Controllers\Dashboard\ProductsController::class, 'generateSEO'])->name('dashboard.products.generateSEO');
+            
             // Rotas auxiliares para gerenciar imagens dos produtos
             Route::prefix('products/{product}')->name('dashboard.products.')->group(function () {
                 Route::post('/duplicate', [\App\Http\Controllers\Dashboard\ProductsController::class, 'duplicate'])->name('duplicate');
@@ -188,6 +191,15 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         'edit' => 'dashboard.customers.edit',
         'update' => 'dashboard.customers.update',
         'destroy' => 'dashboard.customers.destroy',
+    ]);
+    Route::post('/customers/{customer}/send-pending-orders', [\App\Http\Controllers\Dashboard\DebtsController::class, 'sendPendingOrdersSummary'])->name('dashboard.customers.sendPendingOrders');
+    Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
+        'index' => 'dashboard.wholesale-prices.index',
+        'create' => 'dashboard.wholesale-prices.create',
+        'store' => 'dashboard.wholesale-prices.store',
+        'edit' => 'dashboard.wholesale-prices.edit',
+        'update' => 'dashboard.wholesale-prices.update',
+        'destroy' => 'dashboard.wholesale-prices.destroy',
     ]);
     Route::resource('categories',\App\Http\Controllers\Dashboard\CategoriesController::class)->names([
         'index' => 'dashboard.categories.index',
@@ -222,6 +234,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     // Rotas adicionais para módulos
     Route::prefix('orders')->name('dashboard.orders.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('index');
+        Route::get('/new-orders', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getNewOrders'])->name('newOrders');
         Route::get('/printer-monitor', [\App\Http\Controllers\Dashboard\OrdersController::class, 'printerMonitor'])->name('printerMonitor');
         Route::get('/orders-for-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getOrdersForPrint'])->name('forPrint'); // ANTES de /{order}
         Route::get('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'show'])->name('show');
@@ -232,6 +245,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::post('/{order}/delivery-fee', [\App\Http\Controllers\Dashboard\OrdersController::class, 'adjustDeliveryFee'])->name('adjustDeliveryFee');
         Route::post('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'applyDiscount'])->name('applyDiscount');
         Route::delete('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeDiscount'])->name('removeDiscount');
+        Route::post('/{order}/refund', [\App\Http\Controllers\Dashboard\OrdersController::class, 'refund'])->name('refund');
         
         // Rotas para edição de itens
         Route::post('/{order}/items', [\App\Http\Controllers\Dashboard\OrdersController::class, 'addItem'])->name('addItem');

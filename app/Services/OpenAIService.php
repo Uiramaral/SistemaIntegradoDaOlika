@@ -525,6 +525,162 @@ class OpenAIService
         return [ 'description' => $descSynth, 'label' => $labelSynth ];
     }
 
+    /**
+     * Gera textos de SEO (título e descrição) otimizados para busca
+     */
+    public function generateSEO(
+        string $productName,
+        string $description = '',
+        ?string $categoryName = null,
+        ?float $price = null,
+        array $ingredients = []
+    ): array
+    {
+        if (!$this->isConfigured()) {
+            Log::warning('OpenAI:seo:not_configured');
+            return ['seo_title' => null, 'seo_description' => null];
+        }
+
+        $categoryInfo = $categoryName ? "\nCategoria: {$categoryName}" : '';
+        $priceInfo = $price && $price > 0 ? "\nPreço: R$ " . number_format($price, 2, ',', '.') : '';
+        $ingredientsInfo = !empty($ingredients) 
+            ? "\nIngredientes principais: " . implode(', ', array_slice($ingredients, 0, 5))
+            : '';
+
+        $system = 'Você é um especialista em SEO e marketing digital para padarias artesanais. Crie textos otimizados para mecanismos de busca (Google) e redes sociais, que sejam atraentes, informativos e incluam palavras-chave relevantes.';
+        
+        $user = "INFORMAÇÕES DO PRODUTO:\n".
+            "Nome: {$productName}".
+            ($categoryInfo ?: '').
+            ($description ? "\nDescrição: {$description}" : '').
+            ($priceInfo ?: '').
+            ($ingredientsInfo ?: '').
+            "\n\nTAREFAS:\n".
+            "1) Título SEO (seo_title): Crie um título otimizado para busca com 50-60 caracteres (máximo 60). Deve incluir o nome do produto, ser atrativo e incluir palavras-chave relevantes como 'pão artesanal', 'padaria artesanal', 'comprar online', etc. Exemplo: 'Pão de Fermentação Natural - Olika | Padaria Artesanal'\n".
+            "2) Descrição SEO (seo_description): Crie uma descrição otimizada para meta description com 150-160 caracteres (máximo 160). Deve ser persuasiva, incluir palavras-chave relevantes, destacar benefícios e incluir call-to-action. Exemplo: 'Pão artesanal de fermentação natural. Feito com ingredientes selecionados. Peça online e receba em casa com frescor garantido.'\n\n".
+            "IMPORTANTE:\n".
+            "- Use palavras-chave naturais, não force demais\n".
+            "- Seja específico sobre o produto (nome, tipo, características principais)\n".
+            "- Inclua termos de busca comuns: 'artesanal', 'fermentação natural', 'padaria', 'comprar online'\n".
+            "- O título deve ser único e identificar claramente o produto\n".
+            "- A descrição deve despertar interesse e incluir motivo para comprar\n\n".
+            "Responda APENAS em JSON válido: {\"seo_title\": string, \"seo_description\": string}.";
+
+        Log::info('OpenAI:seo:request', [
+            'model' => $this->model,
+            'product_name' => $productName,
+            'has_description' => !empty($description),
+            'has_category' => !empty($categoryName)
+        ]);
+
+        $tokParam = str_starts_with($this->model, 'gpt-5') ? 'max_completion_tokens' : 'max_tokens';
+        $tempSupported = !str_starts_with($this->model, 'gpt-5');
+
+        $res = Http::withToken($this->apiKey)
+            ->acceptJson()
+            ->asJson()
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $this->model,
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $user],
+                ],
+                ...($tempSupported ? ['temperature' => 0.7] : []),
+                $tokParam => 500,
+            ]);
+
+        if ($res->failed()) {
+            Log::error('OpenAI:seo:failed', [
+                'status' => $res->status(),
+                'body' => $res->body()
+            ]);
+            // Fallback de modelo
+            $fallback = in_array($this->model, ['gpt-4o', 'gpt-4o-mini']) ? 'gpt-4o-mini' : 'gpt-4o';
+            $res = Http::withToken($this->apiKey)
+                ->acceptJson()
+                ->asJson()
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => $fallback,
+                    'messages' => [
+                        ['role' => 'system', 'content' => $system],
+                        ['role' => 'user', 'content' => $user],
+                    ],
+                    ...(str_starts_with($fallback, 'gpt-5') ? [] : ['temperature' => 0.7]),
+                    (str_starts_with($fallback, 'gpt-5') ? 'max_completion_tokens' : 'max_tokens') => 500,
+                ]);
+            if ($res->failed()) {
+                Log::error('OpenAI:seo:fallback_failed', [
+                    'status' => $res->status(),
+                    'body' => $res->body()
+                ]);
+                return ['seo_title' => null, 'seo_description' => null];
+            }
+        }
+
+        $responseData = $res->json();
+        $content = data_get($responseData, 'choices.0.message.content');
+        $finishReason = data_get($responseData, 'choices.0.finish_reason');
+
+        Log::info('OpenAI:seo:raw_content', [
+            'has_content' => !empty($content),
+            'finish_reason' => $finishReason,
+            'content_preview' => mb_substr($content ?? '', 0, 200)
+        ]);
+
+        // Remove markdown se houver
+        if (is_string($content)) {
+            $content = preg_replace('/^```(json)?\s*/i', '', trim($content));
+            $content = preg_replace('/```\s*$/', '', trim($content));
+        }
+
+        if (!$content) {
+            Log::warning('OpenAI:seo:empty_content');
+            // Fallback determinístico
+            $seoTitle = mb_substr("{$productName} - Olika | Padaria Artesanal", 0, 60);
+            $seoDesc = mb_substr("{$productName} artesanal. Feito com ingredientes selecionados. Peça online e receba em casa com frescor garantido.", 0, 160);
+            return ['seo_title' => $seoTitle, 'seo_description' => $seoDesc];
+        }
+
+        $json = null;
+        try {
+            $json = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable $e) {
+            Log::error('OpenAI:seo:parse_error', [
+                'error' => $e->getMessage(),
+                'raw' => $content
+            ]);
+            $json = null;
+        }
+
+        if (is_array($json)) {
+            $seoTitle = trim((string)($json['seo_title'] ?? ''));
+            $seoDesc = trim((string)($json['seo_description'] ?? ''));
+            
+            // Garantir limites de caracteres
+            if (mb_strlen($seoTitle) > 60) {
+                $seoTitle = mb_substr($seoTitle, 0, 57) . '...';
+            }
+            if (mb_strlen($seoDesc) > 160) {
+                $seoDesc = mb_substr($seoDesc, 0, 157) . '...';
+            }
+
+            Log::info('OpenAI:seo:parsed', [
+                'seo_title_len' => mb_strlen($seoTitle),
+                'seo_desc_len' => mb_strlen($seoDesc)
+            ]);
+            
+            return [
+                'seo_title' => $seoTitle ?: null,
+                'seo_description' => $seoDesc ?: null
+            ];
+        }
+
+        // Fallback determinístico
+        $seoTitle = mb_substr("{$productName} - Olika | Padaria Artesanal", 0, 60);
+        $seoDesc = mb_substr("{$productName} artesanal. Feito com ingredientes selecionados. Peça online e receba em casa com frescor garantido.", 0, 160);
+        return ['seo_title' => $seoTitle, 'seo_description' => $seoDesc];
+    }
+
     private function flexSetting(string $key): ?string
     {
         if (!Schema::hasTable('settings')) {

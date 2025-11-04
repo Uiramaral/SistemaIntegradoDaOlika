@@ -478,49 +478,49 @@
                     throw new Error('Dados inválidos recebidos do servidor');
                 }
                 
-                // Decodificar base64 e converter para array de bytes
-                const binaryString = atob(orderData.data);
-                const bytes = [];
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes.push(binaryString.charCodeAt(i) & 0xFF);
+                // Função correta para converter base64 → Uint8Array
+                function base64ToBytes(base64) {
+                    const binaryStr = atob(base64);
+                    const len = binaryStr.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    return bytes;
                 }
                 
-                console.log('📦 Enviando', bytes.length, 'bytes para impressora:', printer);
+                // Converter base64 para Uint8Array (para validação)
+                const bytes = base64ToBytes(orderData.data);
                 
-                // Verificar primeiros bytes para debug
-                if (bytes.length >= 2) {
-                    console.log('🔍 Primeiros bytes:', 
-                        '0x' + bytes[0].toString(16).padStart(2, '0'),
-                        '0x' + bytes[1].toString(16).padStart(2, '0'),
-                        bytes[0] === 0x1B && bytes[1] === 0x40 ? '✅ ESC @' : '❌');
+                // Verificar se os primeiros bytes são ESC @
+                if (bytes.length < 2 || bytes[0] !== 0x1B || bytes[1] !== 0x40) {
+                    console.error('❌ ERRO CRÍTICO: Dados não começam com ESC @ (0x1B 0x40)');
+                    console.error('❌ Primeiros bytes:', 
+                        Array.from(bytes.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                    alert('❌ Erro: Dados ESC/POS inválidos. Verifique o console para mais detalhes.');
+                    return;
                 }
                 
-                // Verificar se os bytes estão corretos antes de enviar
-                console.log('📤 Preparando envio para impressora...', {
+                // CORRETO: Converter Uint8Array → Array JavaScript simples (QZ Tray precisa de Array, não Uint8Array)
+                const bytesArray = Array.from(bytes);
+                
+                console.log('📦 Dados ESC/POS preparados:', {
                     printer: printer,
-                    bytesLength: bytes.length,
-                    firstBytes: bytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-                    isValidEscPos: bytes[0] === 0x1B && bytes[1] === 0x40
+                    bytesLength: bytesArray.length,
+                    firstBytes: bytesArray.slice(0, 10),
+                    isValidEscPos: bytesArray[0] === 0x1B && bytesArray[1] === 0x40,
+                    isArray: Array.isArray(bytesArray)
                 });
                 
-                // Configurar impressão (mesmo método do teste que funciona)
-                const printConfig = qz.configs.create(printer);
+                // Configurar impressão RAW (Array de bytes + encoding RAW)
+                const printConfig = qz.configs.create(printer, { encoding: 'RAW' });
                 
-                // IMPORTANTE: O teste funciona enviando array de bytes diretamente
-                // Mas vamos tentar também como string binária se o array não funcionar
-                console.log('🚀 Enviando dados para impressora (método array de bytes)...');
+                console.log('🚀 Enviando dados RAW para impressora...');
                 
-                // Tentar primeiro como array de bytes (como no teste)
-                try {
-                    await qz.print(printConfig, bytes);
-                    console.log('✅ Dados enviados como array de bytes');
-                } catch (arrayError) {
-                    console.warn('⚠️ Erro ao enviar como array, tentando como string binária...', arrayError);
-                    // Fallback: converter para string binária (como fazemos no monitor)
-                    const binaryString = String.fromCharCode.apply(null, bytes);
-                    await qz.print(printConfig, binaryString);
-                    console.log('✅ Dados enviados como string binária');
-                }
+                // Enviar como Array JavaScript simples (QZ Tray espera Array, não Uint8Array)
+                await qz.print(printConfig, bytesArray);
+                
+                console.log('✅ Dados RAW enviados com sucesso');
                 
                 // Verificar se a impressora é virtual (PDF) - isso pode ser o problema
                 const printerLower = printer.toLowerCase();

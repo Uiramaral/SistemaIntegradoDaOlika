@@ -24,16 +24,16 @@ class PDVController extends Controller
 {
     public function index()
     {
-        // Carregar produtos ativos
+        // Carregar produtos ativos com preços de revenda
         $products = Product::where('is_active', true)
-            ->with('variants')
+            ->with(['variants', 'wholesalePrices'])
             ->orderBy('name')
             ->get();
 
         // Carregar clientes recentes (últimos 50)
         $recentCustomers = Customer::orderBy('created_at', 'desc')
             ->limit(50)
-            ->get(['id', 'name', 'phone', 'email']);
+            ->get(['id', 'name', 'phone', 'email', 'is_wholesale']);
 
         return view('dashboard.pdv.index', compact('products', 'recentCustomers'));
     }
@@ -50,7 +50,7 @@ class PDVController extends Controller
             ->orWhere('phone', 'like', "%{$query}%")
             ->orWhere('email', 'like', "%{$query}%")
             ->limit(20)
-            ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee']);
+            ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
 
         return response()->json(['customers' => $customers]);
     }
@@ -58,32 +58,72 @@ class PDVController extends Controller
     public function searchProducts(Request $request)
     {
         $query = $request->get('q', '');
+        $customerId = $request->get('customer_id');
+        $productId = $request->get('product_id'); // Para buscar produto específico
+        $isWholesale = false;
         
-        $products = Product::where('is_active', true)
-            ->where(function($q) use ($query) {
+        // Verificar se o cliente é de revenda
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            $isWholesale = $customer && $customer->is_wholesale;
+        }
+        
+        $productsQuery = Product::where('is_active', true);
+        
+        // Se foi passado product_id, buscar produto específico
+        if ($productId) {
+            $productsQuery->where('id', $productId);
+        } elseif ($query) {
+            // Caso contrário, buscar por nome/descrição
+            $productsQuery->where(function($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                   ->orWhere('description', 'like', "%{$query}%");
-            })
+            });
+        }
+        
+        $products = $productsQuery
             ->with(['variants' => function($q) {
                 $q->where('is_active', true)->orderBy('sort_order');
+            }, 'wholesalePrices' => function($q) {
+                $q->where('is_active', true)->orderBy('min_quantity');
             }])
             ->limit(20)
             ->get(['id', 'name', 'price', 'description']);
 
-        // Formatar produtos com variantes
-        $formattedProducts = $products->map(function($product) {
-            $variants = $product->variants->map(function($variant) {
+        // Formatar produtos com variantes e preços diferenciados
+        $formattedProducts = $products->map(function($product) use ($isWholesale) {
+            $variants = $product->variants->map(function($variant) use ($product, $isWholesale) {
+                $price = (float)$variant->price;
+                
+                // Se for wholesale, buscar preço diferenciado
+                if ($isWholesale) {
+                    $wholesalePrice = \App\Models\ProductWholesalePrice::getWholesalePrice($product->id, $variant->id, 1);
+                    if ($wholesalePrice !== null) {
+                        $price = $wholesalePrice;
+                    }
+                }
+                
                 return [
                     'id' => $variant->id,
                     'name' => $variant->name,
-                    'price' => (float)$variant->price,
+                    'price' => $price,
                 ];
             })->toArray();
+            
+            $price = (float)$product->price;
+            
+            // Se for wholesale, buscar preço diferenciado do produto
+            if ($isWholesale) {
+                $wholesalePrice = \App\Models\ProductWholesalePrice::getWholesalePrice($product->id, null, 1);
+                if ($wholesalePrice !== null) {
+                    $price = $wholesalePrice;
+                }
+            }
             
             return [
                 'id' => $product->id,
                 'name' => $product->name,
-                'price' => (float)$product->price,
+                'price' => $price,
                 'description' => $product->description,
                 'has_variants' => count($variants) > 0,
                 'variants' => $variants,
@@ -99,12 +139,14 @@ class PDVController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:255',
+            'is_wholesale' => 'nullable|boolean',
         ]);
 
         $customer = Customer::create([
             'name' => $request->name,
             'phone' => $request->phone,
             'email' => $request->email,
+            'is_wholesale' => $request->has('is_wholesale') && $request->is_wholesale ? 1 : 0,
         ]);
 
         return response()->json(['customer' => $customer]);

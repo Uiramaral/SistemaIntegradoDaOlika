@@ -14,138 +14,398 @@
     $activeCategoryId = null; // "Todos" por padrão
     $categoryTitle = 'Todos';
     $productsCount = isset($products) ? $products->count() : 0;
+    
+    // Preload das primeiras 15 imagens (above the fold e próximas)
+    $preloadCount = 0;
+    $preloadLimit = 15;
 @endphp
 
-<!-- Categoria Novidades !! (sempre primeiro, rolagem horizontal) -->
-@if(isset($newProducts) && $newProducts->count() > 0)
-<div class="mb-12">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl md:text-3xl font-bold text-foreground">Novidades !! 🎉</h2>
-        <div class="flex gap-2 items-center">
-            <button id="scrollNovidadesLeft" class="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors" aria-label="Rolar para esquerda">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m15 18-6-6 6-6"></path>
-                </svg>
-            </button>
-            <button id="scrollNovidadesRight" class="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors" aria-label="Rolar para direita">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m9 18 6-6-6-6"></path>
-                </svg>
-            </button>
-        </div>
-    </div>
-    <div id="novidadesContainer" class="overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4" style="scroll-behavior: smooth;">
-        <div class="flex gap-4" style="width: max-content;">
-            @foreach($newProducts as $product)
-            @php
-                $minVariantPrice = $product->variants()->where('is_active', true)->min('price');
-                $hasActiveVariants = $minVariantPrice !== null;
-                $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
-                $isPurchasable = $displayPrice > 0;
-                if (!$isPurchasable) { continue; }
-                
-                // Imagem
-                $img = $product->image_url;
-                if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
-                elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
-                $img = $img ?? asset('images/produto-placeholder.jpg');
-            @endphp
-            <div class="text-card-foreground group overflow-hidden border shadow-sm hover:shadow-xl transition-all duration-300 bg-card rounded-2xl flex flex-col cursor-pointer" style="min-width: 140px; max-width: 140px; flex-shrink: 0;" onclick="openQuickView({{ $product->id }})">
-                <div class="aspect-square overflow-hidden bg-muted relative">
-                    <img src="{{ $img }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </div>
-                <div class="p-2.5 flex flex-col gap-1.5">
-                    <h3 class="font-medium text-xs line-clamp-2 leading-tight text-gray-900">{{ $product->name }}</h3>
-                    <div class="flex items-center justify-between mt-auto pt-1">
-                        <span class="text-xs font-bold text-primary">R$ {{ number_format($displayPrice, 2, ',', '.') }}</span>
-                        @if($hasActiveVariants)
-                            <button onclick="event.stopPropagation(); openQuickView({{ $product->id }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap text-xs font-medium bg-primary text-white hover:bg-primary/90 rounded-lg h-7 w-7 shadow-sm hover:shadow transition-all duration-200 flex-shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14"></path>
-                                    <path d="M12 5v14"></path>
-                                </svg>
-                            </button>
-                        @else
-                            <button onclick="event.stopPropagation(); addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $displayPrice }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap text-xs font-medium bg-primary text-white hover:bg-primary/90 rounded-lg h-7 w-7 shadow-sm hover:shadow transition-all duration-200 flex-shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14"></path>
-                                    <path d="M12 5v14"></path>
-                                </svg>
-                            </button>
-                        @endif
-                    </div>
-                </div>
-            </div>
+<!-- Preload das primeiras imagens para carregamento mais rápido -->
+@if(isset($categories) && $categories->count() > 0)
+    @foreach($categories as $category)
+        @if(isset($category->products) && $category->products->count() > 0 && $preloadCount < $preloadLimit)
+            @foreach($category->products->take($preloadLimit - $preloadCount) as $product)
+                @php
+                    $img = $product->image_url;
+                    if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
+                    elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+                    $img = $img ?? asset('images/produto-placeholder.jpg');
+                    $preloadCount++;
+                @endphp
+                <link rel="preload" as="image" href="{{ $img }}" fetchpriority="{{ $preloadCount <= 9 ? 'high' : 'auto' }}">
             @endforeach
-        </div>
-    </div>
-</div>
+        @endif
+        @break($preloadCount >= $preloadLimit)
+    @endforeach
 @endif
 
-
-<!-- Grid de Produtos (design pixel-perfect) - 3 colunas -->
-@if(isset($products) && $products && $products->count() > 0)
-<div id="productsGrid" class="grid grid-cols-3 gap-3 md:gap-4">
-    @foreach($products as $product)
-    @php
-        $minVariantPrice = $product->variants()->where('is_active', true)->min('price');
-        $hasActiveVariants = $minVariantPrice !== null;
-        $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
-        $isPurchasable = $displayPrice > 0;
-        if (!$isPurchasable) { continue; }
-        
-        // Imagem
-        $img = $product->image_url;
-        if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
-        elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
-        $img = $img ?? asset('images/produto-placeholder.jpg');
-    @endphp
-    <div class="product-item text-card-foreground group overflow-hidden border shadow-sm hover:shadow-xl transition-all duration-300 bg-card rounded-2xl cursor-pointer" data-category-id="{{ $product->category_id ?? '0' }}" onclick="openQuickView({{ $product->id }})">
-        <div class="aspect-square overflow-hidden bg-muted relative">
-            <img src="{{ $img }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        </div>
-        <div class="p-2.5 sm:p-3 flex flex-col gap-1.5">
-            <h3 class="font-medium text-xs sm:text-sm line-clamp-2 leading-tight text-gray-900">{{ $product->name }}</h3>
-            <div class="flex items-center justify-between mt-auto pt-1">
-                <span class="text-sm sm:text-base font-bold text-primary">R$ {{ number_format($displayPrice, 2, ',', '.') }}</span>
-                @if($hasActiveVariants)
-                    <button onclick="event.stopPropagation(); openQuickView({{ $product->id }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap text-xs font-medium bg-primary text-white hover:bg-primary/90 rounded-lg h-8 w-8 sm:h-9 sm:w-9 shadow-sm hover:shadow transition-all duration-200 flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                            <path d="M12 5v14"></path>
-                        </svg>
-                    </button>
-                @else
-                    <button onclick="event.stopPropagation(); addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $displayPrice }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap text-xs font-medium bg-primary text-white hover:bg-primary/90 rounded-lg h-8 w-8 sm:h-9 sm:w-9 shadow-sm hover:shadow transition-all duration-200 flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                            <path d="M12 5v14"></path>
-                        </svg>
-                    </button>
+<!-- Produtos separados por categoria -->
+@if(isset($categories) && $categories->count() > 0)
+    @foreach($categories as $category)
+        @if(isset($category->products) && $category->products->count() > 0)
+            @php
+                $displayType = $category->display_type ?? 'grid';
+                $categoryId = is_string($category->id) ? $category->id : $category->id;
+            @endphp
+            
+            <div class="mb-12 category-section" data-category-id="{{ $categoryId }}">
+                <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-4">{{ $category->name }}</h2>
+                
+                @php
+                    // Contador global de produtos para determinar quais imagens carregar eager
+                    if (!isset($globalProductIndex)) {
+                        $globalProductIndex = 0;
+                    }
+                @endphp
+                @if($displayType === 'grid')
+                    <!-- Grid (Grade) - 3 colunas no mobile, 5 no desktop -->
+                    <div class="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
+                        @foreach($category->products as $product)
+                            @php
+                                $shouldLoadEager = $globalProductIndex < 12;
+                                $fetchPriority = $globalProductIndex < 6 ? 'high' : ($globalProductIndex < 12 ? 'auto' : 'low');
+                                $globalProductIndex++;
+                            @endphp
+                            @include('pedido.partials.product-card', [
+                                'product' => $product, 
+                                'displayType' => 'grid',
+                                'loadEager' => $shouldLoadEager,
+                                'fetchPriority' => $fetchPriority
+                            ])
+                        @endforeach
+                    </div>
+                
+                @elseif($displayType === 'list_horizontal')
+                    <!-- Lista Horizontal (Rolagem) -->
+                    <div class="horizontal-scroll-container overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4" 
+                         data-category-id="{{ $categoryId }}" 
+                         id="horizontal-scroll-{{ $categoryId }}">
+                        <div class="flex gap-4 horizontal-scroll-content" style="width: max-content;">
+                            @foreach($category->products as $product)
+                                @php
+                                    $shouldLoadEager = $globalProductIndex < 12;
+                                    $fetchPriority = $globalProductIndex < 6 ? 'high' : ($globalProductIndex < 12 ? 'auto' : 'low');
+                                    $globalProductIndex++;
+                                @endphp
+                                @include('pedido.partials.product-card', [
+                                    'product' => $product, 
+                                    'displayType' => 'list_horizontal',
+                                    'loadEager' => $shouldLoadEager,
+                                    'fetchPriority' => $fetchPriority
+                                ])
+                            @endforeach
+                        </div>
+                    </div>
+                
+                @elseif($displayType === 'list_vertical')
+                    <!-- Lista Vertical -->
+                    <div class="space-y-4">
+                        @foreach($category->products as $product)
+                            @php
+                                $shouldLoadEager = $globalProductIndex < 12;
+                                $fetchPriority = $globalProductIndex < 6 ? 'high' : ($globalProductIndex < 12 ? 'auto' : 'low');
+                                $globalProductIndex++;
+                            @endphp
+                            @include('pedido.partials.product-card', [
+                                'product' => $product, 
+                                'displayType' => 'list_vertical',
+                                'loadEager' => $shouldLoadEager,
+                                'fetchPriority' => $fetchPriority
+                            ])
+                        @endforeach
+                    </div>
                 @endif
             </div>
-        </div>
-    </div>
+        @endif
     @endforeach
-</div>
-
-@else
-<div class="text-center py-12">
-    <p class="text-muted-foreground">Nenhum produto disponível no momento.</p>
-</div>
 @endif
 
 @endsection
 
 @push('scripts')
 <script>
+// Otimização de carregamento de imagens com Intersection Observer
+document.addEventListener('DOMContentLoaded', function() {
+    // Marcar as primeiras 12 imagens como eager para carregamento imediato
+    const allImages = document.querySelectorAll('img[loading="lazy"]');
+    const viewportHeight = window.innerHeight;
+    let eagerCount = 0;
+    const maxEagerImages = 12;
+    
+    allImages.forEach((img, index) => {
+        if (eagerCount < maxEagerImages) {
+            const rect = img.getBoundingClientRect();
+            // Se a imagem está próxima da viewport (dentro de 1.5x da altura)
+            if (rect.top < viewportHeight * 1.5) {
+                img.loading = 'eager';
+                img.fetchPriority = index < 6 ? 'high' : 'auto';
+                eagerCount++;
+                
+                // Forçar carregamento imediato se estiver visível
+                if (rect.top < viewportHeight && !img.complete) {
+                    const tempImg = new Image();
+                    tempImg.onload = function() {
+                        img.style.opacity = '1';
+                        const productId = img.getAttribute('data-product-id');
+                        const placeholder = document.getElementById('placeholder-' + productId) || 
+                                          document.getElementById('placeholder-h-' + productId) || 
+                                          document.getElementById('placeholder-v-' + productId);
+                        if (placeholder) {
+                            placeholder.style.display = 'none';
+                        }
+                    };
+                    tempImg.src = img.src;
+                }
+            }
+        }
+    });
+    
+    // Intersection Observer para imagens lazy restantes
+    const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+    
+    if (lazyImages.length > 0 && 'IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    
+                    // Pré-carregar imagem se ainda não estiver carregada
+                    if (!img.complete && img.src) {
+                        const tempImg = new Image();
+                        tempImg.onload = function() {
+                            img.style.opacity = '1';
+                            const productId = img.getAttribute('data-product-id');
+                            const placeholder = document.getElementById('placeholder-' + productId) || 
+                                              document.getElementById('placeholder-h-' + productId) || 
+                                              document.getElementById('placeholder-v-' + productId);
+                            if (placeholder) {
+                                placeholder.style.display = 'none';
+                            }
+                        };
+                        tempImg.onerror = function() {
+                            // Mesmo em erro, mostrar placeholder removido
+                            img.style.opacity = '1';
+                        };
+                        tempImg.src = img.src;
+                    } else if (img.complete) {
+                        // Se já carregou, mostrar imediatamente
+                        img.style.opacity = '1';
+                        const productId = img.getAttribute('data-product-id');
+                        const placeholder = document.getElementById('placeholder-' + productId) || 
+                                          document.getElementById('placeholder-h-' + productId) || 
+                                          document.getElementById('placeholder-v-' + productId);
+                        if (placeholder) {
+                            placeholder.style.display = 'none';
+                        }
+                    }
+                    
+                    // Parar de observar esta imagem
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            // Carregar quando estiver a 800px da viewport (carregar bem antes de aparecer)
+            rootMargin: '800px 0px',
+            threshold: 0.01
+        });
+        
+        lazyImages.forEach(img => {
+            if (img.loading === 'lazy') {
+                const rect = img.getBoundingClientRect();
+                // Se já está muito próxima, não observar (já será carregada)
+                if (rect.top > viewportHeight * 2) {
+                    imageObserver.observe(img);
+                }
+            }
+        });
+    }
+    
+    // Prefetch agressivo das próximas imagens ao fazer scroll
+    let lastScrollTop = 0;
+    let scrollTimeout;
+    const prefetchedUrls = new Set();
+    
+    function prefetchUpcomingImages() {
+        const viewportHeight = window.innerHeight;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollDirection = scrollTop > lastScrollTop ? 'down' : 'up';
+        lastScrollTop = scrollTop;
+        
+        // Prefetch imagens próximas ao scroll (até 20 imagens)
+        const upcomingImages = document.querySelectorAll('img[loading="lazy"]');
+        let prefetchCount = 0;
+        const maxPrefetch = 20;
+        
+        upcomingImages.forEach((img) => {
+            if (prefetchCount >= maxPrefetch) return;
+            
+            if (img.src && !prefetchedUrls.has(img.src)) {
+                const rect = img.getBoundingClientRect();
+                const distance = Math.abs(rect.top - (scrollTop + viewportHeight));
+                
+                // Prefetch se estiver dentro de 2x viewport height
+                if (distance < viewportHeight * 2) {
+                    // Criar link prefetch
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.as = 'image';
+                    link.href = img.src;
+                    
+                    // Verificar se já existe
+                    if (!document.querySelector(`link[href="${img.src}"]`)) {
+                        document.head.appendChild(link);
+                        prefetchedUrls.add(img.src);
+                        prefetchCount++;
+                    }
+                }
+            }
+        });
+    }
+    
+    window.addEventListener('scroll', function() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(prefetchUpcomingImages, 50); // Reduzido para 50ms
+    }, { passive: true });
+    
+    // Prefetch inicial após 100ms
+    setTimeout(prefetchUpcomingImages, 100);
+});
+
+// Auto-scroll para listas horizontais - OTIMIZADO PARA MÁXIMA FLUIDEZ
+document.addEventListener('DOMContentLoaded', function() {
+    const horizontalScrolls = document.querySelectorAll('.horizontal-scroll-container');
+    
+    horizontalScrolls.forEach(container => {
+        const content = container.querySelector('.horizontal-scroll-content');
+        if (!content) return;
+        
+        // Verificar se há conteúdo suficiente para scrollar
+        const originalWidth = content.scrollWidth;
+        const hasOverflow = originalWidth > container.clientWidth;
+        if (!hasOverflow) return;
+        
+        // Clonar conteúdo para criar loop infinito
+        const clonedContent = content.cloneNode(true);
+        content.appendChild(clonedContent);
+        
+        const maxScroll = originalWidth;
+        let scrollPos = 0;
+        let isPaused = false;
+        let resumeTimeout = null;
+        let rafId = null;
+        
+        // Usar CSS transform para aceleração por hardware (MUITO mais fluido)
+        container.style.willChange = 'scroll-position';
+        container.style.overflowX = 'auto';
+        container.style.scrollBehavior = 'auto'; // Desabilitar smooth scroll nativo para controle manual
+        
+        // Função de animação ultra-otimizada
+        function animate() {
+            if (isPaused) {
+                rafId = requestAnimationFrame(animate);
+                return;
+            }
+            
+            scrollPos += 0.8; // Velocidade fixa simples
+            
+            if (scrollPos >= maxScroll) {
+                scrollPos = 0;
+            }
+            
+            container.scrollLeft = scrollPos;
+            rafId = requestAnimationFrame(animate);
+        }
+        
+        // Pausar animação
+        function pause() {
+            isPaused = true;
+            if (resumeTimeout) {
+                clearTimeout(resumeTimeout);
+                resumeTimeout = null;
+            }
+        }
+        
+        // Retomar após delay
+        function scheduleResume() {
+            if (resumeTimeout) clearTimeout(resumeTimeout);
+            resumeTimeout = setTimeout(() => {
+                scrollPos = container.scrollLeft % maxScroll;
+                if (scrollPos < 0) scrollPos += maxScroll;
+                isPaused = false;
+                if (!rafId) {
+                    rafId = requestAnimationFrame(animate);
+                }
+            }, 1000);
+        }
+        
+        // Eventos simplificados
+        let isInteracting = false;
+        
+        ['touchstart', 'mousedown'].forEach(evt => {
+            container.addEventListener(evt, () => {
+                isInteracting = true;
+                pause();
+            }, { passive: true });
+        });
+        
+        ['touchmove', 'mousemove'].forEach(evt => {
+            container.addEventListener(evt, () => {
+                if (isInteracting) pause();
+            }, { passive: true });
+        });
+        
+        ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(evt => {
+            container.addEventListener(evt, () => {
+                isInteracting = false;
+                scheduleResume();
+            }, { passive: true });
+        });
+        
+        // Detectar scroll manual
+        let scrollCheckTimeout;
+        container.addEventListener('scroll', function() {
+            if (!isInteracting) {
+                scrollPos = container.scrollLeft % maxScroll;
+                if (scrollPos < 0) scrollPos += maxScroll;
+            }
+            pause();
+            clearTimeout(scrollCheckTimeout);
+            scrollCheckTimeout = setTimeout(scheduleResume, 200);
+        }, { passive: true });
+        
+        // Intersection Observer para pausar quando fora da viewport
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (!isPaused && !rafId) {
+                        rafId = requestAnimationFrame(animate);
+                    }
+                } else {
+                    if (rafId) {
+                        cancelAnimationFrame(rafId);
+                        rafId = null;
+                    }
+                }
+            });
+        }, { threshold: 0.01 });
+        
+        observer.observe(container);
+        
+        // Iniciar
+        if (!isPaused) {
+            rafId = requestAnimationFrame(animate);
+        }
+    });
+});
+
 // Popular sidebar com categorias
 document.addEventListener('DOMContentLoaded', function() {
     const categoriesList = document.getElementById('categoriesList');
     const categoryTitle = document.getElementById('categoryTitle');
     const productsCount = document.getElementById('productsCount');
+    
+    // Verificar se categoriesList existe antes de continuar
+    if (!categoriesList) return;
     
     @if(isset($categories) && $categories->count() > 0)
     // Determinar categoria ativa
@@ -170,26 +430,47 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     categoriesList.appendChild(todosBtn);
     
-    // Adicionar categorias
-    @foreach($categories as $cat)
-    const catBtn{{ $cat->id }} = document.createElement('button');
-    catBtn{{ $cat->id }}.className = activeCategoryId === {{ $cat->id }} ?
-        'inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 px-4 py-2 w-full justify-start gap-3 h-11 bg-primary text-primary-foreground hover:bg-primary/90' :
-        'inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 px-4 py-2 w-full justify-start gap-3 h-11 hover:bg-accent hover:text-accent-foreground';
-    catBtn{{ $cat->id }}.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-            <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
-            <path d="M12 22V12"></path>
-            <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
-            <path d="m7.5 4.27 9 5.15"></path>
-        </svg>
-        <span>{{ $cat->name }}</span>
-    `;
-    catBtn{{ $cat->id }}.addEventListener('click', () => {
-        window.location.href = '{{ route('pedido.menu.category', $cat->id) }}';
-    });
-    categoriesList.appendChild(catBtn{{ $cat->id }});
-    @endforeach
+         // Adicionar categorias
+     @foreach($categories as $cat)
+         @php
+             $catId = is_string($cat->id) ? $cat->id : $cat->id;
+             $isNovidades = is_string($cat->id) && $cat->id === 'novidades';
+         @endphp
+         @if(!$isNovidades)
+             // Categorias normais podem ser clicadas para navegar
+             const catBtn{{ str_replace(['-', ' '], '_', $catId) }} = document.createElement('button');
+             catBtn{{ str_replace(['-', ' '], '_', $catId) }}.className = activeCategoryId === {{ is_numeric($catId) ? $catId : "'{$catId}'" }} ?
+                 'inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 px-4 py-2 w-full justify-start gap-3 h-11 bg-primary text-primary-foreground hover:bg-primary/90' :
+                 'inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 px-4 py-2 w-full justify-start gap-3 h-11 hover:bg-accent hover:text-accent-foreground';
+             catBtn{{ str_replace(['-', ' '], '_', $catId) }}.innerHTML = `
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                     <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
+                     <path d="M12 22V12"></path>
+                     <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
+                     <path d="m7.5 4.27 9 5.15"></path>
+                 </svg>
+                 <span>{{ $cat->name }}</span>
+             `;
+             catBtn{{ str_replace(['-', ' '], '_', $catId) }}.addEventListener('click', () => {
+                 window.location.href = '{{ route('pedido.menu.category', is_numeric($catId) ? $catId : 0) }}';
+             });
+             categoriesList.appendChild(catBtn{{ str_replace(['-', ' '], '_', $catId) }});
+         @else
+             // Categoria "Novidades" dinâmica - apenas exibir, não navegar
+             const catNovidadesBtn = document.createElement('div');
+             catNovidadesBtn.className = 'inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium px-4 py-2 w-full justify-start gap-3 h-11 text-muted-foreground cursor-default';
+             catNovidadesBtn.innerHTML = `
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                     <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
+                     <path d="M12 22V12"></path>
+                     <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
+                     <path d="m7.5 4.27 9 5.15"></path>
+                 </svg>
+                 <span>{{ $cat->name }}</span>
+             `;
+             categoriesList.appendChild(catNovidadesBtn);
+         @endif
+     @endforeach
     @endif
     
     // Atualizar título e contagem
@@ -200,19 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
         productsCount.textContent = '{{ $productsCount }} produtos disponíveis';
     }
     
-    // Scroll Novidades
-    const novidadesContainer = document.getElementById('novidadesContainer');
-    const scrollLeft = document.getElementById('scrollNovidadesLeft');
-    const scrollRight = document.getElementById('scrollNovidadesRight');
-    
-    if (scrollLeft && scrollRight && novidadesContainer) {
-        scrollLeft.addEventListener('click', () => {
-            novidadesContainer.scrollBy({ left: -560, behavior: 'smooth' });
-        });
-        scrollRight.addEventListener('click', () => {
-            novidadesContainer.scrollBy({ left: 560, behavior: 'smooth' });
-        });
-    }
+
     
     // Busca
     const searchInput = document.getElementById('searchInput');
@@ -296,9 +565,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Funções de carrinho (manter existentes)
-function addToCart(productId, productName, price) {
-    // Implementação existente
+// Funções de carrinho (otimizada para resposta rápida)
+function addToCart(productId, productName, price, buttonElement = null) {
+    // Feedback visual imediato
+    if (buttonElement) {
+        const originalHTML = buttonElement.innerHTML;
+        buttonElement.disabled = true;
+        buttonElement.classList.add('opacity-50', 'cursor-wait');
+        buttonElement.innerHTML = '<svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+        
+        // Restaurar após timeout de segurança
+        setTimeout(() => {
+            if (buttonElement.disabled) {
+                buttonElement.disabled = false;
+                buttonElement.classList.remove('opacity-50', 'cursor-wait');
+                buttonElement.innerHTML = originalHTML;
+            }
+        }, 3000);
+    }
+    
+    // Atualizar badge otimisticamente (antes da resposta)
+    const currentBadge = document.querySelector('nav a[href*="cart"] .absolute, #cartBadgeHeader, a[href*="cart"] .absolute');
+    if (currentBadge) {
+        const currentCount = parseInt(currentBadge.textContent) || 0;
+        currentBadge.textContent = currentCount + 1;
+        currentBadge.style.display = 'flex';
+    }
+    
+    // Fazer requisição de forma não-bloqueante
     fetch('{{ route('pedido.cart.add') }}', {
         method: 'POST',
         headers: {
@@ -314,20 +608,55 @@ function addToCart(productId, productName, price) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            window.updateCartBadge(data.cart_count || 0);
-            // Mostrar notificação
+        // Restaurar botão
+        if (buttonElement) {
+            buttonElement.disabled = false;
+            buttonElement.classList.remove('opacity-50', 'cursor-wait');
+            buttonElement.innerHTML = buttonElement.innerHTML.replace(/<svg class="animate-spin[^>]*>.*?<\/svg>/s, '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>');
+        }
+        
+        if (data.success || data.ok) {
+            // Atualizar badge com valor real do servidor
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge(data.cart_count || 0);
+            }
+            
+            // Mostrar notificação rápida
             if (typeof showNotification === 'function') {
-                showNotification('Produto adicionado ao carrinho!', productName, price);
+                showNotification('Produto adicionado!', productName, price);
             }
-            // Recarregar drawer se aberto
-            if (document.getElementById('cartDrawer') && !document.getElementById('cartDrawer').classList.contains('translate-x-full')) {
-                loadCartIntoDrawer();
+            
+            // Recarregar drawer APENAS se estiver aberto (evita requisição desnecessária)
+            // Otimização: não bloquear a resposta, fazer de forma completamente assíncrona
+            const cartDrawer = document.getElementById('cartDrawer');
+            if (cartDrawer && typeof loadCartIntoDrawer === 'function') {
+                const isOpen = !cartDrawer.classList.contains('translate-x-full');
+                if (isOpen) {
+                    // Carregar de forma totalmente assíncrona, sem bloquear a resposta
+                    requestIdleCallback ? requestIdleCallback(() => loadCartIntoDrawer()) : setTimeout(() => loadCartIntoDrawer(), 300);
+                }
             }
+        } else {
+            // Reverter badge otimístico em caso de erro
+            if (currentBadge) {
+                const currentCount = parseInt(currentBadge.textContent) || 1;
+                currentBadge.textContent = Math.max(0, currentCount - 1);
+            }
+            alert(data.message || 'Erro ao adicionar produto ao carrinho');
         }
     })
     .catch(error => {
         console.error('Erro:', error);
+        // Restaurar botão em caso de erro
+        if (buttonElement) {
+            buttonElement.disabled = false;
+            buttonElement.classList.remove('opacity-50', 'cursor-wait');
+        }
+        // Reverter badge otimístico
+        if (currentBadge) {
+            const currentCount = parseInt(currentBadge.textContent) || 1;
+            currentBadge.textContent = Math.max(0, currentCount - 1);
+        }
         alert('Erro ao adicionar produto ao carrinho');
     });
 }

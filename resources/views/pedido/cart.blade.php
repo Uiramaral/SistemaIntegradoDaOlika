@@ -3,7 +3,7 @@
 @section('title', 'Carrinho - Olika')
 
 @section('content')
-<div class="max-w-4xl mx-auto pb-20 sm:pb-20 lg:pb-24">
+<div class="max-w-4xl mx-auto pb-32 sm:pb-32 lg:pb-40">
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-3xl font-bold">Seu Carrinho</h1>
         <a href="{{ route('pedido.index') }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors border border-gray-300 bg-white hover:bg-gray-50 h-10 px-4 py-2">
@@ -15,14 +15,8 @@
         </a>
     </div>
 
-    <div id="cartContent" class="space-y-4">
-        <div class="text-center py-12">
-            <p class="text-gray-600 mb-4">Carregando carrinho...</p>
-        </div>
-    </div>
-
     <!-- Barra de benefícios: frete grátis e cashback -->
-    <div id="benefitsBar" class="hidden mt-4 rounded-lg border bg-white p-4">
+    <div id="benefitsBar" class="hidden mb-6 rounded-lg border bg-white p-4">
         <div id="freeShippingWrap" class="mb-3">
             <div class="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Progresso para frete grátis</span>
@@ -39,15 +33,21 @@
         </div>
     </div>
 
+    <div id="cartContent" class="space-y-4">
+        <div class="text-center py-12">
+            <p class="text-gray-600 mb-4">Carregando carrinho...</p>
+        </div>
+    </div>
+
     <!-- Barra fixa de total e ação -->
-    <div id="cartBar" class="fixed inset-x-0 bottom-0 bg-white/95 backdrop-blur border-t hidden z-50">
+    <div id="cartBar" class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg z-[60]" style="display: none;">
         <div class="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between gap-3">
             <div class="text-sm min-w-0 flex-shrink-0">
                 <div class="text-gray-500">Total</div>
                 <div id="cartTotal" class="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">R$ 0,00</div>
             </div>
             <a id="continueBtn" href="{{ route('pedido.index') }}" class="px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-gray-300 hover:bg-gray-50 text-primary hover:text-primary/90 text-sm sm:text-base whitespace-nowrap flex-shrink-0">Continuar comprando</a>
-            <a id="checkoutBtn" href="{{ route('pedido.checkout.index') }}" class="flex-1 text-center bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 sm:py-3 rounded-lg disabled:opacity-50 disabled:pointer-events-none text-sm sm:text-base whitespace-nowrap min-w-0">
+            <a id="checkoutBtn" href="{{ route('pedido.checkout.index') }}" class="flex-1 text-center bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 sm:py-3 rounded-lg text-sm sm:text-base whitespace-nowrap min-w-0">
                 <span id="checkoutBtnLabel">Finalizar Pedido</span>
                 <span id="checkoutLoading" class="hidden ml-2 text-xs">(gerando sugestões...)</span>
             </a>
@@ -90,7 +90,7 @@ async function loadCart() {
                     </a>
                 </div>
             `;
-            bar.classList.add('hidden');
+            bar.style.display = 'none';
             benefits.classList.add('hidden');
             return;
         }
@@ -156,8 +156,17 @@ async function loadCart() {
             console.error('loadCart: Elemento cartTotal não encontrado no DOM!');
         }
         
-        // Mostrar a barra de total
-        bar.classList.remove('hidden');
+        // Mostrar a barra de total (usar display direto para garantir visibilidade)
+        if (bar) {
+            bar.style.display = 'block'; // Exibir diretamente via display
+            console.log('loadCart: Barra do carrinho exibida', { 
+                hasItems: data.items && data.items.length > 0,
+                total: finalTotal,
+                barVisible: bar.offsetHeight > 0
+            });
+        } else {
+            console.error('loadCart: Elemento cartBar não encontrado no DOM!');
+        }
         
         // Garantir que há espaço suficiente para scroll (ajustar padding-bottom dinamicamente)
         // Isso garante que o último item não seja cortado pela barra fixa
@@ -207,7 +216,8 @@ async function loadCart() {
                 <button onclick="loadCart()" class="text-primary hover:text-primary/90">Tentar novamente</button>
             </div>
         `;
-        document.getElementById('cartBar').classList.add('hidden');
+        const errorBar = document.getElementById('cartBar');
+        if (errorBar) errorBar.style.display = 'none';
         document.getElementById('benefitsBar').classList.add('hidden');
     }
 }

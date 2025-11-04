@@ -72,6 +72,7 @@ class ProductsController extends Controller
             'seo_title' => 'nullable|string|max:255',
             'seo_description' => 'nullable|string',
             'is_active' => 'boolean',
+            'show_in_catalog' => 'boolean',
             'is_available' => 'boolean',
             'is_featured' => 'boolean',
             'gluten_free' => 'boolean',
@@ -119,9 +120,10 @@ class ProductsController extends Controller
             $ingredientsText = $nutri['ingredients'] ?? ($request->input('ingredients') ?? '');
             $weightGrams = (int)($validated['weight_grams'] ?? 0);
             
-            // Na criação, SEMPRE gera descrições com IA (usa ingredientes se houver)
-            // Mesmo sem ingredientes, tenta gerar baseado apenas no nome
-            if (trim((string)$ingredientsText) !== '' || true) { // true força sempre na criação
+            // Na criação: se usar "Criar + IA", gera descrições e SEO. Caso contrário, só gera se tiver ingredientes
+            $useAi = $request->input('action') === 'save_ai';
+            
+            if ($useAi || trim((string)$ingredientsText) !== '') {
                 $ai = new OpenAIService();
                 if ($ai->isConfigured()) {
                     // Preparar variantes do formulário (se houver, antes de salvar)
@@ -165,6 +167,35 @@ class ProductsController extends Controller
                     if (!empty($gen['label'])) {
                         $validated['label_description'] = $gen['label'];
                     }
+                    
+                    // Gerar SEO quando usar "Criar + IA"
+                    if ($useAi) {
+                        $categoryName = null;
+                        if ($validated['category_id'] ?? null) {
+                            $category = Category::find($validated['category_id']);
+                            $categoryName = $category ? $category->name : null;
+                        }
+                        
+                        $ingredients = [];
+                        if (!empty($ingredientsText)) {
+                            $ingredients = array_filter(array_map('trim', preg_split('/[,\n]+/', $ingredientsText)));
+                        }
+                        
+                        $seoResult = $ai->generateSEO(
+                            $validated['name'],
+                            $validated['description'] ?? '',
+                            $categoryName,
+                            (float)($validated['price'] ?? 0),
+                            $ingredients
+                        );
+                        
+                        if ($seoResult['seo_title']) {
+                            $validated['seo_title'] = $seoResult['seo_title'];
+                        }
+                        if ($seoResult['seo_description']) {
+                            $validated['seo_description'] = $seoResult['seo_description'];
+                        }
+                    }
                 }
             }
 
@@ -178,6 +209,12 @@ class ProductsController extends Controller
                 }
             }
 
+            // Converter only_pdv para show_in_catalog (invertido)
+            // Se only_pdv = true, então show_in_catalog = false (não aparece no catálogo)
+            // Se only_pdv = false ou não enviado, então show_in_catalog = true (aparece no catálogo)
+            $validated['show_in_catalog'] = !$request->boolean('only_pdv', false);
+            unset($validated['only_pdv']); // Remover do array antes de criar
+            
             // Criar produto ANTES de fazer upload das imagens adicionais
             $product = Product::create($validated);
 
@@ -413,6 +450,7 @@ class ProductsController extends Controller
             'seo_title' => 'nullable|string|max:255',
             'seo_description' => 'nullable|string',
             'is_active' => 'boolean',
+            'show_in_catalog' => 'boolean',
             'is_available' => 'boolean',
             'is_featured' => 'boolean',
             'gluten_free' => 'boolean',
@@ -467,8 +505,8 @@ class ProductsController extends Controller
                 ]);
             }
 
-            // Auto-IA no update: apenas se forçar OU se informações relevantes mudarem
-            $forceAi = (bool)$request->boolean('force_ai', false);
+            // Auto-IA no update: apenas se usar "Salvar + IA" OU se informações relevantes mudarem
+            $useAi = $request->input('action') === 'save_ai';
             $oldIngredients = (string)($product->nutritional_info['ingredients'] ?? '');
             $newIngredients = (string)($nutri['ingredients'] ?? '');
             $oldWeight = (int)($product->weight_grams ?? 0);
@@ -476,11 +514,11 @@ class ProductsController extends Controller
             $ingredientsChanged = trim($oldIngredients) !== trim($newIngredients);
             $weightChanged = $oldWeight !== $newWeight;
             
-            if ($forceAi || ($ingredientsChanged && trim($newIngredients) !== '') || $weightChanged) {
+            if ($useAi || ($ingredientsChanged && trim($newIngredients) !== '') || $weightChanged) {
                 $ai = new OpenAIService();
                 if ($ai->isConfigured()) {
-                    // Se forçar IA, ignorar descrições do formulário para usar apenas a gerada
-                    if ($forceAi) {
+                    // Se usar "Salvar + IA", ignorar descrições do formulário para usar apenas a gerada
+                    if ($useAi) {
                         // Guardar descrição atual apenas como contexto, mas não usar no validated
                         $existingDescForContext = trim((string)($validated['description'] ?? $product->description ?? ''));
                     } else {
@@ -523,10 +561,10 @@ class ProductsController extends Controller
                         $allergenNames
                     );
                     
-                    // No update: se forçar, sempre sobrescreve. Caso contrário, só preenche se vazio
-                    if ($forceAi) {
-                        // Se forçou IA, SEMPRE substitui com o resultado gerado (ignora o que veio do formulário)
-                        Log::info('Products.update:force_ai_applying', [
+                    // No update: se usar "Salvar + IA", sempre sobrescreve. Caso contrário, só preenche se vazio
+                    if ($useAi) {
+                        // Se usou "Salvar + IA", SEMPRE substitui com o resultado gerado (ignora o que veio do formulário)
+                        Log::info('Products.update:save_ai_applying', [
                             'product_id'=>$product->id,
                             'gen_description'=>!empty($gen['description']),
                             'gen_label'=>!empty($gen['label']),
@@ -538,6 +576,33 @@ class ProductsController extends Controller
                         }
                         if (!empty($gen['label'])) {
                             $validated['label_description'] = $gen['label'];
+                        }
+                        
+                        // Gerar SEO quando usar "Salvar + IA"
+                        $categoryName = null;
+                        if ($product->category_id) {
+                            $category = Category::find($product->category_id);
+                            $categoryName = $category ? $category->name : null;
+                        }
+                        
+                        $ingredients = [];
+                        if (!empty($newIngredients)) {
+                            $ingredients = array_filter(array_map('trim', preg_split('/[,\n]+/', $newIngredients)));
+                        }
+                        
+                        $seoResult = $ai->generateSEO(
+                            $validated['name'],
+                            $validated['description'] ?? '',
+                            $categoryName,
+                            (float)($validated['price'] ?? $product->price ?? 0),
+                            $ingredients
+                        );
+                        
+                        if ($seoResult['seo_title']) {
+                            $validated['seo_title'] = $seoResult['seo_title'];
+                        }
+                        if ($seoResult['seo_description']) {
+                            $validated['seo_description'] = $seoResult['seo_description'];
                         }
                     } else {
                         // Se não forçou, só preenche campos vazios
@@ -562,6 +627,12 @@ class ProductsController extends Controller
             }
 
             // Atualizar produto
+            // Converter only_pdv para show_in_catalog (invertido)
+            // Se only_pdv = true, então show_in_catalog = false (não aparece no catálogo)
+            // Se only_pdv = false ou não enviado, então show_in_catalog = true (aparece no catálogo)
+            $validated['show_in_catalog'] = !$request->boolean('only_pdv', false);
+            unset($validated['only_pdv']); // Remover do array antes de atualizar
+            
             $product->update($validated);
 
             // Variantes (opcional)
@@ -884,6 +955,72 @@ class ProductsController extends Controller
             return response()->json(['success' => true, 'message' => 'Ordem das imagens atualizada']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erro ao reordenar imagens'], 500);
+        }
+    }
+
+    /**
+     * Gera textos de SEO via IA
+     */
+    public function generateSEO(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'price' => 'nullable|numeric|min:0',
+            'ingredients' => 'nullable|string',
+        ]);
+
+        try {
+            $ai = new OpenAIService();
+            if (!$ai->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'IA não configurada. Configure a chave da API OpenAI nas configurações.'
+                ], 400);
+            }
+
+            $categoryName = null;
+            if ($request->category_id) {
+                $category = Category::find($request->category_id);
+                $categoryName = $category ? $category->name : null;
+            }
+
+            $ingredients = [];
+            if ($request->ingredients) {
+                $ingredients = array_filter(array_map('trim', preg_split('/[,\n]+/', $request->ingredients)));
+            }
+
+            $result = $ai->generateSEO(
+                $request->name,
+                $request->description ?? '',
+                $categoryName,
+                $request->price ? (float)$request->price : null,
+                $ingredients
+            );
+
+            if ($result['seo_title'] || $result['seo_description']) {
+                return response()->json([
+                    'success' => true,
+                    'seo_title' => $result['seo_title'],
+                    'seo_description' => $result['seo_description'],
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível gerar os textos de SEO. Tente novamente.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao gerar SEO via IA', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao gerar SEO: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

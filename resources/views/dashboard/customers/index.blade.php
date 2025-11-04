@@ -40,6 +40,7 @@
                                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Contato</th>
                                 <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Pedidos</th>
                                 <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Total Gasto</th>
+                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Débitos</th>
                                 <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -85,6 +86,16 @@
                                     </td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-medium">{{ $customer->total_orders ?? 0 }}</td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-semibold">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</td>
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                        @php
+                                            $debtsBalance = (float)($customer->total_debts ?? 0);
+                                        @endphp
+                                        @if($debtsBalance > 0)
+                                            <span class="font-semibold text-red-600">R$ {{ number_format($debtsBalance, 2, ',', '.') }}</span>
+                                        @else
+                                            <span class="text-muted-foreground">R$ 0,00</span>
+                                        @endif
+                                    </td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
                                         <a href="{{ route('dashboard.customers.show', $customer->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver perfil</a>
                                     </td>

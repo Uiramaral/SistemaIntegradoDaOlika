@@ -16,6 +16,7 @@ class Category extends Model
         'image_url',
         'is_active',
         'sort_order',
+        'display_type',
     ];
 
     protected $casts = [

@@ -90,7 +90,19 @@
                                     @php
                                         $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
                                         $hasVariants = $variantsActive->count() > 0;
+                                        
+                                        // Preços serão atualizados via JavaScript quando cliente for selecionado
+                                        // Por padrão, mostrar preço normal
                                         $displayPrice = $hasVariants ? $variantsActive->first()->price : $product->price;
+                                        
+                                        // Preparar variantes com preços
+                                        $variantsData = $variantsActive->map(function($v) {
+                                            return [
+                                                'id' => $v->id,
+                                                'name' => $v->name,
+                                                'price' => (float)$v->price,
+                                            ];
+                                        })->toArray();
                                     @endphp
                                     <button type="button" 
                                             class="product-quick-add p-3 text-left border rounded-md hover:bg-accent transition-colors"
@@ -98,13 +110,13 @@
                                             data-product-name="{{ $product->name }}"
                                             data-product-price="{{ $displayPrice }}"
                                             data-has-variants="{{ $hasVariants ? 'true' : 'false' }}"
-                                            data-variants="{{ $hasVariants ? $variantsActive->toJson() : '[]' }}">
+                                            data-variants="{{ json_encode($variantsData) }}">
                                         <p class="font-medium text-sm">{{ $product->name }}</p>
                                         @if($hasVariants)
-                                            <p class="text-xs text-muted-foreground">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                            <p class="text-xs text-muted-foreground product-price-display">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
                                             <p class="text-xs text-blue-600 mt-1">Escolher opção</p>
                                         @else
-                                            <p class="text-xs text-muted-foreground">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                            <p class="text-xs text-muted-foreground product-price-display">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
                                         @endif
                                     </button>
                                 @endforeach
@@ -261,6 +273,17 @@
                         <label class="block text-sm font-medium mb-2">Email</label>
                         <input type="email" id="new-customer-email" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
+                    <div>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="new-customer-is-wholesale" 
+                                class="rounded border-gray-300 text-primary focus:ring-primary"
+                            >
+                            <span class="text-sm font-medium">Cliente de Revenda/Restaurante</span>
+                        </label>
+                        <p class="text-xs text-muted-foreground mt-1 ml-6">Marque esta opção se o cliente é revenda, restaurante ou similar. Eles terão acesso a preços diferenciados.</p>
+                    </div>
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button type="button" id="btn-cancel-new-customer" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
@@ -374,7 +397,8 @@ document.getElementById('customer-search')?.addEventListener('input', function(e
                                 data-customer-neighborhood="${c.neighborhood || ''}"
                                 data-customer-city="${c.city || ''}"
                                 data-customer-state="${c.state || ''}"
-                                data-customer-fee="${c.custom_delivery_fee ?? ''}">
+                                data-customer-fee="${c.custom_delivery_fee ?? ''}"
+                                data-customer-wholesale="${c.is_wholesale ? '1' : '0'}">
                             <p class="font-medium">${c.name || 'Sem nome'}</p>
                             ${c.phone ? `<p class="text-xs text-muted-foreground">${c.phone}</p>` : ''}
                             ${c.email ? `<p class="text-xs text-muted-foreground">${c.email}</p>` : ''}
@@ -406,6 +430,8 @@ document.addEventListener('click', function(e) {
         const customerState = btn.dataset.customerState || '';
         const customerFee = btn.dataset.customerFee;
         
+        const isWholesale = btn.dataset.customerWholesale === '1' || btn.dataset.customerWholesale === 'true';
+        
         pdvState.customer = {
             id: customerId,
             name: customerName,
@@ -417,15 +443,34 @@ document.addEventListener('click', function(e) {
             city: customerCity,
             state: customerState,
             custom_delivery_fee: customerFee !== '' ? parseFloat(customerFee) : null,
+            is_wholesale: isWholesale,
         };
         
         document.getElementById('customer-id').value = customerId;
         document.getElementById('selected-customer-name').textContent = customerName;
-        const info = [customerPhone, customerEmail].filter(Boolean).join(' • ') || 'Sem informações de contato';
+        let info = [customerPhone, customerEmail].filter(Boolean).join(' • ') || 'Sem informações de contato';
+        if (isWholesale) {
+            info += ' • 🔷 Revenda';
+        }
         document.getElementById('selected-customer-info').textContent = info;
         document.getElementById('selected-customer').classList.remove('hidden');
         document.getElementById('customer-results').classList.add('hidden');
         document.getElementById('customer-search').value = '';
+        
+        // Atualizar preços dos produtos frequentes se for wholesale
+        if (isWholesale) {
+            updateProductPricesForWholesale(customerId);
+            
+            // Recarregar produtos da busca se houver
+            const productSearch = document.getElementById('product-search');
+            if (productSearch && productSearch.value.trim().length >= 2) {
+                // Re-disparar busca de produtos para atualizar preços
+                productSearch.dispatchEvent(new Event('input'));
+            }
+        } else {
+            // Se não for wholesale, resetar para preços normais
+            resetProductPricesToNormal();
+        }
         
         // Preencher CEP automaticamente se cliente tiver
         if (customerZip) {
@@ -500,8 +545,110 @@ document.getElementById('btn-clear-customer')?.addEventListener('click', functio
     pdvState.customer = null;
     document.getElementById('customer-id').value = '';
     document.getElementById('selected-customer').classList.add('hidden');
+    resetProductPricesToNormal(); // Resetar preços quando cliente é removido
     updateFinalizeButton();
 });
+
+// Função para atualizar preços dos produtos frequentes para clientes de revenda
+function updateProductPricesForWholesale(customerId) {
+    const productButtons = document.querySelectorAll('.product-quick-add');
+    
+    productButtons.forEach(btn => {
+        const productId = btn.dataset.productId;
+        const variantsJson = btn.dataset.variants || '[]';
+        let variants = [];
+        
+        try {
+            variants = JSON.parse(variantsJson);
+        } catch(e) {
+            console.error('Erro ao parsear variantes:', e);
+        }
+        
+        // Buscar preços atualizados via API
+        fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productId)}&customer_id=${customerId}&product_id=${productId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.products && data.products.length > 0) {
+                    const product = data.products.find(p => p.id == productId) || data.products[0];
+                    
+                    // Atualizar preço do produto
+                    const newPrice = product.price;
+                    btn.dataset.productPrice = newPrice;
+                    
+                    // Atualizar variantes se houver
+                    if (product.variants && product.variants.length > 0) {
+                        btn.dataset.variants = JSON.stringify(product.variants);
+                        
+                        // Atualizar preço de exibição (menor preço entre variantes ou produto)
+                        const minVariantPrice = Math.min(...product.variants.map(v => v.price));
+                        const displayPrice = Math.min(newPrice, minVariantPrice);
+                        btn.dataset.productPrice = displayPrice;
+                        
+                        const priceDisplay = btn.querySelector('.product-price-display');
+                        if (priceDisplay) {
+                            priceDisplay.textContent = `A partir de R$ ${displayPrice.toFixed(2).replace('.', ',')}`;
+                        }
+                    } else {
+                        // Sem variantes, atualizar preço direto
+                        const priceDisplay = btn.querySelector('.product-price-display');
+                        if (priceDisplay) {
+                            priceDisplay.textContent = `R$ ${newPrice.toFixed(2).replace('.', ',')}`;
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Erro ao atualizar preço do produto:', err);
+            });
+    });
+}
+
+// Função para resetar preços para valores normais (carregar do servidor)
+function resetProductPricesToNormal() {
+    // Recarregar a página ou fazer uma requisição para obter preços normais
+    // Por enquanto, vamos apenas recarregar os dados originais dos atributos data
+    // Isso pode ser melhorado com uma chamada AJAX, mas por simplicidade vamos recarregar a seção
+    const productButtons = document.querySelectorAll('.product-quick-add');
+    
+    // Os preços originais estão nos atributos data originais do servidor
+    // Como não temos acesso fácil aos valores originais, vamos fazer uma requisição sem customer_id
+    productButtons.forEach(btn => {
+        const productId = btn.dataset.productId;
+        const productName = btn.dataset.productName;
+        
+        // Buscar sem customer_id para obter preços normais
+        fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productName)}&product_id=${productId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.products && data.products.length > 0) {
+                    const product = data.products.find(p => p.id == productId) || data.products[0];
+                    const newPrice = product.price;
+                    
+                    // Atualizar atributos
+                    btn.dataset.productPrice = newPrice;
+                    
+                    if (product.variants && product.variants.length > 0) {
+                        btn.dataset.variants = JSON.stringify(product.variants);
+                        const minVariantPrice = Math.min(...product.variants.map(v => v.price));
+                        const displayPrice = Math.min(newPrice, minVariantPrice);
+                        
+                        const priceDisplay = btn.querySelector('.product-price-display');
+                        if (priceDisplay) {
+                            priceDisplay.textContent = `A partir de R$ ${displayPrice.toFixed(2).replace('.', ',')}`;
+                        }
+                    } else {
+                        const priceDisplay = btn.querySelector('.product-price-display');
+                        if (priceDisplay) {
+                            priceDisplay.textContent = `R$ ${newPrice.toFixed(2).replace('.', ',')}`;
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Erro ao resetar preço do produto:', err);
+            });
+    });
+}
 
 // Buscar produtos
 let productSearchTimeout;
@@ -515,7 +662,9 @@ document.getElementById('product-search')?.addEventListener('input', function(e)
     }
     
     productSearchTimeout = setTimeout(() => {
-        fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(query)}`)
+        const customerId = pdvState.customer?.id || '';
+        const url = `{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(query)}${customerId ? '&customer_id=' + customerId : ''}`;
+        fetch(url)
             .then(res => res.json())
             .then(data => {
                 const resultsEl = document.getElementById('product-results');
@@ -1073,6 +1222,7 @@ document.getElementById('new-customer-form')?.addEventListener('submit', functio
     const name = document.getElementById('new-customer-name').value;
     const phone = document.getElementById('new-customer-phone').value;
     const email = document.getElementById('new-customer-email').value;
+    const isWholesale = document.getElementById('new-customer-is-wholesale').checked;
     
     fetch('{{ route("api.pdv.customers.store") }}', {
         method: 'POST',
@@ -1080,19 +1230,49 @@ document.getElementById('new-customer-form')?.addEventListener('submit', functio
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
         },
-        body: JSON.stringify({ name, phone, email }),
+        body: JSON.stringify({ name, phone, email, is_wholesale: isWholesale }),
     })
     .then(res => res.json())
     .then(data => {
         if (data.customer) {
             // Selecionar o novo cliente
             const customer = data.customer;
-            pdvState.customer = customer;
+            pdvState.customer = {
+                id: customer.id,
+                name: customer.name,
+                phone: customer.phone,
+                email: customer.email,
+                zip_code: customer.zip_code || '',
+                address: customer.address || '',
+                neighborhood: customer.neighborhood || '',
+                city: customer.city || '',
+                state: customer.state || '',
+                custom_delivery_fee: customer.custom_delivery_fee || null,
+                is_wholesale: customer.is_wholesale || false,
+            };
             document.getElementById('customer-id').value = customer.id;
             document.getElementById('selected-customer-name').textContent = customer.name;
-            const info = [customer.phone, customer.email].filter(Boolean).join(' • ') || 'Sem informações de contato';
+            let info = [customer.phone, customer.email].filter(Boolean).join(' • ') || 'Sem informações de contato';
+            if (customer.is_wholesale) {
+                info += ' • 🔷 Revenda';
+            }
             document.getElementById('selected-customer-info').textContent = info;
             document.getElementById('selected-customer').classList.remove('hidden');
+            
+            // Atualizar preços dos produtos frequentes se for wholesale
+            if (customer.is_wholesale) {
+                updateProductPricesForWholesale(customer.id);
+                
+                // Recarregar produtos da busca se houver
+                const productSearch = document.getElementById('product-search');
+                if (productSearch && productSearch.value.trim().length >= 2) {
+                    // Re-disparar busca de produtos para atualizar preços
+                    productSearch.dispatchEvent(new Event('input'));
+                }
+            } else {
+                // Se não for wholesale, resetar para preços normais
+                resetProductPricesToNormal();
+            }
             
             // Fechar modal
             document.getElementById('new-customer-modal').classList.add('hidden');

@@ -17,75 +17,95 @@ class MenuController extends Controller
         $featuredProducts = Product::query()
             ->select('products.*')
             ->active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
             ->featured()
-            ->with(['images']) // Eager load images
+            ->with(['images', 'category']) // Eager load images e category para evitar N+1
             ->ordered()
             ->get();
 
         $featuredIds = $featuredProducts->pluck('id')->unique()->values();
 
-        // 2) Categorias (para UI/pills). Aqui não precisamos carregar os produtos ainda.
-        $categories = Category::query()
-            ->select('categories.*')
-            ->active()
-            ->ordered()
-            ->get();
-
-        // 3) Pegar IDs de produtos ligado às categorias, sem repetir, e já excluindo os destaques
-        //    Como a relação é 1:N (products.category_id), buscamos diretamente:
-        $categoryProductIds = Product::query()
-            ->select('products.id')
-            ->whereNotNull('category_id')
-            ->active()
-            ->available()
-            ->purchasable()
-            ->pluck('id')
-            ->unique()
-            ->values();
-
-        // Exclui destaques
-        $nonFeaturedIds = $categoryProductIds->diff($featuredIds)->values();
-
-        // 4) Busca única dos "demais" produtos (sem duplicata e já ordenados pelo seu escopo)
-        $categoryProducts = Product::query()
-            ->select('products.*')
-            ->whereIn('products.id', $nonFeaturedIds)
-            ->active()
-            ->available()
-            ->purchasable()
-            ->with(['images']) // Eager load images
-            ->ordered()
-            ->get();
-
-        // 5) Combina: destaques no topo + demais; garante unicidade e reindexa
-        $products = $featuredProducts
-            ->concat($categoryProducts)
-            ->unique('id')
-            ->values();
-        
-        // 6) Buscar produtos novos (últimos 15 dias) para categoria "Novidades !!"
-        // Excluir produtos que já estão em featured ou categories para evitar duplicação
-        $allShownIds = $products->pluck('id')->unique();
+        // 2) Buscar produtos novos (últimos 15 dias) para categoria dinâmica "Novidades"
         $newProductsThreshold = now()->subDays(15);
         $newProducts = Product::query()
             ->select('products.*')
             ->where('created_at', '>=', $newProductsThreshold)
-            ->whereNotIn('products.id', $allShownIds) // Excluir produtos já mostrados
+            ->whereNotIn('products.id', $featuredIds->toArray()) // Excluir produtos em destaque
             ->active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
-            ->with(['images']) // Eager load images
-            ->ordered()
-            ->limit(8) // Limitar a 8 itens iniciais
+            ->with(['images', 'category'])
+            ->inRandomOrder() // Ordenar aleatoriamente
+            ->limit(8) // Limitar a 8 itens
             ->get();
+
+        // 3) Categorias ordenadas com seus produtos agrupados
+        // IMPORTANTE: Produtos podem aparecer tanto em categorias quanto em Novidades/Destaques
+        $categories = Category::query()
+            ->select('categories.*')
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(function ($category) {
+                // Buscar TODOS os produtos da categoria (sem excluir nada)
+                $category->products = Product::query()
+                    ->where('category_id', $category->id)
+                    ->active()
+                    ->showInCatalog()
+                    ->available()
+                    ->purchasable()
+                    ->with(['images'])
+                    ->ordered()
+                    ->get();
+                
+                return $category;
+            })
+            ->filter(function ($category) {
+                // Remover categorias sem produtos (mas manter "Novidades" que será tratada separadamente)
+                $categoryName = strtolower($category->name);
+                if (strpos($categoryName, 'novidades') !== false || strpos($categoryName, 'novidade') !== false) {
+                    return false; // Remover categoria "Novidades" do banco, vamos criar dinamicamente
+                }
+                return $category->products->count() > 0;
+            });
         
-        // Logs de diagnóstico (opcional)
-        \Log::info('Featured IDs: ' . json_encode($featuredIds));
-        \Log::info('NonFeatured IDs: ' . json_encode($nonFeaturedIds));
-        \Log::info('Totais => featured: ' . $featuredProducts->count() . ' | demais: ' . $categoryProducts->count() . ' | final: ' . $products->count());
-        \Log::info('Novidades: ' . $newProducts->count() . ' produtos');
+        // 4) Criar categoria dinâmica "Novidades" se houver produtos novos
+        if ($newProducts->count() > 0) {
+            // Buscar categoria "Novidades" do banco para pegar configurações (sort_order, display_type)
+            $novidadesFromDB = Category::query()
+                ->where(function($q) {
+                    $q->whereRaw('LOWER(name) LIKE ?', ['%novidades%'])
+                      ->orWhereRaw('LOWER(name) LIKE ?', ['%novidade%']);
+                })
+                ->first();
+            
+            $novidadesCategory = (object) [
+                'id' => 'novidades',
+                'name' => $novidadesFromDB ? $novidadesFromDB->name : 'Novidades !! 🎉',
+                'description' => $novidadesFromDB->description ?? null,
+                'image_url' => $novidadesFromDB->image_url ?? null,
+                'is_active' => true,
+                'sort_order' => -1, // Ordem negativa para garantir que seja sempre primeiro
+                'display_type' => $novidadesFromDB ? ($novidadesFromDB->display_type ?? 'list_horizontal') : 'list_horizontal',
+                'products' => $newProducts,
+            ];
+            
+            // Adicionar "Novidades" à coleção
+            $categories->push($novidadesCategory);
+        }
+        
+        // 5) Ordenar categorias: Novidades sempre primeiro, depois ordem alfabética
+        $categories = $categories->sortBy(function($category) {
+            // Se for "Novidades", retorna ordem -1 (sempre primeiro)
+            if (is_string($category->id) && $category->id === 'novidades') {
+                return -1;
+            }
+            // Para outras categorias, ordenar alfabeticamente pelo nome
+            return strtolower($category->name);
+        })->values();
 
         // Criar objeto store com valores padrão
         $store = (object) [
@@ -100,7 +120,7 @@ class MenuController extends Controller
             'bio' => 'Pães artesanais com fermentação natural. Tradição e qualidade em cada fornada.'
         ];
 
-        return view('pedido.index', compact('store', 'categories', 'products', 'newProducts'));
+        return view('pedido.index', compact('store', 'categories', 'featuredProducts'));
     }
 
     /**
@@ -110,6 +130,7 @@ class MenuController extends Controller
     {
         $products = $category->products()
             ->active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
             ->with(['images']) // Eager load images
@@ -131,14 +152,15 @@ class MenuController extends Controller
      */
     public function product(Product $product)
     {
-        // Bloquear acesso direto a produtos indisponíveis/inativos/não compráveis
+        // Bloquear acesso direto a produtos indisponíveis/inativos/não compráveis ou que não aparecem no catálogo
         $isPurchasable = ($product->price > 0) || $product->variants()->where('is_active', true)->where('price', '>', 0)->exists();
-        if (!$product->is_active || !$product->is_available || !$isPurchasable) {
+        if (!$product->is_active || !$product->show_in_catalog || !$product->is_available || !$isPurchasable) {
             abort(404);
         }
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->active()
+            ->showInCatalog()
             ->available()
             ->purchasable()
             ->with(['images']) // Eager load images
@@ -220,6 +242,7 @@ class MenuController extends Controller
               ->orWhere('description', 'like', "%{$query}%");
         })
         ->active()
+        ->showInCatalog()
         ->available()
         ->with(['images']) // Eager load images
         ->ordered()

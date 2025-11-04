@@ -343,7 +343,11 @@ class BotConversaService
                 'status' => $res->status(),
                 'success' => $res->successful(),
                 'body_preview' => substr($res->body(), 0, 500),
-                'headers' => $res->headers()
+                'body_full' => $res->body(),
+                'headers' => $res->headers(),
+                'has_message' => isset($payload['message']),
+                'message_length' => isset($payload['message']) ? strlen($payload['message']) : 0,
+                'phone' => $payload['phone'] ?? null
             ]);
             
             if ($res->failed()) {

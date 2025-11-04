@@ -391,6 +391,36 @@
             </div>
         </div>
 
+        <!-- Estornar Pedido -->
+        @if(in_array(strtolower($order->payment_status), ['paid', 'approved']) && $order->payment_status !== 'refunded')
+        <div class="rounded-lg border border-destructive/50 bg-card text-card-foreground shadow-sm flex flex-col">
+            <div class="flex flex-col space-y-1.5 p-6">
+                <h3 class="text-lg font-semibold leading-none tracking-tight text-destructive">Estornar Pedido</h3>
+                <p class="text-sm text-muted-foreground">Cancelar venda e reverter todas as transações relacionadas</p>
+            </div>
+            <div class="p-6 pt-0 flex flex-col flex-grow">
+                <form action="{{ route('dashboard.orders.refund', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow" id="refundForm" onsubmit="return confirm('Tem certeza que deseja estornar este pedido? Esta ação irá:\n\n- Reverter cashback usado e ganho\n- Remover uso de cupom\n- Reverter pontos de fidelidade\n- Cancelar o pedido\n\nEsta ação não pode ser desfeita!');">
+                    @csrf
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Motivo do estorno (opcional)</label>
+                        <textarea name="reason" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Informe o motivo do estorno..."></textarea>
+                    </div>
+                    <div class="button-container">
+                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                                <path d="M21 3v5h-5"></path>
+                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                                <path d="M8 16H3v5"></path>
+                            </svg>
+                            Estornar Pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
+
         <!-- Aplicar Cupom -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
             <div class="flex flex-col space-y-1.5 p-6">

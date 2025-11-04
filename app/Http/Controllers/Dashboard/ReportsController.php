@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\OrderItem;
+use App\Models\AnalyticsEvent;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -74,6 +75,82 @@ class ReportsController extends Controller
         
         $statusSummary = $orders->groupBy('status')->map->count();
         
+        // Métricas de Analytics
+        // Contar visitas únicas: 1 sessão por dia (mesma sessão no mesmo dia = 1 visita)
+        // Usar groupBy para contar combinações únicas de data + session_id
+        $pageViews = DB::table('analytics_events')
+            ->where('event_type', 'page_view')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
+            ->count();
+        
+        $previousPageViews = DB::table('analytics_events')
+            ->where('event_type', 'page_view')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
+            ->count();
+        
+        $pageViewsChange = $previousPageViews > 0 
+            ? (($pageViews - $previousPageViews) / $previousPageViews) * 100 
+            : ($pageViews > 0 ? 100 : 0);
+        
+        $addToCartEvents = AnalyticsEvent::where('event_type', 'add_to_cart')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+        
+        $previousAddToCart = AnalyticsEvent::where('event_type', 'add_to_cart')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->count();
+        
+        $addToCartChange = $previousAddToCart > 0 
+            ? (($addToCartEvents - $previousAddToCart) / $previousAddToCart) * 100 
+            : ($addToCartEvents > 0 ? 100 : 0);
+        
+        $checkoutStarted = AnalyticsEvent::where('event_type', 'checkout_started')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+        
+        $previousCheckoutStarted = AnalyticsEvent::where('event_type', 'checkout_started')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->count();
+        
+        $checkoutStartedChange = $previousCheckoutStarted > 0 
+            ? (($checkoutStarted - $previousCheckoutStarted) / $previousCheckoutStarted) * 100 
+            : ($checkoutStarted > 0 ? 100 : 0);
+        
+        $purchases = AnalyticsEvent::where('event_type', 'purchase')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+        
+        $previousPurchases = AnalyticsEvent::where('event_type', 'purchase')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->count();
+        
+        $purchasesChange = $previousPurchases > 0 
+            ? (($purchases - $previousPurchases) / $previousPurchases) * 100 
+            : ($purchases > 0 ? 100 : 0);
+        
+        // Taxa de conversão (baseada em visitas únicas)
+        $conversionRate = $pageViews > 0 ? ($purchases / $pageViews) * 100 : 0;
+        $previousConversionRate = $previousPageViews > 0 ? ($previousPurchases / $previousPageViews) * 100 : 0;
+        $conversionRateChange = $previousConversionRate > 0 
+            ? (($conversionRate - $previousConversionRate) / $previousConversionRate) * 100 
+            : ($conversionRate > 0 ? 100 : 0);
+        
+        // Taxa de abandono de carrinho (adicionou ao carrinho mas não iniciou checkout)
+        $cartAbandonment = $addToCartEvents > 0 
+            ? (($addToCartEvents - $checkoutStarted) / $addToCartEvents) * 100 
+            : 0;
+        
+        // Taxa de conclusão de checkout (iniciou checkout e comprou)
+        $checkoutCompletionRate = $checkoutStarted > 0 
+            ? ($purchases / $checkoutStarted) * 100 
+            : 0;
+        
         $chartData = $this->getChartData($startDate, $endDate);
 
         return view('dashboard.reports.index', compact(
@@ -89,7 +166,19 @@ class ReportsController extends Controller
             'newCustomers',
             'customersChange',
             'productsSold',
-            'productsChange'
+            'productsChange',
+            'pageViews',
+            'pageViewsChange',
+            'addToCartEvents',
+            'addToCartChange',
+            'checkoutStarted',
+            'checkoutStartedChange',
+            'purchases',
+            'purchasesChange',
+            'conversionRate',
+            'conversionRateChange',
+            'cartAbandonment',
+            'checkoutCompletionRate'
         ));
     }
 

@@ -314,6 +314,73 @@ class MercadoPagoApiService
     }
 
     /**
+     * Estorna/reembolsa um pagamento no Mercado Pago
+     * 
+     * @param string $paymentId ID do pagamento no Mercado Pago
+     * @param float|null $amount Valor a reembolsar (null para reembolso integral)
+     * @return array
+     */
+    public function refundPayment(string $paymentId, ?float $amount = null): array
+    {
+        try {
+            $payload = [];
+            
+            // Se informado valor, fazer reembolso parcial
+            if ($amount !== null && $amount > 0) {
+                $payload['amount'] = $amount;
+            }
+            
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->accessToken,
+                'Content-Type' => 'application/json',
+            ])->post("{$this->baseUrl}/v1/payments/{$paymentId}/refunds", $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Estorno realizado no Mercado Pago', [
+                    'payment_id' => $paymentId,
+                    'amount' => $amount,
+                    'response' => $data,
+                ]);
+
+                return [
+                    'success' => true,
+                    'refund_id' => $data['id'] ?? null,
+                    'status' => $data['status'] ?? null,
+                    'amount' => $data['amount'] ?? $amount,
+                    'response' => $data,
+                ];
+            }
+
+            Log::error('Erro ao estornar pagamento no Mercado Pago', [
+                'payment_id' => $paymentId,
+                'amount' => $amount,
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao estornar pagamento no Mercado Pago',
+                'details' => $response->json(),
+                'status_code' => $response->status(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Exceção ao estornar pagamento no Mercado Pago', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao processar estorno: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Obtém configurações públicas para o frontend
      */
     public function getPublicConfig(): array

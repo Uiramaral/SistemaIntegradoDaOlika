@@ -57,12 +57,23 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Status</label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer mt-2">
-                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', $category->is_active) ? 'checked' : '' }} class="rounded border-gray-300">
-                        <span class="text-sm">Categoria ativa</span>
-                    </label>
+                    <label class="block text-sm font-medium mb-2">Tipo de Exibição</label>
+                    <select name="display_type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <option value="grid" {{ old('display_type', $category->display_type ?? 'grid') === 'grid' ? 'selected' : '' }}>Grid (Grade)</option>
+                        <option value="list_horizontal" {{ old('display_type', $category->display_type ?? 'grid') === 'list_horizontal' ? 'selected' : '' }}>Lista Horizontal (Rolagem)</option>
+                        <option value="list_vertical" {{ old('display_type', $category->display_type ?? 'grid') === 'list_vertical' ? 'selected' : '' }}>Lista Vertical</option>
+                    </select>
+                    <p class="text-xs text-muted-foreground mt-1">Como os produtos serão exibidos no catálogo</p>
+                    @error('display_type')<span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>@enderror
                 </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-2">Status</label>
+                <label class="inline-flex items-center gap-2 cursor-pointer mt-2">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $category->is_active) ? 'checked' : '' }} class="rounded border-gray-300">
+                    <span class="text-sm">Categoria ativa</span>
+                </label>
             </div>
 
             <div class="flex gap-3 justify-end">

@@ -132,6 +132,23 @@
                             <p class="text-sm text-destructive">{{ $message }}</p>
                         @enderror
                     </div>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="is_wholesale" 
+                                name="is_wholesale" 
+                                value="1"
+                                {{ old('is_wholesale', is_array($customer) ? ($customer['is_wholesale'] ?? false) : ($customer->is_wholesale ?? false)) ? 'checked' : '' }}
+                                class="rounded border-gray-300 text-primary focus:ring-primary"
+                            >
+                            <span class="text-sm font-medium">Cliente de Revenda/Restaurante</span>
+                        </label>
+                        <p class="text-xs text-muted-foreground">Marque esta opção se o cliente é revenda, restaurante ou similar. Eles terão acesso a preços diferenciados.</p>
+                        @error('is_wholesale')
+                            <p class="text-sm text-destructive">{{ $message }}</p>
+                        @enderror
+                    </div>
                     <div class="space-y-2 md:col-span-2">
                         <label for="cashback_balance" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Saldo de Cashback (R$)

@@ -368,47 +368,65 @@ async function printOrder(orderData) {
         const printer = config.printer || printers[0];
         console.log('🖨️ Usando impressora:', printer);
         
-        // Função crítica: converter base64 para Array de bytes
-        function base64ToBytes(base64) {
+        // Função crítica: converter base64 para Uint8Array (bytes binários)
+        // DEVE retornar Uint8Array, não Array simples!
+        function base64ToUint8Array(base64) {
             const binaryString = atob(base64); // decode base64 para texto binário
             const len = binaryString.length;
-            const bytes = [];
+            const bytes = new Uint8Array(len); // ✅ Uint8Array, não Array!
             for (let i = 0; i < len; i++) {
-                bytes.push(binaryString.charCodeAt(i)); // transforma em array de números
+                bytes[i] = binaryString.charCodeAt(i); // transforma em array de bytes
             }
             return bytes;
         }
         
-        // Converter base64 para Array de bytes - PONTO CRÍTICO
-        const rawBytes = base64ToBytes(orderData.data);
+        // Converter base64 para Uint8Array - PONTO CRÍTICO
+        const rawData = base64ToUint8Array(orderData.data);
+        
+        // VALIDAÇÃO CRÍTICA: Verificar tipo e estrutura
+        console.log('🔍 DEBUG - Tipo de dado:', typeof rawData, rawData.constructor.name);
+        console.log('🔍 DEBUG - É Uint8Array?', rawData instanceof Uint8Array);
+        console.log('🔍 DEBUG - É Array?', Array.isArray(rawData));
         
         // Validação: verificar se começa com ESC @ (0x1B 0x40)
-        if (rawBytes.length < 2 || rawBytes[0] !== 0x1B || rawBytes[1] !== 0x40) {
+        if (rawData.length < 2 || rawData[0] !== 0x1B || rawData[1] !== 0x40) {
             console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
             console.error('❌ Primeiros bytes:', 
-                rawBytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
             throw new Error('Dados ESC/POS inválidos');
         }
         
+        // Verificar se é realmente Uint8Array
+        if (!(rawData instanceof Uint8Array)) {
+            console.error('❌ ERRO CRÍTICO: rawData não é Uint8Array!');
+            console.error('❌ Tipo:', typeof rawData, rawData.constructor.name);
+            throw new Error('Dados não foram convertidos corretamente para Uint8Array');
+        }
+        
         console.log('✅ Dados ESC/POS validados:', {
-            length: rawBytes.length,
-            firstBytes: rawBytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-            isArray: Array.isArray(rawBytes),
+            length: rawData.length,
+            firstBytes: Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+            isUint8Array: rawData instanceof Uint8Array,
+            type: typeof rawData,
+            constructor: rawData.constructor.name,
             orderId: orderData.order_id,
             orderNumber: orderData.order_number
         });
         
-        // QZ Tray: Quando enviamos Array de números, NÃO usar encoding: 'RAW'
-        // O QZ Tray detecta automaticamente que é dados binários RAW
-        // Usar encoding: 'RAW' faz o QZ Tray tentar fazer parse dos dados como comandos
+        // QZ Tray: Para dados RAW binários ESC/POS, usar objeto com type: 'raw', format: 'command'
         const config = qz.configs.create(printer || 'EPSON TM-T20X Receipt');
         
-        console.log('🚀 Enviando dados RAW (Array) para impressora...');
+        console.log('🚀 Enviando dados RAW para impressora...');
+        console.log('🔍 DEBUG final - Tipo de data:', typeof rawData, rawData.constructor.name);
         
         try {
-            // Enviar Array de bytes diretamente - QZ Tray detecta automaticamente como RAW
-            // IMPORTANTE: Sem encoding: 'RAW' quando enviamos Array de números
-            const printResult = await qz.print(config, rawBytes);
+            // Enviar como objeto RAW com Uint8Array
+            // FORMATO CORRETO para dados ESC/POS binários
+            const printResult = await qz.print(config, [{
+                type: 'raw',
+                format: 'command',
+                data: rawData  // ✅ Uint8Array real
+            }]);
             console.log('✅ Comando de impressão RAW enviado com sucesso!');
             console.log('✅ Resultado:', printResult);
             

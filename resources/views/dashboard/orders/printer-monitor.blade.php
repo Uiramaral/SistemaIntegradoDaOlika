@@ -368,114 +368,47 @@ async function printOrder(orderData) {
         const printer = config.printer || printers[0];
         console.log('🖨️ Usando impressora:', printer);
         
-        // Decodificar dados ESC/POS de base64 e converter para Uint8Array
-        // MANTER COMO Uint8Array para dados binários RAW
-        let bytes = null;
-        try {
-            console.log('📦 Recebendo dados do backend...');
-            console.log('📦 Tamanho base64:', orderData.data ? orderData.data.length : 0);
-            
-            // Decodificar base64 para string binária
-            const binaryString = atob(orderData.data);
-            console.log('✅ Base64 decodificado, tamanho:', binaryString.length, 'bytes');
-            
-            // Verificar se começamos com ESC @ (0x1B 0x40)
-            const firstByte = binaryString.charCodeAt(0) & 0xFF;
-            const secondByte = binaryString.length > 1 ? (binaryString.charCodeAt(1) & 0xFF) : 0;
-            console.log('🔍 Primeiro byte:', '0x' + firstByte.toString(16).padStart(2, '0'), firstByte === 0x1B ? '✅ ESC' : '❌');
-            console.log('🔍 Segundo byte:', '0x' + secondByte.toString(16).padStart(2, '0'), secondByte === 0x40 ? '✅ @' : '❌');
-            
-            if (firstByte !== 0x1B || secondByte !== 0x40) {
-                console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
-                console.error('❌ Isso indica que os dados foram corrompidos na codificação/decodificação');
-            } else {
-                console.log('✅ Validação: String binária começa corretamente com ESC @');
-            }
-            
-            // Converter string binária para Uint8Array (para validação)
-            console.log('🔄 Convertendo para Uint8Array...');
+        // Função crítica: converter base64 para Array de bytes
+        function base64ToBytes(base64) {
+            const binaryString = atob(base64); // decode base64 para texto binário
             const len = binaryString.length;
-            const bytesUint8 = new Uint8Array(len);
+            const bytes = [];
             for (let i = 0; i < len; i++) {
-                bytesUint8[i] = binaryString.charCodeAt(i);
-            }
-            
-            // Validar se começa com ESC @
-            if (bytesUint8.length < 2 || bytesUint8[0] !== 0x1B || bytesUint8[1] !== 0x40) {
-                console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
-                console.error('❌ Primeiros bytes:', 
-                    Array.from(bytesUint8.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-            } else {
-                console.log('✅ Validação: Uint8Array começa corretamente com ESC @');
-            }
-            
-            // CORRETO: Converter Uint8Array → Array JavaScript simples (QZ Tray precisa de Array, não Uint8Array)
-            bytes = Array.from(bytesUint8);
-            
-            console.log('✅ Array criado:', bytes.length, 'bytes', Array.isArray(bytes) ? '(Array)' : '(outro tipo)');
-            
-        } catch (e) {
-            console.error('❌ Erro crítico ao processar dados:', e);
-            throw new Error('Erro ao processar dados para impressão: ' + e.message);
-        }
-        
-        // Verificar se o Array não está vazio
-        if (!bytes || bytes.length === 0) {
-            throw new Error('Array de bytes está vazio após conversão');
-        }
-        
-        // Verificar se é realmente Array JavaScript
-        if (!Array.isArray(bytes)) {
-            throw new Error('Dados não são Array. Tipo: ' + typeof bytes);
-        }
-        
-        // Converter para Array JavaScript simples
-        const bytesArray = Array.from(bytes);
-        
-        console.log('📤 Preparando envio RAW para impressora...', { 
-            printer, 
-            base64Length: orderData.data.length,
-            bytesLength: bytesArray.length,
-            firstBytes: bytesArray.slice(0, 10),
-            isArray: Array.isArray(bytesArray),
-            orderId: orderData.order_id,
-            orderNumber: orderData.order_number
-        });
-        
-        // QZ Tray: Para dados RAW binários ESC/POS
-        // Função auxiliar para converter base64 para Uint8Array
-        // (qz.util.decodeBase64ToUint8Array não existe na biblioteca)
-        function base64ToUint8Array(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+                bytes.push(binaryString.charCodeAt(i)); // transforma em array de números
             }
             return bytes;
         }
         
-        const rawData = base64ToUint8Array(orderData.data);
+        // Converter base64 para Array de bytes - PONTO CRÍTICO
+        const rawBytes = base64ToBytes(orderData.data);
         
-        console.log('📦 Dados decodificados para Uint8Array:', {
-            length: rawData.length,
-            firstBytes: Array.from(rawData.slice(0, 10)),
-            isValidEscPos: rawData[0] === 0x1B && rawData[1] === 0x40
+        // Validação: verificar se começa com ESC @ (0x1B 0x40)
+        if (rawBytes.length < 2 || rawBytes[0] !== 0x1B || rawBytes[1] !== 0x40) {
+            console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
+            console.error('❌ Primeiros bytes:', 
+                rawBytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            throw new Error('Dados ESC/POS inválidos');
+        }
+        
+        console.log('✅ Dados ESC/POS validados:', {
+            length: rawBytes.length,
+            firstBytes: rawBytes.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+            isArray: Array.isArray(rawBytes),
+            orderId: orderData.order_id,
+            orderNumber: orderData.order_number
         });
         
-        // Configurar impressão
-        const printConfig = qz.configs.create(printer);
+        // QZ Tray: Quando enviamos Array de números, NÃO usar encoding: 'RAW'
+        // O QZ Tray detecta automaticamente que é dados binários RAW
+        // Usar encoding: 'RAW' faz o QZ Tray tentar fazer parse dos dados como comandos
+        const config = qz.configs.create(printer || 'EPSON TM-T20X Receipt');
         
-        // Enviar como objeto RAW com formato command
-        // Formato correto para dados ESC/POS binários
-        console.log('🚀 Enviando dados RAW (Uint8Array) para impressora...');
+        console.log('🚀 Enviando dados RAW (Array) para impressora...');
         
         try {
-            const printResult = await qz.print(printConfig, [{
-                type: 'raw',
-                format: 'command',
-                data: rawData
-            }]);
+            // Enviar Array de bytes diretamente - QZ Tray detecta automaticamente como RAW
+            // IMPORTANTE: Sem encoding: 'RAW' quando enviamos Array de números
+            const printResult = await qz.print(config, rawBytes);
             console.log('✅ Comando de impressão RAW enviado com sucesso!');
             console.log('✅ Resultado:', printResult);
             

@@ -139,10 +139,10 @@ class FiscalPrinterService
         
         $commands[] = "\n";
         $commands[] = "\x1B\x45\x01"; // BOLD ON
-        $commands[] = "\x1B\x64\x01"; // DOUBLE WIDTH
+        $commands[] = "\x1D\x21\x10"; // DOUBLE WIDTH HEIGHT (GS ! n)
         $finalAmount = number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.');
         $commands[] = "TOTAL: R$ " . $finalAmount . "\n";
-        $commands[] = "\x1B\x64\x00"; // DOUBLE WIDTH OFF
+        $commands[] = "\x1D\x21\x00"; // NORMAL SIZE (GS ! 0)
         $commands[] = "\x1B\x45\x00"; // BOLD OFF
         $commands[] = "\x1B\x61\x00"; // Alinhar à esquerda
         $commands[] = "\n";
@@ -205,12 +205,22 @@ class FiscalPrinterService
         $commands[] = "\n";
         $commands[] = "\n";
         
+        // Avançar papel antes de cortar
+        $commands[] = "\n\n"; // Avançar algumas linhas
+        
         // Cortar papel
-        $commands[] = "\x1D\x56\x41\x03"; // GS V A - Cortar parcialmente (3mm)
+        $commands[] = "\x1D\x56\x41\x03"; // GS V A 3 - Cortar parcialmente (3mm)
+        
+        // Alternativa: Se a impressora não suportar corte parcial, usar avanço de papel
+        // $commands[] = "\x1D\x56\x00"; // GS V 0 - Cortar totalmente
+        // $commands[] = "\n\n\n"; // Avançar papel
         
         // Implodir comandos mantendo a integridade dos bytes binários
-        // NÃO converter encoding pois isso pode corromper comandos ESC/POS
-        $output = implode('', $commands);
+        // IMPORTANTE: Não fazer conversão de encoding - PHP trata strings como binárias
+        $output = '';
+        foreach ($commands as $cmd) {
+            $output .= $cmd;
+        }
         
         // DEBUG: Verificar se os primeiros bytes são ESC @ (0x1B 0x40)
         if (strlen($output) >= 2) {
@@ -221,7 +231,13 @@ class FiscalPrinterService
                     'first_byte' => '0x' . dechex($firstByte),
                     'second_byte' => '0x' . dechex($secondByte),
                     'expected' => '0x1B 0x40',
-                    'output_length' => strlen($output)
+                    'output_length' => strlen($output),
+                    'first_4_bytes_hex' => bin2hex(substr($output, 0, 4))
+                ]);
+            } else {
+                Log::debug('FiscalPrinterService: Comandos ESC/POS válidos', [
+                    'output_length' => strlen($output),
+                    'first_4_bytes_hex' => bin2hex(substr($output, 0, 4))
                 ]);
             }
         }
@@ -251,11 +267,22 @@ class FiscalPrinterService
                 $commands = $this->generateEscPosReceipt($order);
                 
                 // Garantir que os comandos sejam uma string binária limpa
-                // Não incluir 'raw' na resposta JSON pois pode causar problemas de serialização
+                // Usar base64_encode que preserva os bytes binários corretamente
+                // IMPORTANTE: Não fazer nenhuma conversão de encoding antes do base64
+                $base64Data = base64_encode($commands);
+                
+                // Log para debug
+                Log::info('FiscalPrinterService: Dados ESC/POS gerados', [
+                    'order_id' => $order->id,
+                    'commands_length' => strlen($commands),
+                    'base64_length' => strlen($base64Data),
+                    'first_bytes' => bin2hex(substr($commands, 0, 4)),
+                ]);
+                
                 return [
                     'success' => true,
                     'type' => 'escpos',
-                    'data' => base64_encode($commands),
+                    'data' => $base64Data,
                 ];
             }
             

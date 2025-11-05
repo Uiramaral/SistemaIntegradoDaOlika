@@ -215,7 +215,7 @@
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Taxa de Entrega</span>
-                            <span id="summaryDeliveryFee" class="text-gray-900 font-medium">R$ 0,00</span>
+                            <span id="summaryDeliveryFee" class="text-gray-500 font-medium text-sm">Informe o CEP</span>
                         </div>
                         <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-700 hidden">
                             <span id="summaryDeliveryDiscountLabel">Desconto no frete</span>
@@ -286,14 +286,22 @@ function updateFinalizeButtonState() {
         // Verificar se o frete está no DOM (backup check)
         const deliveryFeeElement = document.getElementById('summaryDeliveryFee');
         const deliveryFeeText = deliveryFeeElement?.textContent?.trim() || '';
-        const deliveryFeeInDOM = parseFloat(
+        
+        // Ignorar textos iniciais que indicam que o frete ainda não foi calculado
+        const textoInicial = deliveryFeeText.toLowerCase();
+        const isTextoInicial = textoInicial.includes('informe o cep') || 
+                              textoInicial.includes('aguardando') ||
+                              (!textoInicial.includes('r$') && !textoInicial.includes('grátis') && !textoInicial.includes('gratis'));
+        
+        // Só tentar parsear se não for texto inicial
+        const deliveryFeeInDOM = !isTextoInicial ? parseFloat(
             deliveryFeeText
                 .replace(/[^\d,]/g, '')
                 .replace(',', '.') || '0'
-        ) || 0;
+        ) || 0 : null;
         
         // Verificar se o texto é "Grátis" (indica que frete foi calculado e é zero)
-        const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
+        const isGratis = !isTextoInicial && (textoInicial.includes('grátis') || textoInicial.includes('gratis'));
         
         // Verificar se endereço está completo (CEP, número, rua, bairro, cidade, estado)
         const hasNumber = document.getElementById('number')?.value.trim().length > 0;
@@ -312,11 +320,11 @@ function updateFinalizeButtonState() {
             return;
         }
         
-        // Se o frete foi calculado (flag = true) OU se há um valor de frete no DOM (mesmo que 0 = grátis)
-        // IMPORTANTE: Se deliveryFeeInDOM existe no DOM OU se o texto é "Grátis", significa que o frete foi calculado
+        // Se o frete foi calculado (flag = true) OU se há um valor válido de frete no DOM
+        // IMPORTANTE: Ignorar textos iniciais - só considerar calculado se flag OU valor monetário/Grátis válido
         const freteFoiCalculado = window.checkoutData.freteCalculado === true || 
-                                   isGratis ||
-                                   (deliveryFeeText.length > 0 && deliveryFeeElement && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
+                                   (isGratis && !isTextoInicial) ||
+                                   (!isTextoInicial && deliveryFeeInDOM !== null && deliveryFeeText.includes('R$'));
         
         if (!freteFoiCalculado) {
             btnFinalize.disabled = true;
@@ -327,7 +335,7 @@ function updateFinalizeButtonState() {
         } else {
             // Frete calculado (flag OU valor no DOM), habilitar botão
             // Se o frete está no DOM mas a flag não foi marcada, marcar agora
-            if (!window.checkoutData.freteCalculado && (deliveryFeeText.length > 0 || isGratis)) {
+            if (!window.checkoutData.freteCalculado && !isTextoInicial && (isGratis || (deliveryFeeInDOM !== null && deliveryFeeText.includes('R$')))) {
                 window.checkoutData.freteCalculado = true;
                 window.checkoutData.deliveryFee = isGratis ? 0 : deliveryFeeInDOM;
                 console.log('updateFinalizeButtonState: Frete detectado no DOM, marcando como calculado:', isGratis ? 0 : deliveryFeeInDOM);
@@ -418,7 +426,35 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         currentDeliveryFee = parseFloat(deliveryFee);
         console.log('updateOrderSummary: Usando frete do parâmetro:', currentDeliveryFee);
     } else {
-        currentDeliveryFee = parseFloat(window.checkoutData?.deliveryFee) || parseFloat(document.getElementById('summaryDeliveryFee')?.textContent?.replace(/[^\d,]/g, '')?.replace(',', '.')) || 0;
+        // Tentar obter do window.checkoutData primeiro
+        currentDeliveryFee = parseFloat(window.checkoutData?.deliveryFee);
+        
+        // Se não estiver em checkoutData, tentar do DOM, mas ignorar textos iniciais
+        if (isNaN(currentDeliveryFee) || currentDeliveryFee === 0) {
+            const deliveryFeeText = document.getElementById('summaryDeliveryFee')?.textContent?.trim() || '';
+            const textoInicial = deliveryFeeText.toLowerCase();
+            const isTextoInicial = textoInicial.includes('informe o cep') || 
+                                  textoInicial.includes('aguardando') ||
+                                  (!textoInicial.includes('r$') && !textoInicial.includes('grátis') && !textoInicial.includes('gratis'));
+            
+            // Só parsear se não for texto inicial
+            if (!isTextoInicial && deliveryFeeText.includes('R$')) {
+                currentDeliveryFee = parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            } else if (!isTextoInicial && (textoInicial.includes('grátis') || textoInicial.includes('gratis'))) {
+                currentDeliveryFee = 0;
+            } else {
+                // Texto inicial ou não identificado - usar 0 apenas se já tiver sido calculado antes
+                currentDeliveryFee = window.checkoutData?.freteCalculado ? (parseFloat(window.checkoutData?.deliveryFee) || 0) : null;
+            }
+        }
+        
+        // Se ainda não tiver valor válido, usar 0 apenas se realmente calculado
+        if ((currentDeliveryFee === null || isNaN(currentDeliveryFee)) && !window.checkoutData?.freteCalculado) {
+            currentDeliveryFee = null; // Não usar 0 se não foi calculado
+        } else if (isNaN(currentDeliveryFee) || currentDeliveryFee === null) {
+            currentDeliveryFee = 0;
+        }
+        
         console.log('updateOrderSummary: Lendo frete de outras fontes:', currentDeliveryFee);
     }
     
@@ -477,7 +513,10 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             calculatedTotal: currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed
         });
         
-        const total = parseFloat(data.total || (currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed));
+        // Calcular total apenas se o frete foi realmente calculado
+        const total = currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))
+            ? parseFloat(data.total || (currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed))
+            : currentSubtotal; // Se frete não foi calculado, mostrar apenas subtotal
         
         // Se houver mensagem sobre o cupom, exibir feedback
         const couponFeedback = document.getElementById('couponFeedback');
@@ -541,19 +580,30 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         }
         
         // Mostrar frete final (já com desconto aplicado)
-        // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
-        if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
-            // Frete grátis por desconto de 100%
-            document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
-            document.getElementById('summaryDeliveryFee').classList.add('text-green-700');
-        } else if (currentDeliveryFee > 0) {
-            // Há frete a pagar
-            document.getElementById('summaryDeliveryFee').textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
-            document.getElementById('summaryDeliveryFee').classList.remove('text-green-700');
+        // IMPORTANTE: Só atualizar se realmente foi calculado (currentDeliveryFee não é null)
+        if (currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))) {
+            // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
+            if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
+                // Frete grátis por desconto de 100%
+                document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
+                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm');
+                document.getElementById('summaryDeliveryFee').classList.add('text-green-700', 'font-medium');
+            } else if (currentDeliveryFee > 0) {
+                // Há frete a pagar
+                document.getElementById('summaryDeliveryFee').textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
+                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm', 'text-green-700');
+                document.getElementById('summaryDeliveryFee').classList.add('text-gray-900', 'font-medium');
+            } else {
+                // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
+                document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
+                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm');
+                document.getElementById('summaryDeliveryFee').classList.add('text-green-700', 'font-medium');
+            }
         } else {
-            // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
-            document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
-            document.getElementById('summaryDeliveryFee').classList.add('text-green-700');
+            // Frete ainda não foi calculado - manter texto inicial
+            document.getElementById('summaryDeliveryFee').textContent = 'Informe o CEP';
+            document.getElementById('summaryDeliveryFee').classList.remove('text-gray-900', 'text-green-700', 'font-medium');
+            document.getElementById('summaryDeliveryFee').classList.add('text-gray-500', 'text-sm', 'font-medium');
         }
         
         // Marcar como calculado SEMPRE que recebemos um valor (mesmo 0 = grátis)
@@ -1178,23 +1228,33 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         const deliveryFeeElement = document.getElementById('summaryDeliveryFee');
         let freteJaCalculado = false;
         if (deliveryFeeElement) {
-            const deliveryFeeText = deliveryFeeElement.textContent;
-            const deliveryFee = parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            const deliveryFeeText = deliveryFeeElement.textContent.trim();
+            const textoInicial = deliveryFeeText.toLowerCase();
+            const isTextoInicial = textoInicial.includes('informe o cep') || 
+                                  textoInicial.includes('aguardando') ||
+                                  (!textoInicial.includes('r$') && !textoInicial.includes('grátis') && !textoInicial.includes('gratis'));
             
-            // Se já existe um frete calculado, marcar temporariamente como calculado
-            // MAS: vamos sempre recalcular para garantir que o valor está atualizado em pedidos subsequentes
-            if (deliveryFee >= 0 && deliveryFeeText.trim().length > 0) {
-                // Temporariamente marcar como calculado apenas para não bloquear o botão inicialmente
-                // Mas será recalculado para garantir valor atualizado
-                freteJaCalculado = true;
-                console.log('DOMContentLoaded: Frete detectado no DOM (será recalculado):', deliveryFee);
-                // Atualizar estado do botão IMEDIATAMENTE se frete já está calculado
-                // Mas será recalculado para garantir valor atualizado
-                updateFinalizeButtonState();
-            }
-            
-            if (deliveryFee <= 0) {
-                filtrarCuponsFreteGratis(0);
+            // Só considerar calculado se não for texto inicial
+            if (!isTextoInicial) {
+                const deliveryFee = textoInicial.includes('grátis') || textoInicial.includes('gratis') 
+                    ? 0 
+                    : parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+                
+                // Se já existe um frete calculado, marcar temporariamente como calculado
+                // MAS: vamos sempre recalcular para garantir que o valor está atualizado em pedidos subsequentes
+                if (deliveryFeeText.length > 0 && (deliveryFeeText.includes('R$') || textoInicial.includes('grátis') || textoInicial.includes('gratis'))) {
+                    // Temporariamente marcar como calculado apenas para não bloquear o botão inicialmente
+                    // Mas será recalculado para garantir valor atualizado
+                    freteJaCalculado = true;
+                    console.log('DOMContentLoaded: Frete detectado no DOM (será recalculado):', deliveryFee);
+                    // Atualizar estado do botão IMEDIATAMENTE se frete já está calculado
+                    // Mas será recalculado para garantir valor atualizado
+                    updateFinalizeButtonState();
+                }
+                
+                if (deliveryFee <= 0) {
+                    filtrarCuponsFreteGratis(0);
+                }
             }
         }
         
@@ -1517,10 +1577,16 @@ document.getElementById('checkoutForm')?.addEventListener('submit', async functi
     const deliveryFeeInDOM = parseFloat(deliveryFeeText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
     const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
     
-    // Frete calculado = flag true OU existe valor no DOM (mesmo que seja 0 = grátis) OU texto é "Grátis"
+    // Verificar se é texto inicial (não calcular)
+    const textoInicial = deliveryFeeText.toLowerCase();
+    const isTextoInicial = textoInicial.includes('informe o cep') || 
+                          textoInicial.includes('aguardando') ||
+                          (!textoInicial.includes('r$') && !textoInicial.includes('grátis') && !textoInicial.includes('gratis'));
+    
+    // Frete calculado = flag true OU existe valor válido no DOM (ignorar textos iniciais)
     const freteCalculado = window.checkoutData.freteCalculado === true || 
-                           isGratis ||
-                           (deliveryFeeText.length > 0 && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
+                           (!isTextoInicial && isGratis) ||
+                           (!isTextoInicial && deliveryFeeText.length > 0 && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
     
     console.log('Submit: Verificando frete', {
         freteCalculado: window.checkoutData.freteCalculado,
@@ -1657,8 +1723,12 @@ document.getElementById('btn-finalize-order')?.addEventListener('click', functio
         
         // Verificar por que está disabled e mostrar mensagem
         const deliveryFeeText = document.getElementById('summaryDeliveryFee')?.textContent?.trim() || '';
-        const isGratis = deliveryFeeText.toLowerCase().includes('grátis') || deliveryFeeText.toLowerCase().includes('gratis');
-        const freteCalculado = window.checkoutData.freteCalculado === true || isGratis;
+        const textoInicial = deliveryFeeText.toLowerCase();
+        const isTextoInicial = textoInicial.includes('informe o cep') || 
+                              textoInicial.includes('aguardando') ||
+                              (!textoInicial.includes('r$') && !textoInicial.includes('grátis') && !textoInicial.includes('gratis'));
+        const isGratis = !isTextoInicial && (textoInicial.includes('grátis') || textoInicial.includes('gratis'));
+        const freteCalculado = window.checkoutData.freteCalculado === true || (!isTextoInicial && isGratis);
         
         if (!freteCalculado) {
             alert('Por favor, aguarde o cálculo do frete de entrega antes de finalizar o pedido.');

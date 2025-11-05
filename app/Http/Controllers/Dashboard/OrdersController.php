@@ -1782,15 +1782,24 @@ class OrdersController extends Controller
 
             // 6. Registrar no histórico de status
             try {
-                DB::table('order_status_history')->insert([
+                // Verificar se a coluna updated_at existe antes de inserir
+                $hasUpdatedAt = DB::getSchemaBuilder()->hasColumn('order_status_history', 'updated_at');
+                
+                $insertData = [
                     'order_id' => $order->id,
                     'old_status' => $order->getOriginal('status') ?? 'pending',
                     'new_status' => 'cancelled',
                     'note' => $reason,
                     'user_id' => auth()->check() ? auth()->id() : null,
                     'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                ];
+                
+                // Só adicionar updated_at se a coluna existir
+                if ($hasUpdatedAt) {
+                    $insertData['updated_at'] = now();
+                }
+                
+                DB::table('order_status_history')->insert($insertData);
             } catch (\Exception $e) {
                 \Log::warning('Estorno: Erro ao registrar histórico', [
                     'order_id' => $order->id,

@@ -63,6 +63,14 @@ class WhatsAppService
         }
     }
 
+    /**
+     * Verifica se o serviço está habilitado e configurado
+     */
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+
     private function header(): array
     {
         return ["Content-Type: application/json","apikey: {$this->apiKey}"];

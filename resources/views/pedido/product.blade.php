@@ -74,13 +74,28 @@
                 </div>
 
                 @if($variantsActive->count() > 0)
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Escolha uma opção</label>
-                    <select id="variantSelect" class="w-full border rounded px-3 py-2">
-                        @foreach($variantsActive as $v)
-                        <option value="{{ $v->id }}" data-price="{{ (float)$v->price }}">{{ $v->name }} — R$ {{ number_format((float)$v->price,2,',','.') }}</option>
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <label class="block text-sm font-medium text-gray-700">Escolha uma das opções</label>
+                        <span class="inline-flex items-center rounded-full bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5">Obrigatório</span>
+                    </div>
+                    <div class="space-y-2">
+                        @foreach($variantsActive as $index => $v)
+                        <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors {{ $index === 0 ? 'border-primary bg-primary/5' : 'border-gray-300' }}">
+                            <input 
+                                type="radio" 
+                                name="variantSelect" 
+                                value="{{ $v->id }}" 
+                                data-price="{{ (float)$v->price }}"
+                                class="w-4 h-4 text-primary border-gray-300 focus:ring-primary focus:ring-2"
+                                {{ $index === 0 ? 'checked' : '' }}
+                                required
+                            >
+                            <span class="flex-1 text-sm font-medium text-gray-900">{{ $v->name }}</span>
+                            <span class="text-sm font-semibold text-primary">R$ {{ number_format((float)$v->price, 2, ',', '.') }}</span>
+                        </label>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
                 @endif
 
@@ -170,20 +185,17 @@ document.getElementById('quantityInput').addEventListener('change', function() {
 
 async function addToCart(productId, productName, price) {
     const qty = parseInt(document.getElementById('quantityInput').value) || 1;
-    const variantSelect = document.getElementById('variantSelect');
+    const variantRadio = document.querySelector('input[name="variantSelect"]:checked');
     const itemObservation = document.getElementById('itemObservation')?.value.trim() || '';
     let variantId = null; 
     let variantPrice = null;
     
-    // Se existe select de variantes, usar o preço da variante selecionada
-    if (variantSelect) {
-        const selectedOption = variantSelect.options[variantSelect.selectedIndex];
-        if (selectedOption) {
-            variantId = parseInt(selectedOption.value) || null;
-            const p = parseFloat(selectedOption.getAttribute('data-price') || '0');
-            if (!isNaN(p) && p > 0) {
-                variantPrice = p;
-            }
+    // Se existe radio de variantes, usar o preço da variante selecionada
+    if (variantRadio) {
+        variantId = parseInt(variantRadio.value) || null;
+        const p = parseFloat(variantRadio.getAttribute('data-price') || '0');
+        if (!isNaN(p) && p > 0) {
+            variantPrice = p;
         }
     }
     
@@ -193,6 +205,13 @@ async function addToCart(productId, productName, price) {
     if (!finalPrice || finalPrice <= 0) { 
         showNotification('Selecione uma opção com preço para adicionar.','error'); 
         return; 
+    }
+    
+    // Validar se variante foi selecionada quando há variantes
+    const hasVariants = document.querySelectorAll('input[name="variantSelect"]').length > 0;
+    if (hasVariants && !variantRadio) {
+        showNotification('Por favor, selecione uma opção antes de adicionar ao carrinho.','error'); 
+        return;
     }
     
     try {
@@ -247,28 +266,42 @@ async function addToCart(productId, productName, price) {
 
 // Atualiza preço exibido conforme variante
 document.addEventListener('DOMContentLoaded', function(){
-    const variantSelect = document.getElementById('variantSelect');
-    if (variantSelect) {
+    const variantRadios = document.querySelectorAll('input[name="variantSelect"]');
+    if (variantRadios.length > 0) {
         // Event listener para mudança de variante
-        variantSelect.addEventListener('change', function(){
-            const selectedIndex = this.selectedIndex;
-            const selectedOption = this.options[selectedIndex];
-            if (selectedOption) {
-                const price = parseFloat(selectedOption.getAttribute('data-price') || '0');
-                if (!isNaN(price) && price > 0) {
-                    const priceDisplay = document.getElementById('priceDisplay');
-                    if (priceDisplay) {
-                        priceDisplay.textContent = 'R$ ' + price.toFixed(2).replace('.', ',');
+        variantRadios.forEach(function(radio) {
+            radio.addEventListener('change', function(){
+                if (this.checked) {
+                    const price = parseFloat(this.getAttribute('data-price') || '0');
+                    if (!isNaN(price) && price > 0) {
+                        const priceDisplay = document.getElementById('priceDisplay');
+                        if (priceDisplay) {
+                            priceDisplay.textContent = 'R$ ' + price.toFixed(2).replace('.', ',');
+                        }
+                        
+                        // Atualizar visual do radio selecionado
+                        variantRadios.forEach(function(r) {
+                            const label = r.closest('label');
+                            if (label) {
+                                if (r === radio) {
+                                    label.classList.add('border-primary', 'bg-primary/5');
+                                    label.classList.remove('border-gray-300');
+                                } else {
+                                    label.classList.remove('border-primary', 'bg-primary/5');
+                                    label.classList.add('border-gray-300');
+                                }
+                            }
+                        });
                     }
                 }
-            }
+            });
         });
         
         // Trigger inicial para garantir que o preço está atualizado no carregamento
-        if (variantSelect.options.length > 0) {
-            // Pequeno delay para garantir que o DOM está pronto
+        const checkedRadio = document.querySelector('input[name="variantSelect"]:checked');
+        if (checkedRadio) {
             setTimeout(function() {
-                variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                checkedRadio.dispatchEvent(new Event('change', { bubbles: true }));
             }, 100);
         }
     }

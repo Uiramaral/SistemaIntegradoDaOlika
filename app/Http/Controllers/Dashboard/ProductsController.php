@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Helpers\ImageOptimizer;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Allergen;
@@ -107,6 +108,16 @@ class ProductsController extends Controller
                     $filename = $base.'-cover-'.time().'.'.$ext;
                     $coverImagePath = $request->file('cover_image')->storeAs('uploads/products', $filename, 'public');
                     $validated['cover_image'] = $coverImagePath;
+                    
+                    // Otimizar imagem: gerar WebP e thumbnails
+                    try {
+                        ImageOptimizer::optimize($coverImagePath);
+                    } catch (\Exception $optError) {
+                        Log::warning('Erro ao otimizar imagem de capa (store)', [
+                            'path' => $coverImagePath,
+                            'error' => $optError->getMessage()
+                        ]);
+                    }
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return redirect()
@@ -246,6 +257,16 @@ class ProductsController extends Controller
                             'is_primary' => $index === 0 && !$product->cover_image,
                             'sort_order' => $index,
                         ]);
+                        
+                        // Otimizar imagem: gerar WebP e thumbnails
+                        try {
+                            ImageOptimizer::optimize($path);
+                        } catch (\Exception $e) {
+                            Log::warning('Erro ao otimizar imagem adicional', [
+                                'path' => $path,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
                     }
                 } catch (\Exception $e) {
                     // Se der erro, limpar imagens já enviadas
@@ -497,6 +518,16 @@ class ProductsController extends Controller
                 Log::info('Products.update:cover_image:saved', [
                     'new_path' => $validated['cover_image'],
                 ]);
+                
+                // Otimizar imagem: gerar WebP e thumbnails
+                try {
+                    ImageOptimizer::optimize($validated['cover_image']);
+                } catch (\Exception $e) {
+                    Log::warning('Erro ao otimizar imagem de capa (update)', [
+                        'path' => $validated['cover_image'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
             } else {
                 Log::info('Products.update:cover_image:no_file', [
                     'product_id' => $product->id,
@@ -661,6 +692,16 @@ class ProductsController extends Controller
                         'is_primary' => false,
                         'sort_order' => $existingCount + $index,
                     ]);
+                    
+                    // Otimizar imagem: gerar WebP e thumbnails
+                    try {
+                        ImageOptimizer::optimize($path);
+                    } catch (\Exception $e) {
+                        Log::warning('Erro ao otimizar imagem adicional (update)', [
+                            'path' => $path,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
             }
 

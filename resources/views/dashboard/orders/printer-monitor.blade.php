@@ -429,23 +429,53 @@ async function printOrder(orderData) {
             throw new Error('Dados não são Array. Tipo: ' + typeof bytes);
         }
         
-        // Configurar impressão RAW (Array de bytes + encoding RAW)
-        const printConfig = qz.configs.create(printer, { encoding: 'RAW' });
+        // Converter para Array JavaScript simples
+        const bytesArray = Array.from(bytes);
         
         console.log('📤 Preparando envio RAW para impressora...', { 
             printer, 
-            bytesLength: bytes.length,
-            isArray: Array.isArray(bytes),
-            firstBytes: bytes.slice(0, 10),
+            base64Length: orderData.data.length,
+            bytesLength: bytesArray.length,
+            firstBytes: bytesArray.slice(0, 10),
+            isArray: Array.isArray(bytesArray),
             orderId: orderData.order_id,
             orderNumber: orderData.order_number
         });
         
-        // ENVIAR Array JavaScript simples (QZ Tray espera Array, não Uint8Array)
-        console.log('🚀 Enviando dados RAW (Array) para impressora...');
+        // QZ Tray: Para dados RAW binários ESC/POS
+        // Função auxiliar para converter base64 para Uint8Array
+        // (qz.util.decodeBase64ToUint8Array não existe na biblioteca)
+        function base64ToUint8Array(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+        
+        const rawData = base64ToUint8Array(orderData.data);
+        
+        console.log('📦 Dados decodificados para Uint8Array:', {
+            length: rawData.length,
+            firstBytes: Array.from(rawData.slice(0, 10)),
+            isValidEscPos: rawData[0] === 0x1B && rawData[1] === 0x40
+        });
+        
+        // Configurar impressão
+        const printConfig = qz.configs.create(printer);
+        
+        // Enviar como objeto RAW com formato command
+        // Formato correto para dados ESC/POS binários
+        console.log('🚀 Enviando dados RAW (Uint8Array) para impressora...');
         
         try {
-            const printResult = await qz.print(printConfig, bytes);
+            const printResult = await qz.print(printConfig, [{
+                type: 'raw',
+                format: 'command',
+                data: rawData
+            }]);
             console.log('✅ Comando de impressão RAW enviado com sucesso!');
             console.log('✅ Resultado:', printResult);
             

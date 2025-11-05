@@ -9,29 +9,47 @@
             @page {
                 size: 80mm auto;
                 margin: 0;
+                padding: 0;
             }
             body {
                 margin: 0;
                 padding: 5mm;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
             }
             .no-print {
                 display: none !important;
             }
+            * {
+                color: #000000 !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+            }
         }
         
         body {
-            font-family: 'Courier New', monospace;
+            font-family: 'Courier New', 'Courier', monospace;
             font-size: 12px;
             line-height: 1.4;
             width: 80mm;
+            max-width: 80mm;
             margin: 0 auto;
             padding: 5mm;
             background: white;
             color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color-adjust: exact;
         }
         
         * {
             color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
         .receipt {
@@ -51,12 +69,16 @@
             margin: 5px 0;
             text-transform: uppercase;
             color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
         .header .subtitle {
             font-size: 11px;
             margin-bottom: 5px;
             color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
         .divider {
@@ -478,47 +500,55 @@
                     throw new Error('Dados inválidos recebidos do servidor');
                 }
                 
-                // Função correta para converter base64 → Uint8Array
-                function base64ToBytes(base64) {
-                    const binaryStr = atob(base64);
-                    const len = binaryStr.length;
+                // Função auxiliar para converter base64 → Uint8Array
+                // (qz.util.decodeBase64ToUint8Array não existe na biblioteca QZ Tray)
+                function base64ToUint8Array(base64) {
+                    const binaryString = atob(base64);
+                    const len = binaryString.length;
                     const bytes = new Uint8Array(len);
                     for (let i = 0; i < len; i++) {
-                        bytes[i] = binaryStr.charCodeAt(i);
+                        bytes[i] = binaryString.charCodeAt(i);
                     }
                     return bytes;
                 }
                 
-                // Converter base64 para Uint8Array (para validação)
-                const bytes = base64ToBytes(orderData.data);
+                // Converter base64 para Uint8Array
+                const rawData = base64ToUint8Array(orderData.data);
                 
                 // Verificar se os primeiros bytes são ESC @
-                if (bytes.length < 2 || bytes[0] !== 0x1B || bytes[1] !== 0x40) {
+                if (rawData.length < 2 || rawData[0] !== 0x1B || rawData[1] !== 0x40) {
                     console.error('❌ ERRO CRÍTICO: Dados não começam com ESC @ (0x1B 0x40)');
                     console.error('❌ Primeiros bytes:', 
-                        Array.from(bytes.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                        Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
                     alert('❌ Erro: Dados ESC/POS inválidos. Verifique o console para mais detalhes.');
                     return;
                 }
                 
-                // CORRETO: Converter Uint8Array → Array JavaScript simples (QZ Tray precisa de Array, não Uint8Array)
-                const bytesArray = Array.from(bytes);
-                
-                console.log('📦 Dados ESC/POS preparados:', {
+                console.log('📦 Dados ESC/POS validados:', {
                     printer: printer,
-                    bytesLength: bytesArray.length,
-                    firstBytes: bytesArray.slice(0, 10),
-                    isValidEscPos: bytesArray[0] === 0x1B && bytesArray[1] === 0x40,
-                    isArray: Array.isArray(bytesArray)
+                    bytesLength: rawData.length,
+                    firstBytes: Array.from(rawData.slice(0, 10)),
+                    isValidEscPos: rawData[0] === 0x1B && rawData[1] === 0x40
                 });
                 
-                // Configurar impressão RAW (Array de bytes + encoding RAW)
-                const printConfig = qz.configs.create(printer, { encoding: 'RAW' });
+                console.log('🚀 Preparando envio RAW para impressora...');
                 
-                console.log('🚀 Enviando dados RAW para impressora...');
+                console.log('📦 Dados decodificados para Uint8Array:', {
+                    length: rawData.length,
+                    firstBytes: Array.from(rawData.slice(0, 10)),
+                    isValidEscPos: rawData[0] === 0x1B && rawData[1] === 0x40
+                });
                 
-                // Enviar como Array JavaScript simples (QZ Tray espera Array, não Uint8Array)
-                await qz.print(printConfig, bytesArray);
+                // Configurar impressão
+                const printConfig = qz.configs.create(printer);
+                
+                // Enviar como objeto RAW com formato command
+                // Formato correto para dados ESC/POS binários
+                await qz.print(printConfig, [{
+                    type: 'raw',
+                    format: 'command',
+                    data: rawData
+                }]);
                 
                 console.log('✅ Dados RAW enviados com sucesso');
                 
@@ -539,9 +569,16 @@
         // Auto-imprimir se for impressão automática
         @if(request()->get('auto_print'))
         window.onload = function() {
+            // Aguardar um pouco mais para garantir que o CSS foi aplicado
             setTimeout(function() {
-                window.print();
-            }, 250);
+                // Forçar atualização de estilos antes de imprimir
+                document.body.style.display = 'none';
+                document.body.offsetHeight; // Trigger reflow
+                document.body.style.display = '';
+                setTimeout(function() {
+                    window.print();
+                }, 100);
+            }, 500);
         };
         @endif
     </script>

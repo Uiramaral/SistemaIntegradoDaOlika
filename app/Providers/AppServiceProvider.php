@@ -34,7 +34,9 @@ class AppServiceProvider extends ServiceProvider
             return $u && (empty($roles) || in_array($u->role, $roles));
         });
 
-        // Registrar observer para atualizar saldo de débitos
-        CustomerDebt::observe(CustomerDebtObserver::class);
+        // Registrar observer para atualizar saldo de débitos (apenas se a classe existir)
+        if (class_exists(CustomerDebtObserver::class)) {
+            CustomerDebt::observe(CustomerDebtObserver::class);
+        }
     }
 }

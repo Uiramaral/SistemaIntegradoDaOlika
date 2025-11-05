@@ -15,24 +15,31 @@
     $categoryTitle = 'Todos';
     $productsCount = isset($products) ? $products->count() : 0;
     
-    // Preload das primeiras 15 imagens (above the fold e próximas)
+    // Preload das primeiras 20 imagens (above the fold e próximas) usando URLs otimizadas
     $preloadCount = 0;
-    $preloadLimit = 15;
+    $preloadLimit = 20;
 @endphp
 
 <!-- Preload das primeiras imagens para carregamento mais rápido -->
 @if(isset($categories) && $categories->count() > 0)
     @foreach($categories as $category)
         @if(isset($category->products) && $category->products->count() > 0 && $preloadCount < $preloadLimit)
+            @php
+                $displayType = $category->display_type ?? 'grid';
+                $thumbnailSize = match($displayType) {
+                    'grid' => 'thumb',
+                    'list_horizontal' => 'small',
+                    'list_vertical' => 'small',
+                    default => 'thumb'
+                };
+            @endphp
             @foreach($category->products->take($preloadLimit - $preloadCount) as $product)
                 @php
-                    $img = $product->image_url;
-                    if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
-                    elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
-                    $img = $img ?? asset('images/produto-placeholder.jpg');
+                    $imageUrls = $product->getOptimizedImageUrls($thumbnailSize);
+                    $img = $imageUrls['webp'] ?? $imageUrls['jpg'] ?? asset('images/produto-placeholder.jpg');
                     $preloadCount++;
                 @endphp
-                <link rel="preload" as="image" href="{{ $img }}" fetchpriority="{{ $preloadCount <= 9 ? 'high' : 'auto' }}">
+                <link rel="preload" as="image" href="{{ $img }}" fetchpriority="{{ $preloadCount <= 12 ? 'high' : 'auto' }}" type="{{ strpos($img, '.webp') !== false ? 'image/webp' : 'image/jpeg' }}">
             @endforeach
         @endif
         @break($preloadCount >= $preloadLimit)
@@ -42,10 +49,12 @@
 <!-- Produtos separados por categoria -->
 @if(isset($categories) && $categories->count() > 0)
     @foreach($categories as $category)
-        @if(isset($category->products) && $category->products->count() > 0)
+            @if(isset($category->products) && $category->products->count() > 0)
             @php
                 $displayType = $category->display_type ?? 'grid';
                 $categoryId = is_string($category->id) ? $category->id : $category->id;
+                // Marcar primeiras imagens como eager (até 12 imagens visíveis)
+                static $totalProductIndex = 0;
             @endphp
             
             <div class="mb-12 category-section" data-category-id="{{ $categoryId }}">
@@ -126,36 +135,45 @@
 <script>
 // Otimização de carregamento de imagens com Intersection Observer
 document.addEventListener('DOMContentLoaded', function() {
-    // Marcar as primeiras 12 imagens como eager para carregamento imediato
-    const allImages = document.querySelectorAll('img[loading="lazy"]');
-    const viewportHeight = window.innerHeight;
-    let eagerCount = 0;
-    const maxEagerImages = 12;
-    
-    allImages.forEach((img, index) => {
-        if (eagerCount < maxEagerImages) {
-            const rect = img.getBoundingClientRect();
-            // Se a imagem está próxima da viewport (dentro de 1.5x da altura)
-            if (rect.top < viewportHeight * 1.5) {
-                img.loading = 'eager';
-                img.fetchPriority = index < 6 ? 'high' : 'auto';
-                eagerCount++;
-                
-                // Forçar carregamento imediato se estiver visível
-                if (rect.top < viewportHeight && !img.complete) {
-                    const tempImg = new Image();
-                    tempImg.onload = function() {
-                        img.style.opacity = '1';
-                        const productId = img.getAttribute('data-product-id');
-                        const placeholder = document.getElementById('placeholder-' + productId) || 
-                                          document.getElementById('placeholder-h-' + productId) || 
-                                          document.getElementById('placeholder-v-' + productId);
-                        if (placeholder) {
-                            placeholder.style.display = 'none';
-                        }
-                    };
+    // Forçar carregamento imediato das imagens eager (marcadas no PHP)
+    const eagerImages = document.querySelectorAll('img[loading="eager"]');
+    eagerImages.forEach((img) => {
+        // Se já está carregada, mostrar imediatamente
+        if (img.complete && img.naturalWidth > 0) {
+            img.style.opacity = '1';
+            const productId = img.getAttribute('data-product-id');
+            const placeholder = document.getElementById('placeholder-' + productId) || 
+                              document.getElementById('placeholder-h-' + productId) || 
+                              document.getElementById('placeholder-v-' + productId);
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+        } else {
+            // Preload agressivo para imagens eager
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                if (img.src) {
+                    img.style.opacity = '1';
+                    const productId = img.getAttribute('data-product-id');
+                    const placeholder = document.getElementById('placeholder-' + productId) || 
+                                      document.getElementById('placeholder-h-' + productId) || 
+                                      document.getElementById('placeholder-v-' + productId);
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                }
+            };
+            // Usar source do picture se disponível
+            const picture = img.closest('picture');
+            if (picture) {
+                const source = picture.querySelector('source[type="image/webp"]');
+                if (source && source.srcset) {
+                    tempImg.src = source.srcset;
+                } else {
                     tempImg.src = img.src;
                 }
+            } else {
+                tempImg.src = img.src;
             }
         }
     });
@@ -271,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(prefetchUpcomingImages, 100);
 });
 
-// Auto-scroll para listas horizontais - OTIMIZADO PARA MÁXIMA FLUIDEZ
+// Auto-scroll para listas horizontais - VERSÃO MELHORADA COM LOOP CONTÍNUO
 document.addEventListener('DOMContentLoaded', function() {
     const horizontalScrolls = document.querySelectorAll('.horizontal-scroll-container');
     
@@ -284,35 +302,66 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasOverflow = originalWidth > container.clientWidth;
         if (!hasOverflow) return;
         
-        // Clonar conteúdo para criar loop infinito
+        // Identificar se é a categoria "Novidades" (loop contínuo ida e volta)
+        const categoryId = container.getAttribute('data-category-id');
+        const parentCategoryId = container.closest('[data-category-id]')?.getAttribute('data-category-id');
+        const isNovidades = categoryId === 'novidades' || parentCategoryId === 'novidades';
+        
+        // Clonar conteúdo para criar loop infinito (sempre necessário)
         const clonedContent = content.cloneNode(true);
         content.appendChild(clonedContent);
         
-        const maxScroll = originalWidth;
-        let scrollPos = 0;
+        // Calcular dimensões após clonagem
+        const itemCount = Math.floor(content.children.length / 2); // Dividido por 2 porque clonamos
+        const totalWidth = originalWidth;
+        const halfWidth = totalWidth;
+        
+        // Variáveis de controle
+        let position = 0;
+        let direction = 1; // 1 = esquerda, -1 = direita (para Novidades: vai e volta)
         let isPaused = false;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragOffset = 0;
         let resumeTimeout = null;
         let rafId = null;
+        const speed = isNovidades ? 0.6 : 0.8; // Mais lento para Novidades
         
-        // Usar CSS transform para aceleração por hardware (MUITO mais fluido)
-        container.style.willChange = 'scroll-position';
-        container.style.overflowX = 'auto';
-        container.style.scrollBehavior = 'auto'; // Desabilitar smooth scroll nativo para controle manual
+        // Configurar container e content para usar transform
+        container.style.overflow = 'hidden';
+        container.style.position = 'relative';
+        container.style.cursor = 'grab';
+        content.style.display = 'flex';
+        content.style.willChange = 'transform';
+        content.style.transition = 'none';
         
-        // Função de animação ultra-otimizada
+        // Função de animação com transform (GPU-accelerated)
         function animate() {
-            if (isPaused) {
+            if (isPaused || isDragging) {
                 rafId = requestAnimationFrame(animate);
                 return;
             }
             
-            scrollPos += 0.8; // Velocidade fixa simples
+            // Atualizar posição
+            position += direction * speed;
             
-            if (scrollPos >= maxScroll) {
-                scrollPos = 0;
+            // Lógica de loop baseada no tipo
+            if (isNovidades) {
+                // Para Novidades: vai e volta (ping-pong)
+                if (position >= halfWidth - 100) {
+                    direction = -1; // Inverter direção (voltar)
+                } else if (position <= 0) {
+                    direction = 1; // Inverter direção (ir)
+                }
+            } else {
+                // Para outras categorias: loop contínuo unidirecional
+                if (position >= halfWidth) {
+                    position = 0; // Reset invisível ao início
+                }
             }
             
-            container.scrollLeft = scrollPos;
+            // Aplicar transform
+            content.style.transform = `translateX(-${position}px)`;
             rafId = requestAnimationFrame(animate);
         }
         
@@ -325,59 +374,86 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Retomar após delay
+        // Retomar animação
         function scheduleResume() {
             if (resumeTimeout) clearTimeout(resumeTimeout);
             resumeTimeout = setTimeout(() => {
-                scrollPos = container.scrollLeft % maxScroll;
-                if (scrollPos < 0) scrollPos += maxScroll;
                 isPaused = false;
                 if (!rafId) {
                     rafId = requestAnimationFrame(animate);
                 }
-            }, 1000);
+            }, isDragging ? 1500 : 800);
         }
         
-        // Eventos simplificados
-        let isInteracting = false;
+        // Eventos de drag/toque otimizados
+        let lastTouchX = 0;
+        let lastMoveTime = 0;
         
-        ['touchstart', 'mousedown'].forEach(evt => {
-            container.addEventListener(evt, () => {
-                isInteracting = true;
-                pause();
-            }, { passive: true });
-        });
-        
-        ['touchmove', 'mousemove'].forEach(evt => {
-            container.addEventListener(evt, () => {
-                if (isInteracting) pause();
-            }, { passive: true });
-        });
-        
-        ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(evt => {
-            container.addEventListener(evt, () => {
-                isInteracting = false;
-                scheduleResume();
-            }, { passive: true });
-        });
-        
-        // Detectar scroll manual
-        let scrollCheckTimeout;
-        container.addEventListener('scroll', function() {
-            if (!isInteracting) {
-                scrollPos = container.scrollLeft % maxScroll;
-                if (scrollPos < 0) scrollPos += maxScroll;
-            }
+        function handleStart(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            isDragging = true;
+            dragStartX = clientX;
+            lastTouchX = clientX;
+            lastMoveTime = Date.now();
             pause();
-            clearTimeout(scrollCheckTimeout);
-            scrollCheckTimeout = setTimeout(scheduleResume, 200);
-        }, { passive: true });
+            content.style.transition = 'none';
+            container.style.cursor = 'grabbing';
+        }
         
-        // Intersection Observer para pausar quando fora da viewport
+        function handleMove(e) {
+            if (!isDragging) return;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const deltaX = dragStartX - clientX;
+            dragOffset = deltaX;
+            
+            // Aplicar transform durante drag
+            const newPosition = Math.max(0, Math.min(position + deltaX, halfWidth));
+            content.style.transform = `translateX(-${newPosition}px)`;
+            
+            lastTouchX = clientX;
+            lastMoveTime = Date.now();
+        }
+        
+        function handleEnd(e) {
+            if (!isDragging) return;
+            
+            // Calcular nova posição baseada no drag
+            const finalDelta = dragStartX - (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+            position = Math.max(0, Math.min(position + finalDelta, halfWidth));
+            
+            // Reset para dentro dos limites se necessário
+            if (position >= halfWidth) {
+                position = 0;
+            } else if (position < 0) {
+                position = 0;
+            }
+            
+            // Resetar estado
+            isDragging = false;
+            dragOffset = 0;
+            content.style.transition = '';
+            container.style.cursor = '';
+            
+            scheduleResume();
+        }
+        
+        // Adicionar event listeners (touch e mouse)
+        container.addEventListener('touchstart', handleStart, { passive: true });
+        container.addEventListener('touchmove', handleMove, { passive: true });
+        container.addEventListener('touchend', handleEnd, { passive: true });
+        container.addEventListener('touchcancel', handleEnd, { passive: true });
+        
+        container.addEventListener('mousedown', handleStart);
+        container.addEventListener('mousemove', handleMove);
+        container.addEventListener('mouseup', handleEnd);
+        container.addEventListener('mouseleave', handleEnd);
+        
+        // Pausar ao sair da viewport (Intersection Observer)
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    if (!isPaused && !rafId) {
+                    if (!isPaused && !isDragging && !rafId) {
                         rafId = requestAnimationFrame(animate);
                     }
                 } else {
@@ -387,14 +463,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
-        }, { threshold: 0.01 });
+        }, { threshold: 0.1 });
         
         observer.observe(container);
         
-        // Iniciar
-        if (!isPaused) {
-            rafId = requestAnimationFrame(animate);
-        }
+        // Iniciar animação
+        rafId = requestAnimationFrame(animate);
     });
 });
 

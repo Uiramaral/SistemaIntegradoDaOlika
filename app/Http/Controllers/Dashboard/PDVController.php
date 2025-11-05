@@ -255,9 +255,9 @@ class PDVController extends Controller
                 'coupon_code' => $couponCode,
                 'final_amount' => $finalAmount,
                 'payment_method' => $request->payment_method ?? 'pix',
+                'payment_status' => 'pending', // Sempre definir como 'pending' inicialmente
                 'delivery_type' => $request->delivery_type,
                 'notes' => $request->notes,
-                'payment_status' => $request->send_payment_link ? 'pending' : null,
             ]);
 
             // Criar itens

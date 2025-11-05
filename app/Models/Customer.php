@@ -226,4 +226,49 @@ class Customer extends Authenticatable
         $q = $this->maps_query;
         return $q ? 'https://www.google.com/maps/dir/?api=1&destination='.urlencode($q) : null;
     }
+
+    /**
+     * Atualizar estatísticas do cliente após pedido pago
+     * Atualiza: total_orders, total_spent, last_order_at, loyalty_balance
+     */
+    public function updateStatsAfterPaidOrder(): void
+    {
+        try {
+            // Atualizar total_orders e total_spent com base nos pedidos pagos
+            $paidOrders = $this->orders()
+                ->whereIn('payment_status', ['approved', 'paid'])
+                ->get();
+
+            $this->total_orders = $paidOrders->count();
+            $this->total_spent = $paidOrders->sum('final_amount');
+
+            // Atualizar data do último pedido
+            $lastOrder = $this->orders()
+                ->whereIn('payment_status', ['approved', 'paid'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($lastOrder) {
+                $this->last_order_at = $lastOrder->created_at;
+            }
+
+            // Atualizar loyalty_balance com base no saldo real de cashback
+            $this->loyalty_balance = CustomerCashback::getBalance($this->id);
+
+            $this->save();
+
+            \Log::info('Customer::updateStatsAfterPaidOrder - Estatísticas atualizadas', [
+                'customer_id' => $this->id,
+                'total_orders' => $this->total_orders,
+                'total_spent' => $this->total_spent,
+                'last_order_at' => $this->last_order_at,
+                'loyalty_balance' => $this->loyalty_balance,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Customer::updateStatsAfterPaidOrder - Erro ao atualizar estatísticas', [
+                'customer_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }

@@ -32,36 +32,31 @@
         <div class="p-6 pt-0">
             <form action="{{ route('dashboard.wholesale-prices.store') }}" method="POST">
                 @csrf
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div class="space-y-2 md:col-span-2">
-                        <label for="product_id" class="text-sm font-medium leading-none">
-                            Produto <span class="text-destructive">*</span>
-                        </label>
-                        <select id="product_id" name="product_id" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" onchange="updateVariants()">
-                            <option value="">Selecione um produto</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}" data-variants="{{ $product->variants ? $product->variants->toJson() : '[]' }}">
-                                    {{ $product->name }} (R$ {{ number_format($product->price, 2, ',', '.') }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('product_id')
-                            <p class="text-sm text-destructive">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="space-y-2 md:col-span-2">
-                        <label for="variant_id" class="text-sm font-medium leading-none">
-                            Variante (opcional)
-                        </label>
-                        <select id="variant_id" name="variant_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                            <option value="">Produto base (sem variante)</option>
-                        </select>
-                        <p class="text-xs text-muted-foreground">Deixe em branco para aplicar o preço ao produto base. Selecione uma variante para preço específico.</p>
-                        @error('variant_id')
-                            <p class="text-sm text-destructive">{{ $message }}</p>
-                        @enderror
-                    </div>
+                                 <div class="grid gap-4 md:grid-cols-2">
+                     <div class="space-y-2 md:col-span-2">
+                         <label for="product_option" class="text-sm font-medium leading-none">
+                             Produto <span class="text-destructive">*</span>
+                         </label>
+                         <select id="product_option" name="product_option" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                             <option value="">Selecione um produto</option>
+                             @foreach($productsList as $item)
+                                 <option value="{{ $item['product_id'] }}_{{ $item['variant_id'] ?? 'null' }}" 
+                                         data-product-id="{{ $item['product_id'] }}" 
+                                         data-variant-id="{{ $item['variant_id'] ?? '' }}">
+                                     {{ $item['display_name'] }} (R$ {{ number_format($item['price'], 2, ',', '.') }})
+                                 </option>
+                             @endforeach
+                         </select>
+                         <p class="text-xs text-muted-foreground">Produtos com variantes aparecem com o nome da variante entre parênteses.</p>
+                         <input type="hidden" id="product_id" name="product_id" value="">
+                         <input type="hidden" id="variant_id" name="variant_id" value="">
+                         @error('product_id')
+                             <p class="text-sm text-destructive">{{ $message }}</p>
+                         @enderror
+                         @error('variant_id')
+                             <p class="text-sm text-destructive">{{ $message }}</p>
+                         @enderror
+                     </div>
 
                     <div class="space-y-2">
                         <label for="wholesale_price" class="text-sm font-medium leading-none">
@@ -130,28 +125,30 @@
 </div>
 
 <script>
-function updateVariants() {
-    const productSelect = document.getElementById('product_id');
-    const variantSelect = document.getElementById('variant_id');
-    const selectedOption = productSelect.options[productSelect.selectedIndex];
+document.addEventListener('DOMContentLoaded', function() {
+    const productOptionSelect = document.getElementById('product_option');
+    const productIdInput = document.getElementById('product_id');
+    const variantIdInput = document.getElementById('variant_id');
     
-    // Limpar opções atuais
-    variantSelect.innerHTML = '<option value="">Produto base (sem variante)</option>';
-    
-    if (selectedOption.value) {
-        try {
-            const variants = JSON.parse(selectedOption.getAttribute('data-variants') || '[]');
-            variants.forEach(variant => {
-                const option = document.createElement('option');
-                option.value = variant.id;
-                option.textContent = `${variant.name} (R$ ${parseFloat(variant.price).toFixed(2).replace('.', ',')})`;
-                variantSelect.appendChild(option);
-            });
-        } catch(e) {
-            console.error('Erro ao carregar variantes:', e);
-        }
+    if (productOptionSelect) {
+        productOptionSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (selectedOption && selectedOption.value) {
+                const productId = selectedOption.getAttribute('data-product-id');
+                const variantId = selectedOption.getAttribute('data-variant-id');
+                
+                // Atualizar campos hidden
+                productIdInput.value = productId || '';
+                variantIdInput.value = (variantId && variantId !== 'null' && variantId !== '') ? variantId : '';
+            } else {
+                productIdInput.value = '';
+                variantIdInput.value = '';
+            }
+        });
     }
-}
+});
 </script>
 @endsection
+
 

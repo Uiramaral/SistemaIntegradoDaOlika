@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PaymentSetting;
 use App\Models\Order;
 use App\Models\Customer;
+use App\Services\OrderStatusService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -192,22 +193,51 @@ class MercadoPagoApiService
             return ['success' => false, 'error' => 'Referência externa não encontrada'];
         }
 
-        // Quebrar referência externa: customerId/orderId
+        // Tentar encontrar o pedido de diferentes formas
+        $order = null;
+        
+        // Formato 1: customerId/orderId
         $referenceParts = explode('/', $externalReference);
-        if (count($referenceParts) !== 2) {
-            return ['success' => false, 'error' => 'Formato de referência inválido'];
+        if (count($referenceParts) === 2) {
+            $customerId = $referenceParts[0];
+            $orderId = $referenceParts[1];
+            $order = Order::where('id', $orderId)
+                ->where('customer_id', $customerId)
+                ->first();
+        }
+        
+        // Formato 2: order_number (fallback)
+        if (!$order) {
+            $order = Order::where('order_number', $externalReference)->first();
+        }
+        
+        // Formato 3: apenas order_id (fallback)
+        if (!$order && is_numeric($externalReference)) {
+            $order = Order::find($externalReference);
         }
 
-        $customerId = $referenceParts[0];
-        $orderId = $referenceParts[1];
-
-        // Buscar pedido
-        $order = Order::where('id', $orderId)
-            ->where('customer_id', $customerId)
-            ->first();
-
         if (!$order) {
+            Log::warning('MercadoPagoApiService: Pedido não encontrado no webhook', [
+                'external_reference' => $externalReference,
+                'payment_id' => $paymentId,
+                'payment_status' => $payment['status'] ?? null,
+            ]);
             return ['success' => false, 'error' => 'Pedido não encontrado'];
+        }
+
+        // Verificar se o status já foi atualizado (idempotência)
+        if ($order->payment_status === $payment['status'] && $order->payment_id === $paymentId) {
+            Log::info('MercadoPagoApiService: Webhook já processado (idempotência)', [
+                'order_id' => $order->id,
+                'payment_status' => $payment['status'],
+            ]);
+            return [
+                'success' => true,
+                'order_id' => $order->id,
+                'payment_status' => $payment['status'],
+                'order_status' => $order->status,
+                'already_processed' => true,
+            ];
         }
 
         // Atualizar status do pagamento
@@ -217,8 +247,57 @@ class MercadoPagoApiService
             'payment_raw_response' => $payment,
         ]);
 
-        // Atualizar status do pedido baseado no pagamento
-        $this->updateOrderStatus($order, $payment['status']);
+        // Atualizar status do pedido baseado no pagamento usando OrderStatusService
+        if (in_array($payment['status'], ['approved', 'paid'])) {
+            try {
+                $orderStatusService = app(OrderStatusService::class);
+                $orderStatusService->changeStatus(
+                    $order, 
+                    'paid', 
+                    'Pagamento aprovado via webhook Mercado Pago',
+                    null, // userId
+                    false // skipHistory
+                );
+                
+                // Registrar uso do cupom se houver
+                if ($order->coupon_code && $order->customer_id) {
+                    try {
+                        $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
+                        if ($coupon) {
+                            \App\Models\CouponUsage::firstOrCreate([
+                                'coupon_id' => $coupon->id,
+                                'customer_id' => $order->customer_id,
+                                'order_id' => $order->id,
+                            ], [
+                                'used_at' => now(),
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('MercadoPagoApiService: Erro ao registrar uso de cupom', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                Log::info('MercadoPagoApiService: Pagamento aprovado e pedido confirmado', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_status' => $payment['status'],
+                ]);
+            } catch (\Exception $e) {
+                Log::error('MercadoPagoApiService: Erro ao atualizar status do pedido', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                // Continuar mesmo se houver erro no OrderStatusService
+                $this->updateOrderStatus($order, $payment['status']);
+            }
+        } else {
+            // Para outros status, usar método simples
+            $this->updateOrderStatus($order, $payment['status']);
+        }
 
         return [
             'success' => true,
@@ -297,12 +376,13 @@ class MercadoPagoApiService
     }
 
     /**
-     * Atualiza status do pedido baseado no pagamento
+     * Atualiza status do pedido baseado no pagamento (método simples, sem notificações)
      */
     private function updateOrderStatus(Order $order, string $paymentStatus): void
     {
         $statusMap = [
             'approved' => 'confirmed',
+            'paid' => 'confirmed',
             'pending' => 'pending',
             'rejected' => 'cancelled',
             'cancelled' => 'cancelled',
@@ -310,7 +390,11 @@ class MercadoPagoApiService
         ];
 
         $newStatus = $statusMap[$paymentStatus] ?? 'pending';
-        $order->update(['status' => $newStatus]);
+        
+        // Só atualizar se for diferente
+        if ($order->status !== $newStatus) {
+            $order->update(['status' => $newStatus]);
+        }
     }
 
     /**

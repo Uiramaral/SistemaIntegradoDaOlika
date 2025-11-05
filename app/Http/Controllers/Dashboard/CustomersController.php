@@ -158,5 +158,125 @@ class CustomersController extends Controller
         DB::table('customers')->where('id', $id)->delete();
         return redirect()->route('dashboard.customers.index')->with('success', 'Cliente excluído com sucesso!');
     }
+
+    /**
+     * Atualizar estatísticas de todos os clientes
+     */
+    public function updateStats(Request $request)
+    {
+        $customerId = $request->input('customer_id');
+        $dryRun = $request->has('dry_run');
+
+        try {
+            $query = \App\Models\Customer::query();
+            
+            if ($customerId) {
+                $query->where('id', $customerId);
+                $customer = $query->first();
+                if (!$customer) {
+                    return redirect()->route('dashboard.customers.index')
+                        ->with('error', "Cliente com ID {$customerId} não encontrado.");
+                }
+                $customers = collect([$customer]);
+            } else {
+                $customers = $query->get();
+            }
+
+            $updated = 0;
+            $errors = 0;
+            $summary = [];
+
+            foreach ($customers as $customer) {
+                try {
+                    // Buscar pedidos pagos do cliente
+                    $paidOrders = $customer->orders()
+                        ->whereIn('payment_status', ['approved', 'paid'])
+                        ->get();
+
+                    $totalOrders = $paidOrders->count();
+                    $totalSpent = $paidOrders->sum('final_amount');
+
+                    // Buscar último pedido pago
+                    $lastOrder = $customer->orders()
+                        ->whereIn('payment_status', ['approved', 'paid'])
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+
+                    // Calcular saldo de cashback
+                    $loyaltyBalance = \App\Models\CustomerCashback::getBalance($customer->id);
+
+                    // Preparar dados para atualização
+                    $oldStats = [
+                        'total_orders' => $customer->total_orders ?? 0,
+                        'total_spent' => $customer->total_spent ?? 0,
+                        'last_order_at' => $customer->last_order_at,
+                        'loyalty_balance' => $customer->loyalty_balance ?? 0,
+                    ];
+
+                    $newStats = [
+                        'total_orders' => $totalOrders,
+                        'total_spent' => $totalSpent,
+                        'last_order_at' => $lastOrder ? $lastOrder->created_at : null,
+                        'loyalty_balance' => $loyaltyBalance,
+                    ];
+
+                    // Verificar se há mudanças
+                    $hasChanges = false;
+                    foreach ($oldStats as $key => $oldValue) {
+                        if ($oldValue != $newStats[$key]) {
+                            $hasChanges = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasChanges) {
+                        if (!$dryRun) {
+                            // Atualizar no banco
+                            $customer->total_orders = $newStats['total_orders'];
+                            $customer->total_spent = $newStats['total_spent'];
+                            $customer->last_order_at = $newStats['last_order_at'];
+                            $customer->loyalty_balance = $newStats['loyalty_balance'];
+                            $customer->save();
+                        }
+
+                        $updated++;
+                        
+                        $summary[] = [
+                            'id' => $customer->id,
+                            'name' => $customer->name,
+                            'old' => $oldStats,
+                            'new' => $newStats,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    $errors++;
+                    \Log::error('Erro ao atualizar estatísticas do cliente', [
+                        'customer_id' => $customer->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $message = $dryRun 
+                ? "Modo de teste: {$updated} cliente(s) teriam estatísticas atualizadas."
+                : "✅ {$updated} cliente(s) atualizado(s) com sucesso!";
+
+            if ($errors > 0) {
+                $message .= " ⚠️ {$errors} erro(s) encontrado(s).";
+            }
+
+            return redirect()->route('dashboard.customers.index')
+                ->with('success', $message)
+                ->with('update_stats_summary', $summary);
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao atualizar estatísticas dos clientes', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('dashboard.customers.index')
+                ->with('error', 'Erro ao atualizar estatísticas: ' . $e->getMessage());
+        }
+    }
 }
 

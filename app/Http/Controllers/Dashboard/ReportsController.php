@@ -98,36 +98,63 @@ class ReportsController extends Controller
             ? (($pageViews - $previousPageViews) / $previousPageViews) * 100 
             : ($pageViews > 0 ? 100 : 0);
         
-        $addToCartEvents = AnalyticsEvent::where('event_type', 'add_to_cart')
+        // Contar sessões únicas que adicionaram ao carrinho (não quantidade de produtos)
+        $addToCartEvents = DB::table('analytics_events')
+            ->where('event_type', 'add_to_cart')
             ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousAddToCart = AnalyticsEvent::where('event_type', 'add_to_cart')
+        $previousAddToCart = DB::table('analytics_events')
+            ->where('event_type', 'add_to_cart')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
         $addToCartChange = $previousAddToCart > 0 
             ? (($addToCartEvents - $previousAddToCart) / $previousAddToCart) * 100 
             : ($addToCartEvents > 0 ? 100 : 0);
         
-        $checkoutStarted = AnalyticsEvent::where('event_type', 'checkout_started')
+        // Contar sessões únicas que iniciaram checkout
+        $checkoutStarted = DB::table('analytics_events')
+            ->where('event_type', 'checkout_started')
             ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousCheckoutStarted = AnalyticsEvent::where('event_type', 'checkout_started')
+        $previousCheckoutStarted = DB::table('analytics_events')
+            ->where('event_type', 'checkout_started')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
         $checkoutStartedChange = $previousCheckoutStarted > 0 
             ? (($checkoutStarted - $previousCheckoutStarted) / $previousCheckoutStarted) * 100 
             : ($checkoutStarted > 0 ? 100 : 0);
         
-        $purchases = AnalyticsEvent::where('event_type', 'purchase')
+        // Contar sessões únicas que realizaram compra
+        $purchases = DB::table('analytics_events')
+            ->where('event_type', 'purchase')
             ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousPurchases = AnalyticsEvent::where('event_type', 'purchase')
+        $previousPurchases = DB::table('analytics_events')
+            ->where('event_type', 'purchase')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->whereNotNull('session_id')
+            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
         $purchasesChange = $previousPurchases > 0 

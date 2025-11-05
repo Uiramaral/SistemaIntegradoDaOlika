@@ -4,11 +4,25 @@
     $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
     $isPurchasable = $displayPrice > 0;
     
-    // Imagem
-    $img = $product->image_url;
-    if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
-    elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
-    $img = $img ?? asset('images/produto-placeholder.jpg');
+    // Obter URLs otimizadas da imagem
+    // Tamanhos baseados no tipo de exibição
+    $thumbnailSize = match($displayType ?? 'grid') {
+        'grid' => 'thumb', // 400x400
+        'list_horizontal' => 'small', // 200x200
+        'list_vertical' => 'small', // 200x200
+        default => 'thumb'
+    };
+    
+    $imageUrls = $product->getOptimizedImageUrls($thumbnailSize);
+    
+    // Dimensões baseadas no displayType
+    $imgWidth = match($displayType ?? 'grid') {
+        'grid' => 400,
+        'list_horizontal' => 140,
+        'list_vertical' => 96,
+        default => 400
+    };
+    $imgHeight = $imgWidth; // Quadrado
     
     $displayType = $displayType ?? 'grid';
     $loadEager = $loadEager ?? false;
@@ -28,20 +42,24 @@
                     </svg>
                 </div>
             </div>
-            <img 
-                src="{{ $img }}" 
-                alt="{{ $product->name }}" 
-                loading="{{ $loadEager ? 'eager' : 'lazy' }}"
-                decoding="async"
-                fetchpriority="{{ $fetchPriority }}"
-                width="400"
-                height="400"
-                class="h-full w-full object-cover transition-opacity duration-300 group-hover:scale-110 pointer-events-none"
-                style="opacity: 0;"
-                onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                data-product-id="{{ $product->id }}"
-            >
+            <picture>
+                <source srcset="{{ $imageUrls['webp'] }}" type="image/webp">
+                <img 
+                    src="{{ $imageUrls['jpg'] }}" 
+                    alt="{{ $product->name }}" 
+                    loading="{{ $loadEager ? 'eager' : 'lazy' }}"
+                    decoding="async"
+                    fetchpriority="{{ $fetchPriority }}"
+                    width="{{ $imgWidth }}"
+                    height="{{ $imgHeight }}"
+                    class="h-full w-full object-cover transition-opacity duration-200 group-hover:scale-110 pointer-events-none"
+                    style="opacity: {{ $loadEager ? '0.5' : '0' }};"
+                    onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    onloadstart="if(this.style.opacity === '0') this.style.opacity='0.3';"
+                    onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    data-product-id="{{ $product->id }}"
+                >
+            </picture>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
         <div class="p-2.5 sm:p-3 flex flex-col gap-1.5">
@@ -84,20 +102,24 @@
                     </svg>
                 </div>
             </div>
-            <img 
-                src="{{ $img }}" 
-                alt="{{ $product->name }}" 
-                loading="{{ $loadEager ? 'eager' : 'lazy' }}"
-                decoding="async"
-                fetchpriority="{{ $fetchPriority }}"
-                width="140"
-                height="140"
-                class="h-full w-full object-cover transition-opacity duration-300 group-hover:scale-110 pointer-events-none"
-                style="opacity: 0;"
-                onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-h-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-h-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                data-product-id="h-{{ $product->id }}"
-            >
+            <picture>
+                <source srcset="{{ $imageUrls['webp'] }}" type="image/webp">
+                <img 
+                    src="{{ $imageUrls['jpg'] }}" 
+                    alt="{{ $product->name }}" 
+                    loading="{{ $loadEager ? 'eager' : 'lazy' }}"
+                    decoding="async"
+                    fetchpriority="{{ $fetchPriority }}"
+                    width="{{ $imgWidth }}"
+                    height="{{ $imgHeight }}"
+                    class="h-full w-full object-cover transition-opacity duration-200 group-hover:scale-110 pointer-events-none"
+                    style="opacity: {{ $loadEager ? '0.5' : '0' }};"
+                    onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-h-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    onloadstart="if(this.style.opacity === '0') this.style.opacity='0.3';"
+                    onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-h-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    data-product-id="h-{{ $product->id }}"
+                >
+            </picture>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
         <div class="p-2.5 flex flex-col gap-1.5">
@@ -140,20 +162,24 @@
                     </svg>
                 </div>
             </div>
-            <img 
-                src="{{ $img }}" 
-                alt="{{ $product->name }}" 
-                loading="{{ $loadEager ? 'eager' : 'lazy' }}"
-                decoding="async"
-                fetchpriority="{{ $fetchPriority }}"
-                width="96"
-                height="96"
-                class="h-full w-full object-cover transition-opacity duration-300 group-hover:scale-110 pointer-events-none"
-                style="opacity: 0;"
-                onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-v-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-v-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
-                data-product-id="v-{{ $product->id }}"
-            >
+            <picture>
+                <source srcset="{{ $imageUrls['webp'] }}" type="image/webp">
+                <img 
+                    src="{{ $imageUrls['jpg'] }}" 
+                    alt="{{ $product->name }}" 
+                    loading="{{ $loadEager ? 'eager' : 'lazy' }}"
+                    decoding="async"
+                    fetchpriority="{{ $fetchPriority }}"
+                    width="{{ $imgWidth }}"
+                    height="{{ $imgHeight }}"
+                    class="h-full w-full object-cover transition-opacity duration-200 group-hover:scale-110 pointer-events-none"
+                    style="opacity: {{ $loadEager ? '0.5' : '0' }};"
+                    onload="this.style.opacity='1'; const placeholder = document.getElementById('placeholder-v-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    onloadstart="if(this.style.opacity === '0') this.style.opacity='0.3';"
+                    onerror="this.onerror=null; this.src='{{ asset('images/produto-placeholder.jpg') }}'; this.style.opacity='1'; const placeholder = document.getElementById('placeholder-v-{{ $product->id }}'); if(placeholder) placeholder.style.display='none';"
+                    data-product-id="v-{{ $product->id }}"
+                >
+            </picture>
         </div>
         <div class="flex-1 flex flex-col justify-between py-3">
             <div>

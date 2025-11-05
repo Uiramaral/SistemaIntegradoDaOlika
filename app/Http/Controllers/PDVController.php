@@ -86,6 +86,7 @@ class PDVController extends Controller
                 'coupon_code'   => $data['coupon'] ?? null,
                 'final_amount'  => $final,
                 'payment_method'=> $data['payment_method'],
+                'payment_status' => 'pending', // Status inicial do pagamento
                 'notes'         => $data['notes'] ?? null,
             ]);
 

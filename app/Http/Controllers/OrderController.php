@@ -678,6 +678,7 @@ class OrderController extends Controller
                 'cashback_earned' => $cashbackEarned,
                 'final_amount' => $finalAmount,
                 'payment_method' => $validated['payment_method'] ?? 'pix',
+                'payment_status' => 'pending', // Status inicial do pagamento
                 'delivery_type' => 'delivery',
                 'scheduled_delivery_at' => $scheduledDeliveryAt,
                 'notes' => !empty($orderNotes) ? $orderNotes : ($validated['notes'] ?? null),

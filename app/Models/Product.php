@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Helpers\ImageOptimizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -162,6 +164,91 @@ class Product extends Model
         }
         
         return $value;
+    }
+    
+    /**
+     * Obtém a URL da imagem principal do produto
+     */
+    public function getMainImagePath()
+    {
+        // Prioridade: cover_image > primeira imagem da galeria > image_url
+        if ($this->cover_image) {
+            return $this->cover_image;
+        }
+        
+        $firstImage = $this->images()->first();
+        if ($firstImage) {
+            return $firstImage->path;
+        }
+        
+        if ($this->image_url) {
+            // Se image_url é uma URL completa, retornar null (não é path local)
+            if (str_starts_with($this->image_url, 'http')) {
+                return null;
+            }
+            return str_replace(asset('storage/'), '', $this->image_url);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Obtém URLs otimizadas para a imagem (WebP e fallback)
+     */
+    public function getOptimizedImageUrls($size = 'thumb')
+    {
+        $originalPath = $this->getMainImagePath();
+        
+        if (!$originalPath) {
+            $placeholder = asset('images/produto-placeholder.jpg');
+            return [
+                'original' => $placeholder,
+                'webp' => $placeholder,
+                'jpg' => $placeholder,
+            ];
+        }
+        
+        $disk = Storage::disk('public');
+        $pathInfo = pathinfo($originalPath);
+        $directory = $pathInfo['dirname'];
+        $filename = $pathInfo['filename'];
+        
+        $urls = [
+            'original' => asset('storage/' . $originalPath),
+            'webp' => null,
+            'jpg' => null,
+        ];
+        
+        // URLs de thumbnail WebP e JPG
+        if ($size) {
+            $webpThumb = $directory . '/thumbs/' . $filename . '-' . $size . '.webp';
+            $jpgThumb = $directory . '/thumbs/' . $filename . '-' . $size . '.jpg';
+            
+            if ($disk->exists($webpThumb)) {
+                $urls['webp'] = asset('storage/' . $webpThumb);
+            }
+            if ($disk->exists($jpgThumb)) {
+                $urls['jpg'] = asset('storage/' . $jpgThumb);
+            }
+        }
+        
+        // Fallback para WebP original se não houver thumbnail
+        if (!$urls['webp']) {
+            $webpPath = $directory . '/' . $filename . '.webp';
+            if ($disk->exists($webpPath)) {
+                $urls['webp'] = asset('storage/' . $webpPath);
+            }
+        }
+        
+        // Se não houver WebP, usar original como fallback
+        if (!$urls['webp']) {
+            $urls['webp'] = $urls['original'];
+        }
+        if (!$urls['jpg']) {
+            $urls['jpg'] = $urls['original'];
+        }
+        
+        return $urls;
     }
 
     /**

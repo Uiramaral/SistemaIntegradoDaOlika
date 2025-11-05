@@ -44,10 +44,11 @@
 
         <div class="rounded-lg border bg-muted/50 p-4">
           <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-muted-foreground">Adições ao Carrinho</h4>
+            <h4 class="text-sm font-medium text-muted-foreground">Sessões com Carrinho</h4>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shopping-cart h-4 w-4 text-muted-foreground"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
           </div>
           <div class="text-2xl font-bold">{{ number_format($addToCartEvents ?? 0, 0, ',', '.') }}</div>
+          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que adicionaram</p>
           @if(isset($addToCartChange))
             <p class="text-xs {{ $addToCartChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
               {{ $addToCartChange >= 0 ? '+' : '' }}{{ number_format($addToCartChange, 1, ',', '.') }}%
@@ -61,6 +62,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right h-4 w-4 text-muted-foreground"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </div>
           <div class="text-2xl font-bold">{{ number_format($checkoutStarted ?? 0, 0, ',', '.') }}</div>
+          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que iniciaram</p>
           @if(isset($checkoutStartedChange))
             <p class="text-xs {{ $checkoutStartedChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
               {{ $checkoutStartedChange >= 0 ? '+' : '' }}{{ number_format($checkoutStartedChange, 1, ',', '.') }}%
@@ -74,6 +76,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-4 w-4 text-muted-foreground"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <div class="text-2xl font-bold">{{ number_format($purchases ?? 0, 0, ',', '.') }}</div>
+          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que compraram</p>
           @if(isset($purchasesChange))
             <p class="text-xs {{ $purchasesChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
               {{ $purchasesChange >= 0 ? '+' : '' }}{{ number_format($purchasesChange, 1, ',', '.') }}%

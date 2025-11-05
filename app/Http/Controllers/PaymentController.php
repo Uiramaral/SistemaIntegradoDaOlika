@@ -246,6 +246,15 @@ class PaymentController extends Controller
                             \Log::warning('Falha ao registrar cashback no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                         }
                         
+                        // Atualizar estatísticas do cliente
+                        try {
+                            if ($order->customer) {
+                                $order->customer->updateStatsAfterPaidOrder();
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::warning('Falha ao atualizar estatísticas do cliente no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+                        }
+                        
                         // Baixar débitos relacionados ao pedido (fiado)
                         try {
                             $debts = \App\Models\CustomerDebt::where('order_id', $order->id)
@@ -438,6 +447,15 @@ class PaymentController extends Controller
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Falha ao baixar débitos após pagamento', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+            }
+            
+            // Atualizar estatísticas do cliente
+            try {
+                if ($order->customer) {
+                    $order->customer->updateStatsAfterPaidOrder();
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Falha ao atualizar estatísticas do cliente', ['order_id' => $order->id, 'err' => $e->getMessage()]);
             }
         }
 

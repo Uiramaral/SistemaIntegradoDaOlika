@@ -228,28 +228,70 @@ class FiscalPrinterService
         $commands[] = $this->removeAccents("WhatsApp") . ":\n";
         
         // Buscar número do WhatsApp das configurações
-        $settings = \App\Models\Setting::getSettings();
-        $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
-        $commands[] = $phone . "\n";
-        $commands[] = "\n";
-        
-        // QR Code do WhatsApp - buscar número das configurações
-        $phoneDigits = preg_replace('/\D/', '', $phone);
-        if (strlen($phoneDigits) === 11 && !str_starts_with($phoneDigits, '55')) {
-            // Se tem 11 dígitos (formato brasileiro), adicionar código do país
-            $phoneDigits = '55' . $phoneDigits;
+        try {
+            $settings = \App\Models\Setting::getSettings();
+            $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
+            
+            // Validar se o telefone não está vazio
+            if (empty($phone)) {
+                $phone = '(71) 98701-9420'; // Fallback
+                Log::warning('FiscalPrinterService: Telefone vazio nas configurações, usando fallback');
+            }
+            
+            $commands[] = $phone . "\n";
+            $commands[] = "\n";
+            
+            // QR Code do WhatsApp - buscar número das configurações
+            $phoneDigits = preg_replace('/\D/', '', $phone);
+            
+            // Validar se temos pelo menos 10 dígitos
+            if (strlen($phoneDigits) < 10) {
+                Log::error('FiscalPrinterService: Número de telefone inválido', [
+                    'phone' => $phone,
+                    'phone_digits' => $phoneDigits
+                ]);
+                // Usar fallback
+                $phoneDigits = '5571987019420';
+            } else {
+                // Se tem 11 dígitos (formato brasileiro), adicionar código do país
+                if (strlen($phoneDigits) === 11 && !str_starts_with($phoneDigits, '55')) {
+                    $phoneDigits = '55' . $phoneDigits;
+                } elseif (strlen($phoneDigits) === 10) {
+                    // Se tem 10 dígitos (sem DDD), adicionar DDD padrão e código do país
+                    $phoneDigits = '5571' . $phoneDigits;
+                }
+            }
+            
+            $whatsappUrl = "https://wa.me/" . $phoneDigits;
+            
+            // Log para debug
+            Log::info('FiscalPrinterService: Gerando QR code do WhatsApp', [
+                'phone' => $phone,
+                'phone_digits' => $phoneDigits,
+                'whatsapp_url' => $whatsappUrl,
+                'url_length' => strlen($whatsappUrl)
+            ]);
+            
+            // Gerar QR code apenas se a URL for válida
+            if (!empty($whatsappUrl) && str_starts_with($whatsappUrl, 'https://wa.me/')) {
+                $qrCodeCommands = $this->generateQRCode($whatsappUrl);
+                if (!empty($qrCodeCommands)) {
+                    $commands[] = $qrCodeCommands;
+                } else {
+                    Log::error('FiscalPrinterService: Falha ao gerar comandos do QR code');
+                }
+            } else {
+                Log::error('FiscalPrinterService: URL do WhatsApp inválida', [
+                    'whatsapp_url' => $whatsappUrl
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('FiscalPrinterService: Erro ao gerar QR code do WhatsApp', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Continuar sem QR code se houver erro
         }
-        $whatsappUrl = "https://wa.me/" . $phoneDigits;
-        
-        // Log para debug
-        Log::info('FiscalPrinterService: Gerando QR code do WhatsApp', [
-            'phone' => $phone,
-            'phone_digits' => $phoneDigits,
-            'whatsapp_url' => $whatsappUrl,
-            'url_length' => strlen($whatsappUrl)
-        ]);
-        
-        $commands[] = $this->generateQRCode($whatsappUrl);
         
         $commands[] = "\n";
         $commands[] = str_repeat("=", 48) . "\n";

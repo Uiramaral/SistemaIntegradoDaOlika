@@ -236,7 +236,8 @@ class BotConversaService
         try {
             if ($order->customer && $order->customer->phone) {
                 $phoneParam = urlencode(preg_replace('/\D/', '', $order->customer->phone));
-                $trackingUrl = route('customer.orders.show', ['order' => $order->order_number, 'phone' => $phoneParam]);
+                // Usar pedido.menuolika.com.br ao invés de dashboard
+                $trackingUrl = 'https://pedido.menuolika.com.br/customer/orders/' . $order->order_number . '?phone=' . $phoneParam;
             }
         } catch (\Throwable $e) {
             \Log::warning('Erro ao gerar link de acompanhamento', ['order_id' => $order->id]);
@@ -438,7 +439,8 @@ class BotConversaService
         try {
             if ($order->customer && $order->customer->phone) {
                 $phoneParam = urlencode(preg_replace('/\D/', '', $order->customer->phone));
-                $trackingUrl = route('customer.orders.show', ['order' => $order->order_number, 'phone' => $phoneParam]);
+                // Usar pedido.menuolika.com.br ao invés de dashboard
+                $trackingUrl = 'https://pedido.menuolika.com.br/customer/orders/' . $order->order_number . '?phone=' . $phoneParam;
             }
         } catch (\Throwable $e) {
             \Log::warning('Erro ao gerar link de acompanhamento', ['order_id' => $order->id]);

@@ -29,6 +29,13 @@
                 print-color-adjust: exact;
                 color-adjust: exact;
             }
+            img {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                max-width: 100% !important;
+                height: auto !important;
+            }
         }
         
         body {
@@ -362,6 +369,26 @@
                     PENDENTE
                 @endif
             </div>
+            
+            @if($order->payment_method === 'pix' && $order->pix_qr_base64 && ($paymentStatus === 'pending' || $paymentStatus === null))
+            <div class="divider"></div>
+            <div style="text-align: center; margin: 10px 0;">
+                <div class="section-title" style="margin-bottom: 5px;">QR CODE PIX</div>
+                <div style="display: inline-block; padding: 5px; border: 1px solid #000000;">
+                    <img 
+                        src="data:image/png;base64,{{ $order->pix_qr_base64 }}" 
+                        alt="QR Code PIX" 
+                        style="width: 120px; height: 120px; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact;"
+                    >
+                </div>
+                @if($order->pix_copy_paste)
+                <div class="info-line" style="margin-top: 5px; font-size: 9px; word-break: break-all; text-align: left;">
+                    <strong>PIX Copia e Cola:</strong><br>
+                    {{ $order->pix_copy_paste }}
+                </div>
+                @endif
+            </div>
+            @endif
         </div>
         
         @if($order->notes)
@@ -375,221 +402,157 @@
         
         <div class="footer">
             <div>OBRIGADO PELA PREFERÊNCIA!</div>
-            <div style="margin-top: 5px;">www.menuolika.com.br</div>
+            <div style="margin-top: 5px;">pedido.menuolika.com.br</div>
+            @if(isset($whatsappQrBase64) && $whatsappQrBase64)
             <div style="margin-top: 5px;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://wa.me/5571987019420" alt="WhatsApp QR Code" style="width: 60px; height: 60px; margin: 5px auto; display: block;">
+                <img 
+                    src="data:image/png;base64,{{ $whatsappQrBase64 }}" 
+                    alt="WhatsApp QR Code" 
+                    style="width: 60px; height: 60px; margin: 5px auto; display: block; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;"
+                >
             </div>
-            <div style="margin-top: 5px;">WhatsApp: (71) 98701-9420</div>
+            @endif
+            @php
+                $settings = \App\Models\Setting::getSettings();
+                $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
+            @endphp
+            <div style="margin-top: 5px;">WhatsApp: {{ $phone }}</div>
         </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
-    <script>
-        let qzConnected = false;
-        
-        // Verificar se QZ Tray está realmente conectado
-        function isQZTrayConnected() {
-            try {
-                return typeof qz !== 'undefined' && 
-                       qz !== null && 
-                       qz.websocket !== null && 
-                       qz.websocket.isActive();
-            } catch (error) {
-                return false;
-            }
+<script>
+let qzConnected = false;
+
+// Verificar se QZ Tray está conectado
+function isQZTrayConnected() {
+    try {
+        return typeof qz !== 'undefined' && 
+               qz !== null && 
+               qz.websocket !== null && 
+               qz.websocket.isActive();
+    } catch (error) {
+        return false;
+    }
+}
+
+// Conectar ao QZ Tray
+async function connectQZTray() {
+    try {
+        if (typeof qz === 'undefined' || qz === null) {
+            throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
         }
         
-        // Conectar ao QZ Tray (mesma lógica do monitor que funciona)
-        async function connectQZTray() {
-            try {
-                // Verificar se o objeto qz existe
-                if (typeof qz === 'undefined' || qz === null) {
-                    throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
-                }
-
-                // Verificar se já está conectado
-                if (isQZTrayConnected()) {
-                    qzConnected = true;
-                    console.log('✅ QZ Tray já estava conectado');
-                    return true;
-                }
-
-                // Tentar conectar
-                await qz.websocket.connect();
-                
-                // Verificar novamente se realmente conectou
-                if (isQZTrayConnected()) {
-                    qzConnected = true;
-                    console.log('✅ QZ Tray conectado com sucesso');
-                    return true;
-                } else {
-                    throw new Error('Falha ao verificar conexão após tentativa de conexão');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao conectar QZ Tray:', error);
-                qzConnected = false;
-                throw error; // Re-throw para tratamento no chamador
-            }
+        if (isQZTrayConnected()) {
+            qzConnected = true;
+            console.log('✅ QZ Tray já estava conectado');
+            return true;
         }
         
-        // Imprimir via ESC/POS (melhor qualidade)
-        async function printViaEscPos() {
-            const orderId = {{ $order->id }};
-            
-            // Verificar se QZ Tray está disponível
-            if (typeof qz === 'undefined') {
-                alert('❌ QZ Tray não está carregado. Certifique-se de que:\n\n1. O QZ Tray está instalado\n2. O QZ Tray está rodando\n3. Você permitiu o acesso no navegador');
+        await qz.websocket.connect();
+        
+        if (isQZTrayConnected()) {
+            qzConnected = true;
+            console.log('✅ QZ Tray conectado com sucesso');
+            return true;
+        } else {
+            throw new Error('Falha ao verificar conexão após tentativa de conexão');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao conectar QZ Tray:', error);
+        qzConnected = false;
+        return false;
+    }
+}
+
+
+async function printViaEscPos() {
+    const orderId = {{ $order->id }};
+    const PRINTER_NAME = "EPSON TM-T20X";
+    
+    if (typeof qz === 'undefined') {
+        alert('❌ QZ Tray não está carregado.');
+        return;
+    }
+    
+    if (!isQZTrayConnected()) {
+        try {
+            const connected = await connectQZTray();
+            if (!connected) {
+                alert('❌ Não foi possível conectar ao QZ Tray.');
                 return;
             }
-            
-            // Verificar/conectar ao QZ Tray
-            if (!isQZTrayConnected()) {
-                try {
-                    const connected = await connectQZTray();
-                    if (!connected) {
-                        alert('❌ Não foi possível conectar ao QZ Tray. Certifique-se de que o QZ Tray está instalado e rodando.');
-                        return;
-                    }
-                } catch (error) {
-                    alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message + '\n\nCertifique-se de que:\n1. O QZ Tray está instalado\n2. O QZ Tray está rodando\n3. Você permitiu o acesso no navegador');
-                    return;
-                }
-            }
-            
-            try {
-                // Obter impressoras
-                const printers = await qz.printers.find();
-                if (!printers || printers.length === 0) {
-                    alert('Nenhuma impressora encontrada. Configure o QZ Tray.');
-                    return;
-                }
-                
-                // Se houver múltiplas impressoras, permitir seleção
-                let printer;
-                if (printers.length > 1) {
-                    const printerNames = printers.map((p, i) => `${i + 1}. ${p}`);
-                    const selected = prompt(`Selecione a impressora:\n\n${printerNames.join('\n')}\n\nDigite o número:`, '1');
-                    const index = parseInt(selected) - 1;
-                    if (isNaN(index) || index < 0 || index >= printers.length) {
-                        alert('Seleção inválida. Usando primeira impressora.');
-                        printer = printers[0];
-                    } else {
-                        printer = printers[index];
-                    }
-                } else {
-                    printer = printers[0];
-                }
-                
-                console.log('🖨️ Usando impressora:', printer);
-                
-                // Buscar dados ESC/POS do backend
-                const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Erro ao buscar dados: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (!result.success || !result.data) {
-                    throw new Error('Dados inválidos recebidos do servidor');
-                }
-                
-                // Função crítica: converter base64 para Uint8Array (bytes binários)
-                // DEVE retornar Uint8Array, não Array simples!
-                function base64ToUint8Array(base64) {
-                    const binaryString = atob(base64); // decode base64 para texto binário
-                    const len = binaryString.length;
-                    const bytes = new Uint8Array(len); // ✅ Uint8Array, não Array!
-                    for (let i = 0; i < len; i++) {
-                        bytes[i] = binaryString.charCodeAt(i); // transforma em array de bytes
-                    }
-                    return bytes;
-                }
-                
-                // Converter base64 para Uint8Array - PONTO CRÍTICO
-                const rawData = base64ToUint8Array(result.data);
-                
-                // VALIDAÇÃO CRÍTICA: Verificar tipo e estrutura
-                console.log('🔍 DEBUG - Tipo de dado:', typeof rawData, rawData.constructor.name);
-                console.log('🔍 DEBUG - É Uint8Array?', rawData instanceof Uint8Array);
-                console.log('🔍 DEBUG - É Array?', Array.isArray(rawData));
-                
-                // Validação: verificar se começa com ESC @ (0x1B 0x40)
-                if (rawData.length < 2 || rawData[0] !== 0x1B || rawData[1] !== 0x40) {
-                    console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
-                    console.error('❌ Primeiros bytes:', 
-                        Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-                    alert('❌ Erro: Dados ESC/POS inválidos.');
-                    return;
-                }
-                
-                // Verificar se é realmente Uint8Array
-                if (!(rawData instanceof Uint8Array)) {
-                    console.error('❌ ERRO CRÍTICO: rawData não é Uint8Array!');
-                    console.error('❌ Tipo:', typeof rawData, rawData.constructor.name);
-                    alert('❌ Erro: Dados não foram convertidos corretamente para Uint8Array.');
-                    return;
-                }
-                
-                console.log('✅ Dados ESC/POS validados:', {
-                    length: rawData.length,
-                    firstBytes: Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-                    isUint8Array: rawData instanceof Uint8Array,
-                    type: typeof rawData,
-                    constructor: rawData.constructor.name
-                });
-                
-                // QZ Tray: Para dados RAW binários ESC/POS, usar objeto com type: 'raw', format: 'command'
-                const config = qz.configs.create(printer || 'EPSON TM-T20X Receipt');
-                
-                // Enviar como objeto RAW com Uint8Array
-                // FORMATO CORRETO para dados ESC/POS binários
-                console.log('🚀 Enviando dados RAW para impressora...');
-                console.log('🔍 DEBUG final - Tipo de data:', typeof rawData, rawData.constructor.name);
-                
-                await qz.print(config, [{
-                    type: 'raw',
-                    format: 'command',
-                    data: rawData  // ✅ Uint8Array real
-                }]);
-                
-                console.log('✅ Dados RAW enviados com sucesso');
-                
-                // Verificar se a impressora é virtual (PDF) - isso pode ser o problema
-                const printerLower = printer.toLowerCase();
-                if (printerLower.includes('pdf') || printerLower.includes('virtual') || printerLower.includes('document')) {
-                    alert('⚠️ ATENÇÃO: Você selecionou uma impressora virtual (PDF/Documentos).\n\nSelecione a impressora térmica física para imprimir o recibo.');
-                } else {
-                    alert('✅ Recibo enviado para impressão com sucesso!\n\nSe não imprimiu, verifique:\n1. A impressora está ligada e com papel\n2. A impressora não está em modo "Pausa"\n3. Verifique a fila de impressão do Windows');
-                }
-            } catch (error) {
-                console.error('Erro ao imprimir:', error);
-                console.error('Stack:', error.stack);
-                alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido') + '\n\nVerifique o console do navegador (F12) para mais detalhes.');
-            }
+        } catch (error) {
+            alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message);
+            return;
+        }
+    }
+    
+    try {
+        const printers = await qz.printers.find();
+        if (!printers || printers.length === 0) {
+            alert('Nenhuma impressora encontrada.');
+            return;
         }
         
-        // Auto-imprimir se for impressão automática
-        @if(request()->get('auto_print'))
-        window.onload = function() {
-            // Aguardar um pouco mais para garantir que o CSS foi aplicado
-            setTimeout(function() {
-                // Forçar atualização de estilos antes de imprimir
-                document.body.style.display = 'none';
-                document.body.offsetHeight; // Trigger reflow
-                document.body.style.display = '';
-                setTimeout(function() {
-                    window.print();
-                }, 100);
-            }, 500);
-        };
-        @endif
-    </script>
+        // Buscar impressora EPSON TM-20X
+        const printer = printers.find(p => 
+            p.toUpperCase().includes('EPSON') && 
+            (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+        ) || printers[0];
+        
+        if (!printer) {
+            alert(`❌ Impressora "${PRINTER_NAME}" não encontrada.\nVerifique se está conectada.`);
+            return;
+        }
+        
+        console.log('🖨️ Usando impressora:', printer);
+        
+        const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Erro ao buscar dados: ${response.status}`);
+        }
+        
+        const orderData = await response.json();
+        if (!orderData.success || !orderData.data) {
+            throw new Error('Dados inválidos do servidor.');
+        }
+        
+        console.log('📦 Base64 recebido (ESC/POS), tamanho:', orderData.data.length);
+        
+        const printConfig = qz.configs.create(printer);
+        
+        // ✅ CORREÇÃO CRÍTICA: Usar format: 'base64' e enviar diretamente a string base64
+        await qz.print(printConfig, [{
+            type: 'raw',
+            format: 'base64', // ✅ CORRETO: base64, não 'command'
+            data: orderData.data // ✅ Enviar diretamente a string base64
+        }]);
+        
+        console.log('✅ Recibo enviado para impressora:', printer);
+        alert('✅ Recibo enviado para impressão com sucesso!');
+        
+    } catch (error) {
+        console.error('❌ Erro ao imprimir:', error);
+        alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido'));
+    }
+}
+
+
+@if(request()->get('auto_print'))
+window.onload = async function () {
+    setTimeout(async () => {
+        await connectQZTray();
+        await printViaEscPos();
+    }, 500); // Pequeno atraso para garantir QZ Tray pronto
+};
+@endif
+</script>
 </body>
 </html>

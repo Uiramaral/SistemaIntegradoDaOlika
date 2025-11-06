@@ -21,14 +21,14 @@
             </div>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('dashboard.orders.fiscalReceipt', $order->id) }}" target="_blank" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
+            <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
                     <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
                 Imprimir Recibo Fiscal
-            </a>
+            </button>
             <button type="button" id="btn-open-receipt" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt">
                     <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2Z"></path>
@@ -563,6 +563,11 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Instruções de Entrega</label>
                         <textarea name="delivery_instructions" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Instruções especiais para entrega...">{{ $order->delivery_instructions }}</textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Data e Hora de Entrega Agendada</label>
+                        <input type="datetime-local" name="scheduled_delivery_at" value="{{ $order->scheduled_delivery_at ? $order->scheduled_delivery_at->format('Y-m-d\TH:i') : '' }}" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Selecione data e hora">
+                        <p class="text-xs text-muted-foreground">Deixe em branco para remover o agendamento</p>
                     </div>
                     
                     <div class="space-y-4 pt-4 border-t">
@@ -1303,5 +1308,204 @@
             </div>
     </div>
 </div>
+
+<!-- QZ Tray Script para impressão direta -->
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
+<script>
+    // Função para verificar se QZ Tray está conectado
+    function isQZTrayConnected() {
+        try {
+            return typeof qz !== 'undefined' && 
+                   qz !== null && 
+                   qz.websocket !== null && 
+                   qz.websocket.isActive();
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Conectar ao QZ Tray
+    async function connectQZTray() {
+        try {
+            if (typeof qz === 'undefined' || qz === null) {
+                throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
+            }
+            
+            if (isQZTrayConnected()) {
+                console.log('✅ QZ Tray já estava conectado');
+                return true;
+            }
+            
+            await qz.websocket.connect();
+            
+            if (isQZTrayConnected()) {
+                console.log('✅ QZ Tray conectado com sucesso');
+                return true;
+            } else {
+                throw new Error('Falha ao verificar conexão após tentativa de conexão');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao conectar QZ Tray:', error);
+            return false;
+        }
+    }
+
+    // Detectar se é dispositivo móvel
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (window.innerWidth <= 768);
+    }
+
+    // Imprimir recibo diretamente
+    async function printReceiptDirect(orderId) {
+        // Se for mobile, adicionar à fila de impressão
+        if (isMobileDevice()) {
+            const btn = document.getElementById('btn-print-receipt-direct');
+            let originalText = '';
+            if (btn) {
+                originalText = btn.innerHTML;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Enviando...';
+                btn.disabled = true;
+            }
+            
+            try {
+                const response = await fetch(`/dashboard/orders/${orderId}/request-print`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (btn) {
+                        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg> Na fila!';
+                        btn.classList.add('bg-success');
+                        setTimeout(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                            btn.classList.remove('bg-success');
+                        }, 2000);
+                    }
+                    alert('✅ Pedido adicionado à fila de impressão!\n\nO recibo será impresso automaticamente no desktop.');
+                } else {
+                    throw new Error(data.message || 'Erro ao adicionar à fila');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao solicitar impressão:', error);
+                alert('❌ Erro ao solicitar impressão: ' + (error.message || 'Erro desconhecido'));
+                if (btn && originalText) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }
+            return;
+        }
+        
+        // Desktop: imprimir diretamente via QZ Tray
+        const PRINTER_NAME = "EPSON TM-T20X";
+        
+        if (typeof qz === 'undefined') {
+            alert('❌ QZ Tray não está carregado.\n\nPor favor, instale e inicie o QZ Tray antes de imprimir.');
+            return;
+        }
+        
+        if (!isQZTrayConnected()) {
+            try {
+                const connected = await connectQZTray();
+                if (!connected) {
+                    alert('❌ Não foi possível conectar ao QZ Tray.\n\nCertifique-se de que o QZ Tray está instalado e rodando.');
+                    return;
+                }
+            } catch (error) {
+                alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message);
+                return;
+            }
+        }
+        
+        try {
+            const printers = await qz.printers.find();
+            if (!printers || printers.length === 0) {
+                alert('Nenhuma impressora encontrada.');
+                return;
+            }
+            
+            // Buscar impressora EPSON TM-20X
+            const printer = printers.find(p => 
+                p.toUpperCase().includes('EPSON') && 
+                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+            ) || printers[0];
+            
+            if (!printer) {
+                alert(`❌ Impressora "${PRINTER_NAME}" não encontrada.\nVerifique se está conectada.`);
+                return;
+            }
+            
+            console.log('🖨️ Usando impressora:', printer);
+            
+            const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao buscar dados: ${response.status}`);
+            }
+            
+            const orderData = await response.json();
+            if (!orderData.success || !orderData.data) {
+                throw new Error('Dados inválidos do servidor.');
+            }
+            
+            console.log('📦 Base64 recebido (ESC/POS), tamanho:', orderData.data.length);
+            
+            const printConfig = qz.configs.create(printer);
+            
+            // Enviar para impressão
+            await qz.print(printConfig, [{
+                type: 'raw',
+                format: 'base64',
+                data: orderData.data
+            }]);
+            
+            console.log('✅ Recibo enviado para impressora:', printer);
+            
+            // Mostrar feedback visual
+            const btn = document.getElementById('btn-print-receipt-direct');
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg> Enviado!';
+                btn.disabled = true;
+                btn.classList.add('bg-success');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('bg-success');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao imprimir:', error);
+            alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido'));
+        }
+    }
+
+    // Botão de impressão direta
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnPrint = document.getElementById('btn-print-receipt-direct');
+        if (btnPrint) {
+            btnPrint.addEventListener('click', function() {
+                const orderId = this.getAttribute('data-order-id');
+                if (orderId) {
+                    printReceiptDirect(orderId);
+                }
+            });
+        }
+    });
+</script>
 @endsection
 

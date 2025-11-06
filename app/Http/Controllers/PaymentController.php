@@ -39,6 +39,11 @@ class PaymentController extends Controller
             "discount_type" => $order->discount_type ?? null,
             "delivery_fee" => $order->delivery_fee ?? 0,
             "notification_url"  => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
+            "metadata" => [
+                "order_id" => $order->id,
+                "order_number" => $order->order_number,
+                "customer_id" => $order->customer_id,
+            ],
         ];
 
         $payer = [
@@ -78,45 +83,25 @@ class PaymentController extends Controller
         $order->payment_method = 'mercadopago';
         $order->save();
 
+        // Preparar itens para Mercado Pago
         $items = $order->items->map(function($i) {
             return [
                 "title" => $i->product_name ?? ($i->custom_name ?? 'Produto'),
                 "quantity" => (int)($i->qty ?? $i->quantity ?? 1),
-                "currency_id" => "BRL",
                 "unit_price" => (float)($i->price ?? $i->unit_price ?? 0),
             ];
-        })->values()->all();
+        })->toArray();
 
         $mp = new MercadoPagoApi();
+        
+        // Usar createPaymentLinkFromOrder que permite PIX E cartão (crédito/débito)
+        // Isso permite que o cliente escolha no link do Mercado Pago
+        $customer = $order->customer;
+        $res = $mp->createPaymentLinkFromOrder($order, $customer, $items);
 
-        $orderData = [
-            "number" => $order->order_number,
-            "items" => $items,
-            "total" => (float)$order->final_amount,
-            "discount_amount" => $order->discount_amount ?? 0,
-            "coupon_code" => $order->coupon_code ?? null,
-            "discount_type" => $order->discount_type ?? null,
-            "delivery_fee" => $order->delivery_fee ?? 0,
-            "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
-            "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
-            "back_urls" => [
-                "success" => route('payment.success', $order),
-                "pending" => route('payment.success', $order),
-                "failure" => route('payment.failure', $order),
-            ],
-        ];
-
-        $payer = [
-            "email" => optional($order->customer)->email ?: "noemail@dummy.com",
-            "first_name" => explode(' ', optional($order->customer)->name ?? 'Cliente')[0],
-            "last_name" => (explode(' ', optional($order->customer)->name ?? 'Cliente', 2)[1] ?? ''),
-            "phone" => optional($order->customer)->phone,
-        ];
-
-        $res = $mp->createPaymentLink($orderData, $payer);
-
-        $order->preference_id = data_get($res, 'id');
-        $order->payment_link  = data_get($res, 'init_point');
+        $order->preference_id = $res['preference_id'] ?? null;
+        $order->payment_link = $res['checkout_url'] ?? null;
+        $order->payment_method = 'mercadopago'; // Será definido pelo cliente no link
         $order->payment_raw_response = json_encode($res);
         $order->save();
 
@@ -153,6 +138,11 @@ class PaymentController extends Controller
                     "discount_type" => $order->discount_type ?? null,
                     "delivery_fee" => $order->delivery_fee ?? 0,
                     "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
+                    "metadata" => [
+                        "order_id" => $order->id,
+                        "order_number" => $order->order_number,
+                        "customer_id" => $order->customer_id,
+                    ],
                 ];
 
                 $payer = [
@@ -215,34 +205,117 @@ class PaymentController extends Controller
                 if (!empty($res['success']) && !empty($res['payment'])) {
                     $payment = $res['payment'];
                     $status = strtolower((string)($payment['status'] ?? 'pending'));
-                    $order->payment_status = $status;
+                    
+                    \Log::info('PaymentController:status - Status do pagamento consultado', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'payment_id' => $order->payment_id,
+                        'current_status' => $order->payment_status,
+                        'new_status' => $status,
+                        'payment_method' => $payment['payment_method_id'] ?? null,
+                    ]);
+                    
+                    // Mapear status do MercadoPago para valores válidos do ENUM
+                    $mappedStatus = \App\Services\MercadoPagoApiService::mapPaymentStatus($status);
+                    $order->payment_status = $mappedStatus;
                     $order->payment_raw_response = $payment;
                     // Atualiza status de pedido básico
-                    if (in_array($status, ['approved','paid'])) { $order->status = 'confirmed'; }
+                    if (in_array($status, ['approved','paid'])) { 
+                        $order->status = 'confirmed'; 
+                        \Log::info('PaymentController:status - Pagamento aprovado, atualizando status do pedido', [
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'status' => $status,
+                        ]);
+                    }
                     $order->save();
                     // Registrar transações de cashback quando pago
                     if (in_array($status, ['approved','paid'])) {
+                        // Limpar sessão quando o pagamento é confirmado via polling
+                        session()->forget('cart');
+                        session()->forget('cart_count');
+                        
+                        // IMPORTANTE: Usar OrderStatusService para processar a confirmação completa
                         try {
-                            // Débito: cashback usado
-                            if ($order->cashback_used > 0) {
-                                \App\Models\CustomerCashback::createDebit(
-                                    $order->customer_id,
-                                    $order->id,
-                                    $order->cashback_used,
-                                    "Uso de cashback no pedido #{$order->order_number}"
-                                );
-                            }
+                            $orderStatusService = app(\App\Services\OrderStatusService::class);
+                            $orderStatusService->changeStatus(
+                                $order, 
+                                'paid', 
+                                'Pagamento aprovado via polling (PIX)',
+                                null, // userId
+                                false // skipHistory
+                            );
+                            \Log::info('PaymentController (polling): OrderStatusService chamado para confirmar pagamento', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                            ]);
+                        } catch (\Exception $e) {
+                            \Log::error('PaymentController (polling): Erro ao chamar OrderStatusService', [
+                                'order_id' => $order->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                            // Continuar com processamento manual se OrderStatusService falhar
+                        }
+                        
+                        // IMPORTANTE: Recarregar o pedido do banco para garantir que temos os valores corretos
+                        $order->refresh();
+                        
+                        try {
+                            \Log::info('PaymentController (polling): Registrando cashback', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'cashback_used' => $order->cashback_used,
+                                'cashback_earned' => $order->cashback_earned,
+                                'customer_id' => $order->customer_id,
+                            ]);
                             
-                            // Crédito: cashback ganho
-                            if ($order->cashback_earned > 0) {
-                                \App\Models\CustomerCashback::createCredit(
-                                    $order->customer_id,
-                                    $order->id,
-                                    $order->cashback_earned,
-                                    "Cashback do pedido #{$order->order_number}"
-                                );
+                            // Verificar se já existe transação de cashback para este pedido (evitar duplicatas)
+                            $existingCashback = \App\Models\CustomerCashback::where('order_id', $order->id)->first();
+                            if ($existingCashback) {
+                                \Log::warning('PaymentController (polling): Cashback já registrado para este pedido, pulando', [
+                                    'order_id' => $order->id,
+                                    'existing_cashback_id' => $existingCashback->id,
+                                ]);
+                            } else {
+                                // Débito: cashback usado
+                                if ($order->cashback_used > 0) {
+                                    $debit = \App\Models\CustomerCashback::createDebit(
+                                        $order->customer_id,
+                                        $order->id,
+                                        $order->cashback_used,
+                                        "Uso de cashback no pedido #{$order->order_number}"
+                                    );
+                                    \Log::info('PaymentController (polling): Débito de cashback criado', [
+                                        'debit_id' => $debit->id,
+                                        'amount' => $debit->amount,
+                                    ]);
+                                }
+                                
+                                // Crédito: cashback ganho
+                                if ($order->cashback_earned > 0) {
+                                    $credit = \App\Models\CustomerCashback::createCredit(
+                                        $order->customer_id,
+                                        $order->id,
+                                        $order->cashback_earned,
+                                        "Cashback do pedido #{$order->order_number}"
+                                    );
+                                    \Log::info('PaymentController (polling): Crédito de cashback criado', [
+                                        'credit_id' => $credit->id,
+                                        'amount' => $credit->amount,
+                                    ]);
+                                } else {
+                                    \Log::warning('PaymentController (polling): Cashback ganho é zero ou nulo', [
+                                        'order_id' => $order->id,
+                                        'cashback_earned' => $order->cashback_earned,
+                                    ]);
+                                }
                             }
                         } catch (\Throwable $e) {
+                            \Log::error('PaymentController (polling): Falha ao registrar cashback', [
+                                'order_id' => $order->id,
+                                'err' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
                             \Log::warning('Falha ao registrar cashback no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                         }
                         
@@ -293,87 +366,127 @@ class PaymentController extends Controller
                                 $bot = new \App\Services\BotConversaService();
                                 $ok = $bot->sendPaidOrderJson($order->loadMissing('items.product','customer','address'));
                                 if ($ok) { $order->notified_paid_at = now(); $order->save(); }
+                                
+                                // Enviar notificação para o número específico quando pedido for pago
+                                if ($bot->isConfigured() && in_array($order->payment_status, ['paid', 'approved'])) {
+                                    try {
+                                        $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                                        $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
+                                        $message .= "Pedido: #{$order->order_number}\n";
+                                        $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
+                                        $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
+                                        $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
+                                        $message .= "Acesse o dashboard para ver os detalhes.";
+                                        
+                                        $bot->sendTextMessage($notificationPhone, $message);
+                                        
+                                        \Log::info('PaymentController (polling): Notificação enviada para número de administrador', [
+                                            'order_id' => $order->id,
+                                            'order_number' => $order->order_number,
+                                            'phone' => $notificationPhone
+                                        ]);
+                                    } catch (\Throwable $e) {
+                                        \Log::warning('PaymentController (polling): Erro ao enviar notificação para administrador', [
+                                            'order_id' => $order->id,
+                                            'error' => $e->getMessage()
+                                        ]);
+                                    }
+                                }
                             } catch (\Throwable $e) { 
                                 \Log::warning('Falha ao notificar BotConversa no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                             }
                         }
                     }
                 }
-            } catch (\Throwable $e) { /* silencioso no polling */ }
+            } catch (\Throwable $e) { 
+                \Log::error('PaymentController:status - Erro ao consultar status do pagamento', [
+                    'order_id' => $order->id,
+                    'payment_id' => $order->payment_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
+
+        // Recarregar o pedido para ter dados atualizados
+        $order->refresh();
+
+        \Log::info('PaymentController:status - Retornando status', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'payment_status' => $order->payment_status,
+            'order_status' => $order->status,
+            'payment_id' => $order->payment_id,
+        ]);
 
         return response()->json([
             'success' => true,
             'order_id' => $order->id,
             'payment_status' => $order->payment_status,
             'status' => $order->status,
+            'payment_id' => $order->payment_id,
         ]);
     }
 
     /**
      * Checkout para cartão (redireciona para Mercado Pago)
+     * Permite escolher entre PIX e cartão (crédito/débito)
      */
     public function checkout(Request $request, Order $order)
     {
-        $method = $request->get('method', 'credit_card');
-        
-        // Criar preferência do Mercado Pago
-        $items = $order->items->map(function($item) {
-            return [
-                "title" => $item->custom_name ?? ($item->product->name ?? 'Produto'),
-                "quantity" => (int)$item->quantity,
-                "currency_id" => "BRL",
-                "unit_price" => (float)$item->unit_price,
-            ];
-        })->values()->all();
-
-        $mp = new MercadoPagoApi();
-
-        $orderData = [
-            "number" => $order->order_number,
-            "items" => $items,
-            "total" => (float)$order->final_amount,
-            "discount_amount" => $order->discount_amount ?? 0,
-            "coupon_code" => $order->coupon_code ?? null,
-            "discount_type" => $order->discount_type ?? null,
-            "delivery_fee" => $order->delivery_fee ?? 0,
-            "metadata" => ["order_id" => $order->id, "order_number" => $order->order_number],
-            "notification_url" => AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago')),
-            "back_urls" => [
-                "success" => route('pedido.payment.success', $order),
-                "pending" => route('pedido.payment.success', $order),
-                "failure" => route('pedido.payment.failure', $order),
-            ],
-        ];
-
-        $payer = [
-            "email" => optional($order->customer)->email ?: "noemail@dummy.com",
-            "first_name" => explode(' ', optional($order->customer)->name ?? 'Cliente')[0],
-            "last_name" => (explode(' ', optional($order->customer)->name ?? 'Cliente', 2)[1] ?? ''),
-            "phone" => optional($order->customer)->phone,
-        ];
-
-        $res = $mp->createPaymentLink($orderData, $payer);
-
-        $initPoint = data_get($res, 'init_point');
-        
-        if ($initPoint) {
-            $order->preference_id = data_get($res, 'id');
-            $order->payment_link = $initPoint;
-            $order->payment_method = $method;
-            // Se falhar, não setar payment_status vazio
-            if (!empty($res['ok'])) {
-                $order->payment_status = $order->payment_status ?: 'pending';
-            } else {
-                $order->payment_status = $order->payment_status ?: 'pending'; // mantém pending; evita null
-            }
-            $order->payment_raw_response = json_encode($res);
-            $order->save();
+        try {
+            $method = $request->get('method', 'credit_card');
             
-            return redirect($initPoint);
-        }
+            // Preparar itens para Mercado Pago
+            $items = $order->items->map(function($item) {
+                return [
+                    "title" => $item->custom_name ?? ($item->product->name ?? 'Produto'),
+                    "quantity" => (int)$item->quantity,
+                    "unit_price" => (float)$item->unit_price,
+                ];
+            })->toArray();
 
-        return redirect()->back()->with('error', 'Erro ao gerar link de pagamento');
+            $mp = new MercadoPagoApi();
+
+            // Usar createPaymentLinkFromOrder que permite PIX E cartão (crédito/débito)
+            // Isso permite que o cliente escolha no link do Mercado Pago
+            $customer = $order->customer;
+            $res = $mp->createPaymentLinkFromOrder($order, $customer, $items);
+
+            $initPoint = $res['checkout_url'] ?? null;
+            
+            if ($initPoint) {
+                $order->preference_id = $res['preference_id'] ?? null;
+                $order->payment_link = $initPoint;
+                $order->payment_method = 'mercadopago'; // Será definido pelo cliente no link
+                $order->payment_status = $order->payment_status ?: 'pending';
+                $order->payment_raw_response = json_encode($res);
+                $order->save();
+                
+                return redirect($initPoint);
+            }
+
+            \Log::error('PaymentController:checkout - Link de pagamento não gerado', [
+                'order_id' => $order->id,
+                'response' => $res,
+            ]);
+            
+            // Redirecionar para checkout com mensagem de erro (sem usar back() para evitar CSRF)
+            // Não passar order como parâmetro pois a rota não aceita
+            return redirect()->route('pedido.checkout.index')
+                ->with('error', 'Erro ao gerar link de pagamento. Por favor, tente novamente.');
+        } catch (\Exception $e) {
+            \Log::error('PaymentController:checkout - Erro ao gerar link de pagamento', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            // Não limpar a sessão em caso de erro - permite que o usuário tente novamente
+            // Redirecionar para checkout com mensagem de erro (sem usar back() para evitar CSRF)
+            // Não passar order como parâmetro pois a rota não aceita
+            return redirect()->route('pedido.checkout.index')
+                ->with('error', 'Erro ao gerar link de pagamento. Por favor, tente novamente.');
+        }
     }
 
     /**
@@ -382,6 +495,9 @@ class PaymentController extends Controller
     public function success(Order $order)
     {
         // Marcar como pago se ainda não marcado e alimentar fidelidade
+        // IMPORTANTE: Preservar notified_paid_at se já foi definido para evitar notificações duplicadas
+        $wasAlreadyPaid = $order->payment_status === 'paid';
+        
         if ($order->payment_status !== 'paid') {
             $order->payment_status = 'paid';
             $order->status = 'confirmed';
@@ -393,28 +509,65 @@ class PaymentController extends Controller
             }
             
             // Registrar transações de cashback
+            // IMPORTANTE: Recarregar o pedido do banco para garantir que temos os valores corretos de cashback
+            $order->refresh();
+            
             try {
-                // Débito: cashback usado
-                if ($order->cashback_used > 0) {
-                    \App\Models\CustomerCashback::createDebit(
-                        $order->customer_id,
-                        $order->id,
-                        $order->cashback_used,
-                        "Uso de cashback no pedido #{$order->order_number}"
-                    );
-                }
+                \Log::info('PaymentController: Registrando cashback', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'cashback_used' => $order->cashback_used,
+                    'cashback_earned' => $order->cashback_earned,
+                    'customer_id' => $order->customer_id,
+                ]);
                 
-                // Crédito: cashback ganho
-                if ($order->cashback_earned > 0) {
-                    \App\Models\CustomerCashback::createCredit(
-                        $order->customer_id,
-                        $order->id,
-                        $order->cashback_earned,
-                        "Cashback do pedido #{$order->order_number}"
-                    );
+                // Verificar se já existe transação de cashback para este pedido (evitar duplicatas)
+                $existingCashback = \App\Models\CustomerCashback::where('order_id', $order->id)->first();
+                if ($existingCashback) {
+                    \Log::warning('PaymentController: Cashback já registrado para este pedido, pulando', [
+                        'order_id' => $order->id,
+                        'existing_cashback_id' => $existingCashback->id,
+                    ]);
+                } else {
+                    // Débito: cashback usado
+                    if ($order->cashback_used > 0) {
+                        $debit = \App\Models\CustomerCashback::createDebit(
+                            $order->customer_id,
+                            $order->id,
+                            $order->cashback_used,
+                            "Uso de cashback no pedido #{$order->order_number}"
+                        );
+                        \Log::info('PaymentController: Débito de cashback criado', [
+                            'debit_id' => $debit->id,
+                            'amount' => $debit->amount,
+                        ]);
+                    }
+                    
+                    // Crédito: cashback ganho
+                    if ($order->cashback_earned > 0) {
+                        $credit = \App\Models\CustomerCashback::createCredit(
+                            $order->customer_id,
+                            $order->id,
+                            $order->cashback_earned,
+                            "Cashback do pedido #{$order->order_number}"
+                        );
+                        \Log::info('PaymentController: Crédito de cashback criado', [
+                            'credit_id' => $credit->id,
+                            'amount' => $credit->amount,
+                        ]);
+                    } else {
+                        \Log::warning('PaymentController: Cashback ganho é zero ou nulo, não criando crédito', [
+                            'order_id' => $order->id,
+                            'cashback_earned' => $order->cashback_earned,
+                        ]);
+                    }
                 }
             } catch (\Throwable $e) {
-                \Log::warning('Falha ao registrar cashback', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+                \Log::error('Falha ao registrar cashback', [
+                    'order_id' => $order->id,
+                    'err' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
             }
             
             // Baixar débitos relacionados ao pedido (fiado)
@@ -473,6 +626,32 @@ class PaymentController extends Controller
                     $order->notified_paid_at = now();
                     $order->save();
                 }
+                
+                // Enviar notificação para o número específico quando pedido for pago
+                if ($bot->isConfigured() && $order->payment_status === 'paid') {
+                    try {
+                        $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                        $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
+                        $message .= "Pedido: #{$order->order_number}\n";
+                        $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
+                        $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
+                        $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
+                        $message .= "Acesse o dashboard para ver os detalhes.";
+                        
+                        $bot->sendTextMessage($notificationPhone, $message);
+                        
+                        \Log::info('PaymentController: Notificação enviada para número de administrador', [
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'phone' => $notificationPhone
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('PaymentController: Erro ao enviar notificação para administrador', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
             }
         } catch (\Throwable $e) {
             \Log::warning('Falha ao notificar BotConversa', ['order_id' => $order->id, 'err' => $e->getMessage()]);
@@ -488,6 +667,10 @@ class PaymentController extends Controller
             \Log::warning('Evolution API: falha ao enviar mensagem', ['order_id' => $order->id, 'err' => $e->getMessage()]);
         }
 
+        // Limpar sessão quando o pagamento é confirmado para evitar refinalização
+        session()->forget('cart');
+        session()->forget('cart_count');
+        
         return view('pedido.payment.success', compact('order'));
     }
 

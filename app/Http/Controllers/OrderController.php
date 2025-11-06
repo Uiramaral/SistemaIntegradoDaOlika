@@ -20,6 +20,26 @@ class OrderController extends Controller
      */
     public function checkout(Request $request)
     {
+        // Verificar se há um pedido já pago na sessão
+        $sessionOrderId = session('order_id');
+        if ($sessionOrderId) {
+            $existingOrder = Order::find($sessionOrderId);
+            // IMPORTANTE: Só limpar o carrinho se o pedido estiver realmente pago/aprovado
+            // Se estiver 'pending', manter o carrinho para permitir nova tentativa
+            if ($existingOrder && in_array($existingOrder->payment_status, ['approved', 'paid'])) {
+                // Pedido já foi pago, limpar sessão e redirecionar para página de sucesso
+                session()->forget('cart');
+                session()->forget('cart_count');
+                session()->forget('order_id');
+                return redirect()->route('pedido.payment.success', ['order' => $existingOrder->id])
+                    ->with('info', 'Este pedido já foi finalizado e pago.');
+            } elseif ($existingOrder && $existingOrder->payment_status === 'pending') {
+                // Pedido ainda está pendente - NÃO limpar o carrinho, permitir nova tentativa
+                // Mas limpar o order_id da sessão para não causar confusão
+                session()->forget('order_id');
+            }
+        }
+        
         $cart = session('cart', []);
         
         if (empty($cart)) {
@@ -331,11 +351,6 @@ class OrderController extends Controller
     {
         $cart = session('cart', []);
         
-        if (empty($cart)) {
-            return redirect()->route('pedido.cart.index')
-                ->with('error', 'Seu carrinho está vazio.');
-        }
-
         // Validação
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
@@ -352,7 +367,77 @@ class OrderController extends Controller
             'scheduled_delivery_date' => 'required|date',
             'scheduled_delivery_slot' => 'required|string',
             'notes' => 'nullable|string|max:1000',
+            'order_id' => 'nullable|integer|exists:orders,id', // ID do pedido do PDV
+            'order_number' => 'nullable|string|exists:orders,order_number', // Número do pedido do PDV
         ]);
+        
+        // Se for um pedido do PDV e o carrinho estiver vazio, criar sessão do carrinho a partir dos itens do pedido
+        if (empty($cart) && (($validated['order_id'] ?? null) || ($validated['order_number'] ?? null))) {
+            $orderQuery = Order::query()->with('items.product');
+            if ($validated['order_id']) {
+                $orderQuery->where('id', $validated['order_id']);
+            } else {
+                $orderQuery->where('order_number', $validated['order_number']);
+            }
+            
+            $pdvOrder = $orderQuery->first();
+            
+            // Verificar se o pedido PDV já foi pago
+            if ($pdvOrder && in_array($pdvOrder->payment_status, ['approved', 'paid'])) {
+                // Limpar carrinho e redirecionar para página de sucesso
+                session()->forget('cart');
+                session()->forget('cart_count');
+                session()->forget('order_id');
+                return redirect()->route('pedido.payment.success', ['order' => $pdvOrder->id])
+                    ->with('info', 'Este pedido já foi finalizado e pago.');
+            }
+            
+            if ($pdvOrder && $pdvOrder->items->count() > 0 && $pdvOrder->payment_status === 'pending') {
+                // Criar carrinho a partir dos itens do pedido
+                $cart = [];
+                foreach ($pdvOrder->items as $item) {
+                    $key = ($item->product_id ?? 0) . ':' . ($item->variant_id ?? 0);
+                    $cart[$key] = [
+                        'qty' => $item->quantity,
+                        'price' => (float)$item->unit_price,
+                        'special_instructions' => $item->special_instructions ?? null,
+                    ];
+                }
+                session(['cart' => $cart]);
+                \Log::info('OrderController:store - Carrinho criado a partir do pedido PDV', [
+                    'order_id' => $pdvOrder->id,
+                    'order_number' => $pdvOrder->order_number,
+                    'items_count' => count($cart),
+                ]);
+            }
+        }
+        
+        // Verificar novamente se o carrinho está vazio após tentar criar a partir do PDV
+        $cart = session('cart', []);
+        
+        if (empty($cart)) {
+            return redirect()->route('pedido.cart.index')
+                ->with('error', 'Seu carrinho está vazio.');
+        }
+        
+        // Verificar se há um pedido já pago na sessão (antes de criar novo)
+        $sessionOrderId = session('order_id');
+        if ($sessionOrderId) {
+            $existingOrder = Order::find($sessionOrderId);
+            // IMPORTANTE: Só limpar o carrinho se o pedido estiver realmente pago/aprovado
+            if ($existingOrder && in_array($existingOrder->payment_status, ['approved', 'paid'])) {
+                // Pedido já foi pago, limpar sessão e redirecionar para página de sucesso
+                session()->forget('cart');
+                session()->forget('cart_count');
+                session()->forget('order_id');
+                return redirect()->route('pedido.payment.success', ['order' => $existingOrder->id])
+                    ->with('info', 'Este pedido já foi finalizado e pago.');
+            } elseif ($existingOrder && $existingOrder->payment_status === 'pending') {
+                // Pedido ainda está pendente - NÃO limpar o carrinho, permitir criar novo pedido
+                // Apenas limpar o order_id da sessão para não causar confusão
+                session()->forget('order_id');
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -498,7 +583,12 @@ class OrderController extends Controller
             $cashbackEarned = 0.00;
 
             // Aplicar cupom se informado (ANTES do cashback)
-            $couponCode = trim((string)($request->input('applied_coupon_code') ?: $request->input('coupon_code', '')));
+            // Tentar obter cupom da requisição, depois da sessão (para preservar em caso de erro)
+            $couponCode = trim((string)(
+                $request->input('applied_coupon_code') 
+                ?: $request->input('coupon_code', '') 
+                ?: session('checkout.applied_coupon_code', '')
+            ));
             $appliedCoupon = null;
             
             if ($couponCode !== '') {
@@ -517,7 +607,7 @@ class OrderController extends Controller
                     
                     // Validar elegibilidade
                     if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
-                        // Verificar se pode ser usado pelo cliente
+                        // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
                         if ($coupon->canBeUsedBy($customer->id)) {
                             // Se for cupom de frete grátis, aplicar desconto no frete
                             if ($coupon->free_shipping_only && $deliveryFee > 0) {
@@ -663,6 +753,14 @@ class OrderController extends Controller
             }
 
             // 8. Criar pedido
+            \Log::info('OrderController:store - Criando pedido com cashback', [
+                'cashback_used' => $cashbackUsed,
+                'cashback_earned' => $cashbackEarned,
+                'subtotal' => $subtotal,
+                'subtotal_after_coupon' => $subtotalAfterCoupon,
+                'final_amount' => $finalAmount,
+            ]);
+            
             $order = Order::create([
                 'customer_id' => $customer->id,
                 'address_id' => $address->id,
@@ -682,6 +780,14 @@ class OrderController extends Controller
                 'delivery_type' => 'delivery',
                 'scheduled_delivery_at' => $scheduledDeliveryAt,
                 'notes' => !empty($orderNotes) ? $orderNotes : ($validated['notes'] ?? null),
+            ]);
+            
+            // Verificar se cashback foi salvo corretamente
+            $order->refresh();
+            \Log::info('OrderController:store - Pedido criado, verificando cashback salvo', [
+                'order_id' => $order->id,
+                'cashback_used_saved' => $order->cashback_used,
+                'cashback_earned_saved' => $order->cashback_earned,
             ]);
 
             // Verificar se order_number foi salvo corretamente
@@ -778,9 +884,10 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Limpar carrinho apenas após commit bem-sucedido
-            session()->forget('cart');
-            session()->forget('cart_count');
+            // NÃO limpar o carrinho aqui - será limpo apenas após confirmação do pagamento
+            // Isso permite que o usuário tente novamente se houver erro no checkout
+            // session()->forget('cart');
+            // session()->forget('cart_count');
 
             // Salvar dados na sessão para próxima compra
             session([
@@ -794,6 +901,8 @@ class OrderController extends Controller
                 'checkout.city' => $validated['city'],
                 'checkout.state' => $validated['state'],
                 'checkout.zip_code' => $validated['zip_code'],
+                // Preservar cupom aplicado na sessão para caso de erro
+                'checkout.applied_coupon_code' => $appliedCoupon->code ?? null,
             ]);
 
             // Salvar order_id na sessão para uso no payment controller
@@ -828,6 +937,10 @@ class OrderController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            
+            // IMPORTANTE: NÃO limpar o carrinho em caso de erro - permite que o usuário tente novamente
+            // O carrinho só deve ser limpo após confirmação do pagamento
+            
             return redirect()->route('pedido.checkout.index')
                 ->with('error', 'Erro ao processar pedido. Por favor, tente novamente. Se o problema persistir, entre em contato com o suporte.')
                 ->withInput();
@@ -954,11 +1067,6 @@ class OrderController extends Controller
             ->get()
             ->groupBy('day_of_week');
         
-        \Log::warning('completePdvOrder: Horários de entrega carregados', [
-            'schedules_count' => $deliverySchedules->count(),
-            'days' => $deliverySchedules->keys()->toArray(),
-        ]);
-        
         $availableDates = [];
         $slotCapacity = 2; // padrão
         try {
@@ -1033,11 +1141,6 @@ class OrderController extends Controller
             }
         }
         
-        \Log::warning('completePdvOrder: Datas disponíveis geradas', [
-            'available_dates_count' => count($availableDates),
-            'dates' => array_map(fn($d) => $d['date'], $availableDates),
-        ]);
-        
         // Buscar cupons públicos elegíveis
         $customerId = $order->customer_id;
         $isFirstOrder = !Order::where('customer_id', $customerId)
@@ -1097,13 +1200,6 @@ class OrderController extends Controller
      */
     public function calculateDiscounts(Request $request)
     {
-        \Log::warning('========== calculateDiscounts: MÉTODO CHAMADO ==========', [
-            'coupon_code' => $request->input('coupon_code'),
-            'customer_phone' => $request->input('customer_phone'),
-            'customer_email' => $request->input('customer_email'),
-            'delivery_fee' => $request->input('delivery_fee'),
-        ]);
-        
         $cart = session('cart', []);
         $subtotal = 0;
         $productIds = [];
@@ -1112,11 +1208,6 @@ class OrderController extends Controller
         if (empty($cart)) {
             $orderNumber = $request->input('order_number');
             $orderId = $request->input('order_id');
-            
-            \Log::warning('calculateDiscounts: Carrinho vazio, tentando buscar pedido PDV', [
-                'order_number' => $orderNumber,
-                'order_id' => $orderId,
-            ]);
             
             if ($orderNumber || $orderId) {
                 $orderQuery = Order::query()->with('items');
@@ -1130,12 +1221,6 @@ class OrderController extends Controller
                 $order = $orderQuery->first();
                 
                 if ($order && $order->items) {
-                    \Log::warning('calculateDiscounts: Pedido PDV encontrado, usando itens do pedido', [
-                        'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'items_count' => $order->items->count(),
-                    ]);
-                    
                     // Calcular subtotal dos itens do pedido
                     foreach ($order->items as $item) {
                         $subtotal += (float)$item->total_price;
@@ -1144,7 +1229,6 @@ class OrderController extends Controller
                         }
                     }
                 } else {
-                    \Log::warning('calculateDiscounts: Pedido não encontrado, retornando zeros');
                     return response()->json([
                         'subtotal' => 0,
                         'delivery_fee' => 0,
@@ -1157,7 +1241,6 @@ class OrderController extends Controller
                     ]);
                 }
             } else {
-                \Log::warning('calculateDiscounts: Carrinho vazio e sem order_number/order_id, retornando zeros');
                 return response()->json([
                     'subtotal' => 0,
                     'delivery_fee' => 0,
@@ -1183,11 +1266,6 @@ class OrderController extends Controller
                 $subtotal += $qty * $price;
             }
         }
-        
-        \Log::warning('calculateDiscounts: Subtotal calculado', [
-            'subtotal' => $subtotal,
-            'product_ids' => $productIds,
-        ]);
 
         // Identificar cliente se fornecido (busca única, usada para tudo)
         $customerData = null;
@@ -1196,19 +1274,6 @@ class OrderController extends Controller
         $isFirstOrder = true; // Por padrão, assumir que é primeiro pedido (será redefinido se cliente identificado)
         $customerPhone = preg_replace('/\D/', '', (string)$request->input('customer_phone', ''));
         $customerEmail = trim((string)$request->input('customer_email', ''));
-
-        \Log::warning('calculateDiscounts: Identificação de cliente', [
-            'customer_phone_from_request' => $request->input('customer_phone', ''),
-            'customer_email_from_request' => $request->input('customer_email', ''),
-            'customer_phone_normalized' => $customerPhone,
-            'customer_email_normalized' => $customerEmail,
-            'has_phone_or_email' => ($customerPhone || $customerEmail),
-        ]);
-
-        \Log::warning('calculateDiscounts: Estado inicial', [
-            'customer_id' => $customerId,
-            'is_first_order_initial' => $isFirstOrder,
-        ]);
         
         if ($customerPhone || $customerEmail) {
             $customerQuery = Customer::query();
@@ -1233,14 +1298,6 @@ class OrderController extends Controller
                     ->whereIn('payment_status', ['approved', 'paid'])
                     ->exists();
                 $isFirstOrder = !$hasPaidOrders;
-
-                \Log::warning('calculateDiscounts: Cliente identificado - verificação de primeiro pedido', [
-                    'customer_id' => $customerId,
-                    'has_paid_orders' => $hasPaidOrders,
-                    'total_orders' => Order::where('customer_id', $customerId)->count(),
-                    'paid_orders_count' => Order::where('customer_id', $customerId)->whereIn('payment_status', ['approved', 'paid'])->count(),
-                    'is_first_order_final' => $isFirstOrder,
-                ]);
                 
                 // Separar rua e número do campo address
                 $addressParts = $customer->address ? explode(',', $customer->address, 2) : [null, null];
@@ -1290,21 +1347,9 @@ class OrderController extends Controller
                         $baseDeliveryFee = $feeResult['base_delivery_fee'] ?? $feeResult['delivery_fee'];
                         $deliveryDiscountPercent = $feeResult['discount_percent'] ?? 0;
                         $deliveryDiscountAmount = $feeResult['discount_amount'] ?? 0.0;
-
-                        \Log::info('calculateDiscounts: Desconto progressivo calculado', [
-                            'subtotal' => $subtotal,
-                            'delivery_fee' => $deliveryFee,
-                            'base_delivery_fee' => $baseDeliveryFee,
-                            'discount_percent' => $deliveryDiscountPercent,
-                            'discount_amount' => $deliveryDiscountAmount,
-                        ]);
                     }
                 }
             } catch (\Exception $e) {
-                \Log::warning('calculateDiscounts: Erro ao calcular desconto progressivo', [
-                    'error' => $e->getMessage(),
-                    'customer_id' => $customerId,
-                ]);
                 // Manter valores originais se erro
             }
         }
@@ -1315,13 +1360,6 @@ class OrderController extends Controller
         $couponMessage = null;
         
         if ($couponCode !== '') {
-            \Log::warning('========== calculateDiscounts: INÍCIO VALIDAÇÃO CUPOM ==========', [
-                'code' => $couponCode,
-                'subtotal' => $subtotal,
-                'delivery_fee' => $deliveryFee,
-                'customer_id' => $customerId,
-            ]);
-            
             $coupon = \App\Models\Coupon::where('code', strtoupper($couponCode))
                 ->active()
                 ->valid()
@@ -1329,19 +1367,6 @@ class OrderController extends Controller
                 ->first();
             
             if ($coupon) {
-                \Log::warning('calculateDiscounts: Cupom encontrado', [
-                    'coupon_id' => $coupon->id,
-                    'code' => $coupon->code,
-                    'type' => $coupon->type,
-                    'value' => $coupon->value,
-                    'minimum_amount' => $coupon->minimum_amount,
-                    'first_order_only' => $coupon->first_order_only,
-                    'free_shipping_only' => $coupon->free_shipping_only,
-                    'visibility' => $coupon->visibility,
-                    'usage_limit_per_customer' => $coupon->usage_limit_per_customer,
-                    'is_active' => $coupon->is_active,
-                ]);
-                
                 // Verificar se precisa de cliente identificado
                 // Cupons de primeiro pedido não precisam de identificação obrigatória
                 $needsCustomer = !$coupon->first_order_only && (
@@ -1365,46 +1390,28 @@ class OrderController extends Controller
                         } else {
                             $couponMessage = 'Cupom não é elegível para este pedido.';
                         }
-                        \Log::warning('calculateDiscounts: Cupom não elegível (cliente identificado)', [
-                            'minimum_amount' => $coupon->minimum_amount,
-                            'subtotal' => $subtotal,
-                            'first_order_only' => $coupon->first_order_only,
-                            'isFirstOrder' => $isFirstOrder,
-                            'free_shipping_only' => $coupon->free_shipping_only,
-                            'delivery_fee' => $deliveryFee,
-                        ]);
-                    } elseif ($coupon->usage_limit_per_customer > 0 && !$coupon->canBeUsedBy($customerId)) {
-                        // Verificar limite apenas se cupom tem limite por cliente (não bloquear cupons de primeiro pedido para clientes novos)
-                        // Para cupons de primeiro pedido, não verificar limite quando customer_id é null
+                    } elseif (!$coupon->canBeUsedBy($customerId)) {
+                        // Verificar se pode ser usado (inclui verificação de primeiro pedido e limite por cliente)
+                        // Para cupons de primeiro pedido, não verificar quando customer_id é null (cliente novo)
                         if ($coupon->first_order_only && $customerId === null) {
                             // Cupom de primeiro pedido para cliente novo, permitir sem verificar limite
                             $couponDiscount = $coupon->calculateDiscount($subtotal);
-                            \Log::info('calculateDiscounts: Cupom de primeiro pedido aplicado (cliente novo)', [
-                                'coupon_discount' => $couponDiscount,
-                            ]);
                         } else {
-                            $couponMessage = 'Cupom não pode ser usado. Limite de uso atingido.';
-                            \Log::warning('calculateDiscounts: Cupom não pode ser usado - limite atingido', [
-                                'code' => $coupon->code,
-                                'customerId' => $customerId,
-                                'usage_limit_per_customer' => $coupon->usage_limit_per_customer,
-                            ]);
+                            if ($coupon->first_order_only) {
+                                $couponMessage = 'Este cupom é válido apenas para primeiro pedido e já foi utilizado.';
+                            } else {
+                                $couponMessage = 'Cupom não pode ser usado. Limite de uso atingido.';
+                            }
                         }
                     } else {
                         // Cupom válido, aplicar desconto
                         // Cupons de frete grátis não são mais aplicados (desconto progressivo substitui)
                         // Aplicar apenas desconto no subtotal dos produtos
                         $couponDiscount = $coupon->calculateDiscount($subtotal);
-                        \Log::info('calculateDiscounts: Cupom aplicado com sucesso', [
-                            'coupon_discount' => $couponDiscount,
-                        ]);
                     }
                 }
             } else {
                 $couponMessage = 'Cupom inválido ou não encontrado.';
-                \Log::warning('calculateDiscounts: Cupom não encontrado', [
-                    'code' => $couponCode,
-                ]);
             }
         }
 
@@ -1422,18 +1429,8 @@ class OrderController extends Controller
                 ->get();
 
             $eligibleCouponsForDisplay = $allPublicCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
-                \Log::info('calculateDiscounts: Verificando cupom para exibição', [
-                    'coupon_code' => $coupon->code,
-                    'first_order_only' => $coupon->first_order_only,
-                    'is_first_order' => $isFirstOrder,
-                    'customer_id' => $customerId,
-                    'subtotal' => $subtotal,
-                    'delivery_fee' => $deliveryFee,
-                ]);
-
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
-                    \Log::info('calculateDiscounts: Cupom rejeitado - frete grátis', ['code' => $coupon->code]);
                     return false;
                 }
 
@@ -1441,51 +1438,33 @@ class OrderController extends Controller
                 // Cupons de primeiro pedido devem aparecer para clientes novos (mesmo sem customer_id)
                 if ($coupon->first_order_only) {
                     if (!$isFirstOrder) {
-                        \Log::info('calculateDiscounts: Cupom rejeitado - não é primeiro pedido', ['code' => $coupon->code]);
                         return false; // Não é primeiro pedido, cupom não é elegível
                     }
                     // É primeiro pedido, verificar outras condições (valor mínimo, etc)
                     // Para cupons de primeiro pedido, não precisamos verificar canBeUsedBy quando customer_id é null
                     // pois é justamente para clientes novos
                     if (!$coupon->isValid($customerId)) {
-                        \Log::info('calculateDiscounts: Cupom rejeitado - não válido', ['code' => $coupon->code]);
                         return false; // Cupom não está ativo, válido ou disponível
                     }
                     // Verificar valor mínimo
                     if ($coupon->minimum_amount && $subtotal < $coupon->minimum_amount) {
-                        \Log::info('calculateDiscounts: Cupom rejeitado - valor mínimo não atendido', [
-                            'code' => $coupon->code,
-                            'minimum_amount' => $coupon->minimum_amount,
-                            'subtotal' => $subtotal,
-                        ]);
                         return false;
                     }
                     // Cupom de primeiro pedido é elegível
-                    \Log::info('calculateDiscounts: Cupom de primeiro pedido aprovado', ['code' => $coupon->code]);
                     return true;
                 }
 
                 // Para outros cupons (não first_order_only), verificar elegibilidade geral
                 if (!$coupon->isEligibleFor($customerId, $subtotal, $deliveryFee, $isFirstOrder)) {
-                    \Log::info('calculateDiscounts: Cupom rejeitado - não elegível', [
-                        'code' => $coupon->code,
-                        'reason' => 'isEligibleFor=false'
-                    ]);
                     return false;
                 }
 
                 // Verificar limite de uso apenas se cliente existe E cupom tem limite
                 if ($coupon->usage_limit_per_customer > 0 && $customerId) {
                     $canUse = $coupon->canBeUsedBy($customerId);
-                    \Log::info('calculateDiscounts: Verificando limite de uso', [
-                        'code' => $coupon->code,
-                        'usage_limit_per_customer' => $coupon->usage_limit_per_customer,
-                        'can_be_used_by_customer' => $canUse
-                    ]);
                     return $canUse;
                 }
 
-                \Log::info('calculateDiscounts: Cupom aprovado', ['code' => $coupon->code]);
                 return true;
             })->values();
         } catch (\Exception $e) {
@@ -1494,14 +1473,6 @@ class OrderController extends Controller
             ]);
             $eligibleCouponsForDisplay = collect();
         }
-
-        \Log::warning('calculateDiscounts: Cupons elegíveis filtrados', [
-            'total_coupons' => $allPublicCoupons->count(),
-            'eligible_count' => $eligibleCouponsForDisplay->count(),
-            'is_first_order' => $isFirstOrder,
-            'customer_id' => $customerId,
-            'eligible_codes' => $eligibleCouponsForDisplay->pluck('code')->toArray(),
-        ]);
         
         // Aplicar cashback automaticamente se houver saldo disponível
         $cashbackUsed = 0;
@@ -1533,21 +1504,6 @@ class OrderController extends Controller
         $couponMessageFinal = ($couponMessage !== null && trim($couponMessage) !== '') 
             ? trim($couponMessage) 
             : null;
-        
-        \Log::warning('========== calculateDiscounts: RETORNANDO RESPOSTA ==========', [
-            'coupon_code' => $couponCode,
-            'coupon_discount' => round($couponDiscount, 2),
-            'coupon_message' => $couponMessageFinal,
-            'coupon_message_length' => $couponMessageFinal ? strlen($couponMessageFinal) : 0,
-            'coupon_message_type' => gettype($couponMessageFinal),
-            'coupon_message_is_null' => is_null($couponMessageFinal),
-            'subtotal' => $subtotal,
-            'delivery_fee' => $deliveryFee,
-            'customer_id' => $customerId,
-            'is_first_order' => $isFirstOrder,
-            'customer_phone_provided' => !empty($customerPhone),
-            'customer_email_provided' => !empty($customerEmail),
-        ]);
         
         $jsonResponse = [
             'subtotal' => round($subtotal, 2),

@@ -21,6 +21,12 @@
         <input type="hidden" name="delivery_discount_percent" id="hidden_delivery_discount_percent" value="0">
         <input type="hidden" name="delivery_discount_amount" id="hidden_delivery_discount_amount" value="0">
         
+        <!-- Campos hidden para pedido do PDV -->
+        @if(isset($order) && $order)
+        <input type="hidden" name="order_id" value="{{ $order->id }}">
+        <input type="hidden" name="order_number" value="{{ $order->order_number }}">
+        @endif
+        
         <div class="grid lg:grid-cols-[1fr_400px] gap-4 sm:gap-6 lg:gap-8 w-full">
             <!-- Coluna Esquerda: Formulário -->
             <div class="space-y-4 sm:space-y-6 w-full">
@@ -126,10 +132,10 @@
                     @if($hasEligibleCoupons)
                     <div class="mb-4" id="couponsAvailableSection">
                         <label class="block text-sm font-medium mb-2">Cupons Disponíveis</label>
-                        <select name="coupon_code" id="coupon_code_public" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <select name="coupon_code" id="coupon_code_public" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
                             <option value="">Selecione um cupom</option>
                             @foreach($eligibleCoupons as $coupon)
-                            <option value="{{ $coupon->code }}" data-discount="{{ $coupon->formatted_value }}">
+                            <option value="{{ $coupon->code }}" data-discount="{{ $coupon->formatted_value }}" {{ isset($appliedCouponCode) && $appliedCouponCode === $coupon->code ? 'selected' : '' }}>
                                 {{ $coupon->name }} - {{ $coupon->formatted_value }}
                                 @if($coupon->minimum_amount)
                                 (Mín: R$ {{ number_format($coupon->minimum_amount, 2, ',', '.') }})
@@ -147,10 +153,16 @@
                     </style>
                     @endif
                     <div class="flex gap-3">
-                        <input type="text" name="coupon_code" id="coupon_code_private" placeholder="Digite o código do cupom privado" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value="{{ old('coupon_code', isset($appliedCouponCode) ? $appliedCouponCode : '') }}">
-                        <button type="button" id="applyCouponBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">Aplicar</button>
+                        <input type="text" name="coupon_code" id="coupon_code_private" placeholder="Digite o código do cupom privado" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-gray-100 cursor-not-allowed' : '' }}" value="{{ old('coupon_code', isset($appliedCouponCode) ? $appliedCouponCode : '') }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'readonly' : '' }}>
+                        <button type="button" id="applyCouponBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 {{ isset($appliedCouponCode) && $appliedCouponCode ? 'opacity-50 cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
+                            {{ isset($appliedCouponCode) && $appliedCouponCode ? 'Aplicado' : 'Aplicar' }}
+                        </button>
                     </div>
+                    @if(isset($appliedCouponCode) && $appliedCouponCode)
+                    <p id="couponFeedback" class="text-sm mt-2 text-green-600 font-medium">✓ Cupom {{ $appliedCouponCode }} aplicado</p>
+                    @else
                     <p id="couponFeedback" class="text-sm mt-2 text-gray-600"></p>
+                    @endif
                     <input type="hidden" name="applied_coupon_code" id="applied_coupon_code" value="{{ isset($appliedCouponCode) ? $appliedCouponCode : '' }}">
                 </div>
 
@@ -177,8 +189,27 @@
                     </div>
                 </div>
                 
-                <!-- Método de Pagamento (hidden, padrão PIX) -->
-                <input type="hidden" name="payment_method" value="pix" id="payment_method">
+                <!-- Método de Pagamento -->
+                <div class="bg-white rounded-lg border p-4 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Forma de Pagamento</h2>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-gray-50 {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'border-primary bg-primary/5' : '' }}">
+                            <input type="radio" name="payment_method" value="pix" id="payment_pix" class="h-4 w-4 text-primary" {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'checked' : '' }} required>
+                            <div class="flex-1">
+                                <p class="font-medium">PIX</p>
+                                <p class="text-xs text-gray-600">Pagamento instantâneo via QR Code ou código PIX</p>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-gray-50 {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'border-primary bg-primary/5' : '' }}">
+                            <input type="radio" name="payment_method" value="mercadopago" id="payment_mercadopago" class="h-4 w-4 text-primary" {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'checked' : '' }}>
+                            <div class="flex-1">
+                                <p class="font-medium">Cartão (Crédito ou Débito)</p>
+                                <p class="text-xs text-gray-600">Será redirecionado para o Mercado Pago onde poderá escolher PIX ou cartão</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- Coluna Direita: Resumo -->
@@ -215,7 +246,10 @@
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Taxa de Entrega</span>
-                            <span id="summaryDeliveryFee" class="text-gray-500 font-medium text-sm">Informe o CEP</span>
+                            <div id="summaryDeliveryFeeContainer" class="flex flex-col items-end">
+                                <span id="summaryDeliveryFeeOriginal" class="text-gray-400 text-xs line-through hidden"></span>
+                                <span id="summaryDeliveryFee" class="text-gray-500 font-medium text-sm">Informe o CEP</span>
+                            </div>
                         </div>
                         <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-700 hidden">
                             <span id="summaryDeliveryDiscountLabel">Desconto no frete</span>
@@ -498,9 +532,15 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         const cashbackUsed = parseFloat(data.cashback_used || 0);
         const cashbackEarned = parseFloat(data.cashback_earned || 0);
         const eligibleCoupons = data.eligible_coupons || [];
-        let deliveryDiscountPercent = parseFloat(data.delivery_discount_percent || 0);
-        let deliveryDiscountAmount = parseFloat(data.delivery_discount_amount || 0);
-        let baseDeliveryFee = parseFloat(data.base_delivery_fee || data.delivery_fee || 0);
+        // Priorizar valores de window.checkoutData se existirem (frete já calculado)
+        // Caso contrário, usar valores do backend
+        let deliveryDiscountPercent = window.checkoutData?.deliveryDiscountPercent ?? 
+            (data?.delivery_discount_percent !== undefined ? parseFloat(data.delivery_discount_percent || 0) : 0);
+        let deliveryDiscountAmount = window.checkoutData?.deliveryDiscountAmount ?? 
+            (data?.delivery_discount_amount !== undefined ? parseFloat(data.delivery_discount_amount || 0) : 0);
+        let baseDeliveryFee = window.checkoutData?.baseDeliveryFee ?? 
+            (data?.base_delivery_fee !== undefined ? parseFloat(data.base_delivery_fee || 0) : 
+             (data?.delivery_fee !== undefined ? parseFloat(data.delivery_fee || 0) : 0));
         
         // Log detalhado para debug
         console.log('updateOrderSummary: Valores recebidos do backend', {
@@ -558,24 +598,44 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         // Atualizar display
         document.getElementById('summarySubtotal').textContent = `R$ ${Number(currentSubtotal).toFixed(2).replace('.', ',')}`;
         
-        // Exibir desconto de frete se houver (vem do backend via calculateDiscounts)
-        // Usar nullish coalescing (??) para não usar valores antigos quando o valor é 0
-        // Priorizar dados do backend, depois window.checkoutData apenas se backend não retornou nada
-        deliveryDiscountAmount = deliveryDiscountAmount ?? window.checkoutData?.deliveryDiscountAmount ?? 0;
-        deliveryDiscountPercent = deliveryDiscountPercent ?? window.checkoutData?.deliveryDiscountPercent ?? 0;
-        baseDeliveryFee = baseDeliveryFee ?? window.checkoutData?.baseDeliveryFee ?? currentDeliveryFee;
+        // Garantir que os valores sejam números válidos (já foram priorizados acima)
+        if (isNaN(deliveryDiscountAmount)) deliveryDiscountAmount = 0;
+        if (isNaN(deliveryDiscountPercent)) deliveryDiscountPercent = 0;
+        if (isNaN(baseDeliveryFee)) baseDeliveryFee = currentDeliveryFee ?? 0;
 
-        // NÃO calcular desconto automaticamente - apenas usar valores do backend
-        // Se o backend não retornou desconto, não há desconto
-        // Remover a lógica de cálculo automático que estava causando desconto incorreto
+        // Log para debug
+        console.log('updateOrderSummary: Valores de entrega para exibição', {
+            deliveryDiscountAmount,
+            deliveryDiscountPercent,
+            baseDeliveryFee,
+            currentDeliveryFee,
+            fromData: data?.base_delivery_fee,
+            fromCheckoutData: window.checkoutData?.baseDeliveryFee,
+            hasDiscount: deliveryDiscountAmount > 0 && baseDeliveryFee > 0,
+            shouldShowOriginal: deliveryDiscountAmount > 0 && baseDeliveryFee > 0 && baseDeliveryFee > currentDeliveryFee
+        });
+
+        // Exibir desconto de entrega e valores
+        const deliveryFeeOriginalEl = document.getElementById('summaryDeliveryFeeOriginal');
+        const deliveryFeeEl = document.getElementById('summaryDeliveryFee');
         
-        if (deliveryDiscountAmount > 0) {
+        // Mostrar valor original se houver desconto E baseDeliveryFee for maior que o valor final
+        const hasDiscount = deliveryDiscountAmount > 0 && baseDeliveryFee > 0;
+        const shouldShowOriginal = hasDiscount && (baseDeliveryFee > currentDeliveryFee || (currentDeliveryFee === 0 && baseDeliveryFee > 0));
+        
+        if (shouldShowOriginal) {
+            // Mostrar valor original riscado e desconto
+            deliveryFeeOriginalEl.textContent = `R$ ${Number(baseDeliveryFee).toFixed(2).replace('.', ',')}`;
+            deliveryFeeOriginalEl.classList.remove('hidden');
+            
             const discountRow = document.getElementById('summaryDeliveryDiscountRow');
             const discountLabel = document.getElementById('summaryDeliveryDiscountLabel');
             discountLabel.textContent = `Desconto no frete (${deliveryDiscountPercent}%)`;
             document.getElementById('summaryDeliveryDiscount').textContent = `- R$ ${Number(deliveryDiscountAmount).toFixed(2).replace('.', ',')}`;
             discountRow.classList.remove('hidden');
         } else {
+            // Sem desconto - esconder valor original
+            deliveryFeeOriginalEl.classList.add('hidden');
             document.getElementById('summaryDeliveryDiscountRow').classList.add('hidden');
         }
         
@@ -585,25 +645,25 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
             if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
                 // Frete grátis por desconto de 100%
-                document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
-                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm');
-                document.getElementById('summaryDeliveryFee').classList.add('text-green-700', 'font-medium');
+                deliveryFeeEl.textContent = 'Grátis';
+                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
+                deliveryFeeEl.classList.add('text-green-700', 'font-medium');
             } else if (currentDeliveryFee > 0) {
                 // Há frete a pagar
-                document.getElementById('summaryDeliveryFee').textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
-                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm', 'text-green-700');
-                document.getElementById('summaryDeliveryFee').classList.add('text-gray-900', 'font-medium');
+                deliveryFeeEl.textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
+                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm', 'text-green-700');
+                deliveryFeeEl.classList.add('text-gray-900', 'font-medium');
             } else {
                 // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
-                document.getElementById('summaryDeliveryFee').textContent = 'Grátis';
-                document.getElementById('summaryDeliveryFee').classList.remove('text-gray-500', 'text-sm');
-                document.getElementById('summaryDeliveryFee').classList.add('text-green-700', 'font-medium');
+                deliveryFeeEl.textContent = 'Grátis';
+                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
+                deliveryFeeEl.classList.add('text-green-700', 'font-medium');
             }
         } else {
             // Frete ainda não foi calculado - manter texto inicial
-            document.getElementById('summaryDeliveryFee').textContent = 'Informe o CEP';
-            document.getElementById('summaryDeliveryFee').classList.remove('text-gray-900', 'text-green-700', 'font-medium');
-            document.getElementById('summaryDeliveryFee').classList.add('text-gray-500', 'text-sm', 'font-medium');
+            deliveryFeeEl.textContent = 'Informe o CEP';
+            deliveryFeeEl.classList.remove('text-gray-900', 'text-green-700', 'font-medium');
+            deliveryFeeEl.classList.add('text-gray-500', 'text-sm', 'font-medium');
         }
         
         // Marcar como calculado SEMPRE que recebemos um valor (mesmo 0 = grátis)
@@ -1110,8 +1170,15 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                     document.getElementById('hidden_delivery_discount_percent').value = discountPercent.toFixed(0);
                     document.getElementById('hidden_delivery_discount_amount').value = discountAmount.toFixed(2);
                     
-                    // Atualizar o resumo com o novo frete
+                    // Atualizar o resumo com o novo frete e garantir que os valores de desconto sejam passados
+                    // Primeiro atualizar o resumo para que os valores sejam salvos em window.checkoutData
                     await updateOrderSummary(null, deliveryFee);
+                    
+                    // Forçar atualização novamente para garantir que os valores sejam exibidos
+                    // Isso garante que baseDeliveryFee e deliveryDiscountAmount sejam usados
+                    setTimeout(async () => {
+                        await updateOrderSummary(null, deliveryFee);
+                    }, 100);
                     
                     // Limpar feedback do CEP (não mostrar mensagem)
                     cepFeedback.textContent = '';

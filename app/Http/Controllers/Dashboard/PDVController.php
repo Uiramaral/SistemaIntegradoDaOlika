@@ -304,11 +304,9 @@ class PDVController extends Controller
                         ];
                     })->toArray();
 
-                    if ($request->payment_method === 'pix') {
-                        $pref = $mpApi->createPixPreference($order, $customer, $mpItems);
-                    } else {
-                        $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
-                    }
+                    // Sempre usar createPaymentLinkFromOrder que permite cartão E PIX
+                    // Isso permite que o cliente escolha no link do Mercado Pago
+                    $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
 
                     $order->update([
                         'payment_provider' => 'mercadopago',
@@ -555,10 +553,10 @@ class PDVController extends Controller
             }
 
             // Gerar link único para o cliente finalizar o pedido
-            // A rota está definida como 'pdv.complete' dentro do grupo 'pedido', então o nome completo é 'pedido.pdv.complete'
+            // Usar pedido.menuolika.com.br ao invés de dashboard
             // Gerar token de segurança
             $token = md5($order->id . $order->order_number . config('app.key'));
-            $completeUrl = route('pedido.pdv.complete', ['order' => $order->order_number]) . '?token=' . urlencode($token);
+            $completeUrl = 'https://pedido.menuolika.com.br/pdv/complete/' . $order->order_number . '?token=' . urlencode($token);
 
             // Enviar mensagem via BotConversa
             try {

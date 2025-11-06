@@ -219,32 +219,57 @@ class Coupon extends Model
             return false;
         }
 
-        // Verificar limite por cliente
-        if ($this->usage_limit_per_customer && $customerId) {
-            try {
-                // Tentar usar orderCoupons se a tabela existir
-                $usedByCustomer = $this->orderCoupons()
-                    ->whereHas('order', function ($q) use ($customerId) {
-                        $q->where('customer_id', $customerId)
-                          ->whereIn('payment_status', ['approved', 'paid']); // Apenas pedidos pagos
-                    })
-                    ->count();
-            } catch (\Exception $e) {
-                // Se a tabela order_coupons não existir, usar orders diretamente
-                \Log::warning('Tabela order_coupons não encontrada, usando orders diretamente', [
-                    'coupon_code' => $this->code,
-                    'error' => $e->getMessage(),
-                ]);
-                
-                // Contar apenas pedidos PAGOS do cliente que usam este cupom
-                // Pedidos pendentes não contam como uso do cupom
-                $usedByCustomer = \App\Models\Order::where('customer_id', $customerId)
-                    ->where('coupon_code', $this->code)
-                    ->whereIn('payment_status', ['approved', 'paid']) // Apenas pedidos pagos
-                    ->count();
-            }
+        // Se não há customerId, não podemos verificar uso prévio
+        if (!$customerId) {
+            return true;
+        }
 
+        // Verificar se o cupom já foi usado pelo cliente
+        $usedByCustomer = 0;
+        try {
+            // Tentar usar orderCoupons se a tabela existir
+            $usedByCustomer = $this->orderCoupons()
+                ->whereHas('order', function ($q) use ($customerId) {
+                    $q->where('customer_id', $customerId)
+                      ->whereIn('payment_status', ['approved', 'paid']); // Apenas pedidos pagos
+                })
+                ->count();
+        } catch (\Exception $e) {
+            // Se a tabela order_coupons não existir, usar orders diretamente
+            \Log::warning('Tabela order_coupons não encontrada, usando orders diretamente', [
+                'coupon_code' => $this->code,
+                'error' => $e->getMessage(),
+            ]);
+            
+            // Contar apenas pedidos PAGOS do cliente que usam este cupom
+            // Pedidos pendentes não contam como uso do cupom
+            $usedByCustomer = \App\Models\Order::where('customer_id', $customerId)
+                ->where('coupon_code', $this->code)
+                ->whereIn('payment_status', ['approved', 'paid']) // Apenas pedidos pagos
+                ->count();
+        }
+
+        // Se o cupom é apenas para primeiro pedido, não pode ser usado mais de uma vez
+        if ($this->first_order_only) {
+            if ($usedByCustomer > 0) {
+                \Log::info('Coupon canBeUsedBy: Cupom de primeiro pedido já foi usado', [
+                    'coupon_code' => $this->code,
+                    'customer_id' => $customerId,
+                    'used_count' => $usedByCustomer,
+                ]);
+                return false;
+            }
+        }
+
+        // Verificar limite por cliente se estiver definido
+        if ($this->usage_limit_per_customer) {
             if ($usedByCustomer >= $this->usage_limit_per_customer) {
+                \Log::info('Coupon canBeUsedBy: Limite de uso por cliente atingido', [
+                    'coupon_code' => $this->code,
+                    'customer_id' => $customerId,
+                    'used_count' => $usedByCustomer,
+                    'limit' => $this->usage_limit_per_customer,
+                ]);
                 return false;
             }
         }

@@ -17,5 +17,7 @@ class VerifyCsrfToken extends Middleware
         'cart/update', 
         'cart/remove',
         'cart/clear',
+        'webhooks/*',
+        'api/*',
     ];
 }

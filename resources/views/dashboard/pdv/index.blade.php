@@ -239,6 +239,19 @@
                             Finalizar Pedido
                         </button>
                     </div>
+                    
+                    <!-- Botão para adicionar mais itens -->
+                    <div class="mt-4 pt-4 border-t">
+                        <button type="button" 
+                                id="btn-add-more-items" 
+                                class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                                <path d="M5 12h14"></path>
+                                <path d="M12 5v14"></path>
+                            </svg>
+                            Adicionar Mais Itens
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1292,6 +1305,18 @@ document.getElementById('btn-close-new-customer-modal')?.addEventListener('click
 });
 document.getElementById('btn-cancel-new-customer')?.addEventListener('click', () => {
     document.getElementById('new-customer-modal').classList.add('hidden');
+});
+
+// Botão para adicionar mais itens - rola para o topo da lista de produtos
+document.getElementById('btn-add-more-items')?.addEventListener('click', function() {
+    const productSearch = document.getElementById('product-search');
+    if (productSearch) {
+        productSearch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Focar no campo de busca após um pequeno delay
+        setTimeout(() => {
+            productSearch.focus();
+        }, 300);
+    }
 });
 </script>
 @endpush

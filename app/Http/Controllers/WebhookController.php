@@ -27,34 +27,37 @@ class WebhookController extends Controller
      */
     public function mercadoPago(Request $request)
     {
-        Log::info('Mercado Pago Webhook Received', $request->all());
+        Log::info('Mercado Pago Webhook Received', [
+            'type' => $request->get('type'),
+            'action' => $request->get('action'),
+            'data_id' => $request->get('data')['id'] ?? null,
+            'all_keys' => array_keys($request->all()),
+        ]);
         
         try {
             // Usar o novo service para processar webhook
             $result = $this->mercadoPagoService->processWebhook($request->all());
             
             if ($result['success']) {
-                Log::info('Webhook processado com sucesso', $result);
+                Log::info('Webhook processado com sucesso', [
+                    'order_id' => $result['order_id'] ?? null,
+                    'payment_status' => $result['payment_status'] ?? null,
+                    'order_status' => $result['order_status'] ?? null,
+                ]);
                 
-                // Enviar notificação WhatsApp se aprovado
-                if ($result['payment_status'] === 'approved') {
-                    $order = Order::find($result['order_id']);
-                    if ($order && $order->customer && $order->customer->phone) {
-                        $message = "✅ Seu pedido #{$order->order_number} foi confirmado! Total: R$ " . number_format($order->final_amount, 2, ',', '.');
-                        $this->whatsAppService->sendMessage($order->customer->phone, $message);
-                    }
-                }
+                // Enviar notificação WhatsApp se aprovado (via OrderStatusService)
+                // Não precisa fazer aqui pois o OrderStatusService já faz isso
                 
                 return response()->json(['status' => 'success'], 200);
             } else {
                 Log::error('Erro ao processar webhook', $result);
-                return response()->json(['status' => 'error', 'message' => $result['error']], 400);
+                return response()->json(['status' => 'error', 'message' => $result['error'] ?? 'Erro desconhecido'], 400);
             }
         } catch (\Exception $e) {
             Log::error('Exceção ao processar webhook do MercadoPago', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request' => $request->all(),
+                'request_keys' => array_keys($request->all()),
             ]);
             
             return response()->json(['status' => 'error', 'message' => 'Erro interno'], 500);
@@ -215,8 +218,11 @@ class WebhookController extends Controller
      */
     public function mercadoPagoSimple(Request $r)
     {
+        $data = $r->all();
         $topic = $r->get('type') ?? $r->get('topic');
-        $paymentId = data_get($r->all(), 'data.id');
+        
+        // Usar a mesma função de extração que suporta todos os formatos (PIX e Link)
+        $paymentId = MercadoPagoApiService::extractPaymentId($data);
 
         if ($topic === 'payment' && $paymentId) {
             $mp = new MercadoPagoApi();
@@ -227,8 +233,10 @@ class WebhookController extends Controller
 
             if ($orderId && ($order = Order::find($orderId))) {
                 // idempotência
-                if ($order->payment_status !== $status) {
-                    $order->payment_status = $status;
+                // Mapear status do MercadoPago para valores válidos do ENUM
+                $mappedStatus = \App\Services\MercadoPagoApiService::mapPaymentStatus($status);
+                if ($order->payment_status !== $mappedStatus) {
+                    $order->payment_status = $mappedStatus;
                     $order->payment_id     = (string) data_get($payment, 'id');
                     $order->payment_raw_response = json_encode($payment);
                     

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PaymentSetting;
+use App\Services\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -113,8 +114,25 @@ class MercadoPagoApi
             'statement_descriptor'=> 'OLIKA',
         ];
 
-        // Adicionar metadata sobre cupom/desconto se disponível
+        // Adicionar metadata sobre cupom/desconto e identificação do pedido
         $metadata = [];
+        
+        // Identificação do pedido (importante para webhook) - prioridade: metadata do payload, depois order['metadata']
+        if (isset($order['metadata']['order_id'])) {
+            $metadata['order_id'] = $order['metadata']['order_id'];
+        }
+        if (isset($order['metadata']['order_number'])) {
+            $metadata['order_number'] = $order['metadata']['order_number'];
+        }
+        if (isset($order['metadata']['customer_id'])) {
+            $metadata['customer_id'] = $order['metadata']['customer_id'];
+        }
+        // Fallback: tentar obter order_id do número do pedido (se possível)
+        if (!isset($metadata['order_id']) && isset($order['number'])) {
+            $metadata['order_number'] = (string)$order['number'];
+        }
+        
+        // Cupom e desconto
         if (isset($order['coupon_code'])) {
             $metadata['coupon_code'] = $order['coupon_code'];
         }
@@ -125,9 +143,9 @@ class MercadoPagoApi
         if (isset($order['delivery_fee'])) {
             $metadata['delivery_fee'] = (float)$order['delivery_fee'];
         }
-        if (!empty($metadata)) {
-            $payload['metadata'] = $metadata;
-        }
+        
+        // Sempre adicionar metadata (mesmo que vazio, para garantir que existe)
+        $payload['metadata'] = $metadata;
 
         $res = $this->client()->post($this->base.'/v1/payments', $payload);
         if ($res->failed()) return ['ok'=>false,'status'=>$res->status(),'error'=>$res->json()];
@@ -220,6 +238,18 @@ class MercadoPagoApi
 
         // Adicionar metadata com resumo/identificação
         $metadata = $order['metadata'] ?? [];
+        
+        // Identificação do pedido (importante para webhook)
+        if (isset($order['metadata']['order_id'])) {
+            $metadata['order_id'] = $order['metadata']['order_id'];
+        }
+        if (isset($order['metadata']['order_number'])) {
+            $metadata['order_number'] = $order['metadata']['order_number'];
+        }
+        if (isset($order['number'])) {
+            $metadata['order_number'] = (string)$order['number'];
+        }
+        
         $metadata['summary'] = [
             'subtotal' => array_reduce($order['items'] ?? [], fn($c,$i)=>$c + ((float)$i['unit_price']*(int)$i['quantity']), 0.0),
             'delivery_fee' => (float)($order['delivery_fee'] ?? 0),
@@ -268,30 +298,83 @@ class MercadoPagoApi
         $extRef = (string)($order->order_number ?? $order->id);
         if ($prefix && !Str::startsWith($extRef, $prefix)) { $extRef = $prefix.$extRef; }
 
+        // Preparar URLs de retorno
+        $successUrl = route('pedido.payment.success', ['order' => $order->id]);
+        $failureUrl = route('pedido.payment.failure', ['order' => $order->id]);
+        $pendingUrl = route('pedido.payment.success', ['order' => $order->id]);
+        
+        // URL de notificação do webhook
+        $notificationUrl = AppSettings::get('mercadopago_webhook_url', route('webhooks.mercadopago'));
+        
         $body = [
             'items' => [$payload],
             'payer' => [
-                'name'    => $customer->name,
+                'name'    => $customer->name ?? 'Cliente',
                 'email'   => $customer->email ?? 'sem-email@dominio.com',
-                'phone'   => ['area_code' => '', 'number' => $customer->phone],
+                'phone'   => [
+                    'area_code' => '',
+                    'number' => preg_replace('/\D/', '', $customer->phone ?? ''),
+                ],
             ],
             'payment_methods' => [
                 'excluded_payment_types' => array_map(fn($t)=>['id'=>$t], $opts['exclude_payment_types'] ?? ['ticket']), // boleto fora
                 'installments'           => (int)($opts['installments'] ?? 1), // sem parcelas
             ],
+            'back_urls' => [
+                'success' => $successUrl,
+                'failure' => $failureUrl,
+                'pending' => $pendingUrl,
+            ],
+            'auto_return' => 'approved',
+            'notification_url' => $notificationUrl,
+            'external_reference' => $extRef,
             'metadata' => [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
+                'customer_id' => $customer->id ?? null,
             ]
         ];
 
         $res = Http::withHeaders($this->headers())
             ->post("{$this->base}/checkout/preferences", $body);
 
-        if (!$res->ok()) {
-            throw new \RuntimeException('MP erro: '.$res->body());
+        // Verificar se houve erro HTTP
+        if ($res->failed()) {
+            \Log::error('MercadoPagoApi: Erro HTTP ao criar preference', [
+                'status' => $res->status(),
+                'body' => $res->body(),
+                'order_id' => $order->id,
+            ]);
+            throw new \RuntimeException('MP erro HTTP: '.$res->status().' - '.$res->body());
         }
+        
         $j = $res->json();
+        
+        // Verificar se a resposta realmente tem os dados necessários
+        // A resposta do Mercado Pago pode ter init_point ou sandbox_init_point
+        $hasInitPoint = !empty($j['init_point']);
+        $hasSandboxInitPoint = !empty($j['sandbox_init_point']);
+        $hasId = !empty($j['id']);
+        
+        if (!$hasId || (!$hasInitPoint && !$hasSandboxInitPoint)) {
+            \Log::error('MercadoPagoApi: Preference criada mas sem dados necessários', [
+                'response' => $j,
+                'order_id' => $order->id,
+                'has_id' => $hasId,
+                'has_init_point' => $hasInitPoint,
+                'has_sandbox_init_point' => $hasSandboxInitPoint,
+                'status_code' => $res->status(),
+            ]);
+            throw new \RuntimeException('MP erro: Resposta inválida do Mercado Pago - faltam dados necessários');
+        }
+        
+        // Log de sucesso para debug
+        \Log::info('MercadoPagoApi: Preference criada com sucesso', [
+            'order_id' => $order->id,
+            'preference_id' => $j['id'],
+            'has_init_point' => $hasInitPoint,
+            'has_sandbox_init_point' => $hasSandboxInitPoint,
+        ]);
 
         return [
             'preference_id' => $j['id'] ?? null,

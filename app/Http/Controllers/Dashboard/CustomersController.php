@@ -24,8 +24,8 @@ class CustomersController extends Controller
         }
         
         $customers = $query->select('customers.*', 
-                DB::raw('(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id) as total_orders'),
-                DB::raw('(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND payment_status = "paid") as total_spent'),
+                DB::raw('(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.payment_status IN ("paid", "approved")) as total_orders'),
+                DB::raw('(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND payment_status IN ("paid", "approved")) as total_spent'),
                 DB::raw('(SELECT COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0) FROM customer_debts WHERE customer_debts.customer_id = customers.id AND status = "open") as total_debts')
             )
             ->orderByDesc('id')
@@ -277,6 +277,51 @@ class CustomersController extends Controller
             return redirect()->route('dashboard.customers.index')
                 ->with('error', 'Erro ao atualizar estatísticas: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Atualizar apenas o cashback do cliente
+     */
+    public function updateCashback(Request $request, $id)
+    {
+        $customer = \App\Models\Customer::find($id);
+        if (!$customer) {
+            return redirect()->route('dashboard.customers.show', $id)
+                ->with('error', 'Cliente não encontrado');
+        }
+
+        $request->validate([
+            'cashback_balance' => 'required|numeric|min:0',
+        ]);
+
+        $targetCashbackBalance = (float)$request->input('cashback_balance', 0);
+        $currentBalance = \App\Models\CustomerCashback::getBalance($id);
+        $difference = $targetCashbackBalance - $currentBalance;
+
+        if (abs($difference) > 0.01) { // Tolerância de 1 centavo
+            if ($difference > 0) {
+                // Adicionar cashback
+                \App\Models\CustomerCashback::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => $difference,
+                    'type' => 'credit',
+                    'description' => 'Ajuste manual de cashback',
+                ]);
+            } else {
+                // Remover cashback (débito)
+                \App\Models\CustomerCashback::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => abs($difference),
+                    'type' => 'debit',
+                    'description' => 'Ajuste manual de cashback',
+                ]);
+            }
+        }
+
+        return redirect()->route('dashboard.customers.show', $id)
+            ->with('success', 'Saldo de cashback atualizado com sucesso!');
     }
 }
 

@@ -126,13 +126,13 @@
                                     </td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
                                         <div class="flex gap-2 justify-end">
-                                            <a href="{{ route('dashboard.orders.fiscalReceipt', $order->id) }}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal">
+                                            <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal" data-order-id="{{ $order->id }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                                                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                                                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
                                                     <rect x="6" y="14" width="12" height="8"></rect>
                                                 </svg>
-                                            </a>
+                                            </button>
                                             <a href="{{ route('dashboard.orders.show', $order->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver detalhes</a>
                                         </div>
                                     </td>
@@ -211,13 +211,13 @@
             </td>
             <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
                 <div class="flex gap-2 justify-end">
-                    <a href="${order.fiscal_receipt_url}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal">
+                    <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal" data-order-id="${order.id}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                             <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
                             <rect x="6" y="14" width="12" height="8"></rect>
                         </svg>
-                    </a>
+                    </button>
                     <a href="${order.show_url}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver detalhes</a>
                 </div>
             </td>
@@ -283,7 +283,15 @@
             
             if (data.success) {
                 const tbody = document.querySelector('tbody');
-                if (!tbody) return;
+                if (!tbody) {
+                    isPolling = false;
+                    return;
+                }
+                
+                // Log para debug (remover em produção se necessário)
+                if (data.updated_orders && data.updated_orders.length > 0) {
+                    console.log('Pedidos atualizados detectados:', data.updated_orders.length);
+                }
                 
                 let newOrdersCount = 0;
                 let updatedOrdersCount = 0;
@@ -326,12 +334,14 @@
                         const existingRow = tbody.querySelector(`tr[data-order-id="${order.id}"]`);
                         const oldData = orderDataMap.get(order.id);
                         
-                        // Verificar se houve mudança
-                        if (oldData && (
+                        // Verificar se houve mudança - sempre atualizar se houver diferença
+                        const hasChanged = !oldData || (
                             oldData.status !== order.status ||
                             oldData.payment_status !== order.payment_status ||
                             oldData.updated_at !== order.updated_at
-                        )) {
+                        );
+                        
+                        if (hasChanged) {
                             if (existingRow) {
                                 // Atualizar linha existente
                                 const newRow = createOrderRow(order);
@@ -347,9 +357,12 @@
                                         newRow.style.animation = '';
                                     }, 1000);
                                 }, 100);
+                                
+                                // Reconfigurar botões após atualizar
+                                setupPrintButtons();
                             }
                             
-                            // Atualizar dados no mapa
+                            // Atualizar dados no mapa (sempre atualizar, mesmo se não existir)
                             orderDataMap.set(order.id, {
                                 status: order.status,
                                 payment_status: order.payment_status,
@@ -477,4 +490,225 @@
 })();
 </script>
 @endpush
+
+<!-- QZ Tray Script para impressão direta -->
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
+<script>
+    // Função para verificar se QZ Tray está conectado
+    function isQZTrayConnected() {
+        try {
+            return typeof qz !== 'undefined' && 
+                   qz !== null && 
+                   qz.websocket !== null && 
+                   qz.websocket.isActive();
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Conectar ao QZ Tray
+    async function connectQZTray() {
+        try {
+            if (typeof qz === 'undefined' || qz === null) {
+                throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
+            }
+            
+            if (isQZTrayConnected()) {
+                console.log('✅ QZ Tray já estava conectado');
+                return true;
+            }
+            
+            await qz.websocket.connect();
+            
+            if (isQZTrayConnected()) {
+                console.log('✅ QZ Tray conectado com sucesso');
+                return true;
+            } else {
+                throw new Error('Falha ao verificar conexão após tentativa de conexão');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao conectar QZ Tray:', error);
+            return false;
+        }
+    }
+
+    // Detectar se é dispositivo móvel
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (window.innerWidth <= 768);
+    }
+
+    // Imprimir recibo diretamente
+    async function printReceiptDirect(orderId) {
+        // Se for mobile, adicionar à fila de impressão
+        if (isMobileDevice()) {
+            const clickedBtn = document.querySelector(`.btn-print-receipt-direct[data-order-id="${orderId}"]`);
+            if (clickedBtn) {
+                const originalHTML = clickedBtn.innerHTML;
+                clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
+                clickedBtn.disabled = true;
+            }
+            
+            try {
+                const response = await fetch(`/dashboard/orders/${orderId}/request-print`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (clickedBtn) {
+                        clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg>';
+                        clickedBtn.classList.add('bg-success');
+                        setTimeout(() => {
+                            clickedBtn.innerHTML = originalHTML;
+                            clickedBtn.disabled = false;
+                            clickedBtn.classList.remove('bg-success');
+                        }, 2000);
+                    }
+                    alert('✅ Pedido adicionado à fila de impressão!\n\nO recibo será impresso automaticamente no desktop.');
+                } else {
+                    throw new Error(data.message || 'Erro ao adicionar à fila');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao solicitar impressão:', error);
+                alert('❌ Erro ao solicitar impressão: ' + (error.message || 'Erro desconhecido'));
+                if (clickedBtn) {
+                    clickedBtn.innerHTML = originalHTML;
+                    clickedBtn.disabled = false;
+                }
+            }
+            return;
+        }
+        
+        // Desktop: imprimir diretamente via QZ Tray
+        const PRINTER_NAME = "EPSON TM-T20X";
+        
+        if (typeof qz === 'undefined') {
+            alert('❌ QZ Tray não está carregado.\n\nPor favor, instale e inicie o QZ Tray antes de imprimir.');
+            return;
+        }
+        
+        if (!isQZTrayConnected()) {
+            try {
+                const connected = await connectQZTray();
+                if (!connected) {
+                    alert('❌ Não foi possível conectar ao QZ Tray.\n\nCertifique-se de que o QZ Tray está instalado e rodando.');
+                    return;
+                }
+            } catch (error) {
+                alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message);
+                return;
+            }
+        }
+        
+        try {
+            const printers = await qz.printers.find();
+            if (!printers || printers.length === 0) {
+                alert('Nenhuma impressora encontrada.');
+                return;
+            }
+            
+            // Buscar impressora EPSON TM-20X
+            const printer = printers.find(p => 
+                p.toUpperCase().includes('EPSON') && 
+                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+            ) || printers[0];
+            
+            if (!printer) {
+                alert(`❌ Impressora "${PRINTER_NAME}" não encontrada.\nVerifique se está conectada.`);
+                return;
+            }
+            
+            console.log('🖨️ Usando impressora:', printer);
+            
+            const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao buscar dados: ${response.status}`);
+            }
+            
+            const orderData = await response.json();
+            if (!orderData.success || !orderData.data) {
+                throw new Error('Dados inválidos do servidor.');
+            }
+            
+            console.log('📦 Base64 recebido (ESC/POS), tamanho:', orderData.data.length);
+            
+            const printConfig = qz.configs.create(printer);
+            
+            // Enviar para impressão
+            await qz.print(printConfig, [{
+                type: 'raw',
+                format: 'base64',
+                data: orderData.data
+            }]);
+            
+            console.log('✅ Recibo enviado para impressora:', printer);
+            
+            // Mostrar feedback visual
+            const clickedBtn = document.querySelector(`.btn-print-receipt-direct[data-order-id="${orderId}"]`);
+            if (clickedBtn) {
+                const originalHTML = clickedBtn.innerHTML;
+                clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg>';
+                clickedBtn.disabled = true;
+                clickedBtn.classList.add('bg-success');
+                setTimeout(() => {
+                    clickedBtn.innerHTML = originalHTML;
+                    clickedBtn.disabled = false;
+                    clickedBtn.classList.remove('bg-success');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao imprimir:', error);
+            alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido'));
+        }
+    }
+
+    // Função para configurar botões de impressão (usado em inicialização e após atualizações)
+    function setupPrintButtons() {
+        const printButtons = document.querySelectorAll('.btn-print-receipt-direct');
+        printButtons.forEach(btn => {
+            // Remover listeners antigos para evitar duplicação
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const orderId = this.getAttribute('data-order-id');
+                if (orderId) {
+                    printReceiptDirect(orderId);
+                }
+            });
+        });
+    }
+
+    // Botões de impressão direta (inicialização e após atualizações dinâmicas)
+    document.addEventListener('DOMContentLoaded', function() {
+        setupPrintButtons();
+        
+        // Observar mudanças na tabela para reconectar botões após atualizações dinâmicas
+        const tableBody = document.querySelector('#orders-tbody');
+        if (tableBody) {
+            const observer = new MutationObserver(function(mutations) {
+                setupPrintButtons();
+            });
+            
+            observer.observe(tableBody, {
+                childList: true,
+                subtree: true
+            });
+        }
+    });
+</script>
 @endsection

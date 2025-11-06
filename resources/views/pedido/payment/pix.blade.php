@@ -249,18 +249,61 @@ function checkPaymentStatus() {
     window.location.reload();
 }
 
-// Verificar status automaticamente a cada 10 segundos
-@if(isset($order))
-setInterval(function() {
-    fetch('{{ route("pedido.payment.status", $order->id) }}', {headers:{'Accept':'application/json'}})
-        .then(response => response.json())
+// Verificar status automaticamente a cada 5 segundos (mais rápido para PIX)
+@if(isset($order) && $order->payment_status !== 'paid' && $order->payment_status !== 'approved')
+let pollCount = 0;
+const maxPolls = 120; // Máximo 10 minutos (120 * 5 segundos)
+
+const paymentPoll = setInterval(function() {
+    pollCount++;
+    
+    // Parar polling se exceder o tempo máximo
+    if (pollCount > maxPolls) {
+        clearInterval(paymentPoll);
+        console.log('Polling interrompido após tempo máximo');
+        return;
+    }
+    
+    fetch('{{ route("pedido.payment.status", $order->id) }}', {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro HTTP: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
-            if ((data.payment_status||'').toLowerCase() === 'paid' || (data.payment_status||'').toLowerCase() === 'approved') {
-                window.location.href = '{{ route("pedido.payment.success", $order->id) }}';
+            console.log('Status do pagamento:', data);
+            
+            if (!data || !data.success) {
+                console.warn('Resposta inválida do servidor:', data);
+                return;
+            }
+            
+            const paymentStatus = (data.payment_status || '').toLowerCase();
+            console.log('Payment status verificado:', paymentStatus);
+            
+            if (paymentStatus === 'paid' || paymentStatus === 'approved') {
+                clearInterval(paymentPoll);
+                console.log('Pagamento confirmado! Redirecionando...');
+                // Pequeno delay para garantir que tudo foi processado
+                setTimeout(() => {
+                    window.location.href = '{{ route("pedido.payment.success", $order->id) }}';
+                }, 500);
             }
         })
-        .catch(err => console.error('Erro ao verificar status:', err));
-}, 10000);
+        .catch(err => {
+            console.error('Erro ao verificar status:', err);
+            // Não interromper polling por erro ocasional, mas logar o erro
+            if (err.message) {
+                console.error('Detalhes do erro:', err.message);
+            }
+        });
+}, 5000); // 5 segundos
 @endif
 </script>
 @endpush

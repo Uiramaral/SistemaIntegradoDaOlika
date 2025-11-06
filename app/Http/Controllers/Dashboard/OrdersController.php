@@ -77,9 +77,15 @@ class OrdersController extends Controller
             // Buscar pedidos atualizados (mudança de status ou pagamento)
             // Pegar os últimos 50 pedidos para verificar atualizações
             $updatedOrdersQuery = Order::with(['customer', 'address', 'payment'])
-                ->whereIn('id', $knownOrderIds)
-                ->orderBy('updated_at', 'desc')
-                ->limit(50);
+                ->whereIn('id', $knownOrderIds);
+            
+            // Se não houver IDs conhecidos ainda, não buscar atualizados
+            if (empty($knownOrderIds)) {
+                $updatedOrdersQuery->whereRaw('1 = 0'); // Forçar retorno vazio
+            } else {
+                $updatedOrdersQuery->orderBy('updated_at', 'desc')
+                    ->limit(50);
+            }
             
             // Aplicar mesmos filtros da busca principal se houver
             if ($request->has('q') && $request->q) {
@@ -342,6 +348,7 @@ class OrdersController extends Controller
             'notes' => 'nullable|string',
             'observations' => 'nullable|string',
             'delivery_instructions' => 'nullable|string',
+            'scheduled_delivery_at' => 'nullable|date',
             'create_payment' => 'nullable|boolean',
             'payment_method' => 'nullable|in:pix,credit_card,debit_card',
             'send_whatsapp' => 'nullable|boolean',
@@ -351,8 +358,18 @@ class OrdersController extends Controller
         try {
             DB::beginTransaction();
 
+            // Preparar dados para atualização
+            $updateData = $request->only(['notes', 'observations', 'delivery_instructions']);
+            
+            // Processar scheduled_delivery_at: se vazio, setar como null; se preenchido, converter para datetime
+            if ($request->has('scheduled_delivery_at') && empty($request->scheduled_delivery_at)) {
+                $updateData['scheduled_delivery_at'] = null;
+            } elseif ($request->filled('scheduled_delivery_at')) {
+                $updateData['scheduled_delivery_at'] = \Carbon\Carbon::parse($request->scheduled_delivery_at);
+            }
+            
             // Atualizar informações do pedido
-            $order->update($request->only(['notes', 'observations', 'delivery_instructions']));
+            $order->update($updateData);
 
             $paymentLink = null;
             $pixCode = null;
@@ -1465,7 +1482,47 @@ class OrdersController extends Controller
             'orderDeliveryFee'
         ]);
         
-        return view('dashboard.orders.fiscal-receipt', compact('order'));
+        // Gerar QR code do WhatsApp em base64
+        $whatsappQrBase64 = $this->generateWhatsAppQRCode();
+        
+        return view('dashboard.orders.fiscal-receipt', compact('order', 'whatsappQrBase64'));
+    }
+    
+    /**
+     * Gera QR code do WhatsApp em base64 para impressão
+     */
+    private function generateWhatsAppQRCode(): ?string
+    {
+        try {
+            // Buscar número do WhatsApp das configurações
+            $settings = \App\Models\Setting::getSettings();
+            $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
+            
+            // Remover caracteres não numéricos e adicionar código do país se necessário
+            $phoneDigits = preg_replace('/\D/', '', $phone);
+            if (strlen($phoneDigits) === 11 && !str_starts_with($phoneDigits, '55')) {
+                // Se tem 11 dígitos (formato brasileiro), adicionar código do país
+                $phoneDigits = '55' . $phoneDigits;
+            }
+            
+            $whatsappUrl = 'https://wa.me/' . $phoneDigits;
+            
+            // Gerar QR code usando API externa e converter para base64
+            $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($whatsappUrl);
+            
+            // Fazer requisição e converter para base64
+            $imageData = @file_get_contents($qrUrl);
+            if ($imageData !== false) {
+                return base64_encode($imageData);
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('Erro ao gerar QR code do WhatsApp', [
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -1512,30 +1569,33 @@ class OrdersController extends Controller
     public function getOrdersForPrint(Request $request)
     {
         try {
+            // Prioridade 1: Pedidos solicitados explicitamente (print_requested_at) - SEMPRE retornar
+            // Prioridade 2: Pedidos pagos e confirmados que ainda não foram impressos
             $query = Order::with(['customer', 'address'])
-                ->where('status', 'confirmed')
+                ->where(function($q) {
+                    $q->where(function($subQ) {
+                        // Pedidos solicitados explicitamente - aceitar qualquer status/pagamento
+                        $subQ->whereNotNull('print_requested_at')
+                             ->whereNull('printed_at');
+                    })
+                    ->orWhere(function($subQ) {
+                        // Pedidos pagos e confirmados que ainda não foram impressos
+                        $subQ->whereIn('payment_status', ['paid', 'approved'])
+                             ->where('status', 'confirmed')
+                             ->whereNull('printed_at');
+                    });
+                })
+                ->orderByRaw('CASE WHEN print_requested_at IS NOT NULL THEN 0 ELSE 1 END') // Priorizar solicitados
                 ->orderBy('created_at', 'desc')
                 ->limit(20);
 
-            // Filtrar por status de pagamento: aceitar 'paid' ou 'approved'
-            if ($request->has('payment_status')) {
-                $paymentStatus = $request->payment_status;
-                if ($paymentStatus === 'paid') {
-                    // Buscar tanto 'paid' quanto 'approved' (ambos são pagos)
-                    $query->whereIn('payment_status', ['paid', 'approved']);
-                } else {
-                    $query->where('payment_status', $paymentStatus);
-                }
+            $orders = $query->get(['id', 'order_number', 'status', 'payment_status', 'created_at', 'print_requested_at', 'printed_at']);
+
+            // Log apenas se houver erro ou se encontrar pedidos (para debug quando necessário)
+            if ($orders->count() > 0) {
+                // Log apenas quando encontra pedidos para debug
+                // Remover depois que funcionar
             }
-
-            $orders = $query->get(['id', 'order_number', 'status', 'payment_status', 'created_at']);
-
-            Log::info('OrdersController: getOrdersForPrint - Pedidos encontrados', [
-                'total' => $orders->count(),
-                'ids' => $orders->pluck('id')->toArray(),
-                'order_numbers' => $orders->pluck('order_number')->toArray(),
-                'payment_statuses' => $orders->pluck('payment_status')->toArray()
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -1546,6 +1606,8 @@ class OrdersController extends Controller
                         'status' => $order->status,
                         'payment_status' => $order->payment_status,
                         'created_at' => $order->created_at->toIso8601String(),
+                        'print_requested_at' => $order->print_requested_at ? $order->print_requested_at->toIso8601String() : null,
+                        'printed_at' => $order->printed_at ? $order->printed_at->toIso8601String() : null,
                     ];
                 })
             ]);
@@ -1559,6 +1621,61 @@ class OrdersController extends Controller
                 'success' => false,
                 'error' => 'Erro ao buscar pedidos',
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Solicita impressão de um pedido (usado pelo celular para adicionar à fila)
+     */
+    public function requestPrint(Request $request, Order $order)
+    {
+        try {
+            // Marcar pedido como solicitado para impressão
+            $order->print_requested_at = now();
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido adicionado à fila de impressão. O recibo será impresso automaticamente no desktop.',
+                'order_id' => $order->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao solicitar impressão', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao solicitar impressão: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Marca pedido como impresso (chamado após impressão bem-sucedida)
+     */
+    public function markAsPrinted(Request $request, Order $order)
+    {
+        try {
+            $order->printed_at = now();
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido marcado como impresso',
+                'order_id' => $order->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao marcar pedido como impresso', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao marcar como impresso: ' . $e->getMessage(),
             ], 500);
         }
     }

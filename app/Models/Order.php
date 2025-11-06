@@ -48,6 +48,9 @@ class Order extends Model
         'delivery_neighborhood',
         'observations',
         'scheduled_delivery_at',
+        'print_requested_at',
+        'printed_at',
+        'notified_paid_at',
     ];
 
     protected $casts = [
@@ -58,6 +61,9 @@ class Order extends Model
         'pix_expires_at' => 'datetime',
         'scheduled_delivery_at' => 'datetime',
         'payment_raw_response' => 'array',
+        'print_requested_at' => 'datetime',
+        'printed_at' => 'datetime',
+        'notified_paid_at' => 'datetime',
     ];
 
     /**

@@ -39,7 +39,12 @@ class MercadoPagoApiService
             'description' => "Pedido #{$order->order_number} - Olika",
             'payment_method_id' => 'pix',
             'external_reference' => $externalReference,
-            'notification_url' => route('api.webhooks.mercadopago'),
+            'notification_url' => route('webhooks.mercadopago'),
+            'metadata' => [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'customer_id' => $order->customer_id,
+            ],
             'additional_info' => [
                 'items' => $this->buildItems($order),
                 'payer' => $this->buildPayer($order->customer),
@@ -171,84 +176,285 @@ class MercadoPagoApiService
     }
 
     /**
+     * Extrai o payment_id do webhook do MercadoPago em diferentes formatos
+     * 
+     * @param array $data Dados do webhook
+     * @return string|null ID do pagamento ou null se não encontrado
+     */
+    public static function extractPaymentId(array $data): ?string
+    {
+        $topic = $data['topic'] ?? $data['type'] ?? null;
+        
+        // Ignorar notificações de merchant_order
+        if ($topic === 'merchant_order' || (isset($data['data']['topic']) && $data['data']['topic'] === 'merchant_order')) {
+            return null;
+        }
+        
+        // 1. Formato novo: data.id
+        if (isset($data['data']['id']) && is_numeric($data['data']['id'])) {
+            return (string)$data['data']['id'];
+        }
+        // 2. Formato alternativo: data_id
+        if (isset($data['data_id']) && is_numeric($data['data_id'])) {
+            return (string)$data['data_id'];
+        }
+        // 3. Formato PIX antigo: resource direto
+        if (isset($data['resource'])) {
+            if (is_numeric($data['resource'])) {
+                return (string)$data['resource'];
+            }
+            if (is_string($data['resource']) && preg_match('/\/(\d+)(?:\?|$)/', $data['resource'], $matches)) {
+                return $matches[1];
+            }
+        }
+        // 4. Formato PIX antigo dentro de data: data.resource
+        if (isset($data['data']['resource'])) {
+            if (is_numeric($data['data']['resource'])) {
+                return (string)$data['data']['resource'];
+            }
+            if (is_string($data['data']['resource']) && preg_match('/\/(\d+)(?:\?|$)/', $data['data']['resource'], $matches)) {
+                return $matches[1];
+            }
+        }
+        // 5. Formato PIX antigo: id direto
+        if (isset($data['id']) && is_numeric($data['id'])) {
+            return (string)$data['id'];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Mapeia status do MercadoPago para valores válidos do ENUM payment_status
+     * 
+     * @param string $mpStatus Status retornado pelo MercadoPago
+     * @return string Status válido para o ENUM: pending, paid, failed, refunded
+     */
+    public static function mapPaymentStatus(string $mpStatus): string
+    {
+        $status = strtolower(trim($mpStatus));
+        
+        // Mapear status do MercadoPago para valores do ENUM
+        $statusMap = [
+            'approved' => 'paid',
+            'authorized' => 'paid',
+            'paid' => 'paid',
+            'pending' => 'pending',
+            'in_process' => 'pending',
+            'in_mediation' => 'pending',
+            'cancelled' => 'failed',
+            'rejected' => 'failed',
+            'failed' => 'failed',
+            'refunded' => 'refunded',
+            'charged_back' => 'refunded',
+        ];
+        
+        return $statusMap[$status] ?? 'pending';
+    }
+
+    /**
      * Processa webhook do MercadoPago
      */
     public function processWebhook(array $data): array
     {
-        if (!isset($data['data']['id'])) {
+        Log::info('MercadoPagoApiService: Webhook recebido', [
+            'data_keys' => array_keys($data),
+            'data_id' => $data['data']['id'] ?? null,
+            'data_id_alt' => $data['data_id'] ?? null,
+            'resource' => $data['resource'] ?? null,
+            'id' => $data['id'] ?? null,
+            'type' => $data['type'] ?? null,
+            'action' => $data['action'] ?? null,
+            'topic' => $data['topic'] ?? null,
+        ]);
+
+        // Extrair payment_id usando função helper que suporta todos os formatos
+        $paymentId = self::extractPaymentId($data);
+        
+        if (!$paymentId) {
+            $topic = $data['topic'] ?? $data['type'] ?? null;
+            
+            // Se for merchant_order, informar que foi ignorado
+            if ($topic === 'merchant_order' || (isset($data['data']['topic']) && $data['data']['topic'] === 'merchant_order')) {
+                Log::info('MercadoPagoApiService: Notificação de merchant_order ignorada', ['data' => $data]);
+                return ['success' => false, 'error' => 'Notificação de merchant_order ignorada'];
+            }
+            
+            Log::error('MercadoPagoApiService: ID do pagamento não encontrado no webhook', [
+                'data' => $data,
+                'data_keys' => array_keys($data),
+                'topic' => $topic,
+            ]);
             return ['success' => false, 'error' => 'ID do pagamento não encontrado'];
         }
-
-        $paymentId = $data['data']['id'];
+        
+        $topic = $data['topic'] ?? $data['type'] ?? null;
+        Log::info('MercadoPagoApiService: Payment ID extraído', [
+            'payment_id' => $paymentId,
+            'topic' => $topic,
+            'has_data' => isset($data['data']),
+            'has_resource' => isset($data['resource']) || isset($data['data']['resource']),
+        ]);
         $paymentStatus = $this->getPaymentStatus($paymentId);
 
         if (!$paymentStatus['success']) {
+            Log::error('MercadoPagoApiService: Erro ao consultar status do pagamento', [
+                'payment_id' => $paymentId,
+                'response' => $paymentStatus,
+            ]);
             return ['success' => false, 'error' => 'Erro ao consultar pagamento'];
         }
 
         $payment = $paymentStatus['payment'];
         $externalReference = $payment['external_reference'] ?? null;
-
-        if (!$externalReference) {
-            return ['success' => false, 'error' => 'Referência externa não encontrada'];
-        }
+        $metadata = $payment['metadata'] ?? [];
+        
+        Log::info('MercadoPagoApiService: Dados do pagamento consultado', [
+            'payment_id' => $paymentId,
+            'external_reference' => $externalReference,
+            'status' => $payment['status'] ?? null,
+            'payment_method_id' => $payment['payment_method_id'] ?? null,
+            'metadata' => $metadata,
+        ]);
 
         // Tentar encontrar o pedido de diferentes formas
         $order = null;
         
-        // Formato 1: customerId/orderId
-        $referenceParts = explode('/', $externalReference);
-        if (count($referenceParts) === 2) {
-            $customerId = $referenceParts[0];
-            $orderId = $referenceParts[1];
-            $order = Order::where('id', $orderId)
-                ->where('customer_id', $customerId)
-                ->first();
+        // Formato 1: metadata.order_id (mais confiável)
+        if (isset($metadata['order_id'])) {
+            $order = Order::find($metadata['order_id']);
+            Log::info('MercadoPagoApiService: Tentando buscar pedido via metadata.order_id', [
+                'order_id' => $metadata['order_id'],
+                'found' => $order !== null,
+            ]);
         }
         
-        // Formato 2: order_number (fallback)
-        if (!$order) {
+        // Formato 2: metadata.order_number
+        if (!$order && isset($metadata['order_number'])) {
+            $order = Order::where('order_number', $metadata['order_number'])->first();
+            Log::info('MercadoPagoApiService: Tentando buscar pedido via metadata.order_number', [
+                'order_number' => $metadata['order_number'],
+                'found' => $order !== null,
+            ]);
+        }
+        
+        // Formato 3: customerId/orderId (external_reference)
+        if (!$order && $externalReference) {
+            $referenceParts = explode('/', $externalReference);
+            if (count($referenceParts) === 2) {
+                $customerId = $referenceParts[0];
+                $orderId = $referenceParts[1];
+                $order = Order::where('id', $orderId)
+                    ->where('customer_id', $customerId)
+                    ->first();
+                Log::info('MercadoPagoApiService: Tentando buscar pedido via external_reference (customerId/orderId)', [
+                    'customer_id' => $customerId,
+                    'order_id' => $orderId,
+                    'found' => $order !== null,
+                ]);
+            }
+        }
+        
+        // Formato 4: order_number direto (external_reference)
+        if (!$order && $externalReference) {
             $order = Order::where('order_number', $externalReference)->first();
+            Log::info('MercadoPagoApiService: Tentando buscar pedido via external_reference (order_number)', [
+                'external_reference' => $externalReference,
+                'found' => $order !== null,
+            ]);
         }
         
-        // Formato 3: apenas order_id (fallback)
-        if (!$order && is_numeric($externalReference)) {
+        // Formato 5: apenas order_id numérico (external_reference)
+        if (!$order && $externalReference && is_numeric($externalReference)) {
             $order = Order::find($externalReference);
+            Log::info('MercadoPagoApiService: Tentando buscar pedido via external_reference (numeric)', [
+                'external_reference' => $externalReference,
+                'found' => $order !== null,
+            ]);
         }
 
         if (!$order) {
-            Log::warning('MercadoPagoApiService: Pedido não encontrado no webhook', [
+            Log::error('MercadoPagoApiService: Pedido não encontrado no webhook', [
                 'external_reference' => $externalReference,
+                'metadata' => $metadata,
                 'payment_id' => $paymentId,
                 'payment_status' => $payment['status'] ?? null,
+                'payment_method' => $payment['payment_method_id'] ?? null,
             ]);
             return ['success' => false, 'error' => 'Pedido não encontrado'];
         }
 
         // Verificar se o status já foi atualizado (idempotência)
-        if ($order->payment_status === $payment['status'] && $order->payment_id === $paymentId) {
-            Log::info('MercadoPagoApiService: Webhook já processado (idempotência)', [
-                'order_id' => $order->id,
-                'payment_status' => $payment['status'],
-            ]);
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'payment_status' => $payment['status'],
-                'order_status' => $order->status,
-                'already_processed' => true,
-            ];
+        // IMPORTANTE: Verificar também se já foi notificado para evitar duplicatas
+        $mappedPaymentStatus = self::mapPaymentStatus($payment['status'] ?? 'pending');
+        $alreadyProcessed = ($order->payment_status === $mappedPaymentStatus && $order->payment_id === $paymentId);
+        
+        if ($alreadyProcessed) {
+            // Se já foi notificado, não processar novamente mesmo se outros campos mudaram
+            if (!empty($order->notified_paid_at)) {
+                Log::info('MercadoPagoApiService: Webhook já processado e notificado (idempotência completa)', [
+                    'order_id' => $order->id,
+                    'payment_status' => $payment['status'],
+                    'notified_paid_at' => $order->notified_paid_at,
+                ]);
+                return [
+                    'success' => true,
+                    'order_id' => $order->id,
+                    'payment_status' => $payment['status'],
+                    'order_status' => $order->status,
+                    'already_processed' => true,
+                    'already_notified' => true,
+                ];
+            }
+            
+            // Verificar se o pedido foi confirmado e se precisa enviar notificação
+            $approvedStatuses = ['approved', 'paid', 'authorized'];
+            if (in_array($payment['status'], $approvedStatuses) && $order->status !== 'paid' && $order->status !== 'confirmed') {
+                // Payment_status atualizado mas order.status não, processar notificação
+                Log::info('MercadoPagoApiService: Payment status já atualizado, mas order.status não - processando notificação', [
+                    'order_id' => $order->id,
+                    'payment_status' => $payment['status'],
+                    'order_status' => $order->status,
+                ]);
+                $alreadyProcessed = false; // Processar para atualizar order.status e enviar notificação
+            } else {
+                Log::info('MercadoPagoApiService: Webhook já processado (idempotência)', [
+                    'order_id' => $order->id,
+                    'payment_status' => $payment['status'],
+                ]);
+                return [
+                    'success' => true,
+                    'order_id' => $order->id,
+                    'payment_status' => $payment['status'],
+                    'order_status' => $order->status,
+                    'already_processed' => true,
+                ];
+            }
         }
 
         // Atualizar status do pagamento
+        // Usar o status mapeado já calculado acima
         $order->update([
-            'payment_id' => $paymentId,
-            'payment_status' => $payment['status'],
-            'payment_raw_response' => $payment,
+            'payment_id' => (string)$paymentId,
+            'payment_status' => $mappedPaymentStatus,
+            'payment_raw_response' => json_encode($payment),
         ]);
 
         // Atualizar status do pedido baseado no pagamento usando OrderStatusService
-        if (in_array($payment['status'], ['approved', 'paid'])) {
+        // Para PIX, o status pode ser 'approved' quando aprovado
+        // Também tratar 'pending' como pagamento em processamento (PIX pode ter delay)
+        $approvedStatuses = ['approved', 'paid', 'authorized'];
+        
+        Log::info('MercadoPagoApiService: Processando atualização de status', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'current_payment_status' => $order->payment_status,
+            'new_payment_status' => $payment['status'],
+            'payment_method' => $payment['payment_method_id'] ?? null,
+            'is_approved' => in_array($payment['status'], $approvedStatuses),
+        ]);
+        
+        if (in_array($payment['status'], $approvedStatuses)) {
             try {
                 $orderStatusService = app(OrderStatusService::class);
                 $orderStatusService->changeStatus(
@@ -295,9 +501,26 @@ class MercadoPagoApiService
                 $this->updateOrderStatus($order, $payment['status']);
             }
         } else {
-            // Para outros status, usar método simples
+            // Para outros status (pending, rejected, etc), usar método simples
             $this->updateOrderStatus($order, $payment['status']);
+            
+            Log::info('MercadoPagoApiService: Status do pagamento atualizado (não aprovado)', [
+                'order_id' => $order->id,
+                'payment_status' => $payment['status'],
+                'payment_method' => $payment['payment_method_id'] ?? null,
+            ]);
         }
+
+        // Recarregar o pedido para ter os dados atualizados
+        $order->refresh();
+
+        Log::info('MercadoPagoApiService: Webhook processado com sucesso', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'payment_status' => $order->payment_status,
+            'order_status' => $order->status,
+            'payment_method' => $payment['payment_method_id'] ?? null,
+        ]);
 
         return [
             'success' => true,

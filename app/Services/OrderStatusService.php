@@ -217,16 +217,62 @@ class OrderStatusService
             } else {
                 // Se for status "paid" ou "confirmed", usar o método específico para pedidos pagos
                 if (in_array($statusCodeForLookup, ['paid', 'confirmed']) || $newCode === 'confirmed') {
-                    // Carregar relacionamentos necessários
-                    $order->loadMissing('items.product', 'customer', 'address');
-                    
-                    Log::info('OrderStatusService: Enviando pedido pago para BotConversa', [
-                        'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'status' => $newCode
-                    ]);
-                    
-                    $botConversa->sendPaidOrderJson($order);
+                    // Verificar se já foi notificado para evitar duplicatas
+                    if (!empty($order->notified_paid_at)) {
+                        Log::info('OrderStatusService: Pedido já foi notificado, pulando envio de notificação', [
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'notified_paid_at' => $order->notified_paid_at,
+                            'status' => $newCode
+                        ]);
+                    } else {
+                        // Carregar relacionamentos necessários
+                        $order->loadMissing('items.product', 'customer', 'address');
+                        
+                        Log::info('OrderStatusService: Enviando pedido pago para BotConversa', [
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'status' => $newCode
+                        ]);
+                        
+                        $ok = $botConversa->sendPaidOrderJson($order);
+                        
+                        // Atualizar notified_paid_at se o envio foi bem-sucedido
+                        if ($ok) {
+                            $order->notified_paid_at = now();
+                            $order->save();
+                            
+                            Log::info('OrderStatusService: Notificação enviada e notified_paid_at atualizado', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                            ]);
+                        }
+                        
+                        // Enviar notificação para o número específico quando pedido for pago
+                        try {
+                            $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                            $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
+                            $message .= "Pedido: #{$order->order_number}\n";
+                            $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
+                            $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
+                            $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
+                            $message .= "Acesse o dashboard para ver os detalhes.";
+                            
+                            $botConversa->sendTextMessage($notificationPhone, $message);
+                            
+                            Log::info('OrderStatusService: Notificação enviada para número de administrador', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'phone' => $notificationPhone
+                            ]);
+                        } catch (\Throwable $e) {
+                            Log::warning('OrderStatusService: Erro ao enviar notificação para administrador', [
+                                'order_id' => $order->id,
+                                'error' => $e->getMessage()
+                            ]);
+                            // Não bloquear o fluxo se a notificação falhar
+                        }
+                    }
                 } else {
                     // Para outros status, enviar payload genérico
                     $phone = $botConversa->normalizePhoneBR(optional($order->customer)->phone);

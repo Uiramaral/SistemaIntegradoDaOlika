@@ -124,3 +124,4 @@ class OptimizeProductImages extends Command
     }
 }
 
+

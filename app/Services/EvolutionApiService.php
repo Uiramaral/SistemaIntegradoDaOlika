@@ -90,7 +90,8 @@ class EvolutionApiService
         // Link de acompanhamento (mesma URL pública já usada)
         try {
             $phone = optional($order->customer)->phone;
-            $trackUrl = route('customer.orders.show', ['order' => $order->order_number, 'phone' => preg_replace('/\D/','',$phone)]);
+            // Usar pedido.menuolika.com.br ao invés de dashboard
+            $trackUrl = 'https://pedido.menuolika.com.br/customer/orders/' . $order->order_number . '?phone=' . preg_replace('/\D/','',$phone);
             $lines[] = 'Acompanhe seu pedido: '.$trackUrl;
         } catch (\Throwable $e) { /* ignore */ }
 

@@ -11,22 +11,19 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 
-// Rota raiz genérica (detecta subdomínio)
+// Rota raiz genérica (fallback para desenvolvimento/local sem subdomínio)
+// IMPORTANTE: Esta rota só funciona quando NÃO há subdomínio configurado
+// As rotas com Route::domain() têm prioridade e serão executadas primeiro
 Route::get('/', function () {
     $host = request()->getHost();
     
-    // Subdomínio do dashboard
-    if (str_contains($host, 'dashboard.menuolika.com.br')) {
-        return redirect()->route('dashboard.index');
+    // Se estiver acessando sem subdomínio configurado, redireciona para /pedido (fallback)
+    // Se tiver subdomínio, as rotas específicas do domínio já lidaram com isso
+    if (!str_contains($host, 'dashboard.') && !str_contains($host, 'pedido.') && !str_contains($host, 'menuolika.com.br')) {
+        return redirect()->route('pedido.index');
     }
     
-    // Subdomínio do pedido - usar MenuController diretamente (sem redirecionar)
-    if (str_contains($host, 'pedido.menuolika.com.br')) {
-        return app(MenuController::class)->index();
-    }
-    
-    // Para desenvolvimento/local sem subdomínio
-    // Se não tiver subdomínio configurado, redireciona para /pedido (loja pública)
+    // Se chegou aqui com subdomínio, algo deu errado - redirecionar para pedido
     return redirect()->route('pedido.index');
 })->name('home');
 use App\Http\Controllers\LoyaltyController;
@@ -53,6 +50,14 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 // DEVEM VIR ANTES DAS ROTAS DO DASHBOARD
 // ============================================
 
+// Rotas do Cliente (visualização de pedidos) - GLOBAIS (funcionam em qualquer subdomínio)
+// IMPORTANTE: Estas rotas devem estar ANTES das rotas com domínio específico
+Route::prefix('customer')->group(function () {
+    Route::get('/orders', [\App\Http\Controllers\Customer\OrdersController::class, 'index'])->name('customer.orders.index');
+    Route::get('/orders/{order}', [\App\Http\Controllers\Customer\OrdersController::class, 'show'])->name('customer.orders.show');
+    Route::post('/orders/{order}/rate', [\App\Http\Controllers\Customer\OrdersController::class, 'rate'])->name('customer.orders.rate');
+});
+
 // Subdomínio: Pedido (Loja Front-end) - PÚBLICO
 Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
     // Página inicial
@@ -67,18 +72,18 @@ Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
     });
     
-            // Carrinho
-            Route::prefix('cart')->name('cart.')->group(function () {
-                Route::get('/', [CartController::class, 'show'])->name('index');
-                Route::get('/count', [CartController::class, 'count'])->name('count');
-                Route::get('/items', [CartController::class, 'items'])->name('items');
-                Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
-                Route::post('/add', [CartController::class, 'add'])->name('add');
-                Route::post('/update', [CartController::class, 'update'])->name('update');
-                Route::post('/remove', [CartController::class, 'remove'])->name('remove');
-                Route::post('/clear', [CartController::class, 'clear'])->name('clear');
-                Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
-            });
+    // Carrinho
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [CartController::class, 'show'])->name('index');
+        Route::get('/count', [CartController::class, 'count'])->name('count');
+        Route::get('/items', [CartController::class, 'items'])->name('items');
+        Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
+        Route::post('/add', [CartController::class, 'add'])->name('add');
+        Route::post('/update', [CartController::class, 'update'])->name('update');
+        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
+        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+    });
     
     // Checkout
     Route::prefix('checkout')->name('checkout.')->group(function () {
@@ -145,6 +150,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
     Route::prefix('payment')->name('payment.')->group(function () {
         Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
         Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
         Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
         Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
     });
@@ -194,6 +200,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     ]);
     Route::post('/customers/{customer}/send-pending-orders', [\App\Http\Controllers\Dashboard\DebtsController::class, 'sendPendingOrdersSummary'])->name('dashboard.customers.sendPendingOrders');
     Route::post('/customers/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
+    Route::put('/customers/{customer}/cashback', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateCashback'])->name('dashboard.customers.updateCashback');
     Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
         'index' => 'dashboard.wholesale-prices.index',
         'create' => 'dashboard.wholesale-prices.create',
@@ -257,6 +264,8 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::get('/{order}/receipt', [\App\Http\Controllers\Dashboard\OrdersController::class, 'receipt'])->name('receipt');
         Route::get('/{order}/fiscal-receipt', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceipt'])->name('fiscalReceipt');
         Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fiscalReceiptEscPos');
+        Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
+        Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
     });
     
     // Alias para manter compatibilidade
@@ -383,14 +392,9 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
         Route::get('/orders-for-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getOrdersForPrint'])->name('forPrint');
         Route::get('/printer-monitor', [\App\Http\Controllers\Dashboard\OrdersController::class, 'printerMonitor'])->name('printerMonitor');
         Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fiscalReceiptEscPos');
+        Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
+        Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
     });
-});
-
-// Rotas do Cliente (visualização de pedidos) - PÚBLICAS
-Route::prefix('customer')->name('customer.')->group(function () {
-    Route::get('/orders', [\App\Http\Controllers\Customer\OrdersController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [\App\Http\Controllers\Customer\OrdersController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{order}/rate', [\App\Http\Controllers\Customer\OrdersController::class, 'rate'])->name('orders.rate');
 });
 
 // Rota para servir arquivos da pasta storage/app/public sem necessidade de symlink

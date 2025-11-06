@@ -60,12 +60,13 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="space-y-2">
                     <label class="text-sm font-medium" for="printer-name">Nome da Impressora</label>
-                    <input type="text" id="printer-name" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: EPSON TM-T20">
-                    <p class="text-xs text-muted-foreground">Deixe vazio para usar a impressora padrão</p>
+                    <input type="text" id="printer-name" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: EPSON TM-T20X Receipt">
+                    <p class="text-xs text-muted-foreground">Deixe vazio para detectar automaticamente a EPSON TM-20X Receipt</p>
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium" for="poll-interval">Intervalo de Verificação (segundos)</label>
-                    <input type="number" id="poll-interval" min="1" max="60" value="5" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input type="number" id="poll-interval" min="1" max="60" value="3" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <p class="text-xs text-muted-foreground">Valor recomendado: 3 segundos para resposta rápida</p>
                 </div>
             </div>
             <div class="space-y-2">
@@ -107,7 +108,7 @@ let qzConnected = false;
 // Configurações
 let config = {
     printer: localStorage.getItem('printer_name') || '',
-    pollInterval: parseInt(localStorage.getItem('poll_interval') || '5') * 1000,
+    pollInterval: parseInt(localStorage.getItem('poll_interval') || '3') * 1000, // Padrão: 3 segundos
     autoPrintNew: localStorage.getItem('auto_print_new') !== 'false',
     autoPrintPaid: localStorage.getItem('auto_print_paid') !== 'false',
 };
@@ -251,49 +252,94 @@ async function checkNewOrders() {
         }
         
         // Processar apenas pedidos que ainda não foram impressos
+        // Processar em paralelo para não bloquear outros pedidos
+        const printPromises = [];
+        
         for (const orderInfo of data.orders) {
             const orderId = orderInfo.id;
             
-            console.log(`🔍 Verificando pedido #${orderInfo.order_number} (ID: ${orderId})`);
-            
-            // Se já foi processado, pular
-            if (processedOrders.has(orderId)) {
-                console.log(`⏭️ Pedido #${orderInfo.order_number} já foi processado, pulando`);
-                continue;
-            }
-            
-            console.log(`📥 Buscando detalhes do pedido #${orderInfo.order_number}...`);
-            
-            // Buscar detalhes completos do pedido (incluindo dados ESC/POS)
-            const order = await fetchOrderDetails(orderId);
-            
-            if (!order) {
-                console.error(`❌ Falha ao buscar detalhes do pedido #${orderInfo.order_number}`);
-                continue;
-            }
-            
-            console.log(`✅ Detalhes do pedido obtidos:`, {
-                order_id: order.order_id || order.id,
-                order_number: order.order_number,
-                has_data: !!order.data,
-                data_length: order.data ? order.data.length : 0
+            console.log(`🔍 Verificando pedido #${orderInfo.order_number} (ID: ${orderId})`, {
+                status: orderInfo.status,
+                payment_status: orderInfo.payment_status,
+                print_requested: orderInfo.print_requested_at || false,
+                already_printed: orderInfo.printed_at || false
             });
             
-            if (order && shouldPrintOrder(order)) {
-                console.log(`🖨️ Iniciando impressão do pedido #${orderInfo.order_number}...`);
-                const printed = await printOrder(order);
-                if (printed) {
-                    processedOrders.add(orderId);
-                    printedCount++;
-                    document.getElementById('printed-count').textContent = printedCount;
-                    addOrderToLog(order);
-                    console.log(`✅ Pedido #${orderInfo.order_number} processado com sucesso`);
-                } else {
-                    console.error(`❌ Falha ao imprimir pedido #${orderInfo.order_number}`);
-                }
-            } else {
-                console.log(`⏭️ Pedido #${orderInfo.order_number} não deve ser impresso (shouldPrintOrder retornou false)`);
+            // Pular se já foi impresso (marcado no servidor)
+            if (orderInfo.printed_at) {
+                console.log(`⏭️ Pedido #${orderInfo.order_number} já foi impresso anteriormente, pulando`);
+                processedOrders.add(orderId); // Marcar como processado para não verificar novamente
+                continue;
             }
+            
+            // Se já foi processado com SUCESSO nesta sessão, pular
+            // Mas verificar novamente se falhou antes
+            if (processedOrders.has(orderId)) {
+                console.log(`⏭️ Pedido #${orderInfo.order_number} já foi processado com sucesso nesta sessão, pulando`);
+                continue;
+            }
+            
+            // Processar este pedido (não bloquear outros)
+            printPromises.push((async () => {
+                try {
+                    console.log(`📥 Buscando detalhes do pedido #${orderInfo.order_number}...`);
+                    
+                    // Buscar detalhes completos do pedido (incluindo dados ESC/POS)
+                    const order = await fetchOrderDetails(orderId);
+                    
+                    if (!order) {
+                        console.error(`❌ Falha ao buscar detalhes do pedido #${orderInfo.order_number}`);
+                        return;
+                    }
+                    
+                    console.log(`✅ Detalhes do pedido obtidos:`, {
+                        order_id: order.order_id || order.id,
+                        order_number: order.order_number,
+                        has_data: !!order.data,
+                        data_length: order.data ? order.data.length : 0,
+                        success: order.success
+                    });
+                    
+                    // Verificar se os dados estão válidos
+                    if (!order.success || !order.data) {
+                        console.error(`❌ Dados inválidos para pedido #${orderInfo.order_number}`, order);
+                        return;
+                    }
+                    
+                    if (order && shouldPrintOrder(order)) {
+                        console.log(`🖨️ Iniciando impressão do pedido #${orderInfo.order_number}...`);
+                        const printed = await printOrder(order);
+                        if (printed) {
+                            processedOrders.add(orderId);
+                            printedCount++;
+                            document.getElementById('printed-count').textContent = printedCount;
+                            addOrderToLog(order);
+                            console.log(`✅ Pedido #${orderInfo.order_number} processado com sucesso`);
+                        } else {
+                            console.error(`❌ Falha ao imprimir pedido #${orderInfo.order_number} - será tentado novamente`);
+                            // Não adicionar a processedOrders para tentar novamente na próxima verificação
+                        }
+                    } else {
+                        console.log(`⏭️ Pedido #${orderInfo.order_number} não deve ser impresso (shouldPrintOrder retornou false)`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Erro ao processar pedido #${orderInfo.order_number}:`, error);
+                    // Não adicionar a processedOrders para tentar novamente
+                }
+            })());
+        }
+        
+        // Aguardar todos os processamentos (mas não bloquear o próximo ciclo)
+        if (printPromises.length > 0) {
+            console.log(`⏳ Processando ${printPromises.length} pedido(s) em paralelo...`);
+            const results = await Promise.allSettled(printPromises);
+            
+            const successful = results.filter(r => r.status === 'fulfilled').length;
+            const failed = results.filter(r => r.status === 'rejected').length;
+            
+            console.log(`📊 Resultado: ${successful} sucesso, ${failed} falhas`);
+        } else {
+            console.log('ℹ️ Nenhum pedido novo para processar');
         }
     } catch (error) {
         console.error('Erro ao verificar pedidos:', error);
@@ -336,14 +382,9 @@ function shouldPrintOrder(order) {
 
 // Imprimir pedido via QZ Tray
 async function printOrder(orderData) {
-    console.log('📄 Iniciando impressão do pedido:', orderData);
+    const PRINTER_NAME = "EPSON TM-T20X";
     
-    // Verificar se orderData tem os dados necessários
-    if (!orderData || !orderData.data) {
-        console.error('❌ orderData inválido ou sem campo data:', orderData);
-        updateStatus('error', 'Erro de Dados', 'Dados do pedido inválidos');
-        return false;
-    }
+    console.log('📄 Iniciando impressão do pedido:', orderData);
     
     // Verificar conexão antes de tentar imprimir
     if (!isQZTrayConnected()) {
@@ -351,6 +392,7 @@ async function printOrder(orderData) {
         const connected = await connectQZTray();
         if (!connected) {
             console.error('❌ Não foi possível conectar ao QZ Tray para imprimir');
+            updateStatus('error', 'Erro de Conexão', 'QZ Tray não conectado');
             return false;
         }
     }
@@ -365,82 +407,97 @@ async function printOrder(orderData) {
             throw new Error('Nenhuma impressora encontrada. Configure o QZ Tray.');
         }
         
-        const printer = config.printer || printers[0];
+        // Buscar impressora EPSON TM-20X
+        let printer = config.printer;
+        if (!printer) {
+            const epsonPrinter = printers.find(p => 
+                p.toUpperCase().includes('EPSON') && 
+                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+            );
+            printer = epsonPrinter || printers[0];
+        }
+        
+        if (!printer) {
+            console.error(`❌ Impressora "${PRINTER_NAME}" não encontrada`);
+            updateStatus('error', 'Impressora Não Encontrada', `Impressora ${PRINTER_NAME} não encontrada`);
+            return false;
+        }
+        
         console.log('🖨️ Usando impressora:', printer);
         
-        // Função crítica: converter base64 para Uint8Array (bytes binários)
-        // DEVE retornar Uint8Array, não Array simples!
-        function base64ToUint8Array(base64) {
-            const binaryString = atob(base64); // decode base64 para texto binário
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len); // ✅ Uint8Array, não Array!
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i); // transforma em array de bytes
+        // Buscar dados ESC/POS do servidor (se não vierem no orderData)
+        let base64Data = orderData.data;
+        if (!base64Data && orderData.order_id) {
+            console.log('📥 Buscando dados ESC/POS do servidor...');
+            const response = await fetch(`/dashboard/orders/${orderData.order_id || orderData.id}/fiscal-receipt/escpos`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao buscar dados ESC/POS (${response.status})`);
             }
-            return bytes;
-        }
-        
-        // Converter base64 para Uint8Array - PONTO CRÍTICO
-        const rawData = base64ToUint8Array(orderData.data);
-        
-        // VALIDAÇÃO CRÍTICA: Verificar tipo e estrutura
-        console.log('🔍 DEBUG - Tipo de dado:', typeof rawData, rawData.constructor.name);
-        console.log('🔍 DEBUG - É Uint8Array?', rawData instanceof Uint8Array);
-        console.log('🔍 DEBUG - É Array?', Array.isArray(rawData));
-        
-        // Validação: verificar se começa com ESC @ (0x1B 0x40)
-        if (rawData.length < 2 || rawData[0] !== 0x1B || rawData[1] !== 0x40) {
-            console.error('❌ ERRO: Dados não começam com ESC @ (0x1B 0x40)');
-            console.error('❌ Primeiros bytes:', 
-                Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-            throw new Error('Dados ESC/POS inválidos');
-        }
-        
-        // Verificar se é realmente Uint8Array
-        if (!(rawData instanceof Uint8Array)) {
-            console.error('❌ ERRO CRÍTICO: rawData não é Uint8Array!');
-            console.error('❌ Tipo:', typeof rawData, rawData.constructor.name);
-            throw new Error('Dados não foram convertidos corretamente para Uint8Array');
-        }
-        
-        console.log('✅ Dados ESC/POS validados:', {
-            length: rawData.length,
-            firstBytes: Array.from(rawData.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-            isUint8Array: rawData instanceof Uint8Array,
-            type: typeof rawData,
-            constructor: rawData.constructor.name,
-            orderId: orderData.order_id,
-            orderNumber: orderData.order_number
-        });
-        
-        // QZ Tray: Para dados RAW binários ESC/POS, usar objeto com type: 'raw', format: 'command'
-        const config = qz.configs.create(printer || 'EPSON TM-T20X Receipt');
-        
-        console.log('🚀 Enviando dados RAW para impressora...');
-        console.log('🔍 DEBUG final - Tipo de data:', typeof rawData, rawData.constructor.name);
-        
-        try {
-            // Enviar como objeto RAW com Uint8Array
-            // FORMATO CORRETO para dados ESC/POS binários
-            const printResult = await qz.print(config, [{
-                type: 'raw',
-                format: 'command',
-                data: rawData  // ✅ Uint8Array real
-            }]);
-            console.log('✅ Comando de impressão RAW enviado com sucesso!');
-            console.log('✅ Resultado:', printResult);
             
-            // Aguardar um pouco para verificar se realmente imprimiu
-            await new Promise(resolve => setTimeout(resolve, 500));
+            const json = await response.json();
+            if (!json.success || !json.data) {
+                throw new Error('Dados inválidos ou ausentes');
+            }
             
-            updateStatus('monitoring', 'Monitor Ativo', 'Última impressão: ' + new Date().toLocaleTimeString('pt-BR'));
-            return true;
-        } catch (printError) {
-            console.error('❌ Erro durante qz.print():', printError);
-            console.error('❌ Tipo de erro:', typeof printError);
-            console.error('❌ Mensagem:', printError.message);
-            throw printError;
+            base64Data = json.data;
         }
+        
+        if (!base64Data) {
+            throw new Error('Dados ESC/POS não encontrados');
+        }
+        
+        console.log('📦 Base64 recebido (ESC/POS), tamanho:', base64Data.length);
+        
+        // Configurar impressão
+        const printConfig = qz.configs.create(printer);
+        
+        // ✅ CORREÇÃO CRÍTICA: Usar format: 'base64' e enviar diretamente a string base64
+        await qz.print(printConfig, [{
+            type: 'raw',
+            format: 'base64', // ✅ CORRETO: base64, não 'command'
+            data: base64Data  // ✅ Enviar diretamente a string base64
+        }]);
+        
+        console.log('✅ Pedido impresso com sucesso:', orderData.order_number || orderData.order_id);
+        
+        // Marcar pedido como impresso no servidor
+        const orderId = orderData.order_id || orderData.id;
+        if (orderId) {
+            try {
+                const response = await fetch(`/dashboard/orders/${orderId}/mark-printed`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('✅ Pedido marcado como impresso no servidor');
+                } else {
+                    console.warn('⚠️ Falha ao marcar pedido como impresso:', result.message);
+                }
+            } catch (err) {
+                console.error('❌ Erro ao marcar pedido como impresso:', err);
+            }
+        }
+        
+        // Aguardar um pouco para garantir que a impressão foi processada
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        updateStatus('monitoring', 'Monitor Ativo', 'Última impressão: ' + new Date().toLocaleTimeString('pt-BR'));
+        
+        console.log('✅ Impressão concluída para pedido:', orderData.order_number || orderData.order_id);
+        return true;
+        
     } catch (error) {
         console.error('❌ Erro ao imprimir:', error);
         console.error('❌ Stack trace:', error.stack);
@@ -473,7 +530,16 @@ document.getElementById('btn-test-print').addEventListener('click', async functi
             return;
         }
         
-        const printer = config.printer || printers[0];
+        // Usar impressora configurada, ou procurar EPSON TM-20X Receipt, ou usar primeira disponível
+        let printer = config.printer;
+        if (!printer) {
+            // Procurar especificamente por EPSON TM-20X Receipt
+            const epsonPrinter = printers.find(p => 
+                p.toLowerCase().includes('epson') && 
+                (p.toLowerCase().includes('tm-20') || p.toLowerCase().includes('tm-t20'))
+            );
+            printer = epsonPrinter || printers[0];
+        }
         console.log('Imprimindo teste na impressora:', printer);
         
         // Criar dados de teste em ESC/POS
@@ -579,12 +645,78 @@ setInterval(async function() {
     }
 }, 5000); // Verificar a cada 5 segundos
 
-// Conectar ao iniciar página (se QZ Tray já estiver disponível)
-window.addEventListener('load', function() {
-    setTimeout(async () => {
-        await connectQZTray();
-    }, 1000);
+// Função para iniciar o monitor automaticamente
+async function startMonitorAuto() {
+    console.log('🔄 Tentando iniciar monitor automaticamente...');
+    
+    // Tentar conectar ao QZ Tray
+    let connected = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (!connected && attempts < maxAttempts) {
+        attempts++;
+        console.log(`Tentativa ${attempts}/${maxAttempts} de conexão com QZ Tray...`);
+        connected = await connectQZTray();
+        
+        if (!connected) {
+            console.log(`Aguardando 2 segundos antes da próxima tentativa...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+    
+    if (connected) {
+        // Iniciar monitor automaticamente
+        monitorActive = true;
+        const toggleBtn = document.getElementById('btn-toggle-monitor');
+        if (toggleBtn) {
+            toggleBtn.classList.remove('bg-success');
+            toggleBtn.classList.add('bg-destructive', 'text-destructive-foreground');
+            const statusText = document.getElementById('monitor-status-text');
+            if (statusText) {
+                statusText.textContent = 'Parar Monitor';
+            }
+        }
+        
+        updateStatus('monitoring', 'Monitor Ativo', 'Imprimindo recibos automaticamente...');
+        
+        // Iniciar polling
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+        pollInterval = setInterval(checkNewOrders, config.pollInterval);
+        checkNewOrders(); // Verificar imediatamente
+        
+        // Verificar novamente após 1 segundo para garantir resposta rápida
+        setTimeout(checkNewOrders, 1000);
+        
+        console.log('✅ Monitor iniciado automaticamente');
+    } else {
+        console.warn('⚠️ Não foi possível conectar ao QZ Tray. Monitor não iniciado automaticamente.');
+        updateStatus('error', 'QZ Tray não conectado', 'Clique em "Iniciar Monitor" após verificar o QZ Tray');
+    }
+}
+
+// Iniciar automaticamente quando a página carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(startMonitorAuto, 1000);
+    });
+} else {
+    // DOM já carregado
+    setTimeout(startMonitorAuto, 1000);
+}
+
+// Também tentar iniciar quando a página ganhar foco (se ainda não estiver ativo)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && !monitorActive) {
+        console.log('Página visível novamente, tentando iniciar monitor...');
+        setTimeout(startMonitorAuto, 500);
+    }
 });
+
+// Manter monitor ativo mesmo quando a página não está em foco
+// Não parar o polling quando a página perde foco
 </script>
 @endsection
 

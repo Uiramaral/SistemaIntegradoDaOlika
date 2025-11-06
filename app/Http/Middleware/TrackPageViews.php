@@ -21,15 +21,11 @@ class TrackPageViews
         if ($request->is('pedido/*') && !$request->is('dashboard/*') && !$request->is('api/*')) {
             try {
                 // Rastrear apenas GET requests (não POST, PUT, etc)
-                if ($request->isMethod('GET')) {
+                if ($request->isMethod('GET') && class_exists(\App\Models\AnalyticsEvent::class)) {
                     \App\Models\AnalyticsEvent::trackPageView($request, $request->path());
                 }
             } catch (\Exception $e) {
-                // Não bloquear a requisição se falhar o tracking
-                \Log::warning('Erro ao rastrear visualização de página', [
-                    'path' => $request->path(),
-                    'error' => $e->getMessage(),
-                ]);
+                // Não bloquear a requisição se falhar o tracking - silenciar erro
             }
         }
 

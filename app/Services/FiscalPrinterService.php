@@ -12,7 +12,7 @@ class FiscalPrinterService
      */
     public function generateEscPosReceipt(Order $order): string
     {
-        $order->load(['customer', 'address', 'items.product', 'payment']);
+        $order->load(['customer', 'address', 'items.product', 'items.variant', 'payment']);
         
         $commands = [];
         
@@ -119,7 +119,30 @@ class FiscalPrinterService
         
         foreach ($order->items as $item) {
             $itemName = $item->custom_name ?? ($item->product ? $item->product->name : 'Produto');
-            $itemName = $this->truncateText($this->removeAccents($itemName), 28);
+            $variantName = null;
+            $weight = null;
+            
+            // Carregar variante se existir
+            if ($item->variant_id && $item->variant) {
+                $variantName = $item->variant->name;
+                $weight = $item->variant->weight_grams;
+            }
+            
+            // Se não tem variante, usar peso do produto
+            if (!$weight && $item->product) {
+                $weight = $item->product->weight_grams;
+            }
+            
+            // Montar nome completo: Nome + Variante (se houver) + Peso (se houver)
+            $displayName = $itemName;
+            if ($variantName) {
+                $displayName .= ' (' . $variantName . ')';
+            }
+            if ($weight) {
+                $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+            }
+            
+            $itemName = $this->truncateText($this->removeAccents($displayName), 28);
             $qty = str_pad((string)$item->quantity, 3, ' ', STR_PAD_LEFT);
             $price = str_pad("R$ " . number_format($item->unit_price, 2, ',', '.'), 12, ' ', STR_PAD_LEFT);
             
@@ -228,70 +251,9 @@ class FiscalPrinterService
         $commands[] = $this->removeAccents("WhatsApp") . ":\n";
         
         // Buscar número do WhatsApp das configurações
-        try {
-            $settings = \App\Models\Setting::getSettings();
-            $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
-            
-            // Validar se o telefone não está vazio
-            if (empty($phone)) {
-                $phone = '(71) 98701-9420'; // Fallback
-                Log::warning('FiscalPrinterService: Telefone vazio nas configurações, usando fallback');
-            }
-            
-            $commands[] = $phone . "\n";
-            $commands[] = "\n";
-            
-            // QR Code do WhatsApp - buscar número das configurações
-            $phoneDigits = preg_replace('/\D/', '', $phone);
-            
-            // Validar se temos pelo menos 10 dígitos
-            if (strlen($phoneDigits) < 10) {
-                Log::error('FiscalPrinterService: Número de telefone inválido', [
-                    'phone' => $phone,
-                    'phone_digits' => $phoneDigits
-                ]);
-                // Usar fallback
-                $phoneDigits = '5571987019420';
-            } else {
-                // Se tem 11 dígitos (formato brasileiro), adicionar código do país
-                if (strlen($phoneDigits) === 11 && !str_starts_with($phoneDigits, '55')) {
-                    $phoneDigits = '55' . $phoneDigits;
-                } elseif (strlen($phoneDigits) === 10) {
-                    // Se tem 10 dígitos (sem DDD), adicionar DDD padrão e código do país
-                    $phoneDigits = '5571' . $phoneDigits;
-                }
-            }
-            
-            $whatsappUrl = "https://wa.me/" . $phoneDigits;
-            
-            // Log para debug
-            Log::info('FiscalPrinterService: Gerando QR code do WhatsApp', [
-                'phone' => $phone,
-                'phone_digits' => $phoneDigits,
-                'whatsapp_url' => $whatsappUrl,
-                'url_length' => strlen($whatsappUrl)
-            ]);
-            
-            // Gerar QR code apenas se a URL for válida
-            if (!empty($whatsappUrl) && str_starts_with($whatsappUrl, 'https://wa.me/')) {
-                $qrCodeCommands = $this->generateQRCode($whatsappUrl);
-                if (!empty($qrCodeCommands)) {
-                    $commands[] = $qrCodeCommands;
-                } else {
-                    Log::error('FiscalPrinterService: Falha ao gerar comandos do QR code');
-                }
-            } else {
-                Log::error('FiscalPrinterService: URL do WhatsApp inválida', [
-                    'whatsapp_url' => $whatsappUrl
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('FiscalPrinterService: Erro ao gerar QR code do WhatsApp', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            // Continuar sem QR code se houver erro
-        }
+        $settings = \App\Models\Setting::getSettings();
+        $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
+        $commands[] = $phone . "\n";
         
         $commands[] = "\n";
         $commands[] = str_repeat("=", 48) . "\n";
@@ -339,7 +301,7 @@ class FiscalPrinterService
      */
     public function generateHtmlReceipt(Order $order): string
     {
-        $order->load(['customer', 'address', 'items.product', 'payment']);
+        $order->load(['customer', 'address', 'items.product', 'items.variant', 'payment']);
         
         $html = view('dashboard.orders.fiscal-receipt', compact('order'))->render();
         
@@ -487,39 +449,75 @@ class FiscalPrinterService
         ]);
         
         // Comando ESC/POS para QR Code (EPSON TM-20X)
-        // GS ( k [pL] [pH] [cn] [fn] [n] [c1] [c2] [d1...dk]
+        // Formato: GS ( k [pL] [pH] [cn] [fn] [n] [c1] [c2] [d1...dk]
+        // Para EPSON TM-20X, vamos usar valores mais compatíveis
+        
+        // ABORDAGEM: Sintaxe padrão EPSON com valores mais compatíveis
         // cn = 49 (0x31) - função QR Code
         // fn = 65 (0x41) - Função A - armazenar na memória
-        // n = 8 (0x08) - tamanho do módulo: 0-8 (8 = máximo, mais visível e escuro)
-        // c1 = 50 (0x32) - nível de correção: 48=L, 49=M, 50=Q, 51=H (Q para melhor qualidade)
+        // n = 4 (0x04) - tamanho do módulo: 0-8 (4 = médio, mais compatível - REDUZIDO de 6 para 4)
+        // c1 = 48 (0x30) - nível de correção: 48=L (Low, mais compatível), 49=M, 50=Q, 51=H
         // c2 = 0 (0x00) - parâmetro adicional
         
+        // NOTA: Reduzido tamanho do módulo de 6 para 4 para evitar problemas de largura
+        // Algumas impressoras podem recusar QR codes muito grandes
+        
         // Passo 1: Armazenar QR code na memória
-        // Formato: GS ( k [pL] [pH] [49] [65] [8] [50] [0] [dados]
-        // Aumentado tamanho de 6 para 8 e correção de L para Q para melhor qualidade
-        $storeCommand = "\x1D\x28\x6B" . chr($pL) . chr($pH) . "\x31\x41\x08\x32\x00" . $data;
+        // Usando tamanho 4 e correção L para máxima compatibilidade
+        $storeCommand = "\x1D\x28\x6B" . chr($pL) . chr($pH) . "\x31\x41\x04\x30\x00" . $data;
         
         // Passo 2: Imprimir QR code da memória
-        // GS ( k [03] [00] [49] [67] [2]
-        // cn = 49 (0x31), fn = 67 (0x43 - imprimir), m = 2 (imprimir)
+        // GS ( k [03] [00] [49] [67] [m]
+        // cn = 49 (0x31), fn = 67 (0x43 - Função C - imprimir), m = 2 (imprimir)
         $printCommand = "\x1D\x28\x6B\x03\x00\x31\x43\x02";
         
-        // Centralizar QR code e adicionar espaçamento
-        // NOTA: Comandos de texto (BOLD/Double Strike) não afetam QR code (é gráfico)
-        // O escurecimento vem do tamanho do módulo (n=8) e nível de correção (Q)
-        $output = "\n"; // Linha em branco antes
-        $output .= "\x1B\x61\x01"; // Centralizar
-        $output .= $storeCommand; // Armazenar QR code
-        $output .= $printCommand; // Imprimir QR code
-        $output .= "\n\n"; // Espaçamento após QR code
-        $output .= "\x1B\x61\x00"; // Voltar alinhamento à esquerda
+        // Montar saída com espaçamento adequado
+        // IMPORTANTE: Sequência correta para EPSON TM-20X
+        $output = "\n"; // Linha em branco antes do QR code
         
-        // Log para debug
-        Log::info('FiscalPrinterService: QR code gerado', [
+        // Centralizar ANTES de armazenar (não depois)
+        $output .= "\x1B\x61\x01"; // ESC a 1 - Centralizar
+        
+        // CRÍTICO: Armazenar QR code primeiro
+        $output .= $storeCommand; // Armazenar QR code na memória da impressora
+        
+        // CRÍTICO: Imprimir QR code imediatamente após armazenar (sem delay ou outros comandos)
+        $output .= $printCommand; // Imprimir QR code da memória
+        
+        // Aguardar processamento (algumas impressoras precisam)
+        $output .= "\n"; // Avançar uma linha após imprimir
+        
+        // Voltar alinhamento à esquerda APÓS imprimir
+        $output .= "\x1B\x61\x00"; // ESC a 0 - Alinhar à esquerda
+        
+        $output .= "\n"; // Espaçamento final
+        
+        // Log detalhado para debug - COMPLETO
+        Log::info('FiscalPrinterService: QR code gerado - DIAGNÓSTICO COMPLETO', [
+            'data' => $data,
+            'data_length' => $dataLength,
+            'total_size' => $dataLength + 5,
+            'pL' => $pL,
+            'pH' => $pH,
             'store_command_length' => strlen($storeCommand),
             'print_command_length' => strlen($printCommand),
             'output_length' => strlen($output),
-            'store_command_hex' => bin2hex(substr($storeCommand, 0, 20))
+            // Hex completo de cada comando
+            'store_command_hex_full' => bin2hex($storeCommand),
+            'print_command_hex_full' => bin2hex($printCommand),
+            'output_hex_full' => bin2hex($output),
+            // Verificação de estrutura
+            'store_starts_with' => bin2hex(substr($storeCommand, 0, 3)), // Deve ser 1d286b (GS ( k)
+            'store_has_data' => strlen($storeCommand) > 8,
+            'print_starts_with' => bin2hex(substr($printCommand, 0, 3)), // Deve ser 1d286b (GS ( k)
+            // Verificação de parâmetros
+            'module_size' => '4 (0x04) - REDUZIDO para compatibilidade',
+            'error_correction' => 'L (0x30)',
+            'function_store' => 'A (0x41)',
+            'function_print' => 'C (0x43)',
+            // Verificação de integridade dos dados
+            'data_in_store_command' => substr($storeCommand, -$dataLength) === $data,
+            'store_command_ends_with_data' => true,
         ]);
         
         return $output;

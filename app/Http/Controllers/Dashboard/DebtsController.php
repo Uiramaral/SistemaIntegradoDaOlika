@@ -161,6 +161,47 @@ class DebtsController extends Controller
     }
 
     /**
+     * Marcar um débito como quitado (baixa manual)
+     */
+    public function settleDebt(Request $request, CustomerDebt $debt)
+    {
+        if ($debt->status !== 'open' || $debt->type !== 'debit') {
+            return $request->wantsJson()
+                ? response()->json(['ok' => false, 'message' => 'Este lançamento já foi quitado ou não é um débito.'], 422)
+                : redirect()->back()->with('error', 'Este lançamento já foi quitado ou não é um débito.');
+        }
+
+        try {
+            DB::transaction(function () use ($debt) {
+                $debt->status = 'settled';
+                $debt->save();
+
+                CustomerDebt::create([
+                    'customer_id' => $debt->customer_id,
+                    'order_id' => $debt->order_id,
+                    'amount' => $debt->amount,
+                    'type' => 'credit',
+                    'status' => 'settled',
+                    'description' => 'Pagamento de fiado ref. #' . $debt->id,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Erro ao quitar débito', [
+                'debt_id' => $debt->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $request->wantsJson()
+                ? response()->json(['ok' => false, 'message' => 'Erro ao registrar pagamento.'], 500)
+                : redirect()->back()->with('error', 'Erro ao registrar pagamento do fiado.');
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['ok' => true])
+            : redirect()->back()->with('success', 'Pagamento de fiado registrado com sucesso!');
+    }
+
+    /**
      * Construir mensagem de resumo de um pedido
      */
     private function buildOrderSummaryMessage(Order $order): string

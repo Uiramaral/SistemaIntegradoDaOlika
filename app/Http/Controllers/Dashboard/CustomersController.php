@@ -86,7 +86,20 @@ class CustomersController extends Controller
             ->orderByDesc('id')
             ->paginate(10);
 
-        return view('dashboard.customers.show', compact('customer', 'orders'));
+        $openDebts = \App\Models\CustomerDebt::with('order')
+            ->where('customer_id', $id)
+            ->where('status', 'open')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $debtHistory = \App\Models\CustomerDebt::with('order')
+            ->where('customer_id', $id)
+            ->where('status', '!=', 'open')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        return view('dashboard.customers.show', compact('customer', 'orders', 'openDebts', 'debtHistory'));
     }
 
     public function edit($id)

@@ -21,9 +21,174 @@
     </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Coluna Esquerda: Cliente e Produtos -->
-        <div class="lg:col-span-2 space-y-6">
+    <!-- Seção para Confirmar Pagamento de Pedidos Migrados -->
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm mb-6">
+        <div class="flex flex-col space-y-1.5 p-6">
+            <h3 class="text-lg font-semibold leading-none tracking-tight">Confirmar Pagamento (Migração)</h3>
+            <p class="text-sm text-muted-foreground">Confirme o pagamento de pedidos migrados sem enviar notificação ao cliente</p>
+        </div>
+        <div class="p-6 pt-0">
+            <div class="flex gap-2">
+                <input type="text" 
+                       id="order-number-search" 
+                       class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                       placeholder="Digite o número do pedido (ex: OLK20241106123456)..."
+                       autocomplete="off">
+                <button type="button" 
+                        id="btn-search-order" 
+                        class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                    Buscar
+                </button>
+            </div>
+            <div id="order-search-result" class="mt-4 hidden">
+                <div class="p-4 border rounded-md bg-muted/50">
+                    <div id="order-info" class="space-y-2"></div>
+                    <div class="mt-4">
+                        <button type="button" 
+                                id="btn-confirm-payment-silent" 
+                                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            Confirmar Pagamento (Sem Notificar)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-two-panel gap-4 lg:items-start">
+        <!-- Coluna Resumo -->
+        <div class="dashboard-aside flex flex-col gap-4 lg:w-[320px] lg:flex-shrink-0">
+            <!-- Itens do Pedido -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div class="flex flex-col space-y-1.5 p-4 pb-3 border-b border-border/60">
+                    <h3 class="text-lg font-semibold leading-none tracking-tight">Itens do Pedido</h3>
+                </div>
+                <div class="p-4">
+                    <div id="pdv-items-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        <p class="text-sm text-muted-foreground text-center py-6">Nenhum item adicionado</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm lg:sticky lg:top-20">
+                <div class="flex flex-col space-y-1.5 p-4 pb-3">
+                    <h3 class="text-lg font-semibold leading-none tracking-tight">Resumo</h3>
+                </div>
+                <div class="p-4 pt-0 space-y-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Subtotal:</span>
+                            <span id="summary-subtotal">R$ 0,00</span>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-medium text-muted-foreground">Taxa de Entrega</label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm">
+                                <span id="summary-delivery" class="text-sm">R$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-medium text-muted-foreground">Calcular por CEP</label>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm" placeholder="00000-000" maxlength="10">
+                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                                    Calcular
+                                </button>
+                            </div>
+                            <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
+                        </div>
+
+                        <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
+                            <span>Desconto:</span>
+                            <span id="summary-discount">- R$ 0,00</span>
+                        </div>
+
+                        <div class="border-t pt-2">
+                            <label class="block text-xs font-medium text-muted-foreground mb-2">Desconto Manual</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background px-2 py-1 text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">Valor fixo</p>
+                                </div>
+                                <div>
+                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background px-2 py-1 text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">Porcentagem</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-2 flex justify-between font-semibold">
+                            <span>Total:</span>
+                            <span id="summary-total" class="text-orange-600">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Código do cupom">
+                                <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+                                    Aplicar
+                                </button>
+                            </div>
+                            <div id="coupon-info" class="mt-2 hidden p-2 bg-muted rounded-md text-sm"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
+                            <select id="delivery-type" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                <option value="delivery">Entrega</option>
+                                <option value="pickup">Retirada</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Observações</label>
+                            <textarea id="order-notes" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações do pedido..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <div class="flex flex-col gap-3 sm:flex-row">
+                            <button type="button" id="btn-send-order" class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Enviar Pedido
+                            </button>
+                            <button type="button" id="btn-finalize-order" class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Finalizar Pedido
+                            </button>
+                        </div>
+                        <button type="button" id="btn-create-paid-order" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled title="Criar pedido já como pago, sem enviar notificação ao cliente (para migração)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle-2">
+                                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                                <path d="m9 12 2 2 4-4"></path>
+                            </svg>
+                            Criar Pedido Pago (Migração)
+                        </button>
+
+                        <div class="mt-4 pt-4 border-t">
+                            <button type="button" id="btn-add-more-items" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                                    <path d="M5 12h14"></path>
+                                    <path d="M12 5v14"></path>
+                                </svg>
+                                Adicionar Mais Itens
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Conteúdo (Cliente + Produtos) -->
+        <div class="dashboard-main flex flex-col space-y-6">
             <!-- Seleção de Cliente -->
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="flex flex-col space-y-1.5 p-6">
@@ -33,25 +198,19 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium mb-2">Buscar Cliente *</label>
-                            <div class="flex gap-2">
-                                <input type="text" 
-                                       id="customer-search" 
-                                       class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                                       placeholder="Digite nome, telefone ou email..."
-                                       autocomplete="off">
-                                <button type="button" 
-                                        id="btn-new-customer" 
-                                        class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" id="customer-search" class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Digite nome, telefone ou email..." autocomplete="off">
+                                <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
                                     Novo
                                 </button>
                             </div>
                             <div id="customer-results" class="mt-2 hidden max-h-60 overflow-y-auto border rounded-md bg-background"></div>
                             <input type="hidden" id="customer-id" name="customer_id" required>
                             <div id="selected-customer" class="mt-3 hidden p-3 bg-muted rounded-md">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-semibold" id="selected-customer-name"></p>
-                                        <p class="text-sm text-muted-foreground" id="selected-customer-info"></p>
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="font-semibold truncate" id="selected-customer-name"></p>
+                                        <p class="text-sm text-muted-foreground truncate" id="selected-customer-info"></p>
                                     </div>
                                     <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
@@ -75,27 +234,18 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium mb-2">Buscar Produto</label>
-                            <input type="text" 
-                                   id="product-search" 
-                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                                   placeholder="Digite o nome do produto..."
-                                   autocomplete="off">
+                            <input type="text" id="product-search" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Digite o nome do produto..." autocomplete="off">
                             <div id="product-results" class="mt-2 hidden max-h-60 overflow-y-auto border rounded-md bg-background"></div>
                         </div>
-                        
+
                         <div class="mt-4">
                             <h4 class="text-sm font-medium mb-2">Produtos Frequentes</h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 max-h-60 overflow-y-auto">
                                 @foreach($products as $product)
                                     @php
                                         $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
                                         $hasVariants = $variantsActive->count() > 0;
-                                        
-                                        // Preços serão atualizados via JavaScript quando cliente for selecionado
-                                        // Por padrão, mostrar preço normal
                                         $displayPrice = $hasVariants ? $variantsActive->first()->price : $product->price;
-                                        
-                                        // Preparar variantes com preços
                                         $variantsData = $variantsActive->map(function($v) {
                                             return [
                                                 'id' => $v->id,
@@ -104,14 +254,8 @@
                                             ];
                                         })->toArray();
                                     @endphp
-                                    <button type="button" 
-                                            class="product-quick-add p-3 text-left border rounded-md hover:bg-accent transition-colors"
-                                            data-product-id="{{ $product->id }}"
-                                            data-product-name="{{ $product->name }}"
-                                            data-product-price="{{ $displayPrice }}"
-                                            data-has-variants="{{ $hasVariants ? 'true' : 'false' }}"
-                                            data-variants="{{ json_encode($variantsData) }}">
-                                        <p class="font-medium text-sm">{{ $product->name }}</p>
+                                    <button type="button" class="product-quick-add p-3 text-left border rounded-md hover:bg-accent transition-colors" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}">
+                                        <p class="font-medium text-sm truncate">{{ $product->name }}</p>
                                         @if($hasVariants)
                                             <p class="text-xs text-muted-foreground product-price-display">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
                                             <p class="text-xs text-blue-600 mt-1">Escolher opção</p>
@@ -126,141 +270,12 @@
                 </div>
             </div>
         </div>
-
-        <!-- Coluna Direita: Itens do Pedido e Resumo -->
-        <div class="space-y-6">
-            <!-- Itens do Pedido -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Itens do Pedido</h3>
-                </div>
-                <div class="p-6 pt-0">
-                    <div id="pdv-items-list" class="space-y-2 max-h-96 overflow-y-auto">
-                        <p class="text-sm text-muted-foreground text-center py-8">Nenhum item adicionado</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resumo -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Resumo</h3>
-                </div>
-                <div class="p-6 pt-0">
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Subtotal:</span>
-                            <span id="summary-subtotal">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-sm items-center">
-                            <span class="text-muted-foreground">Taxa de Entrega:</span>
-                            <div class="flex items-center gap-2">
-                                <input type="number" 
-                                       id="delivery-fee-input" 
-                                       step="0.01" 
-                                       min="0" 
-                                       value="0" 
-                                       class="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm">
-                                <span id="summary-delivery">R$ 0,00</span>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <label class="block text-xs font-medium mb-1">Calcular por CEP</label>
-                            <div class="flex gap-2">
-                                <input type="text" 
-                                       id="destination-cep" 
-                                       class="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs" 
-                                       placeholder="00000-000"
-                                       maxlength="10">
-                                <button type="button" 
-                                        id="btn-calculate-fee" 
-                                        class="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3"
-                                        title="Calcular taxa de entrega">
-                                    Calcular
-                                </button>
-                            </div>
-                            <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
-                        </div>
-                        <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
-                            <span>Desconto:</span>
-                            <span id="summary-discount">- R$ 0,00</span>
-                        </div>
-                        <div class="border-t pt-2 flex justify-between font-semibold">
-                            <span>Total:</span>
-                            <span id="summary-total" class="text-orange-600">R$ 0,00</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
-                            <div class="flex gap-2">
-                                <input type="text" 
-                                       id="coupon-code" 
-                                       class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                                       placeholder="Código do cupom">
-                                <button type="button" 
-                                        id="btn-apply-coupon" 
-                                        class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
-                                    Aplicar
-                                </button>
-                            </div>
-                            <div id="coupon-info" class="mt-2 hidden p-2 bg-muted rounded-md text-sm"></div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
-                            <select id="delivery-type" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                <option value="delivery">Entrega</option>
-                                <option value="pickup">Retirada</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Observações</label>
-                            <textarea id="order-notes" 
-                                      rows="3" 
-                                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                                      placeholder="Observações do pedido..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-3 mt-6">
-                        <button type="button" 
-                                id="btn-send-order" 
-                                class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled>
-                            Enviar Pedido
-                        </button>
-                        <button type="button" 
-                                id="btn-finalize-order" 
-                                class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled>
-                            Finalizar Pedido
-                        </button>
-                    </div>
-                    
-                    <!-- Botão para adicionar mais itens -->
-                    <div class="mt-4 pt-4 border-t">
-                        <button type="button" 
-                                id="btn-add-more-items" 
-                                class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
-                                <path d="M5 12h14"></path>
-                                <path d="M12 5v14"></path>
-                            </svg>
-                            Adicionar Mais Itens
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
 <!-- Modal: Novo Cliente -->
 <div id="new-customer-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-    <div class="bg-card rounded-lg shadow-lg w-full max-w-md mx-4 border">
+    <div class="bg-card rounded-lg shadow-lg w-full max-w-2xl mx-4 border max-h-[90vh] overflow-y-auto">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">Novo Cliente</h3>
@@ -296,6 +311,45 @@
                             <span class="text-sm font-medium">Cliente de Revenda/Restaurante</span>
                         </label>
                         <p class="text-xs text-muted-foreground mt-1 ml-6">Marque esta opção se o cliente é revenda, restaurante ou similar. Eles terão acesso a preços diferenciados.</p>
+                    </div>
+                    
+                    <!-- Endereço de Entrega -->
+                    <div class="pt-4 border-t">
+                        <h4 class="text-sm font-semibold mb-3">Endereço de Entrega (Opcional)</h4>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">CEP</label>
+                                    <input type="text" id="new-customer-zip-code" maxlength="9" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="00000-000">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Estado</label>
+                                    <input type="text" id="new-customer-state" maxlength="2" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="BA">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Rua</label>
+                                <input type="text" id="new-customer-street" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Nome da rua">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Número</label>
+                                    <input type="text" id="new-customer-number" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="123">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Complemento</label>
+                                    <input type="text" id="new-customer-complement" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Apto, Bloco, etc">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Bairro</label>
+                                <input type="text" id="new-customer-neighborhood" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Nome do bairro">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Cidade</label>
+                                <input type="text" id="new-customer-city" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Nome da cidade">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="flex gap-3 mt-6">
@@ -488,7 +542,7 @@ document.addEventListener('click', function(e) {
         // Preencher CEP automaticamente se cliente tiver
         if (customerZip) {
             const cepField = document.getElementById('destination-cep');
-            if (cepField && !cepField.value) {
+            if (cepField) {
                 const cep = String(customerZip).replace(/\D/g, '');
                 if (cep.length === 8) {
                     cepField.value = cep.substring(0, 5) + '-' + cep.substring(5);
@@ -496,6 +550,38 @@ document.addEventListener('click', function(e) {
                     cepField.value = customerZip;
                 }
             }
+        }
+        
+        // Buscar endereço completo do cliente (da tabela addresses) se disponível
+        if (customerId) {
+            fetch(`{{ route('api.pdv.customers.search') }}?q=${encodeURIComponent(customerName)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.customers && data.customers.length > 0) {
+                        const customer = data.customers.find(c => c.id == customerId);
+                        if (customer && customer.address_id) {
+                            // Cliente tem endereço na tabela addresses
+                            pdvState.customer.address_id = customer.address_id;
+                            // Se não tinha endereço completo antes, usar o da tabela
+                            if (!pdvState.customer.address && customer.address) {
+                                pdvState.customer.address = customer.address;
+                            }
+                            if (!pdvState.customer.neighborhood && customer.neighborhood) {
+                                pdvState.customer.neighborhood = customer.neighborhood;
+                            }
+                            if (!pdvState.customer.city && customer.city) {
+                                pdvState.customer.city = customer.city;
+                            }
+                            if (!pdvState.customer.state && customer.state) {
+                                pdvState.customer.state = customer.state;
+                            }
+                            if (!pdvState.customer.zip_code && customer.zip_code) {
+                                pdvState.customer.zip_code = customer.zip_code;
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error('Erro ao buscar endereço do cliente:', err));
         }
         
         // Se cliente possui taxa fixa personalizada, aplicar
@@ -905,16 +991,28 @@ function renderItems() {
 function updateSummary() {
     const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
-    const discount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
-    const total = Math.max(0, subtotal + deliveryFee - discount);
+    
+    // Desconto do cupom
+    const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
+    
+    // Desconto manual (fixo e porcentagem)
+    const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
+    const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
+    const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
+    
+    // Total de desconto (cupom + manual fixo + manual porcentagem)
+    const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
+    
+    // Calcular total final
+    const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
     
     document.getElementById('summary-subtotal').textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
     document.getElementById('summary-delivery').textContent = 'R$ ' + deliveryFee.toFixed(2).replace('.', ',');
     document.getElementById('summary-total').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
     
-    if (discount > 0) {
+    if (totalDiscount > 0) {
         document.getElementById('discount-row').classList.remove('hidden');
-        document.getElementById('summary-discount').textContent = '- R$ ' + discount.toFixed(2).replace('.', ',');
+        document.getElementById('summary-discount').textContent = '- R$ ' + totalDiscount.toFixed(2).replace('.', ',');
     } else {
         document.getElementById('discount-row').classList.add('hidden');
     }
@@ -922,6 +1020,10 @@ function updateSummary() {
 
 // Atualizar taxa de entrega
 document.getElementById('delivery-fee-input')?.addEventListener('input', updateSummary);
+
+// Atualizar resumo quando desconto manual for alterado
+document.getElementById('manual-discount-fixed')?.addEventListener('input', updateSummary);
+document.getElementById('manual-discount-percent')?.addEventListener('input', updateSummary);
 
 // Calcular taxa de entrega por CEP
 document.getElementById('btn-calculate-fee')?.addEventListener('click', function() {
@@ -1058,6 +1160,7 @@ function updateFinalizeButtons() {
     
     document.getElementById('btn-finalize-order').disabled = !enabled;
     document.getElementById('btn-send-order').disabled = !enabled;
+    document.getElementById('btn-create-paid-order').disabled = !enabled;
 }
 
 // Enviar pedido (cria e envia link ao cliente)
@@ -1173,7 +1276,11 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
     
     const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
-    const discount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
+    const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
+    const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
+    const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
+    const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
+    const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
     
     const orderData = {
         customer_id: pdvState.customer.id,
@@ -1186,10 +1293,13 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
         delivery_type: pdvState.deliveryType,
         delivery_fee: deliveryFee,
         coupon_code: pdvState.coupon ? pdvState.coupon.code : null,
-        discount_amount: discount,
+        discount_amount: totalDiscount,
+        manual_discount_fixed: manualDiscountFixed,
+        manual_discount_percent: manualDiscountPercent,
         notes: pdvState.notes,
         send_payment_link: paymentOption === 'send_link',
         payment_method: paymentMethod,
+        address_id: pdvState.customer.address_id || null,
     };
     
     fetch('{{ route("dashboard.pdv.store") }}', {
@@ -1224,6 +1334,95 @@ document.getElementById('btn-cancel-finalize')?.addEventListener('click', () => 
     document.getElementById('finalize-modal').classList.add('hidden');
 });
 
+// Criar pedido já como pago (sem notificar - para migração)
+document.getElementById('btn-create-paid-order')?.addEventListener('click', function() {
+    if (!pdvState.customer || pdvState.items.length === 0) {
+        alert('Preencha cliente e adicione itens ao pedido');
+        return;
+    }
+    
+    if (!confirm('Deseja criar este pedido já como PAGO, sem enviar notificação ao cliente?\n\nEsta ação é para migração de pedidos do sistema antigo.')) {
+        return;
+    }
+    
+    const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
+    const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
+    const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
+    const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
+    const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
+    const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
+    
+    // Buscar CEP do campo de destino ou do cliente
+    const destinationCep = document.getElementById('destination-cep')?.value?.trim() || pdvState.customer.zip_code || '';
+    const cepClean = destinationCep.replace(/\D/g, '');
+    
+    // Preparar dados de endereço se CEP foi fornecido
+    let addressData = null;
+    if (cepClean.length === 8) {
+        addressData = {
+            zip_code: cepClean,
+            street: pdvState.customer.address || '',
+            number: pdvState.customer.number || '',
+            neighborhood: pdvState.customer.neighborhood || '',
+            city: pdvState.customer.city || '',
+            state: pdvState.customer.state || '',
+        };
+    }
+    
+    const orderData = {
+        customer_id: pdvState.customer.id,
+        items: pdvState.items.map(item => ({
+            product_id: item.product_id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+        })),
+        delivery_type: pdvState.deliveryType,
+        delivery_fee: deliveryFee,
+        coupon_code: pdvState.coupon ? pdvState.coupon.code : null,
+        discount_amount: totalDiscount,
+        manual_discount_fixed: manualDiscountFixed,
+        manual_discount_percent: manualDiscountPercent,
+        notes: pdvState.notes,
+        create_as_paid: true, // Flag para criar já como pago
+        skip_notification: true, // Não notificar cliente
+        zip_code: cepClean.length === 8 ? cepClean : null,
+        address: addressData,
+        address_id: pdvState.customer.address_id || null,
+    };
+    
+    this.disabled = true;
+    this.textContent = 'Criando...';
+    
+    fetch('{{ route("dashboard.pdv.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify(orderData),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Pedido criado como pago com sucesso!');
+            // Limpar estado e recarregar página
+            window.location.reload();
+        } else {
+            alert('Erro: ' + (data.message || 'Erro ao criar pedido'));
+            this.disabled = false;
+            this.textContent = 'Criar Pedido Pago (Migração)';
+        }
+    })
+    .catch(err => {
+        console.error('Erro ao criar pedido pago:', err);
+        alert('Erro ao criar pedido pago');
+        this.disabled = false;
+        this.textContent = 'Criar Pedido Pago (Migração)';
+    });
+});
+
 // Modal de novo cliente
 document.getElementById('btn-new-customer')?.addEventListener('click', () => {
     document.getElementById('new-customer-modal').classList.remove('hidden');
@@ -1237,13 +1436,46 @@ document.getElementById('new-customer-form')?.addEventListener('submit', functio
     const email = document.getElementById('new-customer-email').value;
     const isWholesale = document.getElementById('new-customer-is-wholesale').checked;
     
+    // Coletar dados de endereço
+    const zipCode = document.getElementById('new-customer-zip-code').value.trim();
+    const street = document.getElementById('new-customer-street').value.trim();
+    const number = document.getElementById('new-customer-number').value.trim();
+    const complement = document.getElementById('new-customer-complement').value.trim();
+    const neighborhood = document.getElementById('new-customer-neighborhood').value.trim();
+    const city = document.getElementById('new-customer-city').value.trim();
+    const state = document.getElementById('new-customer-state').value.trim().toUpperCase();
+    
+    // Preparar dados do endereço (só enviar se houver pelo menos CEP ou rua)
+    const addressData = {};
+    if (zipCode || street) {
+        if (zipCode) addressData.zip_code = zipCode.replace(/\D/g, '');
+        if (street) addressData.street = street;
+        if (number) addressData.number = number;
+        if (complement) addressData.complement = complement;
+        if (neighborhood) addressData.neighborhood = neighborhood;
+        if (city) addressData.city = city;
+        if (state) addressData.state = state;
+    }
+    
+    const requestData = { 
+        name, 
+        phone, 
+        email, 
+        is_wholesale: isWholesale 
+    };
+    
+    // Adicionar endereço se houver dados
+    if (Object.keys(addressData).length > 0) {
+        requestData.address = addressData;
+    }
+    
     fetch('{{ route("api.pdv.customers.store") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
         },
-        body: JSON.stringify({ name, phone, email, is_wholesale: isWholesale }),
+        body: JSON.stringify(requestData),
     })
     .then(res => res.json())
     .then(data => {
@@ -1318,6 +1550,221 @@ document.getElementById('btn-add-more-items')?.addEventListener('click', functio
         }, 300);
     }
 });
+
+// Buscar pedido para confirmação de pagamento
+let currentOrderId = null;
+
+document.getElementById('btn-search-order')?.addEventListener('click', function() {
+    const orderNumber = document.getElementById('order-number-search').value.trim();
+    
+    if (!orderNumber) {
+        alert('Digite o número do pedido');
+        return;
+    }
+    
+    this.disabled = true;
+    this.textContent = 'Buscando...';
+    
+    fetch('{{ route("dashboard.pdv.searchOrder") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({ order_number: orderNumber }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        this.disabled = false;
+        this.textContent = 'Buscar';
+        
+        if (data.success) {
+            currentOrderId = data.order.id;
+            const order = data.order;
+            
+            document.getElementById('order-info').innerHTML = `
+                <div class="space-y-2">
+                    <p><strong>Pedido:</strong> #${order.order_number}</p>
+                    <p><strong>Cliente:</strong> ${order.customer_name}</p>
+                    <p><strong>Telefone:</strong> ${order.customer_phone}</p>
+                    <p><strong>Valor:</strong> R$ ${parseFloat(order.final_amount).toFixed(2).replace('.', ',')}</p>
+                    <p><strong>Status:</strong> ${order.status}</p>
+                    <p><strong>Pagamento:</strong> ${order.payment_status}</p>
+                    <p><strong>Criado em:</strong> ${order.created_at}</p>
+                </div>
+            `;
+            
+            document.getElementById('order-search-result').classList.remove('hidden');
+            
+            // Habilitar botão de confirmar se ainda não estiver pago
+            const btnConfirm = document.getElementById('btn-confirm-payment-silent');
+            if (order.payment_status === 'paid') {
+                btnConfirm.disabled = true;
+                btnConfirm.textContent = 'Pagamento já confirmado';
+                btnConfirm.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btnConfirm.disabled = false;
+                btnConfirm.textContent = 'Confirmar Pagamento (Sem Notificar)';
+                btnConfirm.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        } else {
+            alert(data.message || 'Pedido não encontrado');
+            document.getElementById('order-search-result').classList.add('hidden');
+        }
+    })
+    .catch(err => {
+        console.error('Erro ao buscar pedido:', err);
+        alert('Erro ao buscar pedido');
+        this.disabled = false;
+        this.textContent = 'Buscar';
+    });
+});
+
+// Confirmar pagamento sem notificar
+document.getElementById('btn-confirm-payment-silent')?.addEventListener('click', function() {
+    if (!currentOrderId) {
+        alert('Busque um pedido primeiro');
+        return;
+    }
+    
+    if (!confirm('Deseja confirmar o pagamento deste pedido SEM enviar notificação ao cliente?\n\nEsta ação é para pedidos migrados entre plataformas.')) {
+        return;
+    }
+    
+    this.disabled = true;
+    const originalText = this.textContent;
+    this.textContent = 'Confirmando...';
+    
+    fetch(`/dashboard/pdv/orders/${currentOrderId}/confirm-payment-silent`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Pagamento confirmado com sucesso!');
+            // Recarregar informações do pedido
+            document.getElementById('btn-search-order').click();
+        } else {
+            alert('Erro: ' + (data.message || 'Erro ao confirmar pagamento'));
+            this.disabled = false;
+            this.textContent = originalText;
+        }
+    })
+    .catch(err => {
+        console.error('Erro ao confirmar pagamento:', err);
+        alert('Erro ao confirmar pagamento');
+        this.disabled = false;
+        this.textContent = originalText;
+    });
+});
+
+// Permitir buscar ao pressionar Enter
+document.getElementById('order-number-search')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('btn-search-order').click();
+    }
+});
+
+// Máscara e busca automática de CEP no formulário de novo cliente
+const zipCodeInput = document.getElementById('new-customer-zip-code');
+if (zipCodeInput) {
+    let cepTimeout = null;
+    
+    // Função para buscar endereço via ViaCEP
+    async function buscarEnderecoPorCep(cep) {
+        const cepDigits = cep.replace(/\D/g, '');
+        
+        if (cepDigits.length !== 8) {
+            return;
+        }
+        
+        // Verificar se os campos de endereço já estão preenchidos
+        const streetInput = document.getElementById('new-customer-street');
+        const hasAddress = streetInput && streetInput.value.trim().length > 0;
+        
+        // Se já tem endereço, não buscar novamente
+        if (hasAddress) {
+            return;
+        }
+        
+        // Mostrar feedback visual
+        zipCodeInput.disabled = true;
+        zipCodeInput.style.opacity = '0.6';
+        
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+            const data = await response.json();
+            
+            if (data.erro) {
+                // CEP não encontrado - não mostrar alerta, apenas deixar o usuário preencher manualmente
+                console.log('CEP não encontrado:', cepDigits);
+            } else {
+                // Preencher campos automaticamente
+                if (streetInput && data.logradouro) {
+                    streetInput.value = data.logradouro;
+                }
+                const neighborhoodInput = document.getElementById('new-customer-neighborhood');
+                if (neighborhoodInput && data.bairro) {
+                    neighborhoodInput.value = data.bairro;
+                }
+                const cityInput = document.getElementById('new-customer-city');
+                if (cityInput && data.localidade) {
+                    cityInput.value = data.localidade;
+                }
+                const stateInput = document.getElementById('new-customer-state');
+                if (stateInput && data.uf) {
+                    stateInput.value = data.uf.toUpperCase();
+                }
+                
+                // Feedback visual de sucesso
+                zipCodeInput.style.borderColor = '#10b981';
+                setTimeout(() => {
+                    zipCodeInput.style.borderColor = '';
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+        } finally {
+            zipCodeInput.disabled = false;
+            zipCodeInput.style.opacity = '1';
+        }
+    }
+    
+    // Aplicar máscara e buscar automaticamente quando CEP for completo
+    zipCodeInput.addEventListener('input', function(e) {
+        // Aplicar máscara
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 5) {
+            value = value.substring(0, 5) + '-' + value.substring(5, 8);
+        }
+        e.target.value = value;
+        
+        // Limpar timeout anterior
+        if (cepTimeout) {
+            clearTimeout(cepTimeout);
+        }
+        
+        // Buscar endereço após 800ms de inatividade (quando usuário parar de digitar)
+        const cepDigits = value.replace(/\D/g, '');
+        if (cepDigits.length === 8) {
+            cepTimeout = setTimeout(() => {
+                buscarEnderecoPorCep(value);
+            }, 800);
+        }
+    });
+    
+    // Também buscar quando o campo perder o foco (blur)
+    zipCodeInput.addEventListener('blur', function() {
+        const cep = this.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            buscarEnderecoPorCep(this.value);
+        }
+    });
+}
 </script>
 @endpush
 @endsection

@@ -131,15 +131,38 @@
                     <div class="flex justify-between items-start mb-1">
                         <span class="font-medium text-sm">
                             {{ $item->quantity }}x 
-                            @if(!$item->product_id && $item->custom_name)
-                                Item Avulso - {{ $item->custom_name }}
-                            @elseif($item->custom_name)
-                                {{ $item->custom_name }}
-                            @elseif($item->product)
-                                {{ $item->product->name }}
-                            @else
-                                Produto
-                            @endif
+                            @php
+                                $itemName = null;
+                                if(!$item->product_id && $item->custom_name) {
+                                    $itemName = 'Item Avulso - ' . $item->custom_name;
+                                } elseif($item->custom_name) {
+                                    $itemName = $item->custom_name;
+                                } elseif($item->product) {
+                                    $itemName = $item->product->name;
+                                } else {
+                                    $itemName = 'Produto';
+                                }
+                                
+                                $variantName = null;
+                                $weight = null;
+                                
+                                if ($item->variant_id && $item->variant) {
+                                    $variantName = $item->variant->name;
+                                    $weight = $item->variant->weight_grams;
+                                } elseif ($item->product) {
+                                    $weight = $item->product->weight_grams;
+                                }
+                                
+                                // Montar nome completo: Nome + Variante (se houver) + Peso (se houver)
+                                $displayName = $itemName;
+                                if ($variantName) {
+                                    $displayName .= ' (' . $variantName . ')';
+                                }
+                                if ($weight) {
+                                    $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+                                }
+                            @endphp
+                            {{ $displayName }}
                         </span>
                         <span class="font-semibold text-sm">R$ {{ number_format($item->total_price, 2, ',', '.') }}</span>
                     </div>

@@ -13,6 +13,7 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'variant_id',
         'custom_name',
         'quantity',
         'unit_price',
@@ -49,6 +50,14 @@ class OrderItem extends Model
                 'id' => null,
             ];
         });
+    }
+
+    /**
+     * Relacionamento com variante
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
 
     /**

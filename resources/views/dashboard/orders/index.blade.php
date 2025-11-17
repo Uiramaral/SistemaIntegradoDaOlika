@@ -9,8 +9,8 @@
             <h1 class="text-3xl font-bold tracking-tight">Pedidos</h1>
             <p class="text-muted-foreground">Gerencie todos os pedidos do restaurante</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('dashboard.orders.printerMonitor') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+        <div class="dashboard-actions">
+            <a href="{{ route('dashboard.orders.printerMonitor') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 w-full sm:w-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
@@ -18,7 +18,7 @@
                 </svg>
                 Monitor de Impressão
             </a>
-            <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+            <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2 w-full sm:w-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
                     <path d="M5 12h14"></path>
                     <path d="M12 5v14"></path>
@@ -37,15 +37,27 @@
                     </svg>
                     <input type="search" name="q" value="{{ request('q') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-10" placeholder="Buscar por cliente, número do pedido...">
                 </div>
-                @if(request('q'))
-                    <a href="{{ route('dashboard.orders.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Limpar</a>
-                @endif
+                <div class="flex gap-2">
+                    <select name="status" onchange="this.form.submit()" class="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="active" {{ request('status', 'active') === 'active' ? 'selected' : '' }}>Ativos (Confirmados + Aguardando)</option>
+                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Aguardando Pagamento</option>
+                        <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmados</option>
+                        <option value="preparing" {{ request('status') === 'preparing' ? 'selected' : '' }}>Em Preparo</option>
+                        <option value="ready" {{ request('status') === 'ready' ? 'selected' : '' }}>Prontos</option>
+                        <option value="delivered" {{ request('status') === 'delivered' ? 'selected' : '' }}>Entregues</option>
+                        <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelados</option>
+                        <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>Todos</option>
+                    </select>
+                    @if(request('q') || request('status') !== 'active')
+                        <a href="{{ route('dashboard.orders.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Limpar</a>
+                    @endif
+                </div>
             </form>
         </div>
         <div class="p-6 pt-0">
             <div class="overflow-x-auto">
                 <div class="relative w-full overflow-auto">
-                    <table class="w-full caption-bottom text-sm">
+                    <table class="w-full caption-bottom text-sm" data-mobile-card="true">
                         <thead class="[&_tr]:border-b">
                             <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
                                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">#</th>
@@ -57,7 +69,7 @@
                                 <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Ações</th>
                             </tr>
                         </thead>
-                        <tbody class="[&_tr:last-child]:border-0">
+                        <tbody class="[&_tr:last-child]:border-0" id="orders-tbody">
                             @php
                                 $orders = $orders ?? collect();
                             @endphp
@@ -98,7 +110,7 @@
                                 @endphp
                                 <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">{{ $order->order_number }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell">
                                         <div>
                                             <div class="font-medium">{{ $order->customer->name ?? 'Cliente não informado' }}</div>
                                             @if($order->customer && $order->customer->phone)
@@ -124,16 +136,16 @@
                                         {{ $diff }}
                                         <div class="text-xs">{{ $order->created_at->format('d/m/Y H:i') }}</div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
-                                        <div class="flex gap-2 justify-end">
-                                            <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal" data-order-id="{{ $order->id }}">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                        <div class="flex gap-2 justify-end mobile-actions">
+                                            <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3 w-full sm:w-auto" title="Imprimir Recibo Fiscal" data-order-id="{{ $order->id }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                                                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                                                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
                                                     <rect x="6" y="14" width="12" height="8"></rect>
                                                 </svg>
                                             </button>
-                                            <a href="{{ route('dashboard.orders.show', $order->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver detalhes</a>
+                                            <a href="{{ route('dashboard.orders.show', $order->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full sm:w-auto text-center">Ver detalhes</a>
                                         </div>
                                     </td>
                                 </tr>
@@ -389,6 +401,8 @@
                         }, 2000);
                     }, index * 100);
                 });
+
+                document.dispatchEvent(new Event('dashboard:table-refresh'));
             }
         } catch (error) {
             console.error('Erro ao buscar novos pedidos:', error);
@@ -696,12 +710,19 @@
     // Botões de impressão direta (inicialização e após atualizações dinâmicas)
     document.addEventListener('DOMContentLoaded', function() {
         setupPrintButtons();
+        if (window.applyTableMobileLabels) {
+            window.applyTableMobileLabels();
+        }
         
         // Observar mudanças na tabela para reconectar botões após atualizações dinâmicas
         const tableBody = document.querySelector('#orders-tbody');
         if (tableBody) {
             const observer = new MutationObserver(function(mutations) {
                 setupPrintButtons();
+                const table = tableBody.closest('table');
+                if (table && window.applyTableMobileLabels) {
+                    window.applyTableMobileLabels(table);
+                }
             });
             
             observer.observe(tableBody, {

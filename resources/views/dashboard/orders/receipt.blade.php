@@ -19,6 +19,71 @@
             background: #f5f5f5;
             padding: 20px;
         }
+
+        .toolbar-wrapper {
+            max-width: 600px;
+            margin: 0 auto 16px;
+        }
+
+        .receipt-toolbar {
+            position: sticky;
+            top: 12px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(234, 88, 12, 0.18);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 8px 18px rgba(234, 88, 12, 0.08);
+            backdrop-filter: blur(6px);
+        }
+
+        .receipt-toolbar .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar-button.primary {
+            background: #ea580c;
+            color: #fff;
+            border-color: #ea580c;
+        }
+
+        .toolbar-button.primary:hover {
+            background: #c2410c;
+            border-color: #c2410c;
+        }
+
+        .toolbar-button.secondary {
+            background: #fff;
+            color: #ea580c;
+            border-color: rgba(234, 88, 12, 0.4);
+        }
+
+        .toolbar-button.secondary:hover {
+            background: rgba(234, 88, 12, 0.08);
+        }
+
+        .toolbar-button svg {
+            width: 16px;
+            height: 16px;
+        }
         
         .receipt-container {
             max-width: 600px;
@@ -260,6 +325,25 @@
     </style>
 </head>
 <body>
+    <div class="toolbar-wrapper">
+        <div class="receipt-toolbar">
+            <button type="button" class="toolbar-button secondary" onclick="handleBack()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Voltar
+            </button>
+            <div class="toolbar-buttons">
+                <button type="button" class="toolbar-button secondary" onclick="handleClose()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    Fechar
+                </button>
+                <button type="button" class="toolbar-button primary" onclick="window.print()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M10 18h4"/></svg>
+                    Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="receipt-container">
         <!-- Cabeçalho -->
         <div class="receipt-header">
@@ -389,15 +473,38 @@
                         <tr>
                             <td>
                                 <div class="item-name">
-                                    @if(!$item->product_id && $item->custom_name)
-                                        Item Avulso - {{ $item->custom_name }}
-                                    @elseif($item->custom_name)
-                                        {{ $item->custom_name }}
-                                    @elseif($item->product)
-                                        {{ $item->product->name }}
-                                    @else
-                                        Produto
-                                    @endif
+                                    @php
+                                        $itemName = null;
+                                        if(!$item->product_id && $item->custom_name) {
+                                            $itemName = 'Item Avulso - ' . $item->custom_name;
+                                        } elseif($item->custom_name) {
+                                            $itemName = $item->custom_name;
+                                        } elseif($item->product) {
+                                            $itemName = $item->product->name;
+                                        } else {
+                                            $itemName = 'Produto';
+                                        }
+                                        
+                                        $variantName = null;
+                                        $weight = null;
+                                        
+                                        if ($item->variant_id && $item->variant) {
+                                            $variantName = $item->variant->name;
+                                            $weight = $item->variant->weight_grams;
+                                        } elseif ($item->product) {
+                                            $weight = $item->product->weight_grams;
+                                        }
+                                        
+                                        // Montar nome completo: Nome + Variante (se houver) + Peso (se houver)
+                                        $displayName = $itemName;
+                                        if ($variantName) {
+                                            $displayName .= ' (' . $variantName . ')';
+                                        }
+                                        if ($weight) {
+                                            $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+                                        }
+                                    @endphp
+                                    {{ $displayName }}
                                 </div>
                                 @if($item->special_instructions)
                                 <div class="item-details">Obs: {{ $item->special_instructions }}</div>
@@ -555,6 +662,27 @@
         </div>
     </div>
 </body>
+<script>
+    function handleBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            handleClose();
+        }
+    }
+
+    function handleClose() {
+        try {
+            window.close();
+        } catch (error) {
+            // Ignorar
+        }
+
+        if (!window.closed) {
+            window.history.back();
+        }
+    }
+</script>
 </html>
 
 

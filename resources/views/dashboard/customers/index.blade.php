@@ -9,10 +9,10 @@
             <h1 class="text-3xl font-bold tracking-tight">Clientes</h1>
             <p class="text-muted-foreground">Gerencie sua base de clientes</p>
         </div>
-        <div class="flex gap-2">
-            <form method="POST" action="{{ route('dashboard.customers.updateStats') }}" class="inline" onsubmit="return confirm('Deseja atualizar as estatísticas de TODOS os clientes? (total_orders, total_spent, last_order_at, loyalty_balance)');">
+        <div class="dashboard-actions">
+            <form method="POST" action="{{ route('dashboard.customers.updateStats') }}" class="inline w-full sm:w-auto" onsubmit="return confirm('Deseja atualizar as estatísticas de TODOS os clientes? (total_orders, total_spent, last_order_at, loyalty_balance)');">
                 @csrf
-                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-2">
+                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-2 w-full sm:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw h-4 w-4">
                         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
                         <path d="M21 3v5h-5"></path>
@@ -22,7 +22,7 @@
                     Atualizar Estatísticas
                 </button>
             </form>
-            <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+            <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2 w-full sm:w-auto text-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
                     <path d="M5 12h14"></path>
                     <path d="M12 5v14"></path>
@@ -47,7 +47,7 @@
         <div class="p-6 pt-0">
             <div class="overflow-x-auto">
                 <div class="relative w-full overflow-auto">
-                    <table class="w-full caption-bottom text-sm">
+                    <table class="w-full caption-bottom text-sm" data-mobile-card="true">
                         <thead class="[&_tr]:border-b">
                             <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
                                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Cliente</th>
@@ -100,7 +100,7 @@
                                     </td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-medium">{{ $customer->total_orders ?? 0 }}</td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-semibold">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell">
                                         @php
                                             $debtsBalance = (float)($customer->total_debts ?? 0);
                                         @endphp
@@ -111,7 +111,9 @@
                                         @endif
                                     </td>
                                     <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
-                                        <a href="{{ route('dashboard.customers.show', $customer->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver perfil</a>
+                                        <div class="mobile-actions">
+                                            <a href="{{ route('dashboard.customers.show', $customer->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full sm:w-auto text-center">Ver perfil</a>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

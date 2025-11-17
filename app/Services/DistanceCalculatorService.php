@@ -8,6 +8,22 @@ use Illuminate\Support\Facades\DB;
 
 class DistanceCalculatorService
 {
+    protected ?array $lastError = null;
+
+    protected function setLastError(string $code, ?string $message = null, array $meta = []): void
+    {
+        $this->lastError = [
+            'code' => $code,
+            'message' => $message,
+            'meta' => $meta,
+        ];
+    }
+
+    public function getLastError(): ?array
+    {
+        return $this->lastError;
+    }
+
     /**
      * Calcula distância usando Google Maps Distance Matrix API
      * Fallback para cálculo aproximado se API não disponível
@@ -15,10 +31,13 @@ class DistanceCalculatorService
     public function calculateDistanceByCep(string $cep1, string $cep2): ?float
     {
         try {
+            $this->lastError = null;
+
             $cep1 = preg_replace('/\D/', '', $cep1);
             $cep2 = preg_replace('/\D/', '', $cep2);
             
             if (strlen($cep1) !== 8 || strlen($cep2) !== 8) {
+                $this->setLastError('invalid_zip_format', 'CEP inválido');
                 return null;
             }
 
@@ -36,6 +55,7 @@ class DistanceCalculatorService
                 $distance = $this->calculateWithGoogleMaps($cep1, $cep2, $apiKey);
                 // Aceitar distância >= 0 (0 significa mesmo local, o que é válido)
                 if ($distance !== null && $distance >= 0) {
+                    $this->lastError = null;
                     Log::info('Distância calculada com sucesso via Google Maps', [
                         'distance_km' => $distance,
                         'cep1' => $cep1,
@@ -50,6 +70,14 @@ class DistanceCalculatorService
                     'cep2' => $cep2,
                     'distance_returned' => $distance,
                 ]);
+
+                if ($this->lastError === null) {
+                    $this->setLastError('distance_matrix_invalid', 'A API do Google Maps não retornou uma distância válida', [
+                        'cep1' => $cep1,
+                        'cep2' => $cep2,
+                        'distance' => $distance,
+                    ]);
+                }
             } else {
                 Log::error('GOOGLE_MAPS_API_KEY não configurada ou vazia', [
                     'cep1' => $cep1,
@@ -57,6 +85,7 @@ class DistanceCalculatorService
                     'api_key_received' => $apiKey !== null,
                     'api_key_empty' => $apiKey === null || trim($apiKey) === '',
                 ]);
+                $this->setLastError('missing_api_key', 'Chave de API do Google Maps ausente ou inválida');
             }
 
             // Fallback: cálculo aproximado baseado na diferença dos CEPs
@@ -66,13 +95,79 @@ class DistanceCalculatorService
                 'cep2' => $cep2,
             ]);
             
-            return $this->calculateApproximateDistance($cep1, $cep2);
+            $approx = $this->calculateApproximateDistance($cep1, $cep2);
+
+            if ($approx === null && $this->lastError === null) {
+                $this->setLastError('distance_calculation_failed', 'Não foi possível calcular a distância com os dados fornecidos', [
+                    'cep1' => $cep1,
+                    'cep2' => $cep2,
+                ]);
+            }
+
+            return $approx;
             
         } catch (\Exception $e) {
             Log::error('Erro ao calcular distância entre CEPs', [
                 'cep1' => $cep1 ?? null,
                 'cep2' => $cep2 ?? null,
                 'error' => $e->getMessage(),
+            ]);
+            $this->setLastError('exception', $e->getMessage(), [
+                'cep1' => $cep1 ?? null,
+                'cep2' => $cep2 ?? null,
+            ]);
+            return null;
+        }
+    }
+
+    public function calculateDistanceByAddressComponents(string $storeCep, array $destination): ?array
+    {
+        try {
+            $this->lastError = null;
+
+            $storeCepDigits = preg_replace('/\D/', '', $storeCep);
+            if (strlen($storeCepDigits) !== 8) {
+                $this->setLastError('store_zip_invalid', 'CEP da loja inválido');
+                return null;
+            }
+
+            $apiKey = $this->getGoogleMapsApiKey();
+            if (!$apiKey || trim($apiKey) === '') {
+                $this->setLastError('missing_api_key', 'Chave de API do Google Maps ausente ou inválida');
+                return null;
+            }
+
+            $origin = $this->getCoordinatesFromCep($storeCepDigits, $apiKey);
+            if (!$origin) {
+                $this->setLastError('store_geocode_failed', 'Não foi possível localizar o endereço da loja');
+                return null;
+            }
+
+            $destinationCoords = $this->getCoordinatesFromAddress($destination, $apiKey);
+            if (!$destinationCoords) {
+                if ($this->lastError === null) {
+                    $this->setLastError('address_geocode_failed', 'Não foi possível localizar o endereço informado');
+                }
+                return null;
+            }
+
+            $distance = $this->calculateDistanceBetweenCoordinates($origin, $destinationCoords, $apiKey);
+            if ($distance === null) {
+                if ($this->lastError === null) {
+                    $this->setLastError('distance_matrix_invalid', 'A API do Google Maps não retornou uma distância válida');
+                }
+                return null;
+            }
+
+            return [
+                'distance_km' => $distance,
+                'resolved_zip' => $destinationCoords['postal_code'] ?? null,
+                'destination' => $destinationCoords,
+            ];
+        } catch (\Exception $e) {
+            $this->setLastError('address_distance_exception', $e->getMessage(), [
+                'store_cep' => $storeCep ?? null,
+                'destination' => $destination,
             ]);
             return null;
         }
@@ -93,6 +188,12 @@ class DistanceCalculatorService
                     'cep1' => $cep1,
                     'cep2' => $cep2,
                 ]);
+                $this->setLastError('geocode_failed', 'Não foi possível obter coordenadas para o CEP informado', [
+                    'cep1' => $cep1,
+                    'cep2' => $cep2,
+                    'origin_found' => (bool)$origin,
+                    'destination_found' => (bool)$destination,
+                ]);
                 return null;
             }
 
@@ -110,6 +211,10 @@ class DistanceCalculatorService
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+                $this->setLastError('distance_matrix_http_error', 'A API do Google Maps retornou um erro', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
                 return null;
             }
 
@@ -121,6 +226,11 @@ class DistanceCalculatorService
                     'cep1' => $cep1,
                     'cep2' => $cep2,
                 ]);
+                $this->setLastError('distance_matrix_error', 'A API do Google Maps não conseguiu calcular a rota para o CEP informado', [
+                    'status' => $data['status'],
+                    'cep1' => $cep1,
+                    'cep2' => $cep2,
+                ]);
                 return null;
             }
 
@@ -128,6 +238,9 @@ class DistanceCalculatorService
 
             if (!$element || $element['status'] !== 'OK') {
                 Log::warning('Elemento da matriz de distância não OK', [
+                    'element_status' => $element['status'] ?? 'N/A',
+                ]);
+                $this->setLastError('distance_matrix_no_results', 'Não foi possível localizar uma rota para o CEP informado', [
                     'element_status' => $element['status'] ?? 'N/A',
                 ]);
                 return null;
@@ -153,6 +266,9 @@ class DistanceCalculatorService
                     'cep1' => $cep1,
                     'cep2' => $cep2,
                 ]);
+                $this->setLastError('distance_out_of_range', 'A distância calculada excede o limite permitido', [
+                    'distance_km' => $distanceKm,
+                ]);
                 return null; // Retornar null apenas se for claramente inválido (> 1000km)
             }
 
@@ -173,6 +289,146 @@ class DistanceCalculatorService
                 'cep2' => $cep2 ?? null,
                 'error' => $e->getMessage(),
             ]);
+            $this->setLastError('distance_matrix_exception', $e->getMessage(), [
+                'cep1' => $cep1 ?? null,
+                'cep2' => $cep2 ?? null,
+            ]);
+            return null;
+        }
+    }
+
+    private function calculateDistanceBetweenCoordinates(array $origin, array $destination, string $apiKey): ?float
+    {
+        try {
+            $url = 'https://maps.googleapis.com/maps/api/distancematrix/json';
+            $response = Http::get($url, [
+                'origins' => "{$origin['lat']},{$origin['lng']}",
+                'destinations' => "{$destination['lat']},{$destination['lng']}",
+                'key' => $apiKey,
+                'units' => 'metric',
+            ]);
+
+            if (!$response->successful()) {
+                $this->setLastError('distance_matrix_http_error', 'A API do Google Maps retornou um erro', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return null;
+            }
+
+            $data = $response->json();
+            if (($data['status'] ?? null) !== 'OK') {
+                $this->setLastError('distance_matrix_error', 'A API do Google Maps não conseguiu calcular a rota', [
+                    'status' => $data['status'] ?? null,
+                ]);
+                return null;
+            }
+
+            $element = $data['rows'][0]['elements'][0] ?? null;
+            if (!$element || ($element['status'] ?? null) !== 'OK') {
+                $this->setLastError('distance_matrix_no_results', 'Não foi possível localizar uma rota válida', [
+                    'element_status' => $element['status'] ?? 'N/A',
+                ]);
+                return null;
+            }
+
+            $distanceMeters = $element['distance']['value'] ?? 0;
+            $distanceKm = round($distanceMeters / 1000, 2);
+
+            if ($distanceKm > 1000) {
+                $this->setLastError('distance_out_of_range', 'A distância calculada excede o limite permitido', [
+                    'distance_km' => $distanceKm,
+                ]);
+                return null;
+            }
+
+            return $distanceKm;
+        } catch (\Exception $e) {
+            $this->setLastError('distance_matrix_exception', $e->getMessage(), [
+                'origin' => $origin,
+                'destination' => $destination,
+            ]);
+            return null;
+        }
+    }
+
+    private function getCoordinatesFromAddress(array $address, string $apiKey): ?array
+    {
+        try {
+            $parts = [];
+            $street = trim($address['street'] ?? '');
+            $number = trim($address['number'] ?? '');
+            $neighborhood = trim($address['neighborhood'] ?? '');
+            $city = trim($address['city'] ?? '');
+            $state = trim($address['state'] ?? '');
+            $zip = trim($address['zip_code'] ?? '');
+
+            if ($street !== '') {
+                $parts[] = $street . ($number !== '' ? ", {$number}" : '');
+            }
+            if ($neighborhood !== '') {
+                $parts[] = $neighborhood;
+            }
+            if ($city !== '') {
+                $parts[] = $city;
+            }
+            if ($state !== '') {
+                $parts[] = $state;
+            }
+            if ($zip !== '') {
+                $parts[] = $zip;
+            }
+
+            $parts[] = 'Brasil';
+            $addressString = implode(', ', $parts);
+
+            $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
+                'address' => $addressString,
+                'key' => $apiKey,
+            ]);
+
+            if (!$response->successful()) {
+                $this->setLastError('address_geocode_http_error', 'Erro ao consultar endereço na API do Google', [
+                    'status' => $response->status(),
+                ]);
+                return null;
+            }
+
+            $data = $response->json();
+            if (($data['status'] ?? null) !== 'OK' || empty($data['results'])) {
+                $this->setLastError('address_geocode_failed', 'Não encontramos coordenadas para o endereço informado', [
+                    'status' => $data['status'] ?? null,
+                ]);
+                return null;
+            }
+
+            $result = $data['results'][0];
+            $location = $result['geometry']['location'] ?? null;
+            if (!$location) {
+                $this->setLastError('address_geocode_invalid_location', 'A resposta da API não continha coordenadas válidas');
+                return null;
+            }
+
+            $postalCode = null;
+            if (!empty($result['address_components'])) {
+                foreach ($result['address_components'] as $component) {
+                    if (in_array('postal_code', $component['types'], true)) {
+                        $postalCode = $component['long_name'] ?? null;
+                        break;
+                    }
+                }
+            }
+
+            return [
+                'lat' => $location['lat'],
+                'lng' => $location['lng'],
+                'postal_code' => $postalCode,
+                'formatted_address' => $result['formatted_address'] ?? null,
+            ];
+        } catch (\Exception $e) {
+            $this->setLastError('address_geocode_exception', $e->getMessage(), [
+                'address' => $address,
+            ]);
             return null;
         }
     }
@@ -190,18 +446,29 @@ class DistanceCalculatorService
             ]);
 
             if (!$response->successful()) {
+                $this->setLastError('geocode_http_error', 'Erro ao consultar endereço na API do Google', [
+                    'cep' => $cep,
+                    'status' => $response->status(),
+                ]);
                 return null;
             }
 
             $data = $response->json();
 
             if ($data['status'] !== 'OK' || empty($data['results'])) {
+                $this->setLastError('geocode_zero_results', 'Não encontramos uma localização para este CEP', [
+                    'cep' => $cep,
+                    'status' => $data['status'] ?? null,
+                ]);
                 return null;
             }
 
             $location = $data['results'][0]['geometry']['location'] ?? null;
 
             if (!$location) {
+                $this->setLastError('geocode_invalid_location', 'A resposta da API de geocodificação não continha coordenadas válidas', [
+                    'cep' => $cep,
+                ]);
                 return null;
             }
 
@@ -214,6 +481,9 @@ class DistanceCalculatorService
             Log::error('Erro ao obter coordenadas do CEP', [
                 'cep' => $cep,
                 'error' => $e->getMessage(),
+            ]);
+            $this->setLastError('geocode_exception', $e->getMessage(), [
+                'cep' => $cep,
             ]);
             return null;
         }
@@ -241,6 +511,10 @@ class DistanceCalculatorService
         
         // Retornar null ao invés de um valor falso
         // Isso forçará o sistema a retornar erro ou usar uma configuração padrão
+        $this->setLastError('approximation_unavailable', 'Cálculo aproximado desabilitado. Configure a API do Google Maps para calcular o frete com precisão.', [
+            'cep1' => $cep1,
+            'cep2' => $cep2,
+        ]);
         return null;
     }
 

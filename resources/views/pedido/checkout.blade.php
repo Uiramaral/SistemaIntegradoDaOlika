@@ -3,6 +3,18 @@
 @section('title', 'Checkout - Olika')
 
 @section('content')
+@php
+    $initialDeliveryFee = isset($initialDeliveryFee) ? $initialDeliveryFee : ($cartData['delivery_fee'] ?? null);
+    $initialDeliveryFee = $initialDeliveryFee !== null ? (float)$initialDeliveryFee : null;
+
+    $initialBaseDeliveryFee = isset($initialBaseDeliveryFee) ? $initialBaseDeliveryFee : $initialDeliveryFee;
+    $initialBaseDeliveryFee = $initialBaseDeliveryFee !== null ? (float)$initialBaseDeliveryFee : null;
+
+    $initialDeliveryDiscountAmount = isset($initialDeliveryDiscountAmount) ? (float)$initialDeliveryDiscountAmount : 0.0;
+    $initialDeliveryDiscountPercent = isset($initialDeliveryDiscountPercent) ? (float)$initialDeliveryDiscountPercent : 0.0;
+
+    $initialFreteCalculado = $initialDeliveryFee !== null;
+@endphp
 <div class="max-w-6xl mx-auto w-full">
     <h1 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Finalizar Pedido</h1>
 
@@ -16,10 +28,11 @@
         @csrf
         
         <!-- Campos hidden para dados de desconto de frete -->
-        <input type="hidden" name="delivery_fee" id="hidden_delivery_fee" value="0">
-        <input type="hidden" name="base_delivery_fee" id="hidden_base_delivery_fee" value="0">
-        <input type="hidden" name="delivery_discount_percent" id="hidden_delivery_discount_percent" value="0">
-        <input type="hidden" name="delivery_discount_amount" id="hidden_delivery_discount_amount" value="0">
+        <input type="hidden" name="delivery_fee" id="hidden_delivery_fee" value="{{ $initialDeliveryFee !== null ? number_format($initialDeliveryFee, 2, '.', '') : 0 }}">
+        <input type="hidden" name="base_delivery_fee" id="hidden_base_delivery_fee" value="{{ $initialBaseDeliveryFee !== null ? number_format($initialBaseDeliveryFee, 2, '.', '') : 0 }}">
+        <input type="hidden" name="delivery_discount_percent" id="hidden_delivery_discount_percent" value="{{ number_format($initialDeliveryDiscountPercent, 2, '.', '') }}">
+        <input type="hidden" name="delivery_discount_amount" id="hidden_delivery_discount_amount" value="{{ number_format($initialDeliveryDiscountAmount, 2, '.', '') }}">
+        <input type="hidden" name="delivery_fee_locked" id="hidden_delivery_fee_locked" value="{{ $initialFreteCalculado ? 1 : 0 }}">
         
         <!-- Campos hidden para pedido do PDV -->
         @if(isset($order) && $order)
@@ -31,7 +44,7 @@
             <!-- Coluna Esquerda: Formulário -->
             <div class="space-y-4 sm:space-y-6 w-full">
                 <!-- Dados do Cliente -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
+                <div id="addressCard" class="bg-white rounded-lg border p-4 sm:p-6">
                     <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Dados do Cliente</h2>
                     <div class="space-y-4">
                         <div>
@@ -57,7 +70,12 @@
                         <div class="grid grid-cols-3 gap-2 sm:gap-4">
                             <div class="col-span-2">
                                 <label class="block text-sm font-medium mb-2">CEP *</label>
-                                <input type="text" name="zip_code" id="zip_code" maxlength="9" value="{{ old('zip_code', $prefill['zip_code'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="00000-000">
+                                <div class="flex flex-col gap-2">
+                                    <input type="text" name="zip_code" id="zip_code" maxlength="9" value="{{ old('zip_code', $prefill['zip_code'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="00000-000">
+                                    <button type="button" id="zip_code_manual_button" class="hidden w-full border border-dashed border-red-400 text-red-600 rounded-lg px-3 sm:px-4 py-2 text-sm font-medium transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                                        Localizar meu endereço
+                                    </button>
+                                </div>
                                 <p id="cepFeedback" class="text-xs text-gray-500 mt-1"></p>
                             </div>
                             <div>
@@ -247,13 +265,35 @@
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Taxa de Entrega</span>
                             <div id="summaryDeliveryFeeContainer" class="flex flex-col items-end">
-                                <span id="summaryDeliveryFeeOriginal" class="text-gray-400 text-xs line-through hidden"></span>
-                                <span id="summaryDeliveryFee" class="text-gray-500 font-medium text-sm">Informe o CEP</span>
+                                <span id="summaryDeliveryFeeOriginal" class="text-gray-400 text-xs line-through {{ ($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0)) ? '' : 'hidden' }}">
+                                    @if($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0))
+                                        R$ {{ number_format($initialBaseDeliveryFee, 2, ',', '.') }}
+                                    @endif
+                                </span>
+                                <span id="summaryDeliveryFee"
+                                      class="{{ $initialFreteCalculado ? ($initialDeliveryFee > 0 ? 'text-gray-900 font-medium' : 'text-green-700 font-medium') : 'text-gray-500 font-medium text-sm' }}">
+                                    @if($initialFreteCalculado)
+                                        @if($initialDeliveryFee > 0)
+                                            R$ {{ number_format($initialDeliveryFee, 2, ',', '.') }}
+                                        @else
+                                            Grátis
+                                        @endif
+                                    @else
+                                        Informe o CEP
+                                    @endif
+                                </span>
                             </div>
                         </div>
-                        <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-700 hidden">
-                            <span id="summaryDeliveryDiscountLabel">Desconto no frete</span>
-                            <span id="summaryDeliveryDiscount" class="font-medium">- R$ 0,00</span>
+                        <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-700 {{ ($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0)) ? '' : 'hidden' }}">
+                            <span id="summaryDeliveryDiscountLabel">
+                                Desconto no frete
+                                @if($initialDeliveryDiscountPercent > 0)
+                                    ({{ number_format($initialDeliveryDiscountPercent, 2, ',', '.') }}%)
+                                @endif
+                            </span>
+                            <span id="summaryDeliveryDiscount" class="font-medium">
+                                - R$ {{ number_format($initialDeliveryDiscountAmount, 2, ',', '.') }}
+                            </span>
                         </div>
                         <div id="summaryCouponRow" class="flex justify-between text-sm text-green-700 hidden">
                             <span id="summaryCouponLabel">Cupom de desconto</span>
@@ -297,10 +337,497 @@
 <script>
 // Inicializar dados globais
 window.checkoutData = {
-    subtotal: {{ $cartData['subtotal'] ?? 0 }},
-    deliveryFee: 0,
-    freteCalculado: false // Flag para controlar se o frete foi calculado
+    subtotal: {{ isset($cartData['subtotal']) ? round($cartData['subtotal'], 2) : 0 }},
+    deliveryFee: {{ $initialFreteCalculado ? round($initialDeliveryFee, 2) : 'null' }},
+    baseDeliveryFee: {{ $initialFreteCalculado && $initialBaseDeliveryFee !== null ? round($initialBaseDeliveryFee, 2) : 'null' }},
+    deliveryDiscountPercent: {{ $initialFreteCalculado ? round($initialDeliveryDiscountPercent, 2) : 0 }},
+    deliveryDiscountAmount: {{ $initialFreteCalculado ? round($initialDeliveryDiscountAmount, 2) : 0 }},
+    deliveryFeeLocked: {{ $initialFreteCalculado ? 'true' : 'false' }},
+    freteCalculado: {{ $initialFreteCalculado ? 'true' : 'false' }},
+    couponDiscount: 0,
+    cashbackUsed: 0,
+    cashbackEarned: 0,
+    total: {{ isset($cartData['subtotal']) ? round(($cartData['subtotal'] ?? 0) + ($initialDeliveryFee ?? 0) - ($initialDeliveryDiscountAmount ?? 0), 2) : 0 }},
+    allowFinalizeWithoutFrete: false,
+    manualFreteReason: null,
+    lastLookupPhone: null,
+    lastLookupEmail: null,
+    currentCustomerId: null,
+    skipAutoCepLookup: false,
+    autoLookupEnabled: true,
+    skipLookupUntil: 0,
+    manualAddressPending: false,
+    manualLocateInFlight: false,
+    manualOriginalZip: null,
+    manualGeneralizedZip: null
 };
+
+const ADDRESS_FIELD_IDS = ['zip_code', 'number', 'address', 'neighborhood', 'city', 'state'];
+const addressCardElement = document.getElementById('addressCard');
+const zipCodeInput = document.getElementById('zip_code');
+const zipCodeManualButton = document.getElementById('zip_code_manual_button');
+
+let manualLookupDebounceId = null;
+
+function setCepFeedback(message, className = '') {
+    const cepFeedbackEl = document.getElementById('cepFeedback');
+    if (!cepFeedbackEl) {
+        return;
+    }
+
+    if (!message) {
+        cepFeedbackEl.textContent = '';
+        cepFeedbackEl.className = '';
+        return;
+    }
+
+    cepFeedbackEl.textContent = message;
+    cepFeedbackEl.className = className;
+}
+
+function setSummaryDeliveryFeePending() {
+    const deliveryFeeEl = document.getElementById('summaryDeliveryFee');
+    if (deliveryFeeEl) {
+        deliveryFeeEl.textContent = 'Aguardando endereço completo';
+        deliveryFeeEl.className = 'text-sm text-yellow-600 font-medium';
+    }
+
+    const hiddenFee = document.getElementById('hidden_delivery_fee');
+    if (hiddenFee) hiddenFee.value = '0.00';
+    const hiddenBase = document.getElementById('hidden_base_delivery_fee');
+    if (hiddenBase) hiddenBase.value = '0.00';
+    const hiddenDiscountPercent = document.getElementById('hidden_delivery_discount_percent');
+    if (hiddenDiscountPercent) hiddenDiscountPercent.value = '0';
+    const hiddenDiscountAmount = document.getElementById('hidden_delivery_discount_amount');
+    if (hiddenDiscountAmount) hiddenDiscountAmount.value = '0.00';
+    const hiddenLocked = document.getElementById('hidden_delivery_fee_locked');
+    if (hiddenLocked) hiddenLocked.value = 0;
+}
+
+function normalizeZipToDistrict(value) {
+    if (!value) {
+        return null;
+    }
+
+    const digits = String(value).replace(/\D/g, '');
+    if (digits.length >= 8) {
+        return `${digits.substring(0, 5)}000`;
+    }
+
+    if (digits.length >= 5) {
+        return `${digits.substring(0, 5)}000`;
+    }
+
+    return null;
+}
+
+function applyNormalizedZip(normalizedDigits, options = {}) {
+    if (!zipCodeInput || !normalizedDigits || normalizedDigits.length !== 8) {
+        return null;
+    }
+
+    const formatted = `${normalizedDigits.substring(0, 5)}-${normalizedDigits.substring(5)}`;
+    window.checkoutData.skipAutoCepLookup = true;
+    zipCodeInput.value = formatted;
+    if (options.restoreAuto !== false) {
+        setTimeout(() => {
+            window.checkoutData.skipAutoCepLookup = false;
+        }, 0);
+    }
+    window.checkoutData.manualGeneralizedZip = normalizedDigits;
+    return normalizedDigits;
+}
+
+function ensureManualFieldsEditable() {
+    ['address', 'neighborhood', 'city', 'state'].forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.removeAttribute('readonly');
+            field.required = true;
+        }
+    });
+}
+
+function generalizeZipCode(options = {}) {
+    if (!zipCodeInput) {
+        return null;
+    }
+
+    const normalized = options.value
+        ? normalizeZipToDistrict(options.value)
+        : normalizeZipToDistrict(zipCodeInput.value);
+
+    if (!normalized) {
+        return null;
+    }
+
+    applyNormalizedZip(normalized, { restoreAuto: false });
+
+    window.checkoutData.autoLookupEnabled = false;
+    window.checkoutData.skipAutoCepLookup = true;
+    window.checkoutData.skipLookupUntil = Date.now() + 60 * 1000;
+    window.checkoutData.freteCalculado = false;
+    window.checkoutData.deliveryFee = null;
+    window.checkoutData.baseDeliveryFee = null;
+
+    const shouldClearAddress = options.forceClear !== false;
+    if (shouldClearAddress) {
+        ['address', 'neighborhood', 'number'].forEach((fieldId) => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.value = '';
+                field.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+        setAddressErrorState(true, {
+            fields: ['address', 'neighborhood', 'number'],
+            focusFieldId: 'address',
+            placeholderMessage: 'Preencha rua, bairro e número'
+        });
+    }
+
+    setSummaryDeliveryFeePending();
+
+    if (options.ensureEditable) {
+        ensureManualFieldsEditable();
+    }
+
+    if (options.feedbackMessage) {
+        setCepFeedback(options.feedbackMessage, options.feedbackClass || 'text-xs text-yellow-600 mt-1');
+    }
+
+    updateFinalizeButtonState();
+    if (typeof updateOrderSummary === 'function') {
+        updateOrderSummary();
+    }
+
+    return normalized;
+}
+
+function manualFieldsAreComplete() {
+    const requiredFields = ['address', 'neighborhood', 'city', 'state', 'number'];
+    return requiredFields.every((fieldId) => {
+        const field = document.getElementById(fieldId);
+        return field && field.value.trim().length > 0;
+    });
+}
+
+function scheduleManualLookup() {
+    if (!window.checkoutData.manualAddressPending) {
+        return;
+    }
+
+    if (!manualFieldsAreComplete()) {
+        return;
+    }
+
+    if (window.checkoutData.manualLocateInFlight) {
+        return;
+    }
+
+    if (manualLookupDebounceId) {
+        clearTimeout(manualLookupDebounceId);
+    }
+
+    manualLookupDebounceId = setTimeout(() => {
+        if (zipCodeManualButton) {
+            zipCodeManualButton.click();
+        }
+    }, 500);
+}
+
+['address', 'neighborhood', 'city', 'state', 'number'].forEach((fieldId) => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        field.addEventListener('input', () => {
+            clearAddressErrorState();
+            scheduleManualLookup();
+        });
+        field.addEventListener('blur', scheduleManualLookup);
+        field.addEventListener('change', scheduleManualLookup);
+    }
+});
+
+function setAddressErrorState(isError, options = {}) {
+    const { fields, focusFieldId, placeholderMessage } = options || {};
+    const targetFields = Array.isArray(fields) && fields.length ? fields : ADDRESS_FIELD_IDS;
+
+    if (addressCardElement) {
+        addressCardElement.classList.toggle('border-red-500', isError);
+        addressCardElement.classList.toggle('ring-1', isError);
+        addressCardElement.classList.toggle('ring-red-200', isError);
+    }
+
+    targetFields.forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+            return;
+        }
+
+        if (!field.dataset.originalPlaceholder) {
+            field.dataset.originalPlaceholder = field.getAttribute('placeholder') || '';
+        }
+
+        if (isError) {
+            field.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+            if (placeholderMessage) {
+                field.setAttribute('placeholder', placeholderMessage);
+            }
+        } else {
+            field.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+            field.setAttribute('placeholder', field.dataset.originalPlaceholder);
+        }
+    });
+
+    if (isError && focusFieldId) {
+        const focusField = document.getElementById(focusFieldId);
+        if (focusField) {
+            setTimeout(() => focusField.focus(), 0);
+        }
+    }
+}
+
+function clearAddressErrorState() {
+    setAddressErrorState(false);
+}
+
+function toggleZipCodeManualMode(enable, options = {}) {
+    const { reason, focusZip = false } = options || {};
+    if (!zipCodeInput || !zipCodeManualButton) {
+        return;
+    }
+
+    if (enable) {
+        window.checkoutData.skipAutoCepLookup = true;
+        window.checkoutData.skipLookupUntil = Date.now() + 3000;
+
+        zipCodeInput.dataset.requiredOriginal = zipCodeInput.dataset.requiredOriginal ?? (zipCodeInput.hasAttribute('required') ? 'true' : 'false');
+        zipCodeInput.removeAttribute('required');
+        ['address', 'neighborhood', 'city', 'state'].forEach((fieldId) => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.removeAttribute('readonly');
+            }
+        });
+        zipCodeManualButton.classList.remove('hidden');
+        zipCodeManualButton.disabled = false;
+        zipCodeManualButton.dataset.reason = reason || '';
+        zipCodeManualButton.textContent = reason
+            ? 'Confirmar endereço manualmente'
+            : 'Localizar meu endereço';
+    } else {
+        if (zipCodeInput.dataset.requiredOriginal === 'true') {
+            zipCodeInput.setAttribute('required', 'required');
+        }
+        if (window.checkoutData) {
+            window.checkoutData.skipAutoCepLookup = false;
+            window.checkoutData.skipLookupUntil = Date.now();
+        }
+        zipCodeManualButton.classList.add('hidden');
+        zipCodeManualButton.disabled = true;
+        zipCodeManualButton.dataset.reason = '';
+        zipCodeManualButton.textContent = 'Localizar meu endereço';
+        if (focusZip) {
+            zipCodeInput.focus();
+            zipCodeInput.selectionStart = zipCodeInput.selectionEnd = zipCodeInput.value.length;
+        }
+    }
+}
+
+function applyCustomerPrefill(prefill, options = {}) {
+    if (!prefill) {
+        return;
+    }
+
+    if (window.checkoutData?.manualAddressPending) {
+        return;
+    }
+
+    const force = options.force ?? true;
+    const triggerFrete = options.triggerFrete ?? true;
+    const runSummaryUpdate = options.runSummaryUpdate ?? true;
+
+    const nameInput = document.getElementById('customer_name');
+    if (nameInput && prefill.customer_name) {
+        if (force || !nameInput.value.trim()) {
+            nameInput.value = prefill.customer_name;
+        }
+    }
+
+    const phoneInput = document.getElementById('customer_phone');
+    if (phoneInput && prefill.customer_phone) {
+        if (force || !phoneInput.value.trim()) {
+            phoneInput.value = prefill.customer_phone;
+        }
+    }
+
+    const emailInput = document.getElementById('customer_email');
+    if (emailInput && prefill.customer_email) {
+        if (force || !emailInput.value.trim()) {
+            emailInput.value = prefill.customer_email;
+        }
+    }
+
+    const addressField = document.getElementById('address');
+    if (addressField && prefill.address) {
+        if (force || !addressField.value.trim()) {
+            addressField.value = prefill.address;
+            addressField.removeAttribute('readonly');
+        }
+    }
+
+    const numberField = document.getElementById('number');
+    if (numberField && prefill.number) {
+        const numberOnly = String(prefill.number).replace(/\D/g, '');
+        if (force || !numberField.value.trim()) {
+            numberField.value = numberOnly;
+        }
+    }
+
+    const neighborhoodField = document.getElementById('neighborhood');
+    if (neighborhoodField && prefill.neighborhood) {
+        if (force || !neighborhoodField.value.trim()) {
+            neighborhoodField.value = prefill.neighborhood;
+            neighborhoodField.removeAttribute('readonly');
+        }
+    }
+
+    const cityField = document.getElementById('city');
+    if (cityField && prefill.city) {
+        if (force || !cityField.value.trim()) {
+            cityField.value = prefill.city;
+            cityField.removeAttribute('readonly');
+        }
+    }
+
+    const stateField = document.getElementById('state');
+    if (stateField && prefill.state) {
+        if (force || !stateField.value.trim()) {
+            stateField.value = prefill.state;
+            stateField.removeAttribute('readonly');
+        }
+    }
+
+    let cepFoiAlterado = false;
+    const zipCodeField = document.getElementById('zip_code');
+    if (zipCodeField && prefill.zip_code) {
+        const cepDigits = String(prefill.zip_code).replace(/\D/g, '');
+        if (cepDigits.length === 8) {
+            const formattedCep = `${cepDigits.substring(0, 5)}-${cepDigits.substring(5)}`;
+            if (force || zipCodeField.value.replace(/\D/g, '') !== cepDigits) {
+                zipCodeField.value = formattedCep;
+                cepFoiAlterado = true;
+            }
+        } else if (force || !zipCodeField.value.trim()) {
+            zipCodeField.value = prefill.zip_code;
+            cepFoiAlterado = true;
+        }
+    }
+
+    if (prefill.complement !== undefined) {
+        const complementField = document.getElementById('complement');
+        if (complementField) {
+            if (force || !complementField.value.trim()) {
+                complementField.value = prefill.complement ?? '';
+            }
+        }
+    }
+
+    clearAddressErrorState();
+    window.checkoutData.allowFinalizeWithoutFrete = false;
+    window.checkoutData.manualFreteReason = null;
+
+    if (cepFoiAlterado && triggerFrete && typeof buscarCep === 'function') {
+        window.checkoutData.freteCalculado = false;
+        window.checkoutData.deliveryFeeLocked = false;
+        buscarCep();
+    } else if (runSummaryUpdate) {
+        updateFinalizeButtonState();
+    }
+}
+
+async function handleDeliveryFeeSuccess(feeData, options = {}) {
+    if (!feeData) {
+        return;
+    }
+
+    const wasManualFlow = window.checkoutData.manualAddressPending === true || window.checkoutData.manualOriginalZip !== null;
+    const manualOriginalZipDigits = window.checkoutData.manualOriginalZip;
+    window.checkoutData.manualAddressPending = false;
+    window.checkoutData.manualOriginalZip = null;
+    window.checkoutData.manualLocateInFlight = false;
+
+    if (zipCodeManualButton) {
+        zipCodeManualButton.classList.add('hidden');
+        zipCodeManualButton.disabled = true;
+        zipCodeManualButton.dataset.reason = '';
+        zipCodeManualButton.textContent = 'Localizar meu endereço';
+    }
+
+    const deliveryFee = parseFloat(feeData.delivery_fee ?? 0) || 0;
+    const baseDeliveryFee = parseFloat(feeData.base_delivery_fee ?? feeData.delivery_fee ?? 0) || 0;
+    const discountPercent = parseFloat(feeData.discount_percent ?? 0) || 0;
+    const discountAmount = parseFloat(feeData.discount_amount ?? 0) || 0;
+    const distanceKm = feeData.distance_km ?? null;
+    const resolvedZip = feeData.resolved_zip_code ?? feeData.zip_code ?? null;
+
+    if (resolvedZip && zipCodeInput) {
+        const resolvedDigitsRaw = String(resolvedZip).replace(/\D/g, '');
+        let digitsToApply = resolvedDigitsRaw;
+
+        if (wasManualFlow) {
+            const normalized = normalizeZipToDistrict(resolvedDigitsRaw || window.checkoutData.manualGeneralizedZip || manualOriginalZipDigits);
+            if (normalized) {
+                digitsToApply = normalized;
+            }
+        }
+
+        if (digitsToApply && digitsToApply.length === 8) {
+            applyNormalizedZip(digitsToApply);
+        }
+    }
+
+    toggleZipCodeManualMode(false, { focusZip: false });
+
+    window.checkoutData.freteCalculado = true;
+    window.checkoutData.allowFinalizeWithoutFrete = false;
+    window.checkoutData.manualFreteReason = null;
+    window.checkoutData.deliveryFee = deliveryFee;
+    window.checkoutData.baseDeliveryFee = baseDeliveryFee;
+    window.checkoutData.deliveryDiscountPercent = discountPercent;
+    window.checkoutData.deliveryDiscountAmount = discountAmount;
+    window.checkoutData.deliveryFeeLocked = false;
+    window.checkoutData.distanceKm = distanceKm;
+
+    const hiddenFee = document.getElementById('hidden_delivery_fee');
+    const hiddenBase = document.getElementById('hidden_base_delivery_fee');
+    const hiddenDiscountPercent = document.getElementById('hidden_delivery_discount_percent');
+    const hiddenDiscountAmount = document.getElementById('hidden_delivery_discount_amount');
+    const hiddenLocked = document.getElementById('hidden_delivery_fee_locked');
+
+    if (hiddenFee) hiddenFee.value = deliveryFee.toFixed(2);
+    if (hiddenBase) hiddenBase.value = baseDeliveryFee.toFixed(2);
+    if (hiddenDiscountPercent) hiddenDiscountPercent.value = discountPercent.toFixed(2);
+    if (hiddenDiscountAmount) hiddenDiscountAmount.value = discountAmount.toFixed(2);
+    if (hiddenLocked) hiddenLocked.value = 0;
+
+    await updateOrderSummary(null, deliveryFee);
+    setTimeout(async () => {
+        await updateOrderSummary(null, deliveryFee);
+    }, 100);
+
+    filtrarCuponsFreteGratis(deliveryFee);
+
+    const successMessage = options.successMessage || 'Frete calculado com sucesso!';
+    setCepFeedback(successMessage, 'text-xs text-green-600 mt-1');
+
+    window.checkoutData.autoLookupEnabled = true;
+    window.checkoutData.skipAutoCepLookup = false;
+    window.checkoutData.skipLookupUntil = Date.now() + 500;
+
+    clearAddressErrorState();
+    updateFinalizeButtonState();
+}
 
 // Função para atualizar estado do botão de finalizar
 function updateFinalizeButtonState() {
@@ -361,10 +888,18 @@ function updateFinalizeButtonState() {
                                    (!isTextoInicial && deliveryFeeInDOM !== null && deliveryFeeText.includes('R$'));
         
         if (!freteFoiCalculado) {
-            btnFinalize.disabled = true;
-            if (messagePending) {
-                messagePending.classList.remove('hidden');
-                messagePending.textContent = '⚠️ Aguardando cálculo do frete de entrega...';
+            if (window.checkoutData.allowFinalizeWithoutFrete === true) {
+                btnFinalize.disabled = false;
+                if (messagePending) {
+                    messagePending.classList.remove('hidden');
+                    messagePending.textContent = window.checkoutData.manualFreteReason || 'Frete não calculado automaticamente. Confirme o endereço e combine a taxa de entrega com a loja.';
+                }
+            } else {
+                btnFinalize.disabled = true;
+                if (messagePending) {
+                    messagePending.classList.remove('hidden');
+                    messagePending.textContent = '⚠️ Aguardando cálculo do frete de entrega...';
+                }
             }
         } else {
             // Frete calculado (flag OU valor no DOM), habilitar botão
@@ -511,6 +1046,10 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
                 customer_phone: customerPhone,
                 coupon_code: couponCode,
                 delivery_fee: currentDeliveryFee,
+                delivery_fee_locked: window.checkoutData?.deliveryFeeLocked ?? false,
+                base_delivery_fee: window.checkoutData?.baseDeliveryFee ?? currentDeliveryFee,
+                delivery_discount_percent: window.checkoutData?.deliveryDiscountPercent ?? 0,
+                delivery_discount_amount: window.checkoutData?.deliveryDiscountAmount ?? 0,
                 use_cashback: true,  // Sempre usar cashback se disponível
                 @if(isset($order) && $order)
                 order_number: '{{ $order->order_number }}',
@@ -671,6 +1210,9 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         if (currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))) {
             window.checkoutData.freteCalculado = true;
             window.checkoutData.deliveryFee = currentDeliveryFee;
+            if (typeof window.checkoutData.deliveryFeeLocked === 'undefined') {
+                window.checkoutData.deliveryFeeLocked = false;
+            }
             console.log('updateOrderSummary: Frete calculado, marcando como true (valor:', currentDeliveryFee, ')');
             // Atualizar estado do botão após atualizar frete
             updateFinalizeButtonState();
@@ -728,16 +1270,22 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         updateCouponsCombobox(eligibleCoupons);
         
         // Atualizar dados globais (preservar dados de desconto de frete se existirem)
-        window.checkoutData = { 
-            subtotal: Number(currentSubtotal), 
-            deliveryFee: Number(currentDeliveryFee), 
+        const previousFreteCalculado = window.checkoutData?.freteCalculado === true;
+        const previousDeliveryFeeLocked = window.checkoutData?.deliveryFeeLocked === true;
+        const previousData = window.checkoutData || {};
+        window.checkoutData = {
+            ...previousData,
+            subtotal: Number(currentSubtotal),
+            deliveryFee: Number(currentDeliveryFee),
             baseDeliveryFee: baseDeliveryFee,
             deliveryDiscountPercent: deliveryDiscountPercent,
             deliveryDiscountAmount: deliveryDiscountAmount,
             couponDiscount: Number(couponDiscount),
             cashbackUsed: Number(cashbackUsed),
             cashbackEarned: Number(cashbackEarned),
-            total: Number(total)
+            total: Number(total),
+            freteCalculado: previousFreteCalculado,
+            deliveryFeeLocked: previousDeliveryFeeLocked
         };
         
         // Atualizar campos hidden do formulário com dados de desconto de frete
@@ -745,6 +1293,7 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         document.getElementById('hidden_base_delivery_fee').value = Number(baseDeliveryFee || currentDeliveryFee).toFixed(2);
         document.getElementById('hidden_delivery_discount_percent').value = Number(deliveryDiscountPercent || 0).toFixed(0);
         document.getElementById('hidden_delivery_discount_amount').value = Number(deliveryDiscountAmount || 0).toFixed(2);
+        document.getElementById('hidden_delivery_fee_locked').value = window.checkoutData.deliveryFeeLocked ? 1 : 0;
         
         // Verificação de consistência: alertar se houver discrepância
         const expectedTotal = currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed;
@@ -786,6 +1335,61 @@ async function loadCustomerAddress(phone, email) {
         return;
     }
 
+    if (window.checkoutData?.manualAddressPending) {
+        console.log('loadCustomerAddress: Ignorando porque manualAddressPending está ativo');
+        return;
+    }
+
+    const normalizedPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const normalizedEmail = email ? String(email).trim() : '';
+
+    if (window.checkoutData.lastLookupPhone === normalizedPhone && window.checkoutData.lastLookupEmail === normalizedEmail) {
+        console.log('loadCustomerAddress: Busca já realizada para estes dados, ignorando nova chamada');
+    } else {
+        window.checkoutData.lastLookupPhone = normalizedPhone;
+        window.checkoutData.lastLookupEmail = normalizedEmail;
+
+        try {
+            const lookupPayload = {};
+            if (normalizedPhone.length >= 10) {
+                lookupPayload.phone = normalizedPhone;
+            }
+            if (normalizedEmail !== '') {
+                lookupPayload.email = normalizedEmail;
+            }
+
+            if (Object.keys(lookupPayload).length > 0) {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const lookupResponse = await fetch('{{ route("pedido.checkout.lookup-customer") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(lookupPayload),
+                });
+
+                if (lookupResponse.ok) {
+                    const lookupData = await lookupResponse.json();
+                    if (lookupData?.success && lookupData?.data?.prefill) {
+                        console.log('loadCustomerAddress: Prefill recebido do lookup-customer', lookupData.data.prefill);
+                        applyCustomerPrefill(lookupData.data.prefill, {
+                            force: true,
+                            triggerFrete: true,
+                            runSummaryUpdate: false,
+                        });
+                        window.checkoutData.currentCustomerId = lookupData.data.customer?.id ?? null;
+                    }
+                } else if (lookupResponse.status !== 404) {
+                    console.warn('loadCustomerAddress: lookup-customer retornou status', lookupResponse.status);
+                }
+            }
+        } catch (lookupError) {
+            console.error('loadCustomerAddress: Erro ao consultar lookup-customer', lookupError);
+        }
+    }
+
     console.log('loadCustomerAddress: Buscando cliente', { phone, email });
     
     try {
@@ -818,6 +1422,34 @@ async function loadCustomerAddress(phone, email) {
             console.log('loadCustomerAddress: Cliente encontrado com endereço', customer);
             
             let filledAny = false;
+            let updatedIdentity = false;
+
+            if (customer.name) {
+                const nameField = document.getElementById('customer_name');
+                if (nameField && (!nameField.value.trim() || nameField.dataset.autofilled !== 'true')) {
+                    nameField.value = customer.name;
+                    nameField.dataset.autofilled = 'true';
+                    updatedIdentity = true;
+                }
+            }
+
+            if (customer.email) {
+                const emailField = document.getElementById('customer_email');
+                if (emailField && (!emailField.value.trim() || emailField.dataset.autofilled !== 'true')) {
+                    emailField.value = customer.email;
+                    emailField.dataset.autofilled = 'true';
+                    updatedIdentity = true;
+                }
+            }
+
+            if (customer.phone) {
+                const phoneField = document.getElementById('customer_phone');
+                if (phoneField && (!phoneField.value.trim() || phoneField.dataset.autofilled !== 'true')) {
+                    phoneField.value = customer.phone;
+                    phoneField.dataset.autofilled = 'true';
+                    updatedIdentity = true;
+                }
+            }
             
             // Preencher apenas campos que estão vazios
             if (customer.zip_code) {
@@ -902,7 +1534,9 @@ async function loadCustomerAddress(phone, email) {
                         if (cep.length === 8) {
                             // Sempre buscar CEP e recalcular frete, mesmo que já esteja preenchido
                             // Resetar flag para forçar recálculo
-                            window.checkoutData.freteCalculado = false;
+                        window.checkoutData.freteCalculado = false;
+                        window.checkoutData.deliveryFeeLocked = false;
+                            window.checkoutData.deliveryFeeLocked = false;
                             if (typeof buscarCep === 'function') {
                                 await buscarCep(); // buscarCep já calcula o frete automaticamente e marca a flag
                             }
@@ -920,6 +1554,7 @@ async function loadCustomerAddress(phone, email) {
                         if (cep.length === 8) {
                             // Resetar flag e recalcular frete
                             window.checkoutData.freteCalculado = false;
+                            window.checkoutData.deliveryFeeLocked = false;
                             if (typeof buscarCep === 'function') {
                                 await buscarCep();
                             }
@@ -928,7 +1563,7 @@ async function loadCustomerAddress(phone, email) {
                 }, 700);
             }
             
-            if (filledAny) {
+            if (filledAny || updatedIdentity) {
                 console.log('loadCustomerAddress: Campos preenchidos com sucesso');
             }
         } else {
@@ -952,6 +1587,174 @@ document.getElementById('customer_phone')?.addEventListener('blur', async functi
     await loadCustomerAddress(phone, email);
     updateOrderSummary();
 });
+
+document.getElementById('customer_phone')?.addEventListener('input', function() {
+    window.checkoutData.lastLookupPhone = null;
+    window.checkoutData.currentCustomerId = null;
+});
+
+zipCodeManualButton?.addEventListener('click', async function() {
+    if (window.checkoutData.manualLocateInFlight) {
+        return;
+    }
+
+    if (manualLookupDebounceId) {
+        clearTimeout(manualLookupDebounceId);
+        manualLookupDebounceId = null;
+    }
+
+    const addressField = document.getElementById('address');
+    const numberField = document.getElementById('number');
+    const neighborhoodField = document.getElementById('neighborhood');
+    const cityField = document.getElementById('city');
+    const stateField = document.getElementById('state');
+    const cepFeedbackEl = document.getElementById('cepFeedback');
+
+    const street = addressField?.value.trim() || '';
+    const number = numberField?.value.trim() || '';
+    const neighborhood = neighborhoodField?.value.trim() || '';
+    const city = cityField?.value.trim() || '';
+    const state = stateField?.value.trim().toUpperCase() || '';
+
+    if (!street || !number || !city || !state) {
+        if (cepFeedbackEl) {
+            cepFeedbackEl.textContent = 'Preencha rua, número, cidade e estado para localizar o endereço.';
+            cepFeedbackEl.className = 'text-xs text-red-500 mt-1';
+        }
+        setAddressErrorState(true, {
+            fields: ['address', 'number', 'city', 'state'],
+            focusFieldId: !street ? 'address' : (!number ? 'number' : (!city ? 'city' : 'state')),
+            placeholderMessage: 'Preencha este campo para localizar o endereço'
+        });
+        window.checkoutData.manualLocateInFlight = false;
+        return;
+    }
+
+    window.checkoutData.manualLocateInFlight = true;
+
+    const customerPhone = document.getElementById('customer_phone')?.value || '';
+    const customerEmail = document.getElementById('customer_email')?.value || '';
+
+    try {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const response = await fetch('{{ route("pedido.checkout.locate-address") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                street,
+                number,
+                complement: document.getElementById('complement')?.value || '',
+                neighborhood,
+                city,
+                state,
+                zip_code: zipCodeInput?.value || '',
+                customer_phone: customerPhone,
+                customer_email: customerEmail
+            }),
+        });
+
+        const data = await response.json();
+        console.log('Localizar endereço (manual):', data);
+
+        if (response.ok && data.success && data.delivery_fee !== undefined) {
+            await handleDeliveryFeeSuccess(data, {
+                successMessage: 'Endereço localizado com sucesso!'
+            });
+            window.checkoutData.manualAddressPending = false;
+            window.checkoutData.manualOriginalZip = null;
+            if (data.resolved_zip_code) {
+                const resolvedDigits = String(data.resolved_zip_code).replace(/\D/g, '');
+                if (resolvedDigits.length === 8) {
+                    window.checkoutData.manualGeneralizedZip = resolvedDigits;
+                }
+            }
+            clearAddressErrorState();
+        } else {
+            const message = data.message || 'Não foi possível localizar o endereço informado. Verifique os dados.';
+            if (window.checkoutData.freteCalculado) {
+                clearAddressErrorState();
+                toggleZipCodeManualMode(false, { focusZip: false });
+                if (cepFeedbackEl) {
+                    cepFeedbackEl.textContent = '';
+                    cepFeedbackEl.className = '';
+                }
+                window.checkoutData.manualAddressPending = false;
+            } else {
+                if (cepFeedbackEl) {
+                    cepFeedbackEl.textContent = message;
+                    cepFeedbackEl.className = 'text-xs text-red-500 mt-1';
+                }
+                window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
+                window.checkoutData.allowFinalizeWithoutFrete = true;
+                window.checkoutData.manualFreteReason = message;
+                const wasPendingManual = window.checkoutData.manualAddressPending === true;
+                window.checkoutData.manualAddressPending = true;
+                toggleZipCodeManualMode(true, { reason: message });
+                generalizeZipCode({
+                    forceClear: !wasPendingManual,
+                    ensureEditable: true,
+                    feedbackMessage: message,
+                    feedbackClass: 'text-xs text-red-500 mt-1'
+                });
+                setAddressErrorState(true, {
+                    fields: ['address', 'number', 'city', 'state'],
+                    focusFieldId: 'address'
+                });
+                updateFinalizeButtonState();
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao localizar endereço manualmente:', error);
+        if (window.checkoutData.freteCalculado) {
+            clearAddressErrorState();
+            toggleZipCodeManualMode(false, { focusZip: false });
+            if (cepFeedbackEl) {
+                cepFeedbackEl.textContent = '';
+                cepFeedbackEl.className = '';
+            }
+            window.checkoutData.manualAddressPending = false;
+        } else {
+            if (cepFeedbackEl) {
+                cepFeedbackEl.textContent = 'Erro ao localizar o endereço. Tente novamente.';
+                cepFeedbackEl.className = 'text-xs text-red-500 mt-1';
+            }
+            window.checkoutData.freteCalculado = false;
+            window.checkoutData.deliveryFeeLocked = false;
+            window.checkoutData.allowFinalizeWithoutFrete = true;
+            window.checkoutData.manualFreteReason = 'Erro ao localizar o endereço. Confirme os dados e tente novamente.';
+            window.checkoutData.manualAddressPending = true;
+            toggleZipCodeManualMode(true, { reason: 'Erro ao localizar o endereço. Informe os dados completos.' });
+            generalizeZipCode({
+                ensureEditable: true,
+                feedbackMessage: 'Erro ao localizar o endereço. Informe os dados completos.',
+                feedbackClass: 'text-xs text-red-500 mt-1'
+            });
+            updateFinalizeButtonState();
+        }
+    }
+    window.checkoutData.manualLocateInFlight = false;
+});
+
+(async () => {
+    const phoneInput = document.getElementById('customer_phone');
+    const emailInput = document.getElementById('customer_email');
+
+    if (phoneInput && phoneInput.value.trim()) {
+        await loadCustomerAddress(phoneInput.value, emailInput?.value || '');
+        updateOrderSummary();
+    } else if (phoneInput) {
+        setTimeout(() => {
+            if (!phoneInput.value.trim()) {
+                phoneInput.focus();
+            }
+        }, 150);
+    }
+})();
 
 // Filtrar campo número para aceitar apenas números
 const numberField = document.getElementById('number');
@@ -1016,6 +1819,25 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     }
     
     let timeoutId = null;
+
+    function shouldSkipCepLookup() {
+        const now = Date.now();
+
+        if (window.checkoutData.skipAutoCepLookup) {
+            window.checkoutData.skipAutoCepLookup = false;
+            return true;
+        }
+
+        if (window.checkoutData.autoLookupEnabled === false) {
+            return true;
+        }
+
+        if (now < (window.checkoutData.skipLookupUntil || 0)) {
+            return true;
+        }
+
+        return false;
+    }
     
     // Formatação automática do CEP
     zipCodeInput.addEventListener('input', function(e) {
@@ -1024,6 +1846,19 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             value = value.substring(0, 5) + '-' + value.substring(5, 8);
         }
         e.target.value = value;
+        clearAddressErrorState();
+        window.checkoutData.allowFinalizeWithoutFrete = false;
+        window.checkoutData.manualFreteReason = null;
+        if (!zipCodeManualButton?.classList.contains('hidden')) {
+            toggleZipCodeManualMode(false);
+        }
+
+        const skipLookup = shouldSkipCepLookup();
+        if (skipLookup) {
+            return;
+        }
+
+        window.checkoutData.autoLookupEnabled = true;
         
         // Limpar timeout anterior
         if (timeoutId) {
@@ -1032,9 +1867,10 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         
         // Buscar automaticamente quando CEP tiver 8 dígitos (após 500ms de inatividade)
         const cepDigits = value.replace(/\D/g, '');
-        if (cepDigits.length === 8) {
+        if (cepDigits.length === 8 && window.checkoutData.autoLookupEnabled !== false) {
             // Marcar que o frete ainda não foi calculado
             window.checkoutData.freteCalculado = false;
+            window.checkoutData.deliveryFeeLocked = false;
             updateFinalizeButtonState();
             timeoutId = setTimeout(() => {
                 buscarCep();
@@ -1042,80 +1878,132 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         } else {
             cepFeedback.textContent = '';
             window.checkoutData.freteCalculado = false;
+            window.checkoutData.deliveryFeeLocked = false;
+            window.checkoutData.allowFinalizeWithoutFrete = false;
+            window.checkoutData.manualFreteReason = null;
             updateFinalizeButtonState();
+            clearAddressErrorState();
         }
     });
     
     async function buscarCep() {
         const cep = zipCodeInput.value.replace(/\D/g, '');
         console.log('buscarCep: Iniciando busca para CEP:', cep);
+        clearAddressErrorState();
 
         if (cep.length !== 8) {
-            console.warn('buscarCep: CEP inválido, deve ter 8 dígitos');
-            cepFeedback.textContent = 'CEP deve ter 8 dígitos';
+            window.checkoutData.autoLookupEnabled = false;
+            window.checkoutData.skipLookupUntil = Date.now() + 2000;
+            toggleZipCodeManualMode(true, { reason: 'Formato de CEP inválido. Precisamos do endereço completo.' });
+            cepFeedback.textContent = 'Formato de CEP inválido. Clique em "Localizar meu endereço".';
             cepFeedback.className = 'text-xs text-red-500 mt-1';
             window.checkoutData.freteCalculado = false;
+            window.checkoutData.deliveryFeeLocked = false;
+            window.checkoutData.allowFinalizeWithoutFrete = false;
+            window.checkoutData.manualFreteReason = 'Informe o endereço completo para que possamos calcular o frete.';
             updateFinalizeButtonState();
+            setAddressErrorState(true, {
+                fields: ['zip_code'],
+                focusFieldId: 'zip_code_manual_button'
+            });
             return;
         }
         
         // Marcar que está buscando CEP e frete ainda não calculado
         window.checkoutData.freteCalculado = false;
+        window.checkoutData.deliveryFeeLocked = false;
         updateFinalizeButtonState();
         
         cepFeedback.textContent = 'Buscando...';
         cepFeedback.className = 'text-xs text-blue-500 mt-1';
         
         try {
+            window.checkoutData.autoLookupEnabled = false;
             const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const data = await response.json();
+            window.checkoutData.autoLookupEnabled = true;
+            window.checkoutData.skipLookupUntil = Date.now() + 1500;
             
-            if (data.erro) {
-                cepFeedback.textContent = 'CEP não encontrado';
-                cepFeedback.className = 'text-xs text-red-500 mt-1';
-                window.checkoutData.freteCalculado = false;
-                updateFinalizeButtonState();
-                return;
-            }
-            
-            // Preencher campos automaticamente
-            document.getElementById('address').value = data.logradouro || '';
-            document.getElementById('neighborhood').value = data.bairro || '';
-            document.getElementById('city').value = data.localidade || '';
-            document.getElementById('state').value = data.uf || '';
-            
-            // Remover readonly para permitir edição (campos são obrigatórios)
-            document.getElementById('address').removeAttribute('readonly');
-            document.getElementById('neighborhood').removeAttribute('readonly');
-            document.getElementById('city').removeAttribute('readonly');
-            document.getElementById('state').removeAttribute('readonly');
-            
-            // Garantir que campos são obrigatórios após CEP ser encontrado
-            document.getElementById('address').required = true;
-            document.getElementById('neighborhood').required = true;
-            document.getElementById('city').required = true;
-            document.getElementById('state').required = true;
-            
-            // Se algum campo estiver vazio após busca, destacar e exigir preenchimento
             const requiredFields = ['address', 'neighborhood', 'city', 'state'];
-            let hasEmptyFields = false;
-            
-            requiredFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (!field.value.trim()) {
-                    field.classList.add('border-red-500');
-                    field.setAttribute('placeholder', 'Este campo é obrigatório - Preencha manualmente');
-                    hasEmptyFields = true;
-                } else {
-                    field.classList.remove('border-red-500');
+            const originalCepDigits = zipCodeInput.value.replace(/\D/g, '');
+            const viaCepFound = data && !data.erro;
+            let manualEntryRequired = false;
+
+            if (viaCepFound) {
+                window.checkoutData.manualAddressPending = false;
+                window.checkoutData.manualOriginalZip = null;
+                window.checkoutData.manualGeneralizedZip = null;
+
+                if (data.logradouro) {
+                    document.getElementById('address').value = data.logradouro;
                 }
-            });
-            
-            // Se houver campos vazios, mostrar alerta
-            if (hasEmptyFields) {
-                setTimeout(() => {
-                    alert('Atenção: Alguns campos do endereço não foram preenchidos automaticamente. Por favor, preencha manualmente os campos destacados em vermelho.');
-                }, 500);
+                if (data.bairro) {
+                    document.getElementById('neighborhood').value = data.bairro;
+                }
+                if (data.localidade) {
+                    document.getElementById('city').value = data.localidade;
+                }
+                if (data.uf) {
+                    document.getElementById('state').value = data.uf;
+                }
+
+                document.getElementById('address').removeAttribute('readonly');
+                document.getElementById('neighborhood').removeAttribute('readonly');
+                document.getElementById('city').removeAttribute('readonly');
+                document.getElementById('state').removeAttribute('readonly');
+
+                document.getElementById('address').required = true;
+                document.getElementById('neighborhood').required = true;
+                document.getElementById('city').required = true;
+                document.getElementById('state').required = true;
+
+                const missingAutofill = requiredFields.filter(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    return !field || !field.value.trim();
+                });
+
+                if (missingAutofill.length > 0) {
+                    setAddressErrorState(true, {
+                        fields: missingAutofill,
+                        focusFieldId: missingAutofill[0],
+                        placeholderMessage: 'Preencha este campo manualmente'
+                    });
+                } else {
+                    clearAddressErrorState();
+                }
+
+                toggleZipCodeManualMode(false, { focusZip: false });
+                window.checkoutData.allowFinalizeWithoutFrete = false;
+                window.checkoutData.manualFreteReason = null;
+            } else {
+                manualEntryRequired = true;
+                const wasAlreadyPending = window.checkoutData.manualAddressPending === true;
+                window.checkoutData.manualAddressPending = true;
+                window.checkoutData.manualOriginalZip = originalCepDigits;
+                window.checkoutData.allowFinalizeWithoutFrete = false;
+                window.checkoutData.manualFreteReason = 'Não encontramos esse CEP específico. Informe o endereço completo.';
+                toggleZipCodeManualMode(true, {
+                    reason: 'Não encontramos esse CEP específico. Informe o endereço completo.',
+                    focusZip: false
+                });
+
+                generalizeZipCode({
+                    forceClear: true,
+                    ensureEditable: true,
+                    feedbackMessage: 'Não encontramos esse CEP específico. Ajustamos para o CEP geral da região. Informe o endereço completo para concluir.'
+                });
+
+                setCepFeedback('Preencha rua, bairro, cidade e estado para calcular o frete.', 'text-xs text-yellow-600 mt-1');
+
+                setAddressErrorState(true, {
+                    fields: requiredFields,
+                    focusFieldId: requiredFields[0],
+                    placeholderMessage: 'Digite o endereço completo'
+                });
+
+                if (manualFieldsAreComplete()) {
+                    scheduleManualLookup();
+                }
             }
             
             // Calcular frete após CEP ser encontrado
@@ -1144,63 +2032,116 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 console.log('Resposta do cálculo de frete:', feeData);
                 
                 if (feeData.success && feeData.delivery_fee !== undefined) {
-                    const deliveryFee = parseFloat(feeData.delivery_fee) || 0;
-                    const baseDeliveryFee = parseFloat(feeData.base_delivery_fee || feeData.delivery_fee) || 0;
-                    const discountPercent = parseFloat(feeData.discount_percent || 0) || 0;
-                    const discountAmount = parseFloat(feeData.discount_amount || 0) || 0;
-                    
-                    console.log('Frete calculado:', {
-                        deliveryFee,
-                        baseDeliveryFee,
-                        discountPercent,
-                        discountAmount,
-                        distance: feeData.distance_km
+                    const successMessage = manualEntryRequired
+                        ? 'Frete calculado! Complete o endereço manualmente.'
+                        : 'Frete calculado com sucesso!';
+
+                    await handleDeliveryFeeSuccess(feeData, {
+                        successMessage
                     });
-                    
-                    // Marcar que o frete foi calculado e armazenar dados de desconto
-                    window.checkoutData.freteCalculado = true;
-                    window.checkoutData.deliveryFee = deliveryFee;
-                    window.checkoutData.baseDeliveryFee = baseDeliveryFee;
-                    window.checkoutData.deliveryDiscountPercent = discountPercent;
-                    window.checkoutData.deliveryDiscountAmount = discountAmount;
-                    
-                    // Atualizar campos hidden do formulário
-                    document.getElementById('hidden_delivery_fee').value = deliveryFee.toFixed(2);
-                    document.getElementById('hidden_base_delivery_fee').value = baseDeliveryFee.toFixed(2);
-                    document.getElementById('hidden_delivery_discount_percent').value = discountPercent.toFixed(0);
-                    document.getElementById('hidden_delivery_discount_amount').value = discountAmount.toFixed(2);
-                    
-                    // Atualizar o resumo com o novo frete e garantir que os valores de desconto sejam passados
-                    // Primeiro atualizar o resumo para que os valores sejam salvos em window.checkoutData
-                    await updateOrderSummary(null, deliveryFee);
-                    
-                    // Forçar atualização novamente para garantir que os valores sejam exibidos
-                    // Isso garante que baseDeliveryFee e deliveryDiscountAmount sejam usados
-                    setTimeout(async () => {
-                        await updateOrderSummary(null, deliveryFee);
-                    }, 100);
-                    
-                    // Limpar feedback do CEP (não mostrar mensagem)
-                    cepFeedback.textContent = '';
-                    cepFeedback.className = '';
-                    
-                    // Filtrar cupons de frete grátis
-                    filtrarCuponsFreteGratis(deliveryFee);
-                    
-                    // Garantir que o botão seja habilitado após calcular frete
-                    updateFinalizeButtonState();
+
+                    if (manualEntryRequired) {
+                        const manualMissingAfter = requiredFields.filter(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            return !field || !field.value.trim();
+                        });
+
+                        if (manualMissingAfter.length > 0) {
+                            setAddressErrorState(true, {
+                                fields: manualMissingAfter,
+                                focusFieldId: manualMissingAfter[0],
+                                placeholderMessage: 'Preencha este campo manualmente'
+                            });
+                            setCepFeedback('Informações de endereço pendentes. Complete os campos para finalizar.', 'text-xs text-yellow-600 mt-1');
+                            setSummaryDeliveryFeePending();
+                        } else {
+                            clearAddressErrorState();
+                        }
+                    } else {
+                        clearAddressErrorState();
+                    }
                 } else {
                     console.error('Erro ao calcular frete:', feeData.message || 'Resposta inválida');
                     window.checkoutData.freteCalculado = false;
-                    cepFeedback.textContent = feeData.message || 'Erro ao calcular frete';
-                    cepFeedback.className = 'text-xs text-yellow-600 mt-1';
+                    window.checkoutData.deliveryFeeLocked = false;
+                    window.checkoutData.allowFinalizeWithoutFrete = true;
+                    window.checkoutData.manualFreteReason = feeData.message || 'Não foi possível calcular o frete automaticamente.';
+                    window.checkoutData.autoLookupEnabled = false;
+                    window.checkoutData.skipLookupUntil = Date.now() + 2000;
+                    const manualFields = ['address', 'neighborhood', 'city', 'state'];
+                    const errorMessage = feeData.message || 'Não foi possível calcular o frete. Digite o endereço completo.';
+                    cepFeedback.textContent = errorMessage;
+                    cepFeedback.className = 'text-xs text-red-500 mt-1 font-medium';
+                    toggleZipCodeManualMode(true, { reason: errorMessage });
+                    window.checkoutData.manualAddressPending = true;
+                    window.checkoutData.manualOriginalZip = originalCepDigits;
+                    generalizeZipCode({
+                        ensureEditable: true,
+                        feedbackMessage: errorMessage,
+                        feedbackClass: 'text-xs text-red-500 mt-1'
+                    });
+                    setAddressErrorState(true, {
+                        fields: feeData.error_code === 'missing_api_key' ? ADDRESS_FIELD_IDS : manualFields,
+                        focusFieldId: feeData.error_code === 'missing_api_key' ? 'zip_code' : manualFields[0],
+                        placeholderMessage: 'Digite o endereço completo'
+                    });
+                const summaryDeliveryFeeEl = document.getElementById('summaryDeliveryFee');
+                if (summaryDeliveryFeeEl) {
+                    summaryDeliveryFeeEl.textContent = 'Combinar com a loja';
+                    summaryDeliveryFeeEl.className = 'text-sm text-red-600 font-medium';
+                }
+                document.getElementById('hidden_delivery_fee').value = '0.00';
+                document.getElementById('hidden_base_delivery_fee').value = '0.00';
+                document.getElementById('hidden_delivery_discount_percent').value = '0';
+                document.getElementById('hidden_delivery_discount_amount').value = '0.00';
+                document.getElementById('hidden_delivery_fee_locked').value = 0;
                     updateFinalizeButtonState();
                 }
             } catch (error) {
                 console.error('Erro ao calcular frete:', error);
+                if (window.checkoutData.freteCalculado === true) {
+                    console.warn('Frete já foi calculado com sucesso anteriormente. Mantendo estado atual.', error);
+                    window.checkoutData.autoLookupEnabled = true;
+                    window.checkoutData.skipLookupUntil = Date.now() + 1500;
+                    window.checkoutData.skipAutoCepLookup = true;
+                    cepFeedback.textContent = '';
+                    cepFeedback.className = 'text-xs text-gray-500 mt-1';
+                    toggleZipCodeManualMode(false);
+                    updateFinalizeButtonState();
+                    return;
+                }
+
                 window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
+                window.checkoutData.allowFinalizeWithoutFrete = true;
+                window.checkoutData.manualFreteReason = 'Erro ao calcular o frete automaticamente. Confirme o endereço e combine a taxa com a loja.';
+                window.checkoutData.autoLookupEnabled = false;
+                window.checkoutData.skipLookupUntil = Date.now() + 2000;
                 cepFeedback.textContent = 'Erro ao calcular frete. Tente novamente.';
                 cepFeedback.className = 'text-xs text-red-500 mt-1';
+                toggleZipCodeManualMode(true, { reason: 'Erro ao calcular o frete automaticamente. Informe o endereço completo.' });
+                window.checkoutData.manualAddressPending = true;
+                window.checkoutData.manualOriginalZip = originalCepDigits;
+                generalizeZipCode({
+                    ensureEditable: true,
+                    feedbackMessage: 'Erro ao calcular o frete automaticamente. Informe o endereço completo.',
+                    feedbackClass: 'text-xs text-red-500 mt-1'
+                });
+                setAddressErrorState(true, {
+                    fields: ['zip_code', 'address', 'neighborhood', 'city', 'state'],
+                    focusFieldId: 'address',
+                    placeholderMessage: 'Digite o endereço completo'
+                });
+                const summaryDeliveryFeeEl = document.getElementById('summaryDeliveryFee');
+                if (summaryDeliveryFeeEl) {
+                    summaryDeliveryFeeEl.textContent = 'Combinar com a loja';
+                    summaryDeliveryFeeEl.className = 'text-sm text-red-600 font-medium';
+                }
+                document.getElementById('hidden_delivery_fee').value = '0.00';
+                document.getElementById('hidden_base_delivery_fee').value = '0.00';
+                document.getElementById('hidden_delivery_discount_percent').value = '0';
+                document.getElementById('hidden_delivery_discount_amount').value = '0.00';
+                document.getElementById('hidden_delivery_fee_locked').value = 0;
                 updateFinalizeButtonState();
             }
             
@@ -1211,6 +2152,13 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             console.error('Erro ao buscar CEP:', error);
             cepFeedback.textContent = 'Erro ao buscar CEP. Tente novamente.';
             cepFeedback.className = 'text-xs text-red-500 mt-1';
+            toggleZipCodeManualMode(true, { reason: 'Não foi possível consultar o CEP. Informe o endereço completo.' });
+            setAddressErrorState(true, {
+                fields: ADDRESS_FIELD_IDS,
+                focusFieldId: 'zip_code'
+            });
+            window.checkoutData.autoLookupEnabled = false;
+            window.checkoutData.skipLookupUntil = Date.now() + 2000;
         }
     }
     
@@ -1328,6 +2276,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         // IMPORTANTE: Sempre resetar a flag para forçar recálculo em pedidos subsequentes
         // Isso garante que o frete seja sempre atualizado, mesmo quando já está preenchido
         window.checkoutData.freteCalculado = false;
+        window.checkoutData.deliveryFeeLocked = false;
         
         // Se cliente já foi identificado (telefone/email preenchidos), carregar endereço automaticamente
         const customerPhone = document.getElementById('customer_phone')?.value || '';
@@ -1367,6 +2316,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 console.log('DOMContentLoaded: Endereço já preenchido, mas SEMPRE recalcular frete para garantir valor atualizado');
                 // Resetar flag para forçar recálculo
                 window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
                 
                 // Sempre recalcular o frete, mesmo que já tenha sido calculado antes
                 // Isso garante que pedidos subsequentes sempre tenham o frete atualizado
@@ -1414,7 +2364,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     zipCodeInput.addEventListener('blur', function() {
         const cep = this.value.replace(/\D/g, '');
         console.log('CEP blur: Verificando CEP', cep);
-        if (cep.length === 8) {
+        if (cep.length === 8 && !shouldSkipCepLookup()) {
             console.log('CEP blur: Chamando buscarCep');
             buscarCep();
         } else {
@@ -1426,7 +2376,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     zipCodeInput.addEventListener('change', function() {
         const cep = this.value.replace(/\D/g, '');
         console.log('CEP change: Verificando CEP', cep);
-        if (cep.length === 8 && !window.checkoutData.freteCalculado) {
+        if (cep.length === 8 && !window.checkoutData.freteCalculado && !shouldSkipCepLookup()) {
             console.log('CEP change: Chamando buscarCep (CEP completo e frete não calculado)');
             buscarCep();
         }
@@ -1436,7 +2386,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     zipCodeInput.addEventListener('focus', function() {
         const cep = this.value.replace(/\D/g, '');
         console.log('CEP focus: Verificando CEP', cep);
-        if (cep.length === 8 && !window.checkoutData.freteCalculado) {
+        if (cep.length === 8 && !window.checkoutData.freteCalculado && !shouldSkipCepLookup()) {
             console.log('CEP focus: CEP completo mas frete não calculado, chamando buscarCep');
             buscarCep();
         }
@@ -1457,6 +2407,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 console.log('CEP ao carregar: CEP completo mas endereço/frete não calculado, buscando CEP e frete');
                 // Resetar flag para forçar recálculo
                 window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
                 // Aguardar um pouco para garantir que outros scripts já inicializaram
                 setTimeout(() => {
                     buscarCep();
@@ -1467,6 +2418,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 // Isso é necessário porque o frete pode mudar entre pedidos ou o valor pode estar desatualizado
                 // Resetar flag para forçar recálculo
                 window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
                 setTimeout(async () => {
                     const zipCodeDigits = zipCodeInput.value.replace(/\D/g, '');
                     if (zipCodeDigits.length === 8) {
@@ -1511,11 +2463,13 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                                 window.checkoutData.baseDeliveryFee = baseDeliveryFee;
                                 window.checkoutData.deliveryDiscountPercent = discountPercent;
                                 window.checkoutData.deliveryDiscountAmount = discountAmount;
+                    window.checkoutData.deliveryFeeLocked = false;
                                 
                                 document.getElementById('hidden_delivery_fee').value = deliveryFee.toFixed(2);
                                 document.getElementById('hidden_base_delivery_fee').value = baseDeliveryFee.toFixed(2);
                                 document.getElementById('hidden_delivery_discount_percent').value = discountPercent.toFixed(0);
                                 document.getElementById('hidden_delivery_discount_amount').value = discountAmount.toFixed(2);
+                    document.getElementById('hidden_delivery_fee_locked').value = 0;
                                 
                                 await updateOrderSummary(null, deliveryFee);
                                 updateFinalizeButtonState();
@@ -1654,6 +2608,7 @@ document.getElementById('checkoutForm')?.addEventListener('submit', async functi
     const freteCalculado = window.checkoutData.freteCalculado === true || 
                            (!isTextoInicial && isGratis) ||
                            (!isTextoInicial && deliveryFeeText.length > 0 && (!isNaN(deliveryFeeInDOM) || deliveryFeeText.includes('R$')));
+    const manualFreteAllowed = window.checkoutData.allowFinalizeWithoutFrete === true;
     
     console.log('Submit: Verificando frete', {
         freteCalculado: window.checkoutData.freteCalculado,
@@ -1663,7 +2618,7 @@ document.getElementById('checkoutForm')?.addEventListener('submit', async functi
         finalCheck: freteCalculado
     });
     
-    if (!freteCalculado) {
+    if (!freteCalculado && !manualFreteAllowed) {
         e.preventDefault();
         const zipCode = document.getElementById('zip_code')?.value.replace(/\D/g, '');
         if (!zipCode || zipCode.length !== 8) {
@@ -1673,6 +2628,11 @@ document.getElementById('checkoutForm')?.addEventListener('submit', async functi
             alert('Aguarde o cálculo do frete de entrega antes de finalizar o pedido.');
         }
         return false;
+    }
+    if (!freteCalculado && manualFreteAllowed) {
+        if (!confirm(window.checkoutData.manualFreteReason ? window.checkoutData.manualFreteReason + '\n\nDeseja finalizar mesmo assim?' : 'O frete não foi calculado automaticamente. Confirme o endereço completo e combine a taxa diretamente com a loja. Deseja continuar?')) {
+            return false;
+        }
     }
     
     const zipCode = document.getElementById('zip_code')?.value.trim();

@@ -10,9 +10,9 @@
     <p class="text-muted-foreground">Recompense seus clientes fiéis com cashback em compras</p>
   </div>
   
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
     <div></div>
-    <a href="{{ route('dashboard.cashback.create') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+    <a href="{{ route('dashboard.cashback.create') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto text-center">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
       Nova Transação
     </a>
@@ -161,7 +161,7 @@
       <div class="p-6 pt-0">
         @if(isset($recentTransactions) && $recentTransactions->count() > 0)
         <div class="relative w-full overflow-auto">
-          <table class="w-full caption-bottom text-sm">
+          <table class="w-full caption-bottom text-sm" data-mobile-card="true">
             <thead class="[&_tr]:border-b">
               <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Cliente</th>
@@ -186,7 +186,7 @@
                 </td>
                 <td class="p-4 align-middle text-sm text-muted-foreground">{{ $transaction->description ?? '-' }}</td>
                 <td class="p-4 align-middle text-right text-muted-foreground">{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
-                <td class="p-4 align-middle text-center">
+                <td class="p-4 align-middle text-center actions-cell">
                   <a href="{{ route('dashboard.cashback.edit', $transaction) }}" class="inline-flex items-center text-sm text-primary hover:underline">
                     Editar
                   </a>

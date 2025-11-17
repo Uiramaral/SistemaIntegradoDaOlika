@@ -19,5 +19,7 @@ class VerifyCsrfToken extends Middleware
         'cart/clear',
         'webhooks/*',
         'api/*',
+        'dashboard/customers/debts/*/settle',
+        'customers/debts/*/settle',
     ];
 }

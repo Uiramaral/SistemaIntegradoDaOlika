@@ -59,7 +59,7 @@ class CustomerDebt extends Model
             ->where('status', 'open')
             ->sum('amount');
         
-        $balance = max(0, (float)$debits - (float)$credits);
+        $balance = (float)$debits - (float)$credits;
         
         return $balance;
     }

@@ -10,7 +10,9 @@ use App\Models\OrderCoupon;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\MercadoPagoApi;
+use App\Services\MercadoPagoApiService;
 use App\Services\WhatsAppService;
+use App\Services\BotConversaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -36,8 +38,23 @@ class OrdersController extends Controller
         }
 
         // Filtro por status
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
+        $statusFilter = $request->input('status', 'active'); // Padrão: 'active' (confirmados + aguardando pagamento)
+        
+        if ($statusFilter === 'active') {
+            // Por padrão: apenas confirmados e aguardando pagamento (pending)
+            $query->whereIn('status', ['confirmed', 'pending']);
+        } elseif ($statusFilter === 'all') {
+            // Mostrar todos (incluindo cancelados)
+            // Não aplicar filtro de status
+        } elseif ($statusFilter === 'cancelled') {
+            // Apenas cancelados
+            $query->where('status', 'cancelled');
+        } elseif ($statusFilter && $statusFilter !== 'active') {
+            // Status específico
+            $query->where('status', $statusFilter);
+        } else {
+            // Padrão: confirmados e aguardando pagamento
+            $query->whereIn('status', ['confirmed', 'pending']);
         }
 
         $orders = $query->paginate(20)->withQueryString();
@@ -106,9 +123,24 @@ class OrdersController extends Controller
                 });
             }
             
-            if ($request->has('status') && $request->status) {
-                $newOrdersQuery->where('status', $request->status);
-                $updatedOrdersQuery->where('status', $request->status);
+            // Aplicar mesmo filtro de status do método index
+            $statusFilter = $request->input('status', 'active');
+            
+            if ($statusFilter === 'active') {
+                $newOrdersQuery->whereIn('status', ['confirmed', 'pending']);
+                $updatedOrdersQuery->whereIn('status', ['confirmed', 'pending']);
+            } elseif ($statusFilter === 'all') {
+                // Mostrar todos - não aplicar filtro
+            } elseif ($statusFilter === 'cancelled') {
+                $newOrdersQuery->where('status', 'cancelled');
+                $updatedOrdersQuery->where('status', 'cancelled');
+            } elseif ($statusFilter && $statusFilter !== 'active') {
+                $newOrdersQuery->where('status', $statusFilter);
+                $updatedOrdersQuery->where('status', $statusFilter);
+            } else {
+                // Padrão: confirmados e aguardando pagamento
+                $newOrdersQuery->whereIn('status', ['confirmed', 'pending']);
+                $updatedOrdersQuery->whereIn('status', ['confirmed', 'pending']);
             }
             
             $newOrders = $newOrdersQuery->get();
@@ -147,6 +179,16 @@ class OrdersController extends Controller
                     'refunded' => 'Reembolsado',
                 ];
                 
+                $mpInfo = $this->extractMercadoPagoStatusInfo($order);
+                
+                $paymentColor = $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
+                $paymentLabel = $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status);
+
+                if ($mpInfo['under_review']) {
+                    $paymentColor = 'bg-warning text-warning-foreground';
+                    $paymentLabel = 'Em Análise';
+                }
+                
                 return [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
@@ -157,8 +199,12 @@ class OrdersController extends Controller
                     'status_color' => $statusColors[$order->status] ?? 'bg-muted text-muted-foreground',
                     'status_label' => $statusLabel[$order->status] ?? ucfirst($order->status),
                     'payment_status' => $order->payment_status,
-                    'payment_color' => $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground',
-                    'payment_label' => $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status),
+                    'payment_color' => $paymentColor,
+                    'payment_label' => $paymentLabel,
+                    'payment_gateway_status' => $mpInfo['status'],
+                    'payment_gateway_status_detail' => $mpInfo['status_detail'],
+                    'payment_under_review' => $mpInfo['under_review'],
+                    'payment_review_notified_at' => optional($order->payment_review_notified_at)->toIso8601String(),
                     'created_at' => $order->created_at->toIso8601String(),
                     'created_at_human' => $order->created_at->diffForHumans(),
                     'created_at_formatted' => $order->created_at->format('d/m/Y H:i'),
@@ -185,6 +231,140 @@ class OrdersController extends Controller
                 'success' => false,
                 'message' => 'Erro ao buscar novos pedidos',
             ], 500);
+        }
+    }
+
+    /**
+     * Força a sincronização manual do status de pagamento via Mercado Pago
+     */
+    public function confirmMercadoPagoStatus(Request $request, Order $order)
+    {
+        if ($order->payment_provider && $order->payment_provider !== 'mercadopago') {
+            return redirect()->back()->with('error', 'Este pedido não está vinculado ao Mercado Pago.');
+        }
+
+        try {
+            /** @var MercadoPagoApiService $mpService */
+            $mpService = app(MercadoPagoApiService::class);
+
+            $paymentId = $order->payment_id;
+
+            if (!$paymentId) {
+                $searchResult = $mpService->searchPaymentByExternalReference($order->order_number);
+
+                if (!$searchResult['success']) {
+                    throw new \RuntimeException($searchResult['error'] ?? 'Pagamento não encontrado no Mercado Pago.');
+                }
+
+                $payment = $searchResult['payment'];
+                $paymentId = (string)($payment['id'] ?? '');
+
+                if (empty($paymentId)) {
+                    throw new \RuntimeException('Pagamento retornado sem identificador.');
+                }
+            }
+
+            if (!$order->payment_provider) {
+                $order->payment_provider = 'mercadopago';
+                $order->save();
+            }
+
+            $payload = [
+                'type' => 'payment',
+                'data' => [
+                    'id' => $paymentId,
+                ],
+            ];
+
+            $result = $mpService->processWebhook($payload, true);
+
+            if (!$result['success']) {
+                throw new \RuntimeException($result['error'] ?? 'Não foi possível confirmar o status do pagamento.');
+            }
+
+            $order->refresh();
+
+            $statusMessage = strtoupper($order->payment_status ?? 'indefinido');
+            $extra = !empty($result['already_processed'])
+                ? ' (já estava sincronizado)'
+                : '';
+
+            return redirect()
+                ->back()
+                ->with('success', "Status do Mercado Pago sincronizado com sucesso{$extra}. Status atual: {$statusMessage}.");
+        } catch (\Throwable $e) {
+            Log::error('OrdersController: Erro ao confirmar status Mercado Pago manualmente', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erro ao confirmar pagamento: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envia o recibo do pedido pago via WhatsApp Business (BotConversa)
+     */
+    public function sendReceipt(Request $request, Order $order)
+    {
+        try {
+            if ($order->payment_status !== 'paid') {
+                return redirect()
+                    ->back()
+                    ->with('error', 'O pedido precisa estar com pagamento confirmado para enviar o recibo.');
+            }
+
+            $order->loadMissing('customer', 'items.product', 'items.variant', 'address');
+
+            if (!$order->customer || empty($order->customer->phone)) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'O cliente não possui telefone cadastrado para enviar o recibo via WhatsApp.');
+            }
+
+            /** @var BotConversaService $bot */
+            $bot = app(BotConversaService::class);
+
+            if (!$bot->isConfigured()) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'Integração com WhatsApp (BotConversa) não está configurada.');
+            }
+
+            $sent = $bot->sendPaidOrderJson($order);
+
+            if (!$sent) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'Não foi possível enviar o recibo via WhatsApp. Verifique os logs para mais detalhes.');
+            }
+
+            if (empty($order->notified_paid_at)) {
+                $order->forceFill(['notified_paid_at' => now()])->save();
+            }
+
+            Log::info('OrdersController: Recibo enviado pelo WhatsApp Business', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'customer_id' => $order->customer->id ?? null,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('success', 'Recibo enviado com sucesso via WhatsApp Business.');
+        } catch (\Throwable $e) {
+            Log::error('OrdersController: Erro ao enviar recibo via WhatsApp Business', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erro ao enviar recibo: ' . $e->getMessage());
         }
     }
 
@@ -245,14 +425,22 @@ class OrdersController extends Controller
         // Buscar configurações do sistema
         $settings = \App\Models\Setting::getSettings();
 
-        return view('dashboard.orders.show', compact(
+        $mpInfo = $this->extractMercadoPagoStatusInfo($order);
+
+        return view('dashboard.orders.show', array_merge(compact(
             'order',
             'statusHistory',
             'availableStatuses',
             'availableCoupons',
             'availableProducts',
             'settings'
-        ));
+        ), [
+            'paymentUnderReview' => $mpInfo['under_review'],
+            'paymentReviewMessage' => $mpInfo['message'],
+            'paymentGatewayStatus' => $mpInfo['status'],
+            'paymentStatusDetail' => $mpInfo['status_detail'],
+            'paymentReviewNotifiedAt' => $mpInfo['notified_at'],
+        ]));
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -260,6 +448,7 @@ class OrdersController extends Controller
         $request->validate([
             'status' => 'required|string',
             'note' => 'nullable|string|max:255',
+            'skip_notification' => 'nullable|boolean',
         ]);
 
         try {
@@ -270,6 +459,7 @@ class OrdersController extends Controller
 
             // Obter o código do status recebido
             $requestedStatusCode = $request->status;
+            $skipNotification = $request->has('skip_notification') && $request->skip_notification;
             
             // Verificar se é um código de order_statuses ou um status direto do ENUM
             $statusRecord = DB::table('order_statuses')
@@ -319,17 +509,24 @@ class OrdersController extends Controller
             
             // Depois usar o serviço para notificações (ele verificará se já foi atualizado)
             // Passar o código original (requestedStatusCode) para buscar as configurações corretas
+            // Se skip_notification estiver marcado, passar true para skipNotifications
             $orderStatusService->changeStatus(
                 $order->fresh(), // Garantir que está com o status atualizado
                 $requestedStatusCode, // Usar o código original para buscar configurações do order_statuses
                 $request->note,
                 auth()->check() ? auth()->id() : null,
-                false // Não pular histórico, mas o serviço já verifica duplicação
+                false, // Não pular histórico, mas o serviço já verifica duplicação
+                $skipNotification // Pular notificações se solicitado
             );
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Status do pedido atualizado com sucesso!');
+            $message = 'Status do pedido atualizado com sucesso!';
+            if ($skipNotification) {
+                $message .= ' (Sem notificação ao cliente)';
+            }
+
+            return redirect()->back()->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erro ao atualizar status do pedido', [
@@ -353,6 +550,7 @@ class OrdersController extends Controller
             'payment_method' => 'nullable|in:pix,credit_card,debit_card',
             'send_whatsapp' => 'nullable|boolean',
             'whatsapp_message' => 'nullable|string|max:1000',
+            'skip_notification' => 'nullable|boolean',
         ]);
 
         try {
@@ -408,8 +606,9 @@ class OrdersController extends Controller
                 }
             }
 
-            // Enviar WhatsApp se solicitado
-            if ($request->has('send_whatsapp') && $request->send_whatsapp) {
+            // Enviar WhatsApp se solicitado E não estiver marcado para pular notificação
+            $skipNotification = $request->has('skip_notification') && $request->skip_notification;
+            if ($request->has('send_whatsapp') && $request->send_whatsapp && !$skipNotification) {
                 $this->sendOrderUpdateWhatsApp($order, $request->whatsapp_message, $paymentLink);
             }
 
@@ -1448,6 +1647,7 @@ class OrdersController extends Controller
             'customer',
             'address',
             'items.product',
+            'items.variant',
             'payment',
             'orderDeliveryFee'
         ]);
@@ -1478,6 +1678,7 @@ class OrdersController extends Controller
             'customer',
             'address',
             'items.product',
+            'items.variant',
             'payment',
             'orderDeliveryFee'
         ]);
@@ -1702,6 +1903,45 @@ class OrdersController extends Controller
         }
         
         $order->save();
+    }
+
+    /**
+     * Extrai informações do status do pagamento no Mercado Pago
+     */
+    private function extractMercadoPagoStatusInfo(Order $order): array
+    {
+        $raw = $order->payment_raw_response;
+        $data = null;
+
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $data = $decoded;
+            }
+        } elseif (is_array($raw)) {
+            $data = $raw;
+        }
+
+        $status = $data['status'] ?? null;
+        $statusDetail = $data['status_detail'] ?? null;
+
+        $underReview = MercadoPagoApiService::isPaymentUnderReviewState(
+            $order->payment_status ?? 'pending',
+            $status,
+            $statusDetail
+        );
+
+        $message = $underReview
+            ? 'O pagamento está em análise pelo Mercado Pago. Já notificamos o cliente sobre a revisão e avisaremos novamente assim que houver novidades. Acompanhe pelo painel do Mercado Pago ou conclua manualmente quando receber a confirmação.'
+            : null;
+
+        return [
+            'status' => $status,
+            'status_detail' => $statusDetail,
+            'under_review' => $underReview,
+            'message' => $message,
+            'notified_at' => $order->payment_review_notified_at,
+        ];
     }
 
     /**

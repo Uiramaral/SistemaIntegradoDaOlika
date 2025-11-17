@@ -505,6 +505,7 @@ class CartController extends Controller
             'subtotal' => round($subtotal, 2),
             'total' => round($subtotal + $result['delivery_fee'], 2),
             'custom' => $result['custom'] ?? false,
+            'error_code' => $result['error_code'] ?? null,
         ];
 
         if (!$result['success'] && $result['message']) {

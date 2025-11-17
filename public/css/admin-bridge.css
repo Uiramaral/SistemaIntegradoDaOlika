@@ -1,0 +1,378 @@
+.btn,
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.btn {
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+}
+
+.btn:hover {
+    background-color: hsl(var(--muted));
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 8px 16px -6px hsla(var(--primary), 0.35);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsla(var(--primary), 0.9) 100%);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: hsla(var(--sidebar-foreground), 0.08);
+    color: hsl(var(--sidebar-foreground));
+    border-color: transparent;
+}
+
+.btn-secondary:hover {
+    background-color: hsla(var(--sidebar-foreground), 0.12);
+}
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 9999px;
+    background-color: hsla(var(--muted-foreground), 0.08);
+    color: hsl(var(--foreground));
+    border: 1px solid hsla(var(--border), 0.8);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+}
+
+.pill input,
+.pill select,
+.pill button {
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    outline: none;
+}
+
+.card {
+    background-color: hsl(var(--card));
+    border: 1px solid hsla(var(--border), 0.9);
+    border-radius: calc(var(--radius) + 0.25rem);
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid hsla(var(--border), 0.8);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    background-color: hsla(var(--muted-foreground), 0.14);
+    color: hsl(var(--foreground));
+}
+
+.badge-success {
+    background-color: hsla(var(--success), 0.15);
+    color: hsl(var(--success));
+}
+
+.badge-danger {
+    background-color: hsla(var(--destructive), 0.18);
+    color: hsl(var(--destructive));
+}
+
+.table-compact {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.table-compact th,
+.table-compact td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid hsla(var(--border), 0.8);
+    text-align: left;
+}
+
+.table-compact thead th {
+    background-color: hsla(var(--muted-foreground), 0.08);
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+}
+
+.table-compact tbody tr:hover {
+    background-color: hsla(var(--muted-foreground), 0.06);
+}
+
+form .form-group {
+    display: grid;
+    gap: 0.4rem;
+}
+
+form label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+}
+
+form input,
+form select,
+form textarea {
+    width: 100%;
+    background-color: hsl(var(--background));
+    border: 1px solid hsla(var(--border), 0.85);
+    border-radius: calc(var(--radius) - 2px);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+    outline: none;
+    border-color: hsla(var(--ring), 0.9);
+    box-shadow: 0 0 0 3px hsla(var(--ring), 0.25);
+}
+
+/* Dashboard responsive helpers */
+.dashboard-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+    .dashboard-wrapper {
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .dashboard-wrapper {
+        padding: 2.5rem 2rem;
+    }
+}
+
+.dashboard-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.dashboard-two-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.dashboard-main,
+.dashboard-aside {
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-two-panel {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .dashboard-main {
+        flex: 1 1 0%;
+        min-width: 0;
+    }
+
+    .dashboard-aside {
+        flex: 0 0 300px;
+        max-width: 300px;
+        width: 100%;
+        gap: 1rem;
+    }
+}
+
+/* Generic card spacing adjustments */
+.dashboard-aside #pdv-items-list {
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+/* ==== Tabelas Responsivas ==== */
+@media (max-width: 767.98px) {
+    table[data-mobile-card="true"] {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    table[data-mobile-card="true"] thead {
+        display: none;
+    }
+
+    table[data-mobile-card="true"] tbody {
+        display: grid;
+        gap: 1rem;
+    }
+
+    table[data-mobile-card="true"] tbody tr {
+        display: grid;
+        gap: 0.75rem;
+        border: 1px solid hsla(var(--border), 0.8);
+        border-radius: calc(var(--radius) + 0.25rem);
+        padding: 1rem;
+        background-color: hsl(var(--card));
+        box-shadow: 0 10px 20px -15px rgba(15, 23, 42, 0.45);
+    }
+
+    table[data-mobile-card="true"] tbody tr td {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+    }
+
+    table[data-mobile-card="true"] tbody tr td::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: hsl(var(--muted-foreground));
+    }
+
+    table[data-mobile-card="true"] tbody tr td:not([data-label])::before,
+    table[data-mobile-card="true"] tbody tr td[data-label=""]::before {
+        display: none;
+        content: '';
+    }
+
+    table[data-mobile-card="true"] tbody tr td[data-label="Ações"],
+    table[data-mobile-card="true"] tbody tr td.actions-cell {
+        padding-top: 0.5rem;
+    }
+
+    .mobile-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .mobile-actions > * {
+        width: 100% !important;
+    }
+
+    .dashboard-actions {
+        width: 100%;
+        display: grid;
+        gap: 0.75rem;
+    }
+}
+
+.dashboard-card-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .dashboard-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .dashboard-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* ==== Ajustes de Responsividade do Sidebar ==== */
+#sidebar {
+    transition: transform 0.2s ease-in-out;
+    will-change: transform;
+}
+
+.\-translate-x-full {
+    transform: translateX(-100%);
+}
+
+.translate-x-0 {
+    transform: translateX(0);
+}
+
+@media (max-width: 767.98px) {
+    #sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(20rem, 90vw);
+        max-width: 90vw;
+        overflow-y: auto;
+    }
+
+    #sidebar-backdrop {
+        display: block;
+    }
+}
+
+@media (min-width: 768px) {
+    #sidebar {
+        position: static;
+        max-width: 16rem;
+    }
+
+    .md\:translate-x-0 {
+        transform: translateX(0);
+    }
+
+    #sidebar-backdrop {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+}
+

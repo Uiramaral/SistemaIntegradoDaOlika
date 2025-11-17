@@ -389,15 +389,38 @@
                         <tr>
                             <td>
                                 <div class="item-name">
-                                    @if(!$item->product_id && $item->custom_name)
-                                        Item Avulso - {{ $item->custom_name }}
-                                    @elseif($item->custom_name)
-                                        {{ $item->custom_name }}
-                                    @elseif($item->product)
-                                        {{ $item->product->name }}
-                                    @else
-                                        Produto
-                                    @endif
+                                    @php
+                                        $itemName = null;
+                                        if(!$item->product_id && $item->custom_name) {
+                                            $itemName = 'Item Avulso - ' . $item->custom_name;
+                                        } elseif($item->custom_name) {
+                                            $itemName = $item->custom_name;
+                                        } elseif($item->product) {
+                                            $itemName = $item->product->name;
+                                        } else {
+                                            $itemName = 'Produto';
+                                        }
+                                        
+                                        $variantName = null;
+                                        $weight = null;
+                                        
+                                        if ($item->variant_id && $item->variant) {
+                                            $variantName = $item->variant->name;
+                                            $weight = $item->variant->weight_grams;
+                                        } elseif ($item->product) {
+                                            $weight = $item->product->weight_grams;
+                                        }
+                                        
+                                        // Montar nome completo: Nome + Variante (se houver) + Peso (se houver)
+                                        $displayName = $itemName;
+                                        if ($variantName) {
+                                            $displayName .= ' (' . $variantName . ')';
+                                        }
+                                        if ($weight) {
+                                            $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+                                        }
+                                    @endphp
+                                    {{ $displayName }}
                                 </div>
                                 @if($item->special_instructions)
                                 <div class="item-details">Obs: {{ $item->special_instructions }}</div>

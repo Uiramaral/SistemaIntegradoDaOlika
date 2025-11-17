@@ -81,7 +81,7 @@
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="p-6">
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full text-sm" data-mobile-card="true">
                     <thead>
                         <tr class="border-b">
                             <th class="text-left p-3 text-sm font-medium">Código</th>
@@ -97,7 +97,7 @@
                     <tbody>
                         @foreach($coupons as $coupon)
                         <tr class="border-b hover:bg-muted/50">
-                            <td class="p-3">
+                            <td class="p-3 actions-cell">
                                 <code class="text-sm font-mono bg-muted px-2 py-1 rounded">{{ $coupon->code }}</code>
                             </td>
                             <td class="p-3">

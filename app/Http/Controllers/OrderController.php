@@ -369,6 +369,10 @@ class OrderController extends Controller
             'notes' => 'nullable|string|max:1000',
             'order_id' => 'nullable|integer|exists:orders,id', // ID do pedido do PDV
             'order_number' => 'nullable|string|exists:orders,order_number', // Número do pedido do PDV
+            'base_delivery_fee' => 'nullable|numeric|min:0',
+            'delivery_discount_percent' => 'nullable|numeric|min:0',
+            'delivery_discount_amount' => 'nullable|numeric',
+            'delivery_fee_locked' => 'nullable|boolean',
         ]);
         
         // Se for um pedido do PDV e o carrinho estiver vazio, criar sessão do carrinho a partir dos itens do pedido
@@ -420,6 +424,17 @@ class OrderController extends Controller
                 ->with('error', 'Seu carrinho está vazio.');
         }
         
+        // Normalizar CEP (mantém 8 dígitos ou generaliza sufixo)
+        $zipDigits = preg_replace('/\D/', '', $validated['zip_code']);
+        if (strlen($zipDigits) === 8) {
+            // ok
+        } elseif (strlen($zipDigits) >= 5) {
+            $zipDigits = substr($zipDigits, 0, 5) . '000';
+        } else {
+            $zipDigits = $validated['zip_code']; // mantém como veio para validar posteriormente
+        }
+        $validated['zip_code'] = $zipDigits;
+
         // Verificar se há um pedido já pago na sessão (antes de criar novo)
         $sessionOrderId = session('order_id');
         if ($sessionOrderId) {
@@ -818,6 +833,14 @@ class OrderController extends Controller
 
                 $product = \App\Models\Product::find($productId);
                 $productName = $product ? $product->name : "Produto #{$productId}";
+                
+                // Se tiver variante, incluir no nome
+                if ($variantId) {
+                    $variant = \App\Models\ProductVariant::find($variantId);
+                    if ($variant) {
+                        $productName .= ' (' . $variant->name . ')';
+                    }
+                }
 
                 OrderItem::create([
                         'order_id' => $order->id,
@@ -957,7 +980,7 @@ class OrderController extends Controller
         
         // Buscar pedido pelo número
         $order = Order::where('order_number', $orderNumber)
-            ->with(['customer', 'items.product', 'address'])
+            ->with(['customer', 'items.product', 'address', 'orderDeliveryFee'])
             ->firstOrFail();
         
         // Validar token (simples, baseado em hash do ID + número + app key)
@@ -1013,6 +1036,7 @@ class OrderController extends Controller
                     'image_url' => optional($item->product)->image_url ?? null,
                 ];
             })->toArray(),
+            'delivery_fee' => $deliveryFee,
         ];
         
         // Pré-preencher dados do cliente
@@ -1180,6 +1204,23 @@ class OrderController extends Controller
         
         // Cupom aplicado (se houver)
         $appliedCouponCode = $order->coupon_code ?? null;
+
+        $orderDeliveryFee = $order->orderDeliveryFee;
+        $initialDeliveryFee = $order->delivery_fee;
+        $initialBaseDeliveryFee = $orderDeliveryFee ? (float)($orderDeliveryFee->calculated_fee ?? $orderDeliveryFee->final_fee ?? $initialDeliveryFee) : $initialDeliveryFee;
+        $initialDeliveryDiscountAmount = 0.0;
+        $initialDeliveryDiscountPercent = 0.0;
+
+        if ($orderDeliveryFee) {
+            $initialDeliveryDiscountAmount = max(0, (float)($orderDeliveryFee->calculated_fee ?? 0) - (float)($orderDeliveryFee->final_fee ?? 0));
+            if (($orderDeliveryFee->calculated_fee ?? 0) > 0) {
+                $initialDeliveryDiscountPercent = round(($initialDeliveryDiscountAmount / (float)$orderDeliveryFee->calculated_fee) * 100, 2);
+            }
+        }
+
+        if ($initialBaseDeliveryFee === null && $initialDeliveryFee !== null) {
+            $initialBaseDeliveryFee = $initialDeliveryFee;
+        }
         
         return view('pedido.checkout', compact(
             'cartData', 
@@ -1190,7 +1231,11 @@ class OrderController extends Controller
             'cashbackBalance', 
             'cashbackCustomer',
             'appliedCouponCode',
-            'order' // Passar o pedido para identificar que é do PDV
+            'order', // Passar o pedido para identificar que é do PDV
+            'initialDeliveryFee',
+            'initialBaseDeliveryFee',
+            'initialDeliveryDiscountAmount',
+            'initialDeliveryDiscountPercent'
         ));
     }
 
@@ -1324,13 +1369,20 @@ class OrderController extends Controller
         }
 
         // Calcular frete (estimado, usar o que vier na request ou calcular se cliente identificado)
+        $deliveryFeeLocked = $request->boolean('delivery_fee_locked');
         $deliveryFee = (float)($request->input('delivery_fee', 0));
-        $deliveryDiscountPercent = 0;
-        $deliveryDiscountAmount = 0.0;
-        $baseDeliveryFee = $deliveryFee;
+        $baseDeliveryFee = (float)($request->input('base_delivery_fee', $deliveryFee));
+        $deliveryDiscountPercent = (float)($request->input('delivery_discount_percent', 0));
+        $deliveryDiscountAmount = (float)($request->input('delivery_discount_amount', 0));
 
-        // Se temos cliente identificado com endereço, calcular desconto progressivo
-        if ($customerData && isset($customerData['zip_code']) && !empty($customerData['zip_code'])) {
+        if (!$deliveryFeeLocked) {
+            $deliveryDiscountPercent = 0;
+            $deliveryDiscountAmount = 0.0;
+            $baseDeliveryFee = $deliveryFee;
+        }
+
+        // Se temos cliente identificado com endereço e o frete não está travado, calcular desconto progressivo
+        if (!$deliveryFeeLocked && $customerData && isset($customerData['zip_code']) && !empty($customerData['zip_code'])) {
             try {
                 $zipcode = preg_replace('/\D/', '', $customerData['zip_code']);
                 if (strlen($zipcode) === 8) {
@@ -1536,23 +1588,258 @@ class OrderController extends Controller
         return response()->json($jsonResponse);
     }
 
+    public function locateAddress(Request $request)
+    {
+        $validated = $request->validate([
+            'street' => ['required', 'string', 'max:255'],
+            'number' => ['required', 'string', 'max:50'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'max:10'],
+            'zip_code' => ['nullable', 'string', 'max:20'],
+            'customer_phone' => ['nullable', 'string', 'max:50'],
+            'customer_email' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $address = [
+            'street' => $validated['street'],
+            'number' => $validated['number'],
+            'complement' => $validated['complement'] ?? null,
+            'neighborhood' => $validated['neighborhood'] ?? null,
+            'city' => $validated['city'],
+            'state' => strtoupper($validated['state']),
+            'zip_code' => isset($validated['zip_code']) ? preg_replace('/\D/', '', $validated['zip_code']) : null,
+        ];
+
+        $cart = session('cart', []);
+        $subtotal = 0;
+
+        if (!empty($cart)) {
+            $cartController = new CartController();
+            [, $subtotal] = $cartController->cartSummary($cart);
+        } else {
+            $orderId = $request->input('order_id');
+            $orderNumber = $request->input('order_number');
+            if ($orderId || $orderNumber) {
+                $orderQuery = Order::query()->with('items');
+                if ($orderNumber) {
+                    $orderQuery->where('order_number', $orderNumber);
+                } else {
+                    $orderQuery->where('id', $orderId);
+                }
+                $order = $orderQuery->first();
+                if ($order && $order->items) {
+                    foreach ($order->items as $item) {
+                        $subtotal += (float)$item->total_price;
+                    }
+                }
+            }
+        }
+
+        if ($subtotal <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível identificar o subtotal do pedido.',
+            ], 422);
+        }
+
+        $deliveryFeeService = new \App\Services\DeliveryFeeService();
+        $result = $deliveryFeeService->calculateDeliveryFeeByAddress(
+            $address,
+            (float)$subtotal,
+            $validated['customer_phone'] ?? null,
+            $validated['customer_email'] ?? null
+        );
+
+        if ($result['success']) {
+            $resolvedZip = $result['resolved_zip_code'] ?? $address['zip_code'];
+            $normalizedZip = $this->normalizeZipToDistrict($resolvedZip) ?? $this->normalizeZipToDistrict($address['zip_code'] ?? null);
+
+            session([
+                'checkout.customer_phone' => $validated['customer_phone'] ?? session('checkout.customer_phone'),
+                'checkout.customer_email' => $validated['customer_email'] ?? session('checkout.customer_email'),
+                'checkout.address' => $validated['street'],
+                'checkout.number' => $validated['number'],
+                'checkout.complement' => $validated['complement'] ?? null,
+                'checkout.neighborhood' => $validated['neighborhood'] ?? null,
+                'checkout.city' => $validated['city'],
+                'checkout.state' => strtoupper($validated['state']),
+                'checkout.zip_code' => $normalizedZip ?? $address['zip_code'],
+            ]);
+        }
+
+        return response()->json([
+            'success' => $result['success'],
+            'delivery_fee' => $result['delivery_fee'],
+            'base_delivery_fee' => $result['base_delivery_fee'] ?? $result['delivery_fee'],
+            'discount_percent' => $result['discount_percent'] ?? 0,
+            'discount_amount' => $result['discount_amount'] ?? 0,
+            'distance_km' => $result['distance_km'] ?? null,
+            'free_shipping_applied' => $result['free'] ?? false,
+            'resolved_zip_code' => $result['resolved_zip_code'] ?? null,
+            'message' => $result['message'] ?? null,
+            'error_code' => $result['error_code'] ?? null,
+        ], $result['success'] ? 200 : 422);
+    }
+
+    public function lookupCustomer(Request $request)
+    {
+        $phone = preg_replace('/\D/', '', (string)$request->input('phone', ''));
+        $email = trim((string)$request->input('email', ''));
+
+        if ($phone === '' && $email === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Informe ao menos o telefone para localizar o cliente.',
+            ], 422);
+        }
+
+        try {
+            $customer = Customer::query()
+                ->when($phone !== '', function ($query) use ($phone) {
+                    $query->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone, '(', ''), ')', ''), '-', ''), ' ', '') = ?", [$phone]);
+                })
+                ->when($email !== '', function ($query) use ($email, $phone) {
+                    if ($phone !== '') {
+                        $query->orWhere('email', $email);
+                    } else {
+                        $query->where('email', $email);
+                    }
+                })
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cliente não encontrado.',
+                ], 404);
+            }
+
+            $addressParts = $customer->address ? explode(',', $customer->address, 2) : [null, null];
+            $street = trim($addressParts[0] ?? '');
+            $number = trim($addressParts[1] ?? '');
+
+            if ($street === '' && !empty($customer->address)) {
+                $street = $customer->address;
+            }
+
+            $prefill = [
+                'customer_name' => $customer->name,
+                'customer_phone' => $customer->phone,
+                'customer_email' => $customer->email,
+                'address' => $street,
+                'number' => $number ?: $customer->number,
+                'complement' => $customer->complement,
+                'neighborhood' => $customer->neighborhood,
+                'city' => $customer->city,
+                'state' => $customer->state,
+                'zip_code' => $customer->zip_code,
+            ];
+
+            session([
+                'checkout.customer_name' => $prefill['customer_name'],
+                'checkout.customer_phone' => $prefill['customer_phone'],
+                'checkout.customer_email' => $prefill['customer_email'],
+                'checkout.address' => $prefill['address'],
+                'checkout.number' => $prefill['number'],
+                'checkout.complement' => $prefill['complement'],
+                'checkout.neighborhood' => $prefill['neighborhood'],
+                'checkout.city' => $prefill['city'],
+                'checkout.state' => $prefill['state'],
+                'checkout.zip_code' => $prefill['zip_code'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'customer' => [
+                        'id' => $customer->id,
+                        'name' => $customer->name,
+                        'phone' => $customer->phone,
+                        'email' => $customer->email,
+                        'zip_code' => $customer->zip_code,
+                        'neighborhood' => $customer->neighborhood,
+                        'city' => $customer->city,
+                        'state' => $customer->state,
+                    ],
+                    'prefill' => $prefill,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('OrderController::lookupCustomer error', [
+                'phone' => $phone,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível buscar o cliente. Tente novamente em instantes.',
+            ], 500);
+        }
+    }
+
     /**
      * Gerar número único do pedido
      */
     private function generateOrderNumber(): string
     {
-        // Formato: OLK + timestamp invertido + sequencial
         $prefix = 'OLK';
-        $timestamp = now()->format('YmdHis');
-        $random = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
         
-        // Verificar se já existe
-        $number = $prefix . $timestamp . $random;
-        while (Order::where('order_number', $number)->exists()) {
-            $random = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
-            $number = $prefix . $timestamp . $random;
+        // Buscar o último número sequencial usado (formato OLK-0144-XXXXXX)
+        // Extrair o número sequencial do segundo segmento (após OLK-)
+        $lastOrder = Order::where('order_number', 'like', 'OLK-%')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
+            ->first();
+        
+        $sequenceNumber = 144; // Último pedido do sistema antigo
+        
+        if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
+            $lastSequence = (int)$matches[1];
+            if ($lastSequence >= 144) {
+                $sequenceNumber = $lastSequence + 1;
+            }
         }
         
-        return $number;
+        // Gerar 6 caracteres aleatórios (letras maiúsculas e números)
+        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $randomSuffix = '';
+        for ($i = 0; $i < 6; $i++) {
+            $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        
+        // Formato: OLK-0145-ABC123
+        $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+        
+        // Verificar se já existe (muito improvável, mas por segurança)
+        while (Order::where('order_number', $orderNumber)->exists()) {
+            $randomSuffix = '';
+            for ($i = 0; $i < 6; $i++) {
+                $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
+            }
+            $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+        }
+        
+        return $orderNumber;
+    }
+
+    private function normalizeZipToDistrict(?string $zip): ?string
+    {
+        if (!$zip) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', $zip);
+        if (strlen($digits) >= 8) {
+            return substr($digits, 0, 5) . '000';
+        }
+
+        if (strlen($digits) >= 5) {
+            return substr($digits, 0, 5) . '000';
+        }
+
+        return null;
     }
 }

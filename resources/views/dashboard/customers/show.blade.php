@@ -43,17 +43,18 @@
                 <p class="text-muted-foreground">Detalhes do cliente</p>
             </div>
     </div>
+        @php
+            $pendingDebtsCount = $openDebts->count();
+            $totalOpenAmount = $openDebts->sum('amount');
+        @endphp
         <div class="flex gap-2">
             @php
-                $pendingDebtsCount = \App\Models\CustomerDebt::where('customer_id', $customer->id)
-                    ->where('type', 'debit')
-                    ->where('status', 'open')
-                    ->count();
+                $pendingDebtsCount = $openDebts->count();
             @endphp
             @if($pendingDebtsCount > 0)
             <form action="{{ route('dashboard.customers.sendPendingOrders', $customer->id) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" onclick="return confirm('Deseja enviar os resumos de {{ $pendingDebtsCount }} pedido(s) pendente(s) para {{ $customer->name }}?')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2">
+                <button id="send-debts-button" type="submit" onclick="return confirm('Deseja enviar os resumos de {{ $pendingDebtsCount }} pedido(s) pendente(s) para {{ $customer->name }}?')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2" data-count="{{ $pendingDebtsCount }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
                         <path d="m22 2-7 20-4-9-9-4Z"></path>
                         <path d="M22 2 11 13"></path>
@@ -132,6 +133,143 @@
             </div>
         </div>
     </div>
+
+<!-- Débitos / Fiado -->
+<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+    <div class="flex flex-col gap-3 p-6 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <h3 class="text-lg font-semibold leading-none tracking-tight">Fiado / Débitos</h3>
+            <p class="text-sm text-muted-foreground mt-1">Gerencie os lançamentos de fiado deste cliente, registre pagamentos e acompanhe o histórico.</p>
+        </div>
+        <div class="flex flex-col items-start gap-2 sm:items-end">
+            <div class="text-sm">
+                <span class="text-muted-foreground">Saldo em aberto:</span>
+                <span id="open-debts-total" data-value="{{ number_format($totalOpenAmount, 2, '.', '') }}" class="font-semibold {{ $totalOpenAmount > 0 ? 'text-red-600' : 'text-muted-foreground' }}">
+                    R$ {{ number_format($totalOpenAmount, 2, ',', '.') }}
+                </span>
+            </div>
+            <div class="text-sm">
+                <span class="text-muted-foreground">Pedidos com fiado:</span>
+                <span id="open-debts-count" class="font-semibold">{{ $pendingDebtsCount }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6 pt-0 space-y-6">
+        <div id="open-debts-table-wrapper" class="{{ $openDebts->isEmpty() ? 'hidden' : '' }}">
+            <div class="overflow-x-auto rounded-lg border border-border/60">
+                <table class="w-full text-sm">
+                    <thead class="bg-muted/40">
+                        <tr class="text-left text-muted-foreground">
+                            <th class="px-4 py-3 font-medium">Pedido</th>
+                            <th class="px-4 py-3 font-medium">Criado em</th>
+                            <th class="px-4 py-3 font-medium">Valor</th>
+                            <th class="px-4 py-3 font-medium">Descrição</th>
+                            <th class="px-4 py-3 font-medium text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($openDebts as $debt)
+                            @php
+                                $order = $debt->order;
+                                $orderLabel = $order ? '#'.$order->order_number : ($debt->order_id ? '#'.$debt->order_id : '—');
+                            @endphp
+                            <tr data-debt-row="{{ $debt->id }}" class="border-b last:border-b-0">
+                                <td class="px-4 py-3 font-medium">
+                                    {{ $orderLabel }}
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ \Carbon\Carbon::parse($debt->created_at)->format('d/m/Y H:i') }}
+                                </td>
+                                <td class="px-4 py-3 font-semibold text-red-600" data-debt-amount="{{ number_format($debt->amount, 2, '.', '') }}">
+                                    R$ {{ number_format($debt->amount, 2, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-muted-foreground">
+                                    {{ $debt->description ?? 'Débito registrado automaticamente' }}
+                                </td>
+                                <td class="px-4 py-3 text-right space-y-2">
+                                    <div class="flex justify-end gap-2">
+                                        @if($order)
+                                            <a href="{{ route('dashboard.orders.show', $order->id) }}" class="inline-flex items-center gap-1 rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground">
+                                                <i data-lucide="file-text" class="h-4 w-4"></i>
+                                                Ver pedido
+                                            </a>
+                                        @endif
+                                        <button type="button"
+                                                class="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[loading=true]:opacity-70"
+                                                data-action="settle-debt"
+                                                data-url="{{ route('dashboard.customers.debts.settle', $debt->id) }}"
+                                                data-amount="{{ number_format($debt->amount, 2, '.', '') }}">
+                                            <i data-lucide="check" class="h-4 w-4"></i>
+                                            Dar baixa
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="open-debts-empty" class="rounded-md border border-dashed border-border/70 bg-muted/10 p-6 text-center {{ $openDebts->isEmpty() ? '' : 'hidden' }}">
+            <p class="text-sm text-muted-foreground">Nenhum débito em aberto para este cliente.</p>
+        </div>
+
+        @if($debtHistory->count() > 0)
+            <details class="rounded-md border border-border/60 bg-muted/10">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-muted-foreground flex items-center justify-between">
+                    <span>Histórico de fiado (últimos {{ $debtHistory->count() }} lançamentos)</span>
+                    <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 transition duration-200"></i>
+                </summary>
+                <div class="px-4 pb-4 pt-0">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto mt-3">
+                        <table class="w-full text-xs">
+                            <thead class="bg-muted/30 text-muted-foreground">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">Data</th>
+                                    <th class="px-3 py-2 text-left font-medium">Tipo</th>
+                                    <th class="px-3 py-2 text-left font-medium">Status</th>
+                                    <th class="px-3 py-2 text-left font-medium">Valor</th>
+                                    <th class="px-3 py-2 text-left font-medium">Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($debtHistory as $entry)
+                                    <tr class="border-b last:border-b-0">
+                                        <td class="px-3 py-2">{{ \Carbon\Carbon::parse($entry->created_at)->format('d/m/Y H:i') }}</td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ $entry->type === 'debit' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' }}">
+                                                {{ $entry->type === 'debit' ? 'Débito' : 'Crédito' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ $entry->status === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-800' }}">
+                                                {{ ucfirst($entry->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2 font-semibold {{ $entry->type === 'debit' ? 'text-red-600' : 'text-green-600' }}">
+                                            {{ $entry->type === 'debit' ? '-' : '+' }}R$ {{ number_format($entry->amount, 2, ',', '.') }}
+                                        </td>
+                                        <td class="px-3 py-2 text-muted-foreground">
+                                            {{ $entry->description ?? '—' }}
+                                            @if($entry->order)
+                                                <a href="{{ route('dashboard.orders.show', $entry->order->id) }}" class="ml-1 inline-flex items-center gap-1 text-primary hover:underline">
+                                                    <i data-lucide="external-link" class="h-3 w-3"></i>
+                                                    Pedido #{{ $entry->order->order_number }}
+                                                </a>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        @endif
+    </div>
+</div>
 
     <!-- Histórico de Pedidos -->
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -276,6 +414,128 @@ document.getElementById('cashbackModal')?.addEventListener('click', function(e) 
     if (e.target === this) {
         closeCashbackModal();
     }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const totalEl = document.getElementById('open-debts-total');
+    const countEl = document.getElementById('open-debts-count');
+    const tableWrapper = document.getElementById('open-debts-table-wrapper');
+    const emptyState = document.getElementById('open-debts-empty');
+    const sendButton = document.getElementById('send-debts-button');
+
+    function formatCurrency(value) {
+        return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-white shadow-lg ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    function updateSummary(amountRemoved) {
+        if (!totalEl || !countEl) {
+            return;
+        }
+
+        const currentTotal = parseFloat((totalEl.dataset.value ?? totalEl.textContent ?? '0')
+            .replace(/[^\d,.-]/g, '')
+            .replace(/\./g, '')
+            .replace(',', '.')) || 0;
+
+        const newTotal = currentTotal - amountRemoved;
+        totalEl.dataset.value = String(newTotal);
+        totalEl.textContent = `R$ ${formatCurrency(newTotal)}`;
+
+        const currentCount = parseInt(countEl.textContent || '0', 10) || 0;
+        const newCount = Math.max(0, currentCount - 1);
+        countEl.textContent = newCount.toString();
+
+        if (sendButton) {
+            if (newCount <= 0) {
+                sendButton.disabled = true;
+                sendButton.classList.add('opacity-60', 'cursor-not-allowed');
+                sendButton.textContent = 'Nenhum pedido pendente';
+            } else {
+                sendButton.dataset.count = String(newCount);
+                sendButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
+                        <path d="m22 2-7 20-4-9-9-4Z"></path>
+                        <path d="M22 2 11 13"></path>
+                    </svg>
+                    Enviar Pedidos Pendentes (${newCount})`;
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+        }
+    }
+
+    document.querySelectorAll('[data-action="settle-debt"]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            if (!confirm('Confirmar a baixa deste fiado?')) {
+                return;
+            }
+
+            const url = this.getAttribute('data-url');
+            const amount = parseFloat(this.getAttribute('data-amount') || '0');
+            const row = this.closest('[data-debt-row]');
+
+            if (!url || !row) {
+                return;
+            }
+
+            const originalHTML = this.innerHTML;
+            this.dataset.loading = 'true';
+            this.innerHTML = '<svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a10 10 0 00-10 10h4z"></path></svg>';
+            this.disabled = true;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({_token: csrfToken}),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.message || 'Falha ao registrar pagamento.');
+                }
+
+                row.remove();
+                updateSummary(amount);
+
+                if (!document.querySelector('[data-debt-row]')) {
+                    if (tableWrapper) tableWrapper.classList.add('hidden');
+                    if (emptyState) emptyState.classList.remove('hidden');
+                }
+
+                showToast('Pagamento registrado com sucesso!', 'success');
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || 'Erro ao registrar pagamento.', 'error');
+                this.disabled = false;
+                this.innerHTML = originalHTML;
+                this.dataset.loading = 'false';
+                return;
+            }
+
+            this.dataset.loading = 'false';
+        });
+    });
 });
 </script>
 @endsection

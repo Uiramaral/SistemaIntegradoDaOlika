@@ -189,6 +189,25 @@ class WhatsAppService
         return $this->sendText($order->customer->phone, $msgCliente);
     }
 
+    public function sendOrderDelivered(Order $order, ?string $note = null)
+    {
+        if (!$this->enabled) { return false; }
+
+        $observacao = trim((string)($note ?? ''));
+
+        $mensagem = "🎉 *Pedido entregue com sucesso!*\n\n"
+            ."Olá, {$order->customer->name}!\n"
+            ."Confirmamos que o pedido *#{$order->order_number}* chegou até você.\n";
+
+        if (!empty($observacao)) {
+            $mensagem .= "\n📝 Observações da entrega:\n{$observacao}\n";
+        }
+
+        $mensagem .= "\nEsperamos que aproveite cada pedacinho. Obrigado pela preferência! 😋";
+
+        return $this->sendText($order->customer->phone, $mensagem);
+    }
+
     public function notifyAdmin(string $orderNumber, string $customerName, float $total, string $paymentMethod)
     {
         if (!$this->enabled) { return false; }

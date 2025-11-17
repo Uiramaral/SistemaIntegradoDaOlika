@@ -14,6 +14,7 @@ use App\Models\Address;
 use App\Models\CustomerDebt;
 use App\Models\Coupon;
 use App\Models\Setting;
+use App\Models\OrderDeliveryFee;
 use App\Services\MercadoPagoApi;
 use App\Services\BotConversaService;
 use App\Services\DistanceCalculatorService;
@@ -46,11 +47,37 @@ class PDVController extends Controller
             return response()->json(['customers' => []]);
         }
 
-        $customers = Customer::where('name', 'like', "%{$query}%")
+        $customers = Customer::with('addresses')
+            ->where('name', 'like', "%{$query}%")
             ->orWhere('phone', 'like', "%{$query}%")
             ->orWhere('email', 'like', "%{$query}%")
             ->limit(20)
             ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
+
+        // Adicionar endereço principal (primeiro endereço da tabela addresses) se existir
+        $customers->each(function($customer) {
+            if ($customer->addresses && $customer->addresses->isNotEmpty()) {
+                $mainAddress = $customer->addresses->first();
+                // Se o cliente não tem endereço nos campos diretos, usar o da tabela addresses
+                if (empty($customer->address) && $mainAddress->street) {
+                    $customer->address = $mainAddress->street . ($mainAddress->number ? ', ' . $mainAddress->number : '');
+                }
+                if (empty($customer->neighborhood) && $mainAddress->neighborhood) {
+                    $customer->neighborhood = $mainAddress->neighborhood;
+                }
+                if (empty($customer->city) && $mainAddress->city) {
+                    $customer->city = $mainAddress->city;
+                }
+                if (empty($customer->state) && $mainAddress->state) {
+                    $customer->state = $mainAddress->state;
+                }
+                if (empty($customer->zip_code) && $mainAddress->cep) {
+                    $customer->zip_code = $mainAddress->cep;
+                }
+                // Adicionar address_id para uso posterior
+                $customer->address_id = $mainAddress->id;
+            }
+        });
 
         return response()->json(['customers' => $customers]);
     }
@@ -140,16 +167,104 @@ class PDVController extends Controller
             'phone' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:255',
             'is_wholesale' => 'nullable|boolean',
+            'address' => 'nullable|array',
+            'address.zip_code' => 'nullable|string|max:10',
+            'address.street' => 'nullable|string|max:255',
+            'address.number' => 'nullable|string|max:30',
+            'address.complement' => 'nullable|string|max:255',
+            'address.neighborhood' => 'nullable|string|max:255',
+            'address.city' => 'nullable|string|max:255',
+            'address.state' => 'nullable|string|max:2',
         ]);
 
-        $customer = Customer::create([
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'is_wholesale' => $request->has('is_wholesale') && $request->is_wholesale ? 1 : 0,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        return response()->json(['customer' => $customer]);
+            // Preparar dados do cliente
+            $customerData = [
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'is_wholesale' => $request->has('is_wholesale') && $request->is_wholesale ? 1 : 0,
+            ];
+
+            // Se houver dados de endereço, atualizar também no cliente
+            if ($request->filled('address')) {
+                $addressData = $request->address;
+                $zipCode = !empty($addressData['zip_code']) ? preg_replace('/\D/', '', $addressData['zip_code']) : null;
+                
+                if ($zipCode) {
+                    $customerData['zip_code'] = $zipCode;
+                }
+                
+                // Montar endereço completo para salvar no cliente
+                if (!empty($addressData['street'])) {
+                    $fullAddress = trim($addressData['street']);
+                    if (!empty($addressData['number'])) {
+                        $fullAddress .= ', ' . $addressData['number'];
+                    }
+                    if (!empty($addressData['complement'])) {
+                        $fullAddress .= ' - ' . $addressData['complement'];
+                    }
+                    $customerData['address'] = $fullAddress;
+                }
+                
+                if (!empty($addressData['neighborhood'])) {
+                    $customerData['neighborhood'] = $addressData['neighborhood'];
+                }
+                if (!empty($addressData['city'])) {
+                    $customerData['city'] = $addressData['city'];
+                }
+                if (!empty($addressData['state'])) {
+                    $customerData['state'] = strtoupper($addressData['state']);
+                }
+            }
+
+            $customer = Customer::create($customerData);
+
+            // Criar endereço na tabela addresses se fornecido
+            if ($request->filled('address') && !empty($request->address['street'])) {
+                $addressData = $request->address;
+                $zipCode = !empty($addressData['zip_code']) ? preg_replace('/\D/', '', $addressData['zip_code']) : '';
+                
+                // Validar se tem dados mínimos para criar endereço
+                if (!empty($addressData['street']) && !empty($zipCode) && !empty($addressData['city']) && !empty($addressData['state'])) {
+                    Address::create([
+                        'customer_id' => $customer->id,
+                        'cep' => $zipCode,
+                        'street' => $addressData['street'],
+                        'number' => $addressData['number'] ?? '',
+                        'complement' => $addressData['complement'] ?? null,
+                        'neighborhood' => $addressData['neighborhood'] ?? null,
+                        'city' => $addressData['city'],
+                        'state' => strtoupper($addressData['state']),
+                    ]);
+                    
+                    Log::info('PDV: Endereço criado para novo cliente', [
+                        'customer_id' => $customer->id,
+                        'zip_code' => $zipCode,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Carregar relacionamentos para retornar dados completos
+            $customer->load('addresses');
+
+            return response()->json(['customer' => $customer]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('PDV: Erro ao criar cliente', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => 'Erro ao criar cliente: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function validateCoupon(Request $request)
@@ -201,9 +316,13 @@ class PDVController extends Controller
             'delivery_fee' => 'nullable|numeric|min:0',
             'coupon_code' => 'nullable|string|max:64',
             'discount_amount' => 'nullable|numeric|min:0',
+            'manual_discount_fixed' => 'nullable|numeric|min:0',
+            'manual_discount_percent' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string|max:1000',
             'send_payment_link' => 'nullable|boolean', // Se deve enviar link de pagamento ao cliente
             'payment_method' => 'nullable|in:pix,credit_card,debit_card', // Método se enviar link
+            'create_as_paid' => 'nullable|boolean', // Criar pedido já como pago
+            'skip_notification' => 'nullable|boolean', // Pular notificações
         ]);
 
         try {
@@ -217,10 +336,9 @@ class PDVController extends Controller
             });
 
             $deliveryFee = (float)($request->delivery_fee ?? 0);
-            $discountAmount = (float)($request->discount_amount ?? 0);
-            $finalAmount = max(0, $subtotal + $deliveryFee - $discountAmount);
-
-            // Validar cupom se fornecido
+            
+            // Desconto do cupom
+            $couponDiscount = 0;
             $couponCode = $request->coupon_code;
             if ($couponCode) {
                 // Usar scopes do modelo Coupon (valid e available usam starts_at e expires_at)
@@ -231,34 +349,58 @@ class PDVController extends Controller
                     ->first();
                 
                 if ($coupon && $coupon->canBeUsedBy($customer->id)) {
-                    $discountFromCoupon = $coupon->calculateDiscount($subtotal);
-                    $discountAmount = max($discountAmount, $discountFromCoupon);
+                    $couponDiscount = $coupon->calculateDiscount($subtotal);
                     $couponCode = $coupon->code;
                 } else {
                     $couponCode = null;
-                    $discountAmount = 0;
                 }
             }
+            
+            // Desconto manual (fixo e porcentagem)
+            $manualDiscountFixed = (float)($request->manual_discount_fixed ?? 0);
+            $manualDiscountPercent = (float)($request->manual_discount_percent ?? 0);
+            $manualDiscountFromPercent = $subtotal * ($manualDiscountPercent / 100);
+            
+            // Total de desconto (cupom + manual fixo + manual porcentagem)
+            // Se discount_amount foi enviado diretamente, usar ele (já calculado no frontend)
+            $totalDiscount = (float)($request->discount_amount ?? 0);
+            if ($totalDiscount == 0) {
+                // Se não foi enviado, calcular aqui
+                $totalDiscount = $couponDiscount + $manualDiscountFixed + $manualDiscountFromPercent;
+            }
+            
+            $finalAmount = max(0, $subtotal + $deliveryFee - $totalDiscount);
 
             // Gerar número do pedido
             $orderNumber = $this->generateOrderNumber();
+            
+            // Determinar status inicial e payment_status
+            $createAsPaid = $request->has('create_as_paid') && $request->create_as_paid;
+            $initialStatus = $createAsPaid ? 'confirmed' : 'pending';
+            $initialPaymentStatus = $createAsPaid ? 'paid' : 'pending';
 
             // Criar pedido
             $order = Order::create([
                 'customer_id' => $customer->id,
                 'address_id' => $request->address_id,
                 'order_number' => $orderNumber,
-                'status' => 'pending',
+                'status' => $initialStatus,
                 'total_amount' => $subtotal,
                 'delivery_fee' => $deliveryFee,
-                'discount_amount' => $discountAmount,
+                'discount_amount' => $totalDiscount,
                 'coupon_code' => $couponCode,
                 'final_amount' => $finalAmount,
                 'payment_method' => $request->payment_method ?? 'pix',
-                'payment_status' => 'pending', // Sempre definir como 'pending' inicialmente
+                'payment_status' => $initialPaymentStatus,
                 'delivery_type' => $request->delivery_type,
                 'notes' => $request->notes,
             ]);
+            
+            // Se criar como pago, marcar como já notificado para evitar notificações
+            if ($createAsPaid) {
+                $order->notified_paid_at = now();
+                $order->save();
+            }
 
             // Criar itens
             foreach ($request->items as $itemData) {
@@ -270,6 +412,25 @@ class PDVController extends Controller
                     'total_price' => (float)$itemData['price'] * (int)$itemData['quantity'],
                     'custom_name' => $itemData['name'],
                     'special_instructions' => $itemData['special_instructions'] ?? null,
+                ]);
+            }
+
+            try {
+                OrderDeliveryFee::updateOrCreate(
+                    ['order_id' => $order->id],
+                    [
+                        'calculated_fee' => $deliveryFee,
+                        'final_fee' => $deliveryFee,
+                        'distance_km' => null,
+                        'order_value' => $subtotal,
+                        'is_free_delivery' => $deliveryFee <= 0,
+                        'is_manual_adjustment' => true,
+                    ]
+                );
+            } catch (\Exception $e) {
+                Log::warning('PDV: Erro ao registrar taxa de entrega (store)', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -552,6 +713,25 @@ class PDVController extends Controller
                 ]);
             }
 
+            try {
+                OrderDeliveryFee::updateOrCreate(
+                    ['order_id' => $order->id],
+                    [
+                        'calculated_fee' => $deliveryFee,
+                        'final_fee' => $deliveryFee,
+                        'distance_km' => null,
+                        'order_value' => $subtotal,
+                        'is_free_delivery' => $deliveryFee <= 0,
+                        'is_manual_adjustment' => true,
+                    ]
+                );
+            } catch (\Exception $e) {
+                Log::warning('PDV: Erro ao registrar taxa de entrega (send)', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             // Gerar link único para o cliente finalizar o pedido
             // Usar pedido.menuolika.com.br ao invés de dashboard
             // Gerar token de segurança
@@ -642,13 +822,43 @@ class PDVController extends Controller
 
     private function generateOrderNumber(): string
     {
-        $date = Carbon::now();
         $prefix = 'OLK';
-        $dateStr = $date->format('Ymd');
-        $timeStr = $date->format('His');
-        $random = str_pad((string)rand(0, 999), 3, '0', STR_PAD_LEFT);
         
-        return $prefix . $dateStr . $timeStr . $random;
+        // Buscar o último número sequencial usado (formato OLK-0144-XXXXXX)
+        // Extrair o número sequencial do segundo segmento (após OLK-)
+        $lastOrder = \App\Models\Order::where('order_number', 'like', 'OLK-%')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
+            ->first();
+        
+        $sequenceNumber = 144; // Último pedido do sistema antigo
+        
+        if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
+            $lastSequence = (int)$matches[1];
+            if ($lastSequence >= 144) {
+                $sequenceNumber = $lastSequence + 1;
+            }
+        }
+        
+        // Gerar 6 caracteres aleatórios (letras maiúsculas e números)
+        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $randomSuffix = '';
+        for ($i = 0; $i < 6; $i++) {
+            $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        
+        // Formato: OLK-0145-ABC123
+        $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+        
+        // Verificar se já existe (muito improvável, mas por segurança)
+        while (\App\Models\Order::where('order_number', $orderNumber)->exists()) {
+            $randomSuffix = '';
+            for ($i = 0; $i < 6; $i++) {
+                $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
+            }
+            $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+        }
+        
+        return $orderNumber;
     }
 
     /**
@@ -723,4 +933,116 @@ class PDVController extends Controller
         $service = new \App\Services\DeliveryFeeService();
         return $service->getStoreZipCode();
     }
+
+    /**
+     * Busca pedido por número para confirmação de pagamento
+     */
+    public function searchOrder(Request $request)
+    {
+        $request->validate([
+            'order_number' => 'required|string|max:50',
+        ]);
+
+        $order = Order::with(['customer', 'items.product'])
+            ->where('order_number', $request->order_number)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pedido não encontrado',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'order' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'customer_name' => $order->customer->name ?? 'N/A',
+                'customer_phone' => $order->customer->phone ?? 'N/A',
+                'status' => $order->status,
+                'payment_status' => $order->payment_status,
+                'final_amount' => $order->final_amount ?? $order->total_amount ?? 0,
+                'created_at' => $order->created_at->format('d/m/Y H:i'),
+            ],
+        ]);
+    }
+
+    /**
+     * Confirma pagamento de pedido sem enviar notificação
+     * Para pedidos migrados entre plataformas
+     */
+    public function confirmPaymentSilent(Request $request, Order $order)
+    {
+        try {
+            DB::beginTransaction();
+
+            $order->refresh();
+
+            // Atualizar payment_status para 'paid'
+            $order->payment_status = 'paid';
+            
+            // Atualizar status para 'confirmed' (aceito na produção)
+            // O status "Pago/Confirmado" é representado por payment_status='paid' + status='confirmed'
+            $order->status = 'confirmed';
+            
+            // Marcar como já notificado para evitar notificações futuras
+            if (empty($order->notified_paid_at)) {
+                $order->notified_paid_at = now();
+            }
+            
+            $order->save();
+
+            // Usar OrderStatusService para atualizar histórico, mas SEM notificações
+            $orderStatusService = new \App\Services\OrderStatusService();
+            $orderStatusService->changeStatus(
+                $order->fresh(),
+                'paid', // Código do status "Pago/Confirmado"
+                'Pagamento confirmado via PDV (migração) - sem notificação',
+                auth()->check() ? auth()->id() : null,
+                false, // Não pular histórico
+                true   // PULAR NOTIFICAÇÕES
+            );
+
+            // Processar fidelidade e cashback se necessário
+            try {
+                if (class_exists(\App\Http\Controllers\LoyaltyController::class)) {
+                    app(\App\Http\Controllers\LoyaltyController::class)->addPoints($order);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('PDV: Falha ao creditar pontos de fidelidade', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pagamento confirmado com sucesso (sem notificação ao cliente)',
+                'order' => [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'payment_status' => $order->payment_status,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('PDV: Erro ao confirmar pagamento silencioso', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao confirmar pagamento: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
+

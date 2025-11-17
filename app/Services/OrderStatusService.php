@@ -9,7 +9,7 @@ use App\Services\BotConversaService;
 
 class OrderStatusService
 {
-    public function changeStatus(Order $order, string $newCode, ?string $note = null, ?int $userId = null, bool $skipHistory = false): void
+    public function changeStatus(Order $order, string $newCode, ?string $note = null, ?int $userId = null, bool $skipHistory = false, bool $skipNotifications = false): void
     {
         // Recarregar order para garantir dados atualizados
         $order->refresh();
@@ -89,10 +89,13 @@ class OrderStatusService
         }
         
         // Vars padrão (usar mesmo se status não for encontrado)
+        $deliveryNote = trim((string)($note ?? ''));
+
         $vars = [
             'nome'   => optional($order->customer)->name ?? 'Cliente',
             'pedido' => (string) $order->order_number,
             'valor'  => number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.'),
+            'observacao' => $deliveryNote,
         ];
 
         // Monta mensagem (template ou fallback)
@@ -137,20 +140,63 @@ class OrderStatusService
             ]);
         }
 
-        // Dispara WhatsApp se marcado
-        try {
-            $wa = new WhatsAppService();
-            
-            // Verificar se o serviço está habilitado
-            if (!$wa->isEnabled()) {
-                Log::warning('OrderStatusService: WhatsAppService desabilitado - configurações não encontradas ou incompletas', [
-                    'order_id' => $order->id,
-                    'status_code' => $newCode
-                ]);
-                // Não retornar: seguir para BotConversa abaixo
-            } else {
-                // Cliente
-                if ($shouldNotifyCustomer && $order->customer && $order->customer->phone) {
+        // Custom mensagens para fluxos específicos
+        if ($newCode === 'confirmed') {
+            $order->loadMissing('items.product', 'customer');
+
+            $itemsLines = [];
+            foreach ($order->items as $item) {
+                $name = $item->custom_name ?? optional($item->product)->name ?? 'Item';
+                $qty = (int) ($item->quantity ?? 1);
+                $total = $item->total_price ?? ($item->unit_price * $qty);
+                $itemsLines[] = sprintf("%dx %s — R$ %s", $qty, $name, number_format($total, 2, ',', '.'));
+            }
+
+            $tplText = "✅ *Pedido confirmado!*\n\n"
+                ."Olá, {nome}! Recebemos o pedido *#{pedido}* e já estamos separando tudo com carinho.\n\n"
+                ."🧾 *Resumo do pedido:*\n"
+                .implode("\n", $itemsLines)
+                ."\n\n💰 Total: R$ {valor}\n\n"
+                ."Assim que a entrega estiver a caminho, avisaremos por aqui!";
+        } elseif ($newCode === 'ready') {
+            $tplText = "🚨 *Pedido pronto para entrega!*\n\n"
+                ."Olá, {nome}! O pedido *#{pedido}* já está pronto e aguardando a coleta do entregador.\n\n"
+                ."Obrigado por comprar com a Olika!";
+        } elseif ($newCode === 'out_for_delivery' || ($statusCodeForLookup === 'out_for_delivery' && $newCode !== 'ready')) {
+            $tplText = "🚚 *Pedido a caminho!*\n\n"
+                ."Olá, {nome}! O pedido *#{pedido}* saiu para entrega e está a caminho.\n";
+
+            if (!empty($deliveryNote)) {
+                $tplText .= "\n📝 Observações do entregador:\n{observacao}\n";
+            }
+
+            $tplText .= "\nAcompanhe por aqui e, se precisar, é só nos chamar!";
+        } elseif ($newCode === 'delivered') {
+            $tplText = "🎉 *Pedido entregue!*\n\n"
+                ."Olá, {nome}! Confirmamos que o pedido *#{pedido}* foi entregue com sucesso.\n";
+
+            if (!empty($deliveryNote)) {
+                $tplText .= "\n📝 Observações da entrega:\n{observacao}\n";
+            }
+
+            $tplText .= "\nAgradecemos a preferência e esperamos que aproveite! 😋";
+        }
+
+        // Dispara WhatsApp se marcado (pular se skipNotifications estiver ativo)
+        if (!$skipNotifications) {
+            try {
+                $wa = new WhatsAppService();
+                
+                // Verificar se o serviço está habilitado
+                if (!$wa->isEnabled()) {
+                    Log::warning('OrderStatusService: WhatsAppService desabilitado - configurações não encontradas ou incompletas', [
+                        'order_id' => $order->id,
+                        'status_code' => $newCode
+                    ]);
+                    // Não retornar: seguir para BotConversa abaixo
+                } else {
+                    // Cliente
+                    if ($shouldNotifyCustomer && $order->customer && $order->customer->phone) {
                     $phoneNormalized = preg_replace('/\D/', '', $order->customer->phone);
                     // Adicionar código do país se não tiver
                     if (strlen($phoneNormalized) === 11 && !str_starts_with($phoneNormalized, '55')) {
@@ -197,129 +243,139 @@ class OrderStatusService
                     }
                 }
             }
-        } catch (\Throwable $e) {
-            Log::error('WhatsApp status notify error', [
+            } catch (\Throwable $e) {
+                Log::error('WhatsApp status notify error', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        } else {
+            Log::info('OrderStatusService: Notificações puladas (skipNotifications=true)', [
                 'order_id' => $order->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'status_code' => $newCode
             ]);
         }
 
-        // Enviar também via BotConversa (webhook) para todos os status
-        try {
-            $botConversa = new BotConversaService();
-            
-            if (!$botConversa->isConfigured()) {
-                Log::debug('OrderStatusService: BotConversa não configurado, pulando webhook', [
-                    'order_id' => $order->id,
-                    'status' => $newCode
-                ]);
-            } else {
-                // Se for status "paid" ou "confirmed", usar o método específico para pedidos pagos
-                if (in_array($statusCodeForLookup, ['paid', 'confirmed']) || $newCode === 'confirmed') {
-                    // Verificar se já foi notificado para evitar duplicatas
-                    if (!empty($order->notified_paid_at)) {
-                        Log::info('OrderStatusService: Pedido já foi notificado, pulando envio de notificação', [
-                            'order_id' => $order->id,
-                            'order_number' => $order->order_number,
-                            'notified_paid_at' => $order->notified_paid_at,
-                            'status' => $newCode
-                        ]);
-                    } else {
-                        // Carregar relacionamentos necessários
-                        $order->loadMissing('items.product', 'customer', 'address');
-                        
-                        Log::info('OrderStatusService: Enviando pedido pago para BotConversa', [
-                            'order_id' => $order->id,
-                            'order_number' => $order->order_number,
-                            'status' => $newCode
-                        ]);
-                        
-                        $ok = $botConversa->sendPaidOrderJson($order);
-                        
-                        // Atualizar notified_paid_at se o envio foi bem-sucedido
-                        if ($ok) {
-                            $order->notified_paid_at = now();
-                            $order->save();
-                            
-                            Log::info('OrderStatusService: Notificação enviada e notified_paid_at atualizado', [
-                                'order_id' => $order->id,
-                                'order_number' => $order->order_number,
-                            ]);
-                        }
-                        
-                        // Enviar notificação para o número específico quando pedido for pago
-                        try {
-                            $notificationPhone = '+5571981750546'; // Número fixo para notificações
-                            $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
-                            $message .= "Pedido: #{$order->order_number}\n";
-                            $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
-                            $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
-                            $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
-                            $message .= "Acesse o dashboard para ver os detalhes.";
-                            
-                            $botConversa->sendTextMessage($notificationPhone, $message);
-                            
-                            Log::info('OrderStatusService: Notificação enviada para número de administrador', [
-                                'order_id' => $order->id,
-                                'order_number' => $order->order_number,
-                                'phone' => $notificationPhone
-                            ]);
-                        } catch (\Throwable $e) {
-                            Log::warning('OrderStatusService: Erro ao enviar notificação para administrador', [
-                                'order_id' => $order->id,
-                                'error' => $e->getMessage()
-                            ]);
-                            // Não bloquear o fluxo se a notificação falhar
-                        }
-                    }
+        // Enviar também via BotConversa (webhook) para todos os status (pular se skipNotifications estiver ativo)
+        if (!$skipNotifications) {
+            try {
+                $botConversa = new BotConversaService();
+                
+                if (!$botConversa->isConfigured()) {
+                    Log::debug('OrderStatusService: BotConversa não configurado, pulando webhook', [
+                        'order_id' => $order->id,
+                        'status' => $newCode
+                    ]);
                 } else {
-                    // Para outros status, enviar payload genérico
-                    $phone = $botConversa->normalizePhoneBR(optional($order->customer)->phone);
-                    
-                    if ($phone && $order->customer) {
-                        // Substituir variáveis no template
-                        $message = $tplText;
-                        foreach ($vars as $key => $value) {
-                            $message = str_replace('{' . $key . '}', $value, $message);
+                    if (in_array($statusCodeForLookup, ['paid']) || $newCode === 'paid') {
+                        // Verificar se já foi notificado para evitar duplicatas
+                        if (!empty($order->notified_paid_at)) {
+                            Log::info('OrderStatusService: Pedido já foi notificado, pulando envio de notificação', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'notified_paid_at' => $order->notified_paid_at,
+                                'status' => $newCode
+                            ]);
+                        } else {
+                            // Carregar relacionamentos necessários
+                            $order->loadMissing('items.product', 'customer', 'address');
+                            
+                            Log::info('OrderStatusService: Enviando pedido pago para BotConversa', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'status' => $newCode
+                            ]);
+                            
+                            $ok = $botConversa->sendPaidOrderJson($order);
+                            
+                            // Atualizar notified_paid_at se o envio foi bem-sucedido
+                            if ($ok) {
+                                $order->notified_paid_at = now();
+                                $order->save();
+                                
+                                Log::info('OrderStatusService: Notificação enviada e notified_paid_at atualizado', [
+                                    'order_id' => $order->id,
+                                    'order_number' => $order->order_number,
+                                ]);
+                            }
+                            
+                            // Enviar notificação para o número específico quando pedido for pago
+                            try {
+                                $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                                $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
+                                $message .= "Pedido: #{$order->order_number}\n";
+                                $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
+                                $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
+                                $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
+                                $message .= "Acesse o dashboard para ver os detalhes.";
+                                
+                                $botConversa->sendTextMessage($notificationPhone, $message);
+                                
+                                Log::info('OrderStatusService: Notificação enviada para número de administrador', [
+                                    'order_id' => $order->id,
+                                    'order_number' => $order->order_number,
+                                    'phone' => $notificationPhone
+                                ]);
+                            } catch (\Throwable $e) {
+                                Log::warning('OrderStatusService: Erro ao enviar notificação para administrador', [
+                                    'order_id' => $order->id,
+                                    'error' => $e->getMessage()
+                                ]);
+                            }
                         }
-                        
-                        $payload = [
-                            'type' => 'order_status_change',
-                            'order_id' => $order->id,
-                            'order_number' => (string) $order->order_number,
-                            'status_code' => $newCode,
-                            'status_name' => $st->name ?? $newCode,
-                            'phone' => $phone,
-                            'message' => $message,
-                            'customer_name' => optional($order->customer)->name,
-                            'final_amount' => (float)($order->final_amount ?? $order->total_amount ?? 0),
-                        ];
-                        
-                        Log::info('OrderStatusService: Enviando mudança de status para BotConversa', [
-                            'order_id' => $order->id,
-                            'status' => $newCode,
-                            'phone' => $phone
-                        ]);
-                        
-                        $botConversa->send($payload);
                     } else {
-                        Log::debug('OrderStatusService: Cliente sem telefone, pulando BotConversa', [
-                            'order_id' => $order->id,
-                            'has_customer' => $order->customer !== null,
-                            'has_phone' => $order->customer && $order->customer->phone
-                        ]);
+                        // Para outros status, enviar payload genérico
+                        $phone = $botConversa->normalizePhoneBR(optional($order->customer)->phone);
+                        
+                        if ($phone && $order->customer) {
+                            // Substituir variáveis no template
+                            $message = $tplText;
+                            foreach ($vars as $key => $value) {
+                                $message = str_replace('{' . $key . '}', $value, $message);
+                            }
+                            
+                            $payload = [
+                                'type' => 'order_status_change',
+                                'order_id' => $order->id,
+                                'order_number' => (string) $order->order_number,
+                                'status_code' => $newCode,
+                                'status_name' => $st->name ?? $newCode,
+                                'phone' => $phone,
+                                'message' => $message,
+                                'customer_name' => optional($order->customer)->name,
+                                'final_amount' => (float)($order->final_amount ?? $order->total_amount ?? 0),
+                                'note' => $deliveryNote,
+                            ];
+                            
+                            Log::info('OrderStatusService: Enviando mudança de status para BotConversa', [
+                                'order_id' => $order->id,
+                                'status' => $newCode,
+                                'phone' => $phone
+                            ]);
+                            
+                            $botConversa->send($payload);
+                        } else {
+                            Log::debug('OrderStatusService: Cliente sem telefone, pulando BotConversa', [
+                                'order_id' => $order->id,
+                                'has_customer' => $order->customer !== null,
+                                'has_phone' => $order->customer && $order->customer->phone
+                            ]);
+                        }
                     }
                 }
+            } catch (\Throwable $e) {
+                Log::error('BotConversa status notify error', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
             }
-        } catch (\Throwable $e) {
-            Log::error('OrderStatusService: Erro ao enviar para BotConversa', [
+        } else {
+            Log::info('OrderStatusService: BotConversa notificações puladas (skipNotifications=true)', [
                 'order_id' => $order->id,
-                'status' => $newCode,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'status_code' => $newCode
             ]);
-            // Não bloquear o fluxo se o BotConversa falhar
         }
     }
 }

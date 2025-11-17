@@ -71,10 +71,10 @@ class NotificationService
     /**
      * Envia notificação de pedido entregue
      */
-    public function sendOrderDelivered(Order $order)
+    public function sendOrderDelivered(Order $order, ?string $note = null)
     {
         try {
-            $this->whatsAppService->sendOrderDelivered($order);
+            $this->whatsAppService->sendOrderDelivered($order, $note);
             
             LogService::logOrder($order, 'notification_sent', [
                 'type' => 'delivered',

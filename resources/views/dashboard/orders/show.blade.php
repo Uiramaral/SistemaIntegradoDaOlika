@@ -20,7 +20,7 @@
                 </div>
             </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
             <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -39,6 +39,20 @@
                 </svg>
                 Ver Recibo
             </button>
+            @if(($order->payment_provider === 'mercadopago') || (!$order->payment_provider && ($order->payment_link || $order->preference_id)))
+                <form method="POST" action="{{ route('dashboard.orders.confirmMercadoPagoStatus', $order->id) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw">
+                            <path d="M21 12a9 9 0 0 0-9-9"></path>
+                            <path d="M3 12a9 9 0 0 0 9 9"></path>
+                            <path d="M21 3v6h-6"></path>
+                            <path d="M3 21v-6h6"></path>
+                        </svg>
+                        Confirmar pagamento (Mercado Pago)
+                    </button>
+                </form>
+            @endif
             @php
                 $statusColors = [
                     'pending' => 'bg-muted text-muted-foreground',
@@ -50,10 +64,55 @@
                 ];
                 $statusColor = $statusColors[$order->status] ?? 'bg-muted text-muted-foreground';
             @endphp
+            @if($order->payment_status === 'paid' && optional($order->customer)->phone)
+                <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-success text-success-foreground hover:bg-success/90 h-9 px-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
+                            <path d="m22 2-7 20-4-9-9-4Z"></path>
+                            <path d="M22 2 11 13"></path>
+                        </svg>
+                        Enviar recibo (WhatsApp)
+                    </button>
+                </form>
+            @else
+                <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-muted text-muted-foreground h-9 px-4" disabled title="Disponível apenas para pedidos pagos com número de telefone do cliente.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
+                        <path d="m22 2-7 20-4-9-9-4Z"></path>
+                        <path d="M22 2 11 13"></path>
+                    </svg>
+                    Enviar recibo (WhatsApp)
+                </button>
+            @endif
             <div class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold {{ $statusColor }}">
                 {{ $order->status_label }}
             </div>
         </div>
+        @if($paymentUnderReview ?? false)
+            <div class="w-full">
+                <div class="mt-3 flex gap-3 rounded-lg border border-warning bg-warning/10 p-4 text-warning-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 5c.511 0 1.022.128 1.478.384.455.255.84.62 1.118 1.062l5.196 8.531c.29.476.438 1.026.427 1.585a3.09 3.09 0 01-.46 1.547 2.933 2.933 0 01-1.16 1.073c-.467.22-.981.333-1.502.333H6.903c-.521 0-1.035-.113-1.502-.333a2.933 2.933 0 01-1.16-1.073 3.09 3.09 0 01-.46-1.547c-.012-.559.137-1.109.427-1.585l5.196-8.531a2.91 2.91 0 011.118-1.062A2.985 2.985 0 0112 5z" />
+                    </svg>
+                    <div class="space-y-1">
+                        <p class="font-semibold leading-tight">Pagamento em análise</p>
+                        <p class="text-sm leading-relaxed">{{ $paymentReviewMessage }}</p>
+                        <p class="text-xs uppercase tracking-wide text-warning-foreground/80">
+                            Status Mercado Pago:
+                            <span class="font-medium">{{ strtoupper($paymentGatewayStatus ?? 'pendente') }}</span>
+                            @if(!empty($paymentStatusDetail))
+                                — {{ str_replace('_', ' ', strtoupper($paymentStatusDetail)) }}
+                            @endif
+                        </p>
+                        @if(!empty($paymentReviewNotifiedAt))
+                            <p class="text-xs text-warning-foreground/70">
+                                Cliente notificado em {{ $paymentReviewNotifiedAt->timezone(config('app.timezone'))->format('d/m/Y H:i') }}.
+                            </p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     <!-- Resumo do Pedido - Itens do Pedido -->
@@ -370,7 +429,7 @@
                     @csrf
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Status</label>
-                        <select name="status" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <select name="status" id="order-status-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                             @foreach($availableStatuses as $status)
                                 <option value="{{ $status->code }}" @selected($order->status === $status->code)>
                                     {{ $status->name }}
@@ -381,6 +440,12 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Observação (opcional)</label>
                         <textarea name="note" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Adicione uma observação sobre esta mudança..."></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="skip_status_notification" name="skip_notification" value="1" class="h-4 w-4 text-primary">
+                            <label for="skip_status_notification" class="text-sm font-medium">Atualizar sem enviar notificação</label>
+                        </div>
                     </div>
                     <div class="button-container">
                         <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
@@ -599,9 +664,13 @@
                         </div>
                     </div>
                     
-                    <div class="pt-4">
+                    <div class="space-y-3 pt-4">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="skip_notification" name="skip_notification" value="1" class="h-4 w-4 text-primary">
+                            <label for="skip_notification" class="text-sm font-medium">Salvar sem enviar notificação ao cliente</label>
+                        </div>
                         <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                            Salvar Alterações e Notificar Cliente
+                            Salvar Alterações
                         </button>
                     </div>
         </form>
@@ -1506,6 +1575,99 @@
             });
         }
     });
+
+    // Polling automático para atualizar status do pedido
+    (function() {
+        'use strict';
+        
+        const POLL_INTERVAL = 5000; // 5 segundos
+        const orderId = {{ $order->id }};
+        let lastStatus = '{{ $order->status }}';
+        let lastPaymentStatus = '{{ $order->payment_status }}';
+        let lastUpdatedAt = '{{ $order->updated_at->toIso8601String() }}';
+        let pollingInterval = null;
+        let isPolling = false;
+        
+        async function checkOrderStatus() {
+            if (isPolling) return;
+            
+            isPolling = true;
+            
+            try {
+                const response = await fetch(`/dashboard/orders/${orderId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar status do pedido');
+                }
+                
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Extrair status atual da página
+                const statusElement = doc.querySelector('[data-order-status]') || 
+                                    doc.querySelector('.inline-flex.items-center.rounded-full.border');
+                const paymentStatusElement = doc.querySelector('[data-payment-status]');
+                
+                if (statusElement) {
+                    const currentStatus = statusElement.getAttribute('data-order-status') || 
+                                        statusElement.textContent.trim().toLowerCase().replace(/\s+/g, '_');
+                    const currentPaymentStatus = paymentStatusElement?.getAttribute('data-payment-status') || 
+                                                paymentStatusElement?.textContent.trim().toLowerCase().replace(/\s+/g, '_');
+                    
+                    // Verificar se houve mudança
+                    if (currentStatus !== lastStatus || currentPaymentStatus !== lastPaymentStatus) {
+                        // Recarregar página para mostrar mudanças
+                        window.location.reload();
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status do pedido:', error);
+            } finally {
+                isPolling = false;
+            }
+        }
+        
+        function startPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            
+            // Primeira verificação após 3 segundos
+            setTimeout(checkOrderStatus, 3000);
+            
+            // Depois verificar a cada X segundos
+            pollingInterval = setInterval(checkOrderStatus, POLL_INTERVAL);
+        }
+        
+        // Parar polling quando a página perder foco (economizar recursos)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+            } else {
+                if (!pollingInterval) {
+                    startPolling();
+                }
+            }
+        });
+        
+        // Iniciar polling
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startPolling);
+        } else {
+            startPolling();
+        }
+    })();
 </script>
 @endsection
 

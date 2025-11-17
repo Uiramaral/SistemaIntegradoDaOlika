@@ -11,19 +11,27 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 
+$primaryDomain = parse_url(config('app.url', 'https://menuolika.com.br'), PHP_URL_HOST) ?: 'menuolika.com.br';
+$pedidoDomain = env('PEDIDO_DOMAIN', 'pedido.' . $primaryDomain);
+$dashboardDomain = env('DASHBOARD_DOMAIN', 'dashboard.' . $primaryDomain);
+
 // Rota raiz genérica (fallback para desenvolvimento/local sem subdomínio)
 // IMPORTANTE: Esta rota só funciona quando NÃO há subdomínio configurado
-// As rotas com Route::domain() têm prioridade e serão executadas primeiro
-Route::get('/', function () {
+Route::get('/', function () use ($dashboardDomain, $pedidoDomain, $primaryDomain) {
     $host = request()->getHost();
-    
-    // Se estiver acessando sem subdomínio configurado, redireciona para /pedido (fallback)
-    // Se tiver subdomínio, as rotas específicas do domínio já lidaram com isso
-    if (!str_contains($host, 'dashboard.') && !str_contains($host, 'pedido.') && !str_contains($host, 'menuolika.com.br')) {
+
+    if ($host === $dashboardDomain || str_contains($host, 'dashboard.')) {
+        return redirect()->route('dashboard.index');
+    }
+
+    if ($host === $pedidoDomain || str_contains($host, 'pedido.')) {
         return redirect()->route('pedido.index');
     }
-    
-    // Se chegou aqui com subdomínio, algo deu errado - redirecionar para pedido
+
+    if ($host === $primaryDomain) {
+        return redirect()->route('pedido.index');
+    }
+
     return redirect()->route('pedido.index');
 })->name('home');
 use App\Http\Controllers\LoyaltyController;
@@ -59,7 +67,7 @@ Route::prefix('customer')->group(function () {
 });
 
 // Subdomínio: Pedido (Loja Front-end) - PÚBLICO
-Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
+Route::domain($pedidoDomain)->name('pedido.')->group(function () {
     // Página inicial
     Route::get('/', [MenuController::class, 'index'])->name('index');
     
@@ -90,6 +98,7 @@ Route::domain('pedido.menuolika.com.br')->name('pedido.')->group(function () {
         Route::get('/', [OrderController::class, 'checkout'])->name('index');
         Route::post('/', [OrderController::class, 'store'])->name('store');
         Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
     });
     
     // Finalizar pedido do PDV
@@ -138,6 +147,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
         Route::get('/', [OrderController::class, 'checkout'])->name('index');
         Route::post('/', [OrderController::class, 'store'])->name('store');
         Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/locate-address', [OrderController::class, 'locateAddress'])->name('locate-address');
     });
     
     // Finalizar pedido do PDV - /pedido/pdv/complete/{order}
@@ -145,6 +155,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
     
     // Adicionar também calculate-discounts no grupo sem subdomínio
     Route::post('/checkout/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('checkout.calculate-discounts');
+    Route::post('/checkout/locate-address', [OrderController::class, 'locateAddress'])->name('checkout.locate-address');
     
     // Pagamento - /pedido/payment/pix/{order}, etc.
     Route::prefix('payment')->name('payment.')->group(function () {
@@ -161,7 +172,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
 // ============================================
 
 // Subdomínio: Dashboard (produção)
-Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function () {
+Route::domain($dashboardDomain)->middleware('auth')->group(function () {
 
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
@@ -199,6 +210,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         'destroy' => 'dashboard.customers.destroy',
     ]);
     Route::post('/customers/{customer}/send-pending-orders', [\App\Http\Controllers\Dashboard\DebtsController::class, 'sendPendingOrdersSummary'])->name('dashboard.customers.sendPendingOrders');
+    Route::post('/customers/debts/{debt}/settle', [\App\Http\Controllers\Dashboard\DebtsController::class, 'settleDebt'])->name('dashboard.customers.debts.settle');
     Route::post('/customers/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
     Route::put('/customers/{customer}/cashback', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateCashback'])->name('dashboard.customers.updateCashback');
     Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
@@ -254,6 +266,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::post('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'applyDiscount'])->name('applyDiscount');
         Route::delete('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeDiscount'])->name('removeDiscount');
         Route::post('/{order}/refund', [\App\Http\Controllers\Dashboard\OrdersController::class, 'refund'])->name('refund');
+        Route::post('/{order}/send-receipt', [\App\Http\Controllers\Dashboard\OrdersController::class, 'sendReceipt'])->name('sendReceipt');
         
         // Rotas para edição de itens
         Route::post('/{order}/items', [\App\Http\Controllers\Dashboard\OrdersController::class, 'addItem'])->name('addItem');
@@ -266,6 +279,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fiscalReceiptEscPos');
         Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
         Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
+        Route::post('/{order}/confirm-mercadopago', [\App\Http\Controllers\Dashboard\OrdersController::class, 'confirmMercadoPagoStatus'])->name('confirmMercadoPagoStatus');
     });
     
     // Alias para manter compatibilidade
@@ -283,6 +297,10 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     Route::get('/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
     
     Route::get('/reports/export', [ReportsController::class, 'export'])->name('dashboard.reports.export');
+
+    // Entregas (painel do entregador)
+    Route::get('/deliveries', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'index'])->name('dashboard.deliveries.index');
+    Route::post('/deliveries/{order}/status', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'updateStatus'])->name('dashboard.deliveries.status');
 
     // Configurações
     Route::get('/settings/whatsapp',      [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
@@ -312,6 +330,8 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
         Route::post('/calc',     [\App\Http\Controllers\Dashboard\PDVController::class, 'calculate'])->name('calculate');
         Route::post('/order',    [\App\Http\Controllers\Dashboard\PDVController::class, 'store'])->name('store');
         Route::post('/send',     [\App\Http\Controllers\Dashboard\PDVController::class, 'send'])->name('send');
+        Route::post('/search-order', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchOrder'])->name('searchOrder');
+        Route::post('/orders/{order}/confirm-payment-silent', [\App\Http\Controllers\Dashboard\PDVController::class, 'confirmPaymentSilent'])->name('confirmPaymentSilent');
     });
 
     // Taxas de entrega por distância
@@ -331,7 +351,7 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
 });
 
 // Rotas do dashboard vinculadas ao subdomínio correto
-Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function () {
+Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/pdv', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('dashboard.pdv.index');
     Route::get('/pedidos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders.index');
@@ -340,6 +360,21 @@ Route::domain('dashboard.menuolika.com.br')->middleware('auth')->group(function 
     Route::get('/produtos', [\App\Http\Controllers\Dashboard\ProductsController::class, 'index'])->name('dashboard.products.index');
     Route::get('/categorias', [\App\Http\Controllers\Dashboard\CategoriesController::class, 'index'])->name('dashboard.categories.index');
     Route::get('/cupons', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('dashboard.coupons.index');
+    Route::get('/entregas', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'index'])->name('dashboard.deliveries.index');
+    Route::post('/entregas/{order}/status', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'updateStatus'])->name('dashboard.deliveries.status');
+    Route::post('/customers/{customer}/send-pending-orders', [\App\Http\Controllers\Dashboard\DebtsController::class, 'sendPendingOrdersSummary'])->name('dashboard.customers.sendPendingOrders');
+    Route::post('/customers/debts/{debt}/settle', [\App\Http\Controllers\Dashboard\DebtsController::class, 'settleDebt'])->name('dashboard.customers.debts.settle');
+    Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
+        'index' => 'dashboard.wholesale-prices.index',
+        'create' => 'dashboard.wholesale-prices.create',
+        'store' => 'dashboard.wholesale-prices.store',
+        'edit' => 'dashboard.wholesale-prices.edit',
+        'update' => 'dashboard.wholesale-prices.update',
+        'destroy' => 'dashboard.wholesale-prices.destroy',
+    ]);
+    Route::get('/precos-revenda', function () {
+        return redirect()->route('dashboard.wholesale-prices.index');
+    })->name('dashboard.wholesale-prices.alias');
     Route::get('/cashback', [\App\Http\Controllers\Dashboard\CashbackController::class, 'index'])->name('dashboard.cashback.index');
     Route::get('/fidelidade', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
     Route::get('/relatorios', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
@@ -359,6 +394,17 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Route::get('/produtos', [\App\Http\Controllers\Dashboard\ProductsController::class, 'index'])->name('dashboard.products.index');
     Route::get('/categorias', [\App\Http\Controllers\Dashboard\CategoriesController::class, 'index'])->name('dashboard.categories.index');
     Route::get('/cupons', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('dashboard.coupons.index');
+    Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
+        'index' => 'dashboard.wholesale-prices.index',
+        'create' => 'dashboard.wholesale-prices.create',
+        'store' => 'dashboard.wholesale-prices.store',
+        'edit' => 'dashboard.wholesale-prices.edit',
+        'update' => 'dashboard.wholesale-prices.update',
+        'destroy' => 'dashboard.wholesale-prices.destroy',
+    ]);
+    Route::get('/precos-revenda', function () {
+        return redirect()->route('dashboard.wholesale-prices.index');
+    })->name('dashboard.wholesale-prices.alias');
     Route::get('/cashback', [\App\Http\Controllers\Dashboard\CashbackController::class, 'index'])->name('dashboard.cashback.index');
     Route::get('/fidelidade', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
     Route::get('/relatorios', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');

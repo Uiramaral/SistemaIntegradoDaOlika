@@ -287,7 +287,30 @@
                     @foreach($order->items as $item)
                     <tr>
                         <td class="item-name">
-                            {{ $item->custom_name ?? ($item->product ? $item->product->name : 'Produto') }}
+                            @php
+                                $itemName = $item->custom_name ?? ($item->product ? $item->product->name : 'Produto');
+                                $variantName = null;
+                                $weight = null;
+                                
+                                if ($item->variant_id && $item->variant) {
+                                    $variantName = $item->variant->name;
+                                    $weight = $item->variant->weight_grams;
+                                } elseif ($item->product) {
+                                    $weight = $item->product->weight_grams;
+                                }
+                                
+                                // Montar nome completo: Nome + Variante (se houver e não estiver já no custom_name) + Peso (se houver)
+                                $displayName = $itemName;
+                                // Verificar se a variante já está no custom_name (para pedidos novos)
+                                $variantAlreadyInName = $variantName && strpos($itemName, '(' . $variantName . ')') !== false;
+                                if ($variantName && !$variantAlreadyInName) {
+                                    $displayName .= ' (' . $variantName . ')';
+                                }
+                                if ($weight) {
+                                    $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+                                }
+                            @endphp
+                            {{ $displayName }}
                             @if($item->special_instructions)
                             <div class="item-obs">Obs: {{ $item->special_instructions }}</div>
                             @endif

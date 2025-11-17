@@ -51,6 +51,7 @@ class Order extends Model
         'print_requested_at',
         'printed_at',
         'notified_paid_at',
+        'payment_review_notified_at',
     ];
 
     protected $casts = [
@@ -64,6 +65,7 @@ class Order extends Model
         'print_requested_at' => 'datetime',
         'printed_at' => 'datetime',
         'notified_paid_at' => 'datetime',
+        'payment_review_notified_at' => 'datetime',
     ];
 
     /**

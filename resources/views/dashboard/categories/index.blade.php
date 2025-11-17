@@ -34,7 +34,7 @@
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="p-6">
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full text-sm" data-mobile-card="true">
                     <thead>
                         <tr class="border-b">
                             <th class="text-left p-3 text-sm font-medium">Nome</th>
@@ -66,8 +66,8 @@
                                 <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Inativa</span>
                                 @endif
                             </td>
-                            <td class="p-3">
-                                <div class="flex items-center justify-end gap-2">
+                            <td class="p-3 actions-cell">
+                                <div class="flex items-center justify-end gap-2 mobile-actions">
                                     <button onclick="toggleProducts({{ $category->id }})" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3" title="Gerenciar produtos">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>

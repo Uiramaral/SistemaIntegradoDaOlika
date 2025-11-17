@@ -12,8 +12,20 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 
 $primaryDomain = parse_url(config('app.url', 'https://menuolika.com.br'), PHP_URL_HOST) ?: 'menuolika.com.br';
-$pedidoDomain = env('PEDIDO_DOMAIN', 'pedido.' . $primaryDomain);
-$dashboardDomain = env('DASHBOARD_DOMAIN', 'dashboard.' . $primaryDomain);
+
+// Detectar ambiente baseado no host acessado
+$currentHost = request()->getHost();
+$isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
+
+if ($isDevDomain) {
+    // Desenvolvimento: usar subdomínios de dev
+    $pedidoDomain = env('PEDIDO_DOMAIN', 'devpedido.' . $primaryDomain);
+    $dashboardDomain = env('DASHBOARD_DOMAIN', 'devdashboard.' . $primaryDomain);
+} else {
+    // Produção: usar subdomínios padrão
+    $pedidoDomain = env('PEDIDO_DOMAIN', 'pedido.' . $primaryDomain);
+    $dashboardDomain = env('DASHBOARD_DOMAIN', 'dashboard.' . $primaryDomain);
+}
 
 // Rota raiz genérica (fallback para desenvolvimento/local sem subdomínio)
 // IMPORTANTE: Esta rota só funciona quando NÃO há subdomínio configurado

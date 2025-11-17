@@ -2577,6 +2577,9 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 setTimeout(() => {
                     updateFinalizeButtonState();
                 }, 1000);
+            }).catch((error) => {
+                console.error('Erro ao carregar endereço do cliente:', error);
+                updateFinalizeButtonState();
             });
         }
         
@@ -2594,6 +2597,9 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                         if (freteJaCalculado && window.checkoutData.deliveryFee > 0) {
                             window.checkoutData.freteCalculado = true;
                         }
+                        updateFinalizeButtonState();
+                    }).catch((error) => {
+                        console.error('Erro ao buscar CEP:', error);
                         updateFinalizeButtonState();
                     });
                 }, 300);
@@ -2613,6 +2619,9 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                     // Chamar buscarCep que irá recalcular o frete mesmo que o endereço já esteja preenchido
                     buscarCep().then(() => {
                         updateFinalizeButtonState();
+                    }).catch((error) => {
+                        console.error('Erro ao buscar CEP:', error);
+                        updateFinalizeButtonState();
                     });
                 } else {
                     // Se não tem CEP válido, apenas atualizar estado do botão
@@ -2631,6 +2640,9 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         updateOrderSummary().then(() => {
             // Não preservar frete antigo - ele será recalculado pelas funções acima
             // Apenas atualizar estado do botão
+            updateFinalizeButtonState();
+        }).catch((error) => {
+            console.error('Erro ao atualizar resumo do pedido:', error);
             updateFinalizeButtonState();
         });
         
@@ -2711,7 +2723,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 // Resetar flag para forçar recálculo
                 window.checkoutData.freteCalculado = false;
                 window.checkoutData.deliveryFeeLocked = false;
-                setTimeout(async () => {
+                setTimeout(async function() {
                     const zipCodeDigits = zipCodeInput.value.replace(/\D/g, '');
                     if (zipCodeDigits.length === 8) {
                         const customerPhone = document.querySelector('input[name="customer_phone"]')?.value || '';
@@ -2733,6 +2745,10 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                                     customer_email: customerEmail 
                                 })
                             });
+                            
+                            if (!feeResponse.ok) {
+                                throw new Error('Erro ao calcular frete: ' + feeResponse.status);
+                            }
                             
                             const feeData = await feeResponse.json();
                             console.log('CEP ao carregar: Resposta do cálculo de frete:', feeData);

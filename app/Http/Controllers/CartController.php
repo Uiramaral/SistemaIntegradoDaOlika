@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use App\Models\Product;
 use App\Services\OpenAIService;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +46,7 @@ class CartController extends Controller
     }
 
 
-    public function cartSummary(array $cart): array
+    public function cartSummary(array $cart, bool $forceFreshPrices = false): array
     {
         $count = 0;
         $total = 0.0;
@@ -75,12 +76,37 @@ class CartController extends Controller
 
             $product = $products->get($productId);
             $variant = $variantId ? $variants->get($variantId) : null;
-            // Fallback de preço: prioriza preço da variação; senão preço do produto
-            if ($price <= 0) {
-                if ($variant) {
+            if ($forceFreshPrices) {
+                $productName = $product->name ?? "produto #{$productId}";
+                if (!$product || !$product->is_active || !$product->show_in_catalog || !$product->is_available) {
+                    throw ValidationException::withMessages([
+                        'cart' => "O item {$productName} não está mais disponível. Atualize seu carrinho.",
+                    ]);
+                }
+                if ($variantId) {
+                    if (!$variant || !$variant->is_active) {
+                        throw ValidationException::withMessages([
+                            'cart' => "A variação selecionada não está mais disponível para {$productName}.",
+                        ]);
+                    }
                     $price = (float)$variant->price;
-                } elseif ($product) {
+                } else {
                     $price = (float)$product->price;
+                }
+
+                if ($price <= 0) {
+                    throw ValidationException::withMessages([
+                        'cart' => "Não foi possível validar o preço atualizado de {$product->name}.",
+                    ]);
+                }
+            } else {
+                // Fallback de preço: prioriza preço da variação; senão preço do produto
+                if ($price <= 0) {
+                    if ($variant) {
+                        $price = (float)$variant->price;
+                    } elseif ($product) {
+                        $price = (float)$product->price;
+                    }
                 }
             }
 

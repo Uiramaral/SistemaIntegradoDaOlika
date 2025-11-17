@@ -39,4 +39,8 @@ return [
         'paid_webhook' => env('BOTCONVERSA_PAID_WEBHOOK_URL', null),
     ],
 
+    'mercadopago' => [
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+    ],
+
 ];

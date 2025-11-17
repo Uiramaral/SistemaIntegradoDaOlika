@@ -57,7 +57,7 @@ class OrderController extends Controller
             }
             
             $cartController = new CartController();
-            [$count, $subtotal] = $cartController->cartSummary($cart);
+            [$count, $subtotal] = $cartController->cartSummary($cart, true);
             
             \App\Models\AnalyticsEvent::trackCheckoutStarted($customerId, [
                 'cart_items_count' => $count,
@@ -71,7 +71,7 @@ class OrderController extends Controller
 
         // Resumo do carrinho
         $cartController = new CartController();
-        [$count, $subtotal, $items] = $cartController->cartSummary($cart);
+        [$count, $subtotal, $items] = $cartController->cartSummary($cart, true);
         
         $cartData = [
             'count' => $count,
@@ -520,7 +520,7 @@ class OrderController extends Controller
 
             // 3. Calcular totais do carrinho
             $cartController = new CartController();
-            [$count, $subtotal, $items] = $cartController->cartSummary($cart);
+            [$count, $subtotal, $items] = $cartController->cartSummary($cart, true);
 
             // 4. Calcular frete (validar se foi calculado)
             $deliveryFee = 0.00;
@@ -1617,7 +1617,7 @@ class OrderController extends Controller
 
         if (!empty($cart)) {
             $cartController = new CartController();
-            [, $subtotal] = $cartController->cartSummary($cart);
+            [, $subtotal] = $cartController->cartSummary($cart, true);
         } else {
             $orderId = $request->input('order_id');
             $orderNumber = $request->input('order_number');

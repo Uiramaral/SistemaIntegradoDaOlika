@@ -39,7 +39,8 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // URL será configurada dinamicamente no AppServiceProvider
+            'url' => env('APP_URL', 'https://menuolika.com.br') . '/storage',
             'visibility' => 'public',
             'throw' => false,
         ],

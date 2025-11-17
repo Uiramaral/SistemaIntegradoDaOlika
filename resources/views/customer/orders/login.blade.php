@@ -34,22 +34,63 @@
             </div>
             @endif
 
-            <form method="GET" action="{{ route('customer.orders.index') }}" class="space-y-4" id="login-form">
+            @if(!empty($statusMessage ?? null))
+            <div class="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+                {{ $statusMessage }}
+            </div>
+            @endif
+
+            @if(!empty($otpError ?? null))
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                {{ $otpError }}
+            </div>
+            @endif
+
+            @if(!empty($otpSent ?? false))
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
+                Enviamos um código para o seu WhatsApp. Informe abaixo para acessar seus pedidos.
+            </div>
+            @endif
+
+            <form method="POST" action="{{ route('customer.orders.request-token') }}" class="space-y-4" id="login-form">
+                @csrf
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Telefone ou E-mail</label>
-                    <input type="text" id="identifier" name="identifier" placeholder="(11) 99999-9999 ou email@exemplo.com" 
+                    <input type="text" id="identifier" name="phone" placeholder="(11) 99999-9999" 
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                           value="{{ $phoneValue ?? old('phone') }}"
                            required>
                 </div>
 
                 <button type="submit" 
                         class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
-                    Acessar Meus Pedidos
+                    Receber código por WhatsApp
                 </button>
             </form>
 
+            @php
+                $showOtpForm = ($needsOtp ?? false) || ($otpSent ?? false);
+            @endphp
+
+            @if($showOtpForm)
+            <form method="GET" action="{{ route('customer.orders.index') }}" class="space-y-4 mt-6">
+                <input type="hidden" name="phone" value="{{ $phoneValue ?? old('phone') }}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Código de 6 dígitos</label>
+                    <input type="text" name="otp" maxlength="6" minlength="6" pattern="\d{6}" placeholder="000000"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                           required>
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium hover:bg-emerald-500 transition-colors">
+                    Confirmar código
+                </button>
+            </form>
+            @endif
+
             <p class="mt-6 text-center text-sm text-gray-500">
-                Digite seu telefone para visualizar seus pedidos
+                Digite seu telefone e confirme o código enviado para visualizar seus pedidos.
             </p>
         </div>
     </div>
@@ -57,19 +98,10 @@
     <script>
         // Enviar apenas telefone (sem email) e salvar cookie
         document.getElementById('login-form').addEventListener('submit', function(e) {
-            const identifier = document.getElementById('identifier').value.trim();
-            
-            // Normalizar telefone (remover caracteres não numéricos)
-            const phoneNormalized = identifier.replace(/\D/g, '');
-            
-            // Sempre enviar como telefone
-            const phoneInput = document.createElement('input');
-            phoneInput.type = 'hidden';
-            phoneInput.name = 'phone';
-            phoneInput.value = phoneNormalized;
-            this.appendChild(phoneInput);
-            
-            // Salvar telefone no cookie (30 dias)
+            const identifier = document.getElementById('identifier');
+            if (!identifier) return;
+            const phoneNormalized = identifier.value.replace(/\D/g, '');
+            identifier.value = phoneNormalized;
             document.cookie = `customer_phone=${phoneNormalized}; path=/; max-age=${60 * 60 * 24 * 30}`;
         });
         

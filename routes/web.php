@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\OrderController;
@@ -27,24 +28,34 @@ if ($isDevDomain) {
     $dashboardDomain = env('DASHBOARD_DOMAIN', 'dashboard.' . $primaryDomain);
 }
 
-// Rota raiz genérica (fallback para desenvolvimento/local sem subdomínio)
-// IMPORTANTE: Esta rota só funciona quando NÃO há subdomínio configurado
+// Debug: Log dos domínios detectados (remover em produção se necessário)
+// \Log::info('Rotas configuradas', [
+//     'current_host' => $currentHost,
+//     'is_dev_domain' => $isDevDomain,
+//     'pedido_domain' => $pedidoDomain,
+//     'dashboard_domain' => $dashboardDomain,
+// ]);
+
+// Rota raiz genérica (fallback APENAS para domínio principal sem subdomínio)
+// IMPORTANTE: Esta rota NÃO interfere com rotas Route::domain()
+// Ela só é executada quando o host NÃO corresponde a nenhum subdomínio configurado
 Route::get('/', function () use ($dashboardDomain, $pedidoDomain, $primaryDomain) {
     $host = request()->getHost();
 
-    if ($host === $dashboardDomain || str_contains($host, 'dashboard.')) {
-        return redirect()->route('dashboard.index');
-    }
-
-    if ($host === $pedidoDomain || str_contains($host, 'pedido.')) {
+    // Se o host corresponde exatamente a um dos domínios configurados,
+    // as rotas Route::domain() devem tratar - esta rota não deve ser executada
+    // Mas como fallback de segurança, vamos apenas redirecionar para pedido
+    // se não for nenhum dos domínios esperados
+    
+    // Apenas para domínio principal ou localhost
+    if ($host === $primaryDomain || $host === 'localhost' || $host === '127.0.0.1') {
         return redirect()->route('pedido.index');
     }
 
-    if ($host === $primaryDomain) {
-        return redirect()->route('pedido.index');
-    }
-
-    return redirect()->route('pedido.index');
+    // Se chegou aqui e não é nenhum dos domínios esperados, 
+    // provavelmente é um subdomínio não configurado - deixar as rotas Route::domain() tratarem
+    // Não fazer nada aqui
+    abort(404);
 })->name('home');
 use App\Http\Controllers\LoyaltyController;
 use App\Http\Controllers\ReferralController;
@@ -66,6 +77,58 @@ Route::get('/register', [RegisterController::class, 'showForm'])->name('register
 Route::post('/register', [RegisterController::class, 'register'])->name('register');
 
 // ============================================
+// ROTA PARA SERVIR ARQUIVOS DO STORAGE
+// DEVE VIR ANTES DE TUDO PARA FUNCIONAR EM TODOS OS SUBDOMÍNIOS
+// ============================================
+// Rota para servir arquivos da pasta storage/app/public
+// Funciona como fallback se o symlink não estiver funcionando corretamente
+Route::get('/storage/{path}', function (string $path) {
+    try {
+        // Decodificar path (pode conter barras e caracteres especiais)
+        $path = urldecode($path);
+        
+        // Remover barras iniciais
+        $path = ltrim($path, '/');
+        
+        $disk = Storage::disk('public');
+        
+        if (!$disk->exists($path)) {
+            \Log::warning('Arquivo não encontrado no storage', [
+                'path' => $path,
+                'full_path' => $disk->path($path),
+                'storage_root' => storage_path('app/public'),
+            ]);
+            abort(404, 'Arquivo não encontrado: ' . $path);
+        }
+        
+        $filePath = $disk->path($path);
+        
+        // Verificar se o arquivo realmente existe
+        if (!file_exists($filePath)) {
+            \Log::error('Arquivo não existe fisicamente', [
+                'path' => $path,
+                'file_path' => $filePath,
+            ]);
+            abort(404, 'Arquivo não encontrado fisicamente');
+        }
+        
+        $mimeType = $disk->mimeType($path) ?: 'application/octet-stream';
+        
+        return response()->file($filePath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000', // Cache de 1 ano
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Erro ao servir arquivo do storage', [
+            'path' => $path ?? 'unknown',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        abort(404, 'Erro ao servir arquivo: ' . $e->getMessage());
+    }
+})->where('path', '.*')->name('storage.serve');
+
+// ============================================
 // ROTAS PÚBLICAS DO PEDIDO (SEM AUTENTICAÇÃO)
 // DEVEM VIR ANTES DAS ROTAS DO DASHBOARD
 // ============================================
@@ -73,6 +136,9 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 // Rotas do Cliente (visualização de pedidos) - GLOBAIS (funcionam em qualquer subdomínio)
 // IMPORTANTE: Estas rotas devem estar ANTES das rotas com domínio específico
 Route::prefix('customer')->group(function () {
+    Route::post('/orders/request-token', [\App\Http\Controllers\Customer\OrdersController::class, 'requestAccessToken'])
+        ->middleware('throttle:3,1') // 3 tentativas por minuto
+        ->name('customer.orders.request-token');
     Route::get('/orders', [\App\Http\Controllers\Customer\OrdersController::class, 'index'])->name('customer.orders.index');
     Route::get('/orders/{order}', [\App\Http\Controllers\Customer\OrdersController::class, 'show'])->name('customer.orders.show');
     Route::post('/orders/{order}/rate', [\App\Http\Controllers\Customer\OrdersController::class, 'rate'])->name('customer.orders.rate');
@@ -183,9 +249,9 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
 // ROTAS DO DASHBOARD (REQUEREM AUTENTICAÇÃO)
 // ============================================
 
-// Subdomínio: Dashboard (produção)
+// Subdomínio: Dashboard (produção e desenvolvimento)
+// IMPORTANTE: Esta rota deve vir ANTES das rotas do pedido para garantir prioridade
 Route::domain($dashboardDomain)->middleware('auth')->group(function () {
-
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
     
@@ -455,13 +521,117 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     });
 });
 
-// Rota para servir arquivos da pasta storage/app/public sem necessidade de symlink
-Route::get('/storage/{path}', function (string $path) {
-    if (!Storage::disk('public')->exists($path)) {
-        abort(404);
+// Rota para criar symlink do storage (acessar via navegador)
+Route::get('/create-storage-link', function () {
+    try {
+        $link = public_path('storage');
+        $target = storage_path('app/public');
+        
+        // Verificar se o target existe
+        if (!is_dir($target)) {
+            // Criar diretório target se não existir
+            if (!mkdir($target, 0755, true)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Não foi possível criar o diretório target: ' . $target,
+                ], 500);
+            }
+        }
+        
+        // Se já existe algo em $link
+        if (file_exists($link)) {
+            // Se é um symlink, remover
+            if (is_link($link)) {
+                unlink($link);
+            } 
+            // Se é um diretório, remover recursivamente
+            elseif (is_dir($link)) {
+                // Tentar remover o diretório
+                if (!File::deleteDirectory($link)) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Não foi possível remover o diretório existente. Remova manualmente: ' . $link,
+                        'link' => $link,
+                        'target' => $target,
+                        'exists' => true,
+                        'is_link' => false,
+                        'is_dir' => is_dir($link),
+                    ], 500);
+                }
+            }
+            // Se é um arquivo, remover
+            else {
+                unlink($link);
+            }
+        }
+        
+        // Criar diretório public se não existir
+        if (!is_dir(public_path())) {
+            mkdir(public_path(), 0755, true);
+        }
+        
+        // Criar symlink
+        if (symlink($target, $link)) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Symlink criado com sucesso!',
+                'link' => $link,
+                'target' => $target,
+                'verified' => is_link($link) && file_exists($link),
+            ]);
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erro ao criar symlink. Verifique permissões.',
+                'link' => $link,
+                'target' => $target,
+                'target_exists' => is_dir($target),
+                'public_exists' => is_dir(public_path()),
+            ], 500);
+        }
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Erro: ' . $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+        ], 500);
     }
-    return Storage::disk('public')->response($path);
-})->where('path', '.*');
+})->name('tools.create-storage-link');
+
+
+// Rota de teste para verificar URLs de assets
+Route::get('/test-assets', function () {
+    $request = request();
+    
+    // Verificar se os arquivos existem fisicamente
+    $publicPath = public_path();
+    $jsPath = $publicPath . '/js/olika-cart.js';
+    $cssPath = $publicPath . '/css/olika.css';
+    $imagePath = $publicPath . '/images/logo-olika.png';
+    
+    return response()->json([
+        'current_host' => $request->getHost(),
+        'current_url' => $request->url(),
+        'app_url' => config('app.url'),
+        'asset_url' => config('app.asset_url'),
+        'test_asset_js' => asset('js/olika-cart.js'),
+        'test_asset_css' => asset('css/olika.css'),
+        'test_asset_image' => asset('images/logo-olika.png'),
+        'test_storage' => asset('storage/uploads/products/test.jpg'),
+        'url_root' => url('/'),
+        'storage_disk_url' => config('filesystems.disks.public.url'),
+        'files_exist' => [
+            'js_olika_cart' => file_exists($jsPath),
+            'css_olika' => file_exists($cssPath),
+            'image_logo' => file_exists($imagePath),
+            'public_path' => $publicPath,
+            'public_exists' => is_dir($publicPath),
+        ],
+        'public_path' => $publicPath,
+        'js_files' => is_dir($publicPath . '/js') ? array_slice(scandir($publicPath . '/js'), 2) : 'directory_not_found',
+        'css_files' => is_dir($publicPath . '/css') ? array_slice(scandir($publicPath . '/css'), 2) : 'directory_not_found',
+    ]);
+})->name('tools.test-assets');
 
 // Rotas globais auxiliares
 Route::get('/clear-cache-now', function () {

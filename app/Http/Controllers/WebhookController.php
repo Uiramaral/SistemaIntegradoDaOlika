@@ -8,6 +8,7 @@ use App\Services\MercadoPagoApi;
 use App\Services\OrderStatusService;
 use App\Models\Order;
 use App\Models\CouponUsage;
+use App\Models\WebhookLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -27,37 +28,99 @@ class WebhookController extends Controller
      */
     public function mercadoPago(Request $request)
     {
+        $requestId = $request->header('x-request-id');
+        $signature = $request->header('x-signature');
+        $ip = $request->ip();
+        $userAgent = $request->userAgent();
+        $eventType = $request->get('type') ?? $request->get('action') ?? 'unknown';
+        $payload = $request->all();
+        
+        $isValidSignature = $this->isValidMercadoPagoSignature($request);
+        
+        // Registrar log do webhook
+        $webhookLog = WebhookLog::create([
+            'provider' => 'mercadopago',
+            'event_type' => $eventType,
+            'status' => 'pending',
+            'ip_address' => $ip,
+            'user_agent' => $userAgent,
+            'request_id' => $requestId,
+            'signature_valid' => $isValidSignature,
+            'payload' => $payload,
+        ]);
+        
+        if (!$isValidSignature) {
+            $webhookLog->update([
+                'status' => 'rejected',
+                'error_message' => 'Assinatura inválida',
+            ]);
+            
+            Log::warning('Mercado Pago Webhook rejeitado - assinatura inválida', [
+                'webhook_log_id' => $webhookLog->id,
+                'request_id' => $requestId,
+                'signature' => $signature,
+                'ip' => $ip,
+                'user_agent' => $userAgent,
+            ]);
+            
+            return response()->json(['status' => 'error', 'message' => 'Assinatura inválida'], 401);
+        }
+
         Log::info('Mercado Pago Webhook Received', [
-            'type' => $request->get('type'),
+            'webhook_log_id' => $webhookLog->id,
+            'type' => $eventType,
             'action' => $request->get('action'),
             'data_id' => $request->get('data')['id'] ?? null,
-            'all_keys' => array_keys($request->all()),
+            'request_id' => $requestId,
+            'ip' => $ip,
         ]);
         
         try {
             // Usar o novo service para processar webhook
-            $result = $this->mercadoPagoService->processWebhook($request->all());
+            $result = $this->mercadoPagoService->processWebhook($payload);
             
             if ($result['success']) {
+                $webhookLog->update([
+                    'status' => 'success',
+                    'response' => $result,
+                    'processed_at' => now(),
+                ]);
+                
                 Log::info('Webhook processado com sucesso', [
+                    'webhook_log_id' => $webhookLog->id,
                     'order_id' => $result['order_id'] ?? null,
                     'payment_status' => $result['payment_status'] ?? null,
                     'order_status' => $result['order_status'] ?? null,
                 ]);
                 
-                // Enviar notificação WhatsApp se aprovado (via OrderStatusService)
-                // Não precisa fazer aqui pois o OrderStatusService já faz isso
-                
                 return response()->json(['status' => 'success'], 200);
             } else {
-                Log::error('Erro ao processar webhook', $result);
+                $webhookLog->update([
+                    'status' => 'error',
+                    'error_message' => $result['error'] ?? 'Erro desconhecido',
+                    'response' => $result,
+                    'processed_at' => now(),
+                ]);
+                
+                Log::error('Erro ao processar webhook', [
+                    'webhook_log_id' => $webhookLog->id,
+                    'error' => $result,
+                ]);
+                
                 return response()->json(['status' => 'error', 'message' => $result['error'] ?? 'Erro desconhecido'], 400);
             }
         } catch (\Exception $e) {
+            $webhookLog->update([
+                'status' => 'error',
+                'error_message' => $e->getMessage(),
+                'processed_at' => now(),
+            ]);
+            
             Log::error('Exceção ao processar webhook do MercadoPago', [
+                'webhook_log_id' => $webhookLog->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_keys' => array_keys($request->all()),
+                'request_keys' => array_keys($payload),
             ]);
             
             return response()->json(['status' => 'error', 'message' => 'Erro interno'], 500);
@@ -264,5 +327,47 @@ class WebhookController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    protected function isValidMercadoPagoSignature(Request $request): bool
+    {
+        $secret = config('services.mercadopago.webhook_secret');
+
+        if (empty($secret)) {
+            return true;
+        }
+
+        $signatureHeader = $request->header('x-signature');
+        $requestId = $request->header('x-request-id');
+
+        if (!$signatureHeader || !$requestId) {
+            return false;
+        }
+
+        $parts = [];
+        foreach (explode(',', $signatureHeader) as $segment) {
+            [$key, $value] = array_pad(explode('=', trim($segment), 2), 2, null);
+            if ($key && $value) {
+                $parts[$key] = trim($value);
+            }
+        }
+
+        $timestamp = $parts['ts'] ?? null;
+        $signature = $parts['v1'] ?? null;
+
+        if (!$timestamp || !$signature) {
+            // fallback para formato sha256=hash
+            if (str_starts_with($signatureHeader, 'sha256=')) {
+                $signature = substr($signatureHeader, 7);
+                $timestamp = (string) ($request->header('x-signature-timestamp') ?? '');
+            } else {
+                return false;
+            }
+        }
+
+        $payload = "{$requestId}:{$timestamp}:" . $request->getContent();
+        $expected = hash_hmac('sha256', $payload, $secret);
+
+        return hash_equals($expected, $signature);
     }
 }

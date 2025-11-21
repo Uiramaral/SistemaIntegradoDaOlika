@@ -15,17 +15,31 @@
 
     $initialFreteCalculado = $initialDeliveryFee !== null;
 @endphp
-<div class="max-w-6xl mx-auto w-full">
-    <h1 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Finalizar Pedido</h1>
-
-    @if(session('error'))
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ session('error') }}
+<!-- Header com botão voltar -->
+<header class="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+    <div class="container mx-auto px-4 py-4">
+        <a href="{{ route('pedido.cart.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                <path d="m12 19-7-7 7-7"></path>
+                <path d="M19 12H5"></path>
+            </svg>
+            Voltar ao carrinho
+        </a>
     </div>
-    @endif
+</header>
 
-    <form id="checkoutForm" method="POST" action="{{ route('pedido.checkout.store') }}">
-        @csrf
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-3xl font-serif font-bold text-foreground mb-8">Finalizar Pedido</h1>
+
+            @if(session('error'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {{ session('error') }}
+            </div>
+            @endif
+
+            <form id="checkoutForm" method="POST" action="{{ route('pedido.checkout.store') }}">
+                @csrf
         
         <!-- Campos hidden para dados de desconto de frete -->
         <input type="hidden" name="delivery_fee" id="hidden_delivery_fee" value="{{ $initialDeliveryFee !== null ? number_format($initialDeliveryFee, 2, '.', '') : 0 }}">
@@ -40,108 +54,137 @@
         <input type="hidden" name="order_number" value="{{ $order->order_number }}">
         @endif
         
-        <div class="grid lg:grid-cols-[1fr_400px] gap-4 sm:gap-6 lg:gap-8 w-full">
-            <!-- Coluna Esquerda: Formulário -->
-            <div class="space-y-4 sm:space-y-6 w-full">
-                <!-- Dados do Cliente -->
-                <div id="addressCard" class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Dados do Cliente</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Nome *</label>
-                            <input type="text" name="customer_name" value="{{ old('customer_name', $prefill['customer_name'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <!-- Coluna Esquerda: Formulário -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Informações de Contato -->
+                        <div id="addressCard" class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    Informações de Contato
+                                </h3>
+                            </div>
+                            <div class="p-6 pt-0 space-y-4">
+                                <div>
+                                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="customer_name">Nome completo *</label>
+                                    <input type="text" name="customer_name" id="customer_name" value="{{ old('customer_name', $prefill['customer_name'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="Seu nome">
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="customer_phone">Telefone *</label>
+                                    <input type="tel" name="customer_phone" id="customer_phone" value="{{ old('customer_phone', $prefill['customer_phone'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="(00) 00000-0000">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Telefone *</label>
-                            <input type="tel" name="customer_phone" id="customer_phone" value="{{ old('customer_phone', $prefill['customer_phone'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Email</label>
-                            <input type="email" name="customer_email" id="customer_email" value="{{ old('customer_email', $prefill['customer_email'] ?? '') }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Endereço de Entrega -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Endereço de Entrega</h2>
-                    <div class="space-y-4">
-                        <!-- CEP e Número lado a lado -->
-                        <div class="grid grid-cols-3 gap-2 sm:gap-4">
-                            <div class="col-span-2">
-                                <label class="block text-sm font-medium mb-2">CEP *</label>
-                                <div class="flex flex-col gap-2">
-                                    <div class="relative">
-                                        <input type="text" name="zip_code" id="zip_code" maxlength="9" value="{{ old('zip_code', $prefill['zip_code'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary transition-colors" placeholder="00000-000">
-                                        <div id="cepLoadingSpinner" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            <svg class="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <!-- Endereço de Entrega -->
+                        <div id="addressCard" class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    Endereço de Entrega
+                                </h3>
+                            </div>
+                            <div class="p-6 pt-0 space-y-4">
+                                <!-- CEP -->
+                                <div>
+                                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="zip_code">CEP *</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" name="zip_code" id="zip_code" value="{{ old('zip_code', $prefill['zip_code'] ?? '') }}" required maxlength="9" pattern="[0-9]{5}-?[0-9]{3}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="00000-000">
+                                        <button type="button" id="zip_code_manual_button" class="hidden px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+                                            Localizar meu endereço
+                                        </button>
+                                    </div>
+                                    <div id="cepLoadingSpinner" class="hidden mt-2">
+                                        <div class="flex items-center gap-2 text-sm text-blue-600">
+                                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
+                                            Buscando endereço...
                                         </div>
                                     </div>
-                                    <button type="button" id="zip_code_manual_button" class="hidden w-full border border-dashed border-red-400 text-red-600 rounded-lg px-3 sm:px-4 py-2 text-sm font-medium transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
-                                        Localizar meu endereço
-                                    </button>
-                                    <button type="button" id="btn-manual-address" class="hidden w-full border border-gray-300 text-gray-700 rounded-lg px-3 sm:px-4 py-2 text-sm font-medium transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400">
-                                        Não sei o CEP / Digitar manualmente
-                                    </button>
+                                    <p id="cepFeedback" class="text-xs mt-1"></p>
                                 </div>
-                                <p id="cepFeedback" class="text-xs text-gray-500 mt-1 min-h-[1.25rem]"></p>
+
+                                <!-- Rua/Logradouro -->
+                                <div>
+                                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="address">Rua/Logradouro *</label>
+                                    <input type="text" name="street" id="address" value="{{ old('street', $prefill['address'] ?? $prefill['street'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="Nome da rua, avenida, etc.">
+                                </div>
+
+                                <!-- Número e Complemento -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="number">Número *</label>
+                                        <input type="text" name="number" id="number" value="{{ old('number', $prefill['number'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="123">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="complement">Complemento</label>
+                                        <input type="text" name="complement" id="complement" value="{{ old('complement', $prefill['complement'] ?? '') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="Apto, bloco, etc.">
+                                    </div>
+                                </div>
+
+                                <!-- Bairro -->
+                                <div>
+                                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="neighborhood">Bairro *</label>
+                                    <input type="text" name="neighborhood" id="neighborhood" value="{{ old('neighborhood', $prefill['neighborhood'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="Nome do bairro">
+                                </div>
+
+                                <!-- Cidade e Estado -->
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="col-span-2">
+                                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="city">Cidade *</label>
+                                        <input type="text" name="city" id="city" value="{{ old('city', $prefill['city'] ?? '') }}" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="Nome da cidade">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="state">Estado *</label>
+                                        <input type="text" name="state" id="state" value="{{ old('state', $prefill['state'] ?? '') }}" required maxlength="2" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm uppercase" placeholder="SP">
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Número *</label>
-                                <input type="text" name="number" id="number" value="{{ old('number', $prefill['number'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" inputmode="numeric" pattern="[0-9]*">
-                            </div>
                         </div>
-                        
-                        <!-- Endereço (obrigatório após CEP) -->
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Endereço *</label>
-                            <input type="text" name="street" id="address" value="{{ old('street', $prefill['address'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite o endereço (rua/logradouro)" readonly>
-                            <p class="text-xs text-gray-500 mt-1">Será preenchido automaticamente após buscar o CEP, mas pode ser editado</p>
-                        </div>
-                        
-                        <!-- Complemento -->
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Complemento</label>
-                            <input type="text" name="complement" id="complement" value="{{ old('complement', $prefill['complement'] ?? '') }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Apto, bloco, etc. (opcional)">
-                        </div>
-                        
-                        <!-- Bairro (obrigatório após CEP) -->
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Bairro *</label>
-                            <input type="text" name="neighborhood" id="neighborhood" value="{{ old('neighborhood', $prefill['neighborhood'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite o bairro" readonly>
-                            <p class="text-xs text-gray-500 mt-1">Será preenchido automaticamente após buscar o CEP, mas pode ser editado</p>
-                        </div>
-                        
-                        <!-- Cidade e Estado (obrigatórios após CEP) -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Cidade *</label>
-                                <input type="text" name="city" id="city" value="{{ old('city', $prefill['city'] ?? '') }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite a cidade" readonly>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Estado *</label>
-                                <input type="text" name="state" id="state" value="{{ old('state', $prefill['state'] ?? '') }}" required maxlength="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary uppercase" placeholder="UF" readonly>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Observações Gerais do Pedido -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Observações do Pedido</h2>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Observações gerais (opcional)</label>
-                        <textarea name="notes" id="orderNotes" rows="4" maxlength="1000" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Ex: Deixar na portaria, entregar para fulano, etc.">{{ old('notes', '') }}</textarea>
-                        <p class="text-xs text-gray-500 mt-1">Máximo 1000 caracteres</p>
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" x2="8" y1="13" y2="13"></line>
+                                <line x1="16" x2="8" y1="17" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            Observações do Pedido
+                        </h3>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <div>
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block" for="orderNotes">Observações gerais (opcional)</label>
+                            <textarea name="notes" id="orderNotes" rows="4" maxlength="1000" class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none" placeholder="Ex: Deixar na portaria, entregar para fulano, etc.">{{ old('notes', '') }}</textarea>
+                            <p class="text-xs text-muted-foreground mt-1">Máximo 1000 caracteres</p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Cupons -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Cupom de Desconto</h2>
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                            </svg>
+                            Cupom de Desconto
+                        </h3>
+                    </div>
+                    <div class="p-6 pt-0 space-y-4">
                     @php
                         // Verificar se há cupons elegíveis de forma explícita
                         $hasEligibleCoupons = false;
@@ -158,50 +201,59 @@
                             }
                         }
                     @endphp
-                    @if($hasEligibleCoupons)
-                    <div class="mb-4" id="couponsAvailableSection">
-                        <label class="block text-sm font-medium mb-2">Cupons Disponíveis</label>
-                        <select name="coupon_code" id="coupon_code_public" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
-                            <option value="">Selecione um cupom</option>
-                            @foreach($eligibleCoupons as $coupon)
-                            <option value="{{ $coupon->code }}" data-discount="{{ $coupon->formatted_value }}" {{ isset($appliedCouponCode) && $appliedCouponCode === $coupon->code ? 'selected' : '' }}>
-                                {{ $coupon->name }} - {{ $coupon->formatted_value }}
-                                @if($coupon->minimum_amount)
-                                (Mín: R$ {{ number_format($coupon->minimum_amount, 2, ',', '.') }})
-                                @endif
-                            </option>
-                            @endforeach
-                        </select>
+                        @if($hasEligibleCoupons)
+                        <div id="couponsAvailableSection">
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">Cupons Disponíveis</label>
+                            <select name="coupon_code" id="coupon_code_public" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-muted cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
+                                <option value="">Selecione um cupom</option>
+                                @foreach($eligibleCoupons as $coupon)
+                                <option value="{{ $coupon->code }}" data-discount="{{ $coupon->formatted_value }}" {{ isset($appliedCouponCode) && $appliedCouponCode === $coupon->code ? 'selected' : '' }}>
+                                    {{ $coupon->name }} - {{ $coupon->formatted_value }}
+                                    @if($coupon->minimum_amount)
+                                    (Mín: R$ {{ number_format($coupon->minimum_amount, 2, ',', '.') }})
+                                    @endif
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div id="couponsSeparator" class="text-center text-sm text-muted-foreground my-3">ou</div>
+                        @else
+                        <!-- Esconder se não houver cupons elegíveis -->
+                        <style>
+                            #couponsAvailableSection { display: none !important; }
+                            #couponsSeparator { display: none !important; }
+                        </style>
+                        @endif
+                        <div class="flex gap-3">
+                            <input type="text" name="coupon_code" id="coupon_code_private" placeholder="Digite o código do cupom" class="flex-1 flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-muted cursor-not-allowed' : '' }}" value="{{ old('coupon_code', isset($appliedCouponCode) ? $appliedCouponCode : '') }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'readonly' : '' }}>
+                            <button type="button" id="applyCouponBtn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 {{ isset($appliedCouponCode) && $appliedCouponCode ? 'opacity-50 cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
+                                {{ isset($appliedCouponCode) && $appliedCouponCode ? 'Aplicado' : 'Aplicar' }}
+                            </button>
+                        </div>
+                        @if(isset($appliedCouponCode) && $appliedCouponCode)
+                        <p id="couponFeedback" class="text-sm text-green-600 font-medium">✓ Cupom {{ $appliedCouponCode }} aplicado</p>
+                        @else
+                        <p id="couponFeedback" class="text-sm text-muted-foreground"></p>
+                        @endif
+                        <input type="hidden" name="applied_coupon_code" id="applied_coupon_code" value="{{ isset($appliedCouponCode) ? $appliedCouponCode : '' }}">
                     </div>
-                    <div id="couponsSeparator" class="text-center text-sm text-gray-600 mb-3">ou</div>
-                    @else
-                    <!-- Esconder se não houver cupons elegíveis -->
-                    <style>
-                        #couponsAvailableSection { display: none !important; }
-                        #couponsSeparator { display: none !important; }
-                    </style>
-                    @endif
-                    <div class="flex gap-3">
-                        <input type="text" name="coupon_code" id="coupon_code_private" placeholder="Digite o código do cupom privado" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary {{ isset($appliedCouponCode) && $appliedCouponCode ? 'bg-gray-100 cursor-not-allowed' : '' }}" value="{{ old('coupon_code', isset($appliedCouponCode) ? $appliedCouponCode : '') }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'readonly' : '' }}>
-                        <button type="button" id="applyCouponBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 {{ isset($appliedCouponCode) && $appliedCouponCode ? 'opacity-50 cursor-not-allowed' : '' }}" {{ isset($appliedCouponCode) && $appliedCouponCode ? 'disabled' : '' }}>
-                            {{ isset($appliedCouponCode) && $appliedCouponCode ? 'Aplicado' : 'Aplicar' }}
-                        </button>
-                    </div>
-                    @if(isset($appliedCouponCode) && $appliedCouponCode)
-                    <p id="couponFeedback" class="text-sm mt-2 text-green-600 font-medium">✓ Cupom {{ $appliedCouponCode }} aplicado</p>
-                    @else
-                    <p id="couponFeedback" class="text-sm mt-2 text-gray-600"></p>
-                    @endif
-                    <input type="hidden" name="applied_coupon_code" id="applied_coupon_code" value="{{ isset($appliedCouponCode) ? $appliedCouponCode : '' }}">
                 </div>
 
                 <!-- Agendamento -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Agendamento de Entrega</h2>
-                    <div class="space-y-4">
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            Agendamento de Entrega
+                        </h3>
+                    </div>
+                    <div class="p-6 pt-0 space-y-4">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Data *</label>
-                            <select name="scheduled_delivery_date" id="scheduled_delivery_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">Data *</label>
+                            <select name="scheduled_delivery_date" id="scheduled_delivery_date" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
                                 <option value="">Selecione uma data</option>
                                 @foreach($availableDates ?? [] as $date)
                                 <option value="{{ $date['date'] }}" data-day="{{ $date['day_name'] }}">{{ $date['day_name'] }}, {{ $date['label'] }}</option>
@@ -209,138 +261,110 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-2">Horário *</label>
-                            <select name="scheduled_delivery_slot" id="scheduled_delivery_slot" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed" disabled>
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">Horário *</label>
+                            <select name="scheduled_delivery_slot" id="scheduled_delivery_slot" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm disabled:bg-muted" disabled>
                                 <option value="">Selecione primeiro uma data</option>
                             </select>
-                            <p id="slotError" class="text-xs text-red-500 mt-1 hidden">Por favor, selecione um horário de entrega</p>
+                            <p id="slotError" class="text-xs text-destructive mt-1 hidden">Por favor, selecione um horário de entrega</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Método de Pagamento -->
-                <div class="bg-white rounded-lg border p-4 sm:p-6">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Forma de Pagamento</h2>
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-gray-50 {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'border-primary bg-primary/5' : '' }}">
-                            <input type="radio" name="payment_method" value="pix" id="payment_pix" class="h-4 w-4 text-primary" {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'checked' : '' }} required>
-                            <div class="flex-1">
-                                <p class="font-medium">PIX</p>
-                                <p class="text-xs text-gray-600">Pagamento instantâneo via QR Code ou código PIX</p>
+                        <!-- Forma de Pagamento -->
+                        <div class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <h3 class="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-primary">
+                                        <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+                                        <line x1="2" x2="22" y1="10" y2="10"></line>
+                                    </svg>
+                                    Forma de Pagamento
+                                </h3>
                             </div>
-                        </label>
-                        
-                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-gray-50 {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'border-primary bg-primary/5' : '' }}">
-                            <input type="radio" name="payment_method" value="mercadopago" id="payment_mercadopago" class="h-4 w-4 text-primary" {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'checked' : '' }}>
-                            <div class="flex-1">
-                                <p class="font-medium">Cartão (Crédito ou Débito)</p>
-                                <p class="text-xs text-gray-600">Será redirecionado para o Mercado Pago onde poderá escolher PIX ou cartão</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Coluna Direita: Resumo -->
-            <div class="w-full order-1 lg:order-2">
-                <div class="bg-white rounded-lg border p-4 sm:p-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto overflow-x-hidden">
-                    <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Resumo do Pedido</h2>
-                    
-                    <!-- Itens do Carrinho -->
-                    <div class="space-y-3 mb-4">
-                        @foreach($cartData['items'] ?? [] as $item)
-                        <div class="flex items-center gap-3">
-                            <img src="{{ $item['image_url'] ?? asset('images/produto-placeholder.jpg') }}" alt="{{ $item['name'] }}" class="w-16 h-16 object-cover rounded">
-                            <div class="flex-1">
-                                <p class="font-medium text-sm">{{ $item['name'] }}</p>
-                                @if($item['variant'])
-                                <p class="text-xs text-gray-600">{{ $item['variant'] }}</p>
-                                @endif
-                                @if(!empty($item['special_instructions']))
-                                <div class="text-xs text-yellow-700 mt-1 bg-yellow-50 border-l-2 border-yellow-400 px-2 py-1 rounded">
-                                    <strong>Obs:</strong> {{ $item['special_instructions'] }}
+                            <div class="p-6 pt-0">
+                                <div role="radiogroup" class="grid gap-2">
+                                    <div class="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-secondary/50 transition-smooth {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'border-primary bg-primary/5' : '' }}">
+                                        <input type="radio" name="payment_method" value="pix" id="payment_pix" class="aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" {{ !isset($order) || ($order->payment_method ?? 'pix') === 'pix' ? 'checked' : '' }} required>
+                                        <label for="payment_pix" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
+                                            <div class="font-semibold">PIX</div>
+                                            <div class="text-sm text-muted-foreground">Pagamento instantâneo</div>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-secondary/50 transition-smooth {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'border-primary bg-primary/5' : '' }}">
+                                        <input type="radio" name="payment_method" value="mercadopago" id="payment_mercadopago" class="aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" {{ isset($order) && ($order->payment_method ?? '') === 'mercadopago' ? 'checked' : '' }}>
+                                        <label for="payment_mercadopago" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
+                                            <div class="font-semibold">Cartão de Crédito</div>
+                                            <div class="text-sm text-muted-foreground">Visa, Mastercard, Elo</div>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-secondary/50 transition-smooth">
+                                        <input type="radio" name="payment_method" value="money" id="payment_money" class="aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                        <label for="payment_money" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
+                                            <div class="font-semibold">Dinheiro</div>
+                                            <div class="text-sm text-muted-foreground">Pagamento na entrega</div>
+                                        </label>
+                                    </div>
                                 </div>
-                                @endif
-                                <p class="text-xs text-gray-600">{{ $item['qty'] }}x R$ {{ number_format($item['price'], 2, ',', '.') }}</p>
                             </div>
-                            <p class="font-bold">R$ {{ number_format($item['subtotal'], 2, ',', '.') }}</p>
-                        </div>
-                        @endforeach
-                    </div>
-
-                    <div id="orderSummaryTotals" class="border-t pt-4 space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Subtotal</span>
-                            <span id="summarySubtotal" class="text-gray-900 font-medium">R$ {{ number_format($cartData['subtotal'] ?? 0, 2, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Taxa de Entrega</span>
-                            <div id="summaryDeliveryFeeContainer" class="flex flex-col items-end">
-                                <span id="summaryDeliveryFeeOriginal" class="text-gray-400 text-xs line-through {{ ($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0)) ? '' : 'hidden' }}">
-                                    @if($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0))
-                                        R$ {{ number_format($initialBaseDeliveryFee, 2, ',', '.') }}
-                                    @endif
-                                </span>
-                                <span id="summaryDeliveryFee"
-                                      class="{{ $initialFreteCalculado ? ($initialDeliveryFee > 0 ? 'text-gray-900 font-medium' : 'text-green-700 font-medium') : 'text-gray-500 font-medium text-sm' }}">
-                                    @if($initialFreteCalculado)
-                                        @if($initialDeliveryFee > 0)
-                                            R$ {{ number_format($initialDeliveryFee, 2, ',', '.') }}
-                                        @else
-                                            Grátis
-                                        @endif
-                                    @else
-                                        Informe o CEP
-                                    @endif
-                                </span>
-                            </div>
-                        </div>
-                        <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-700 {{ ($initialDeliveryDiscountAmount > 0 && $initialBaseDeliveryFee !== null && $initialBaseDeliveryFee > ($initialDeliveryFee ?? 0)) ? '' : 'hidden' }}">
-                            <span id="summaryDeliveryDiscountLabel">
-                                Desconto no frete
-                                @if($initialDeliveryDiscountPercent > 0)
-                                    ({{ number_format($initialDeliveryDiscountPercent, 2, ',', '.') }}%)
-                                @endif
-                            </span>
-                            <span id="summaryDeliveryDiscount" class="font-medium">
-                                - R$ {{ number_format($initialDeliveryDiscountAmount, 2, ',', '.') }}
-                            </span>
-                        </div>
-                        <div id="summaryCouponRow" class="flex justify-between text-sm text-green-700 hidden">
-                            <span id="summaryCouponLabel">Cupom de desconto</span>
-                            <span id="summaryCoupon" class="font-medium">- R$ 0,00</span>
-                        </div>
-                        <div id="summaryCashbackRow" class="flex justify-between text-sm text-blue-700 hidden">
-                            <span>Cashback usado</span>
-                            <span id="summaryCashback" class="font-medium">- R$ 0,00</span>
-                        </div>
-                        @if(isset($cashbackBalance) && $cashbackBalance > 0)
-                        <div class="flex justify-between text-xs text-blue-600 pt-1">
-                            <span>Cashback disponível: R$ {{ number_format($cashbackBalance, 2, ',', '.') }}</span>
-                        </div>
-                        @endif
-                        <div class="flex justify-between pt-2 border-t">
-                            <span class="font-semibold text-gray-900">Total</span>
-                            <span id="summaryTotal" class="text-xl font-bold text-primary">R$ {{ number_format($cartData['subtotal'] ?? 0, 2, ',', '.') }}</span>
-                        </div>
-                        <div id="summaryCashbackEarned" class="flex justify-between text-xs text-gray-500 mt-2 hidden">
-                            <span>Você ganhará</span>
-                            <span id="summaryCashbackEarnedValue" class="font-medium">R$ 0,00 de cashback</span>
                         </div>
                     </div>
 
-                    <div class="w-full mt-6 relative z-10">
-                        <button type="submit" id="btn-finalize-order" class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative z-10" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent;" disabled>
-                            Finalizar Pedido
-                        </button>
-                        <p id="frete-pending-message" class="mt-2 text-xs text-yellow-600 hidden text-center">
-                            ⚠️ Aguardando cálculo do frete de entrega...
-                        </p>
+                    <!-- Coluna Direita: Resumo -->
+                    <div class="lg:col-span-1">
+                        <div class="rounded-lg border bg-card text-card-foreground shadow-sm sticky top-24 shadow-warm-lg">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <h3 class="text-2xl font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
+                            </div>
+                            <div class="p-6 pt-0 space-y-4">
+                                <!-- Itens do Carrinho -->
+                                <div class="space-y-3 max-h-60 overflow-y-auto">
+                                    @foreach($cartData['items'] ?? [] as $item)
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-muted-foreground">{{ $item['qty'] }}x {{ $item['name'] }}</span>
+                                        <span class="font-semibold">R$ {{ number_format($item['subtotal'], 2, ',', '.') }}</span>
+                                    </div>
+                                    @endforeach
+                                </div>
+
+                                <div data-orientation="horizontal" role="none" class="shrink-0 bg-border h-[1px] w-full"></div>
+
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-muted-foreground">Subtotal</span>
+                                        <span id="summarySubtotal" class="font-semibold">R$ {{ number_format($cartData['subtotal'] ?? 0, 2, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-muted-foreground">Entrega</span>
+                                        <span id="summaryDeliveryFee" class="font-semibold text-primary">
+                                            @if($initialFreteCalculado && $initialDeliveryFee > 0)
+                                                R$ {{ number_format($initialDeliveryFee, 2, ',', '.') }}
+                                            @elseif($initialFreteCalculado && $initialDeliveryFee == 0)
+                                                Grátis
+                                            @else
+                                                Aguardando CEP
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div data-orientation="horizontal" role="none" class="shrink-0 bg-border h-[1px] w-full"></div>
+
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">Total</span>
+                                    <span id="summaryTotal" class="text-2xl font-bold text-primary">R$ {{ number_format($cartData['subtotal'] ?? 0, 2, ',', '.') }}</span>
+                                </div>
+
+                                <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 rounded-md px-8 w-full shadow-warm">
+                                    Confirmar Pedido
+                                </button>
+                                
+                                <p class="text-xs text-center text-muted-foreground">Ao confirmar, você concorda com nossos termos de serviço</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </form>
+            </form>
+    </div>
 </div>
 @endsection
 
@@ -373,6 +397,28 @@ window.checkoutConfig = {
     }
     @endif
 };
+
+// Formatação automática do CEP
+(function() {
+    const zipCodeInput = document.getElementById('zip_code');
+    if (zipCodeInput) {
+        zipCodeInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5, 8);
+            }
+            e.target.value = value;
+        });
+    }
+
+    // Formatação automática do Estado (uppercase)
+    const stateInput = document.getElementById('state');
+    if (stateInput) {
+        stateInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+    }
+})();
 </script>
 <script src="{{ asset('js/checkout.js') }}"></script>
 @endpush

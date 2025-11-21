@@ -3,17 +3,26 @@
 @section('title', 'Carrinho - Olika')
 
 @section('content')
-<div class="max-w-4xl mx-auto pb-32 sm:pb-32 lg:pb-40">
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Seu Carrinho</h1>
-        <a href="{{ route('pedido.index') }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors border border-gray-300 bg-white hover:bg-gray-50 h-10 px-4 py-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<!-- NOVO LAYOUT CARRINHO - VERSÃO PIXEL-PERFECT -->
+<!-- Header com botão voltar -->
+<header class="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+    <div class="container mx-auto px-4 py-4">
+        <a href="{{ route('pedido.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                <path d="m12 19-7-7 7-7"></path>
                 <path d="M19 12H5"></path>
-                <path d="M12 19l-7-7 7-7"></path>
             </svg>
-            Voltar ao Catálogo
+            Continuar comprando
         </a>
     </div>
+</header>
+
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-5xl mx-auto">
+        <div class="mb-8">
+            <h1 class="text-3xl font-serif font-bold text-foreground mb-2">Seu Carrinho</h1>
+            <p class="text-muted-foreground" id="cartItemsCount">0 itens</p>
+        </div>
 
     <!-- Barra de benefícios: frete grátis e cashback -->
     <div id="benefitsBar" class="hidden mb-6 rounded-lg border bg-white p-4">
@@ -33,24 +42,61 @@
         </div>
     </div>
 
-    <div id="cartContent" class="space-y-4">
-        <div class="text-center py-12">
-            <p class="text-gray-600 mb-4">Carregando carrinho...</p>
-        </div>
-    </div>
-
-    <!-- Barra fixa de total e ação -->
-    <div id="cartBar" class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg z-[60]" style="display: none;">
-        <div class="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between gap-3">
-            <div class="text-sm min-w-0 flex-shrink-0">
-                <div class="text-gray-500">Total</div>
-                <div id="cartTotal" class="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">R$ 0,00</div>
+        <!-- Layout de duas colunas: Itens à esquerda, Resumo à direita -->
+        <div class="grid lg:grid-cols-[1fr_400px] gap-8">
+            <!-- Coluna Esquerda: Itens do Carrinho -->
+            <div class="space-y-4">
+                <div id="cartContent" class="space-y-4">
+                    <div class="text-center py-12">
+                        <p class="text-muted-foreground mb-4">Carregando carrinho...</p>
+                    </div>
+                </div>
             </div>
-            <a id="continueBtn" href="{{ route('pedido.index') }}" class="px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-gray-300 hover:bg-gray-50 text-primary hover:text-primary/90 text-sm sm:text-base whitespace-nowrap flex-shrink-0">Continuar comprando</a>
-            <a id="checkoutBtn" href="{{ route('pedido.checkout.index') }}" class="flex-1 text-center bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 sm:py-3 rounded-lg text-sm sm:text-base whitespace-nowrap min-w-0">
-                <span id="checkoutBtnLabel">Finalizar Pedido</span>
-                <span id="checkoutLoading" class="hidden ml-2 text-xs">(gerando sugestões...)</span>
-            </a>
+
+            <!-- Coluna Direita: Resumo do Pedido -->
+            <div class="lg:sticky lg:top-24 lg:h-fit">
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm shadow-warm-lg">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
+                    </div>
+                    <div class="p-6 pt-0 space-y-4">
+                        <!-- Itens do resumo (será preenchido dinamicamente) -->
+                        <div id="orderSummaryItems" class="space-y-3 max-h-60 overflow-y-auto">
+                            <!-- Itens serão inseridos aqui via JS -->
+                        </div>
+                        
+                        <div data-orientation="horizontal" role="none" class="shrink-0 bg-border h-[1px] w-full"></div>
+                        
+                        <!-- Totais -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Subtotal</span>
+                                <span id="summarySubtotal" class="font-semibold">R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Entrega</span>
+                                <span id="summaryDelivery" class="font-semibold text-primary">Grátis</span>
+                            </div>
+                        </div>
+                        
+                        <div data-orientation="horizontal" role="none" class="shrink-0 bg-border h-[1px] w-full"></div>
+                        
+                        <!-- Total -->
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold">Total</span>
+                            <span id="summaryTotal" class="text-2xl font-bold text-primary">R$ 0,00</span>
+                        </div>
+                        
+                        <!-- Botão Finalizar -->
+                        <a id="checkoutBtn" href="{{ route('pedido.checkout.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 rounded-md px-8 w-full shadow-warm">
+                            <span id="checkoutBtnLabel">Finalizar Pedido</span>
+                            <span id="checkoutLoading" class="hidden ml-2 text-xs">(gerando sugestões...)</span>
+                        </a>
+                        
+                        <p class="text-xs text-center text-muted-foreground">Entrega grátis para pedidos acima de R$ 50</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -81,15 +127,32 @@ async function loadCart() {
         const cbAmt  = document.getElementById('cashbackAmount');
         const cbPct  = document.getElementById('cashbackPercent');
         
+        // Atualizar contagem de itens
+        const itemsCount = data.items ? data.items.length : 0;
+        const totalQty = data.items ? data.items.reduce((sum, item) => sum + parseInt(item.qty || 1), 0) : 0;
+        const cartItemsCountEl = document.getElementById('cartItemsCount');
+        if (cartItemsCountEl) {
+            cartItemsCountEl.textContent = totalQty + (totalQty === 1 ? ' item' : ' itens');
+        }
+
         if (!data.items || data.items.length === 0) {
             wrap.innerHTML = `
                 <div class="text-center py-12">
-                    <p class="text-gray-600 mb-4">Seu carrinho está vazio.</p>
-                    <a href="{{ route('pedido.index') }}" class="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors">
-                        Continuar Comprando
+                    <img src="{{ asset('images/empty-cart.svg') }}" alt="Carrinho vazio" class="mx-auto mb-4 h-48 w-48 opacity-50" onerror="this.style.display='none'">
+                    <h2 class="text-2xl font-semibold mb-2">Seu carrinho está vazio</h2>
+                    <p class="text-muted-foreground mb-4">Adicione produtos deliciosos ao seu carrinho!</p>
+                    <a href="{{ route('pedido.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 rounded-md px-8 shadow-warm">
+                        Ver cardápio
                     </a>
                 </div>
             `;
+            // Limpar resumo
+            const summaryItems = document.getElementById('orderSummaryItems');
+            const summarySubtotal = document.getElementById('summarySubtotal');
+            const summaryTotal = document.getElementById('summaryTotal');
+            if (summaryItems) summaryItems.innerHTML = '';
+            if (summarySubtotal) summarySubtotal.textContent = 'R$ 0,00';
+            if (summaryTotal) summaryTotal.textContent = 'R$ 0,00';
             bar.style.display = 'none';
             benefits.classList.add('hidden');
             return;
@@ -111,33 +174,39 @@ async function loadCart() {
             const specialInstructionsEscaped = specialInstructions.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             
             html += `
-                <div class="rounded-xl border bg-white shadow-sm p-4" data-product-id="${item.product_id}" data-variant-id="${item.variant_id||0}" data-special-instructions="${specialInstructionsEscaped}">
-                    <div class="grid grid-cols-[72px_1fr_auto] gap-3 items-center">
-                        <div class="w-18 h-18 rounded-lg overflow-hidden bg-gray-100">
-                            <img src="${item.image_url || '{{ asset("images/produto-placeholder.jpg") }}'}" alt="${item.name}" class="w-full h-full object-cover"/>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="font-semibold truncate">${item.name}</h3>
-                            ${item.variant ? `<div class="text-xs text-gray-500">Variação: ${item.variant}</div>` : ''}
-                            ${item.special_instructions ? `<div class="text-xs text-yellow-700 mt-1 bg-yellow-50 border-l-2 border-yellow-400 px-2 py-1 rounded"><strong>Obs:</strong> ${item.special_instructions}</div>` : ''}
-                            <div class="text-xs text-gray-500">R$ ${formatBRL(price)}</div>
-                            <div class="mt-3 inline-flex items-center border rounded-lg overflow-hidden">
-                                <button onclick="updateQuantity(${item.product_id}, ${item.variant_id||0}, -1, event, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="w-9 h-9 grid place-items-center hover:bg-gray-100">-</button>
-                                <span class="w-10 text-center select-none">${item.qty}</span>
-                                <button onclick="updateQuantity(${item.product_id}, ${item.variant_id||0}, 1, event, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="w-9 h-9 grid place-items-center hover:bg-gray-100">+</button>
+                <div class="flex gap-4 pb-4 border-b last:border-0 last:pb-0" data-product-id="${item.product_id}" data-variant-id="${item.variant_id||0}" data-special-instructions="${specialInstructionsEscaped}">
+                    <img src="${item.image_url || '{{ asset("images/produto-placeholder.jpg") }}'}" alt="${item.name}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0"/>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-base mb-1">${item.name}</h3>
+                        ${item.variant ? `<p class="text-sm text-muted-foreground mb-1">${item.variant}</p>` : ''}
+                        ${item.special_instructions ? `<div class="text-xs text-yellow-700 mt-1 mb-2 bg-yellow-50 border-l-2 border-yellow-400 px-2 py-1 rounded"><strong>Obs:</strong> ${item.special_instructions}</div>` : ''}
+                        <p class="text-sm text-muted-foreground mb-3">R$ ${formatBRL(price)}</p>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center border rounded-lg">
+                                <button onclick="updateQuantity(${item.product_id}, ${item.variant_id||0}, -1, event, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="p-2 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed" ${item.qty <= 1 ? 'disabled' : ''}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M5 12h14"></path>
+                                    </svg>
+                                </button>
+                                <span class="px-4 text-base font-medium select-none">${item.qty}</span>
+                                <button onclick="updateQuantity(${item.product_id}, ${item.variant_id||0}, 1, event, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="p-2 hover:bg-muted">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M5 12h14"></path>
+                                        <path d="M12 5v14"></path>
+                                    </svg>
+                                </button>
                             </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-sm text-gray-500">Subtotal</div>
-                            <div class="text-lg font-bold text-primary">R$ ${formatBRL(subtotal)}</div>
-                            <button title="Remover" onclick="removeItem(${item.product_id}, ${item.variant_id||0}, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="mt-2 inline-flex items-center justify-center text-red-600 hover:text-red-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <button title="Remover" onclick="removeItem(${item.product_id}, ${item.variant_id||0}, ${specialInstructions ? `'${specialInstructionsEscaped}'` : `''`})" class="ml-auto text-muted-foreground hover:text-destructive transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M3 6h18"></path>
                                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                                 </svg>
                             </button>
                         </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="font-bold text-lg text-primary">R$ ${formatBRL(subtotal)}</p>
                     </div>
                 </div>
             `;
@@ -148,36 +217,38 @@ async function loadCart() {
         // SEMPRE usar o total do backend (vem do cartSummary que já calcula corretamente)
         // Se não estiver disponível, usar o calculado localmente
         const finalTotal = backendTotal > 0 ? backendTotal : calculatedTotal;
+        const subtotal = calculatedTotal;
         
-        // Atualizar o total no elemento do DOM
-        if (totalEl) {
-            totalEl.textContent = 'R$ ' + formatBRL(finalTotal);
-        } else {
-            console.error('loadCart: Elemento cartTotal não encontrado no DOM!');
-        }
+        // Atualizar resumo do pedido na lateral
+        const summaryItems = document.getElementById('orderSummaryItems');
+        const summarySubtotal = document.getElementById('summarySubtotal');
+        const summaryTotal = document.getElementById('summaryTotal');
         
-        // Mostrar a barra de total (usar display direto para garantir visibilidade)
-        if (bar) {
-            bar.style.display = 'block'; // Exibir diretamente via display
-            console.log('loadCart: Barra do carrinho exibida', { 
-                hasItems: data.items && data.items.length > 0,
-                total: finalTotal,
-                barVisible: bar.offsetHeight > 0
+        if (summaryItems) {
+            let summaryHtml = '';
+            data.items.forEach(item => {
+                const itemSubtotal = parseFloat(item.subtotal || item.price * item.qty || 0);
+                summaryHtml += `
+                    <div class="flex justify-between text-sm">
+                        <span class="text-muted-foreground">${item.qty}x ${item.name}</span>
+                        <span class="font-semibold">R$ ${formatBRL(itemSubtotal)}</span>
+                    </div>
+                `;
             });
-        } else {
-            console.error('loadCart: Elemento cartBar não encontrado no DOM!');
+            summaryItems.innerHTML = summaryHtml;
         }
         
-        // Garantir que há espaço suficiente para scroll (ajustar padding-bottom dinamicamente)
-        // Isso garante que o último item não seja cortado pela barra fixa
-        const cartContainer = document.querySelector('.max-w-4xl');
-        if (cartContainer && data.items && data.items.length > 0 && bar) {
-            // Calcular altura da barra fixa + margem extra
-            const cartBarHeight = bar.offsetHeight || 80;
-            // Usar padding diferente para mobile e desktop
-            const isDesktop = window.innerWidth >= 1024;
-            const paddingValue = isDesktop ? `${cartBarHeight + 20}px` : `${cartBarHeight + 10}px`;
-            cartContainer.style.paddingBottom = paddingValue;
+        if (summarySubtotal) {
+            summarySubtotal.textContent = 'R$ ' + formatBRL(subtotal);
+        }
+        
+        if (summaryTotal) {
+            summaryTotal.textContent = 'R$ ' + formatBRL(finalTotal);
+        }
+        
+        // Esconder barra fixa antiga (não é mais necessária)
+        if (bar) {
+            bar.style.display = 'none';
         }
 
         // Benefícios: frete grátis e cashback

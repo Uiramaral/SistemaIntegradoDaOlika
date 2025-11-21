@@ -36,3 +36,4 @@ AND c.telefone IS NOT NULL
 AND TRIM(c.telefone) != '';
 
 
+

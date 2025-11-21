@@ -20,10 +20,10 @@ class SettingsController extends Controller
         
         // Configurações gerais da loja
         $storeSettings = [
-            'store_name' => 'Olika',
-            'store_email' => 'contato@olika.com',
-            'store_phone' => '(11) 99999-9999',
-            'store_cnpj' => '00.000.000/0001-00',
+            'store_name' => 'Olika Cozinha Artesanal',
+            'store_email' => 'olikacozinhaartesanal@gmail.com',
+            'store_phone' => '(71) 987019420',
+            'store_cnpj' => '50.910.565/0001-84',
             'service_fee' => 0,
             'min_order' => 0,
         ];

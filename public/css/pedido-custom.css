@@ -1,0 +1,86 @@
+/* Estilos customizados do layout pedido */
+
+/* Animações e efeitos do layout pixel-perfect */
+.hover-lift {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 24px -8px rgba(122, 82, 48, 0.25) !important;
+}
+
+.transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.shadow-warm {
+    box-shadow: 0 4px 14px rgba(122, 82, 48, 0.25) !important;
+}
+
+.shadow-warm:hover {
+    box-shadow: 0 6px 20px rgba(122, 82, 48, 0.35) !important;
+}
+
+.shadow-warm-lg {
+    box-shadow: 0 8px 24px rgba(122, 82, 48, 0.15) !important;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Aspect ratio 4/3 - suporte para Tailwind CDN */
+[class*="aspect-[4/3]"] {
+    aspect-ratio: 4 / 3;
+}
+
+.aspect-4-3 {
+    aspect-ratio: 4 / 3;
+}
+
+/* Correções de layout para elementos fixos */
+@media (max-width: 768px) {
+    html {
+        height: 100%;
+        overflow-x: hidden;
+    }
+    
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+        padding-bottom: 0 !important;
+    }
+    
+    nav.fixed.bottom-0 {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    #cartBottomBar {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    body > div {
+        min-height: auto !important;
+    }
+}
+

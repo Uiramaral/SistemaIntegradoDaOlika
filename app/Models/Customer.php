@@ -31,6 +31,7 @@ class Customer extends Authenticatable
         'is_active',
         'is_wholesale',
         'total_debts',
+        'newsletter',
     ];
 
     protected $hidden = [
@@ -43,6 +44,7 @@ class Customer extends Authenticatable
         'birth_date' => 'date',
         'is_active' => 'boolean',
         'is_wholesale' => 'boolean',
+        'newsletter' => 'boolean',
         'email_verified_at' => 'datetime',
         'last_order_at' => 'datetime',
         'total_spent' => 'decimal:2',

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\OrderController;
@@ -36,27 +37,6 @@ if ($isDevDomain) {
 //     'dashboard_domain' => $dashboardDomain,
 // ]);
 
-// Rota raiz genérica (fallback APENAS para domínio principal sem subdomínio)
-// IMPORTANTE: Esta rota NÃO interfere com rotas Route::domain()
-// Ela só é executada quando o host NÃO corresponde a nenhum subdomínio configurado
-Route::get('/', function () use ($dashboardDomain, $pedidoDomain, $primaryDomain) {
-    $host = request()->getHost();
-
-    // Se o host corresponde exatamente a um dos domínios configurados,
-    // as rotas Route::domain() devem tratar - esta rota não deve ser executada
-    // Mas como fallback de segurança, vamos apenas redirecionar para pedido
-    // se não for nenhum dos domínios esperados
-    
-    // Apenas para domínio principal ou localhost
-    if ($host === $primaryDomain || $host === 'localhost' || $host === '127.0.0.1') {
-        return redirect()->route('pedido.index');
-    }
-
-    // Se chegou aqui e não é nenhum dos domínios esperados, 
-    // provavelmente é um subdomínio não configurado - deixar as rotas Route::domain() tratarem
-    // Não fazer nada aqui
-    abort(404);
-})->name('home');
 use App\Http\Controllers\LoyaltyController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\DeliveryFeeController;
@@ -65,6 +45,7 @@ use App\Http\Controllers\PedidosBulkController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\BotConversaController;
 
 // Autenticação
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -144,113 +125,31 @@ Route::prefix('customer')->group(function () {
     Route::post('/orders/{order}/rate', [\App\Http\Controllers\Customer\OrdersController::class, 'rate'])->name('customer.orders.rate');
 });
 
-// Subdomínio: Pedido (Loja Front-end) - PÚBLICO
-Route::domain($pedidoDomain)->name('pedido.')->group(function () {
-    // Página inicial
-    Route::get('/', [MenuController::class, 'index'])->name('index');
-    
-    // Menu
-    Route::prefix('menu')->name('menu.')->group(function () {
-        Route::get('/', [MenuController::class, 'index'])->name('index');
-        Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
-        Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
-        Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
-        Route::get('/buscar', [MenuController::class, 'search'])->name('search');
-    });
-    
-    // Carrinho
-    Route::prefix('cart')->name('cart.')->group(function () {
-        Route::get('/', [CartController::class, 'show'])->name('index');
-        Route::get('/count', [CartController::class, 'count'])->name('count');
-        Route::get('/items', [CartController::class, 'items'])->name('items');
-        Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
-        Route::post('/add', [CartController::class, 'add'])->name('add');
-        Route::post('/update', [CartController::class, 'update'])->name('update');
-        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
-        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
-        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
-    });
-    
-    // Checkout
-    Route::prefix('checkout')->name('checkout.')->group(function () {
-        Route::get('/', [OrderController::class, 'checkout'])->name('index');
-        Route::post('/', [OrderController::class, 'store'])->name('store');
-        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
-        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
-    });
-    
-    // Finalizar pedido do PDV
-    Route::get('/pdv/complete/{order}', [OrderController::class, 'completePdvOrder'])->name('pdv.complete');
-    
-    // Pagamento
-    Route::prefix('payment')->name('payment.')->group(function () {
-        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
-        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
-        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
-        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
-        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
-    });
-});
-
-// Rotas públicas equivalentes (sem depender do subdomínio) - fallback PÚBLICO
-// IMPORTANTE: Estas rotas funcionam quando o DNS não está configurado com subdomínio
-Route::prefix('pedido')->name('pedido.')->group(function () {
-    // Página inicial - /pedido/
-    Route::get('/', [MenuController::class, 'index'])->name('index');
-    
-    // Menu - /pedido/menu, /pedido/menu/categoria/{id}, etc.
-    Route::prefix('menu')->name('menu.')->group(function () {
-        Route::get('/', [MenuController::class, 'index'])->name('index');
-        Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
-        Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
-        Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
-        Route::get('/buscar', [MenuController::class, 'search'])->name('search');
-    });
-    
-            // Carrinho - /pedido/cart, /pedido/cart/add, etc.
-            Route::prefix('cart')->name('cart.')->group(function () {
-                Route::get('/', [CartController::class, 'show'])->name('index');
-                Route::get('/count', [CartController::class, 'count'])->name('count');
-                Route::get('/items', [CartController::class, 'items'])->name('items');
-                Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
-                Route::post('/add', [CartController::class, 'add'])->name('add');
-                Route::post('/update', [CartController::class, 'update'])->name('update');
-                Route::post('/remove', [CartController::class, 'remove'])->name('remove');
-                Route::post('/clear', [CartController::class, 'clear'])->name('clear');
-                Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
-            });
-    
-    // Checkout - /pedido/checkout
-    Route::prefix('checkout')->name('checkout.')->group(function () {
-        Route::get('/', [OrderController::class, 'checkout'])->name('index');
-        Route::post('/', [OrderController::class, 'store'])->name('store');
-        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
-        Route::post('/locate-address', [OrderController::class, 'locateAddress'])->name('locate-address');
-    });
-    
-    // Finalizar pedido do PDV - /pedido/pdv/complete/{order}
-    Route::get('/pdv/complete/{order}', [OrderController::class, 'completePdvOrder'])->name('pdv.complete');
-    
-    // Adicionar também calculate-discounts no grupo sem subdomínio
-    Route::post('/checkout/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('checkout.calculate-discounts');
-    Route::post('/checkout/locate-address', [OrderController::class, 'locateAddress'])->name('checkout.locate-address');
-    
-    // Pagamento - /pedido/payment/pix/{order}, etc.
-    Route::prefix('payment')->name('payment.')->group(function () {
-        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
-        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
-        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
-        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
-        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
-    });
-});
-
 // ============================================
 // ROTAS DO DASHBOARD (REQUEREM AUTENTICAÇÃO)
+// IMPORTANTE: Devem vir ANTES das rotas do pedido para garantir prioridade
 // ============================================
 
 // Subdomínio: Dashboard (produção e desenvolvimento)
-// IMPORTANTE: Esta rota deve vir ANTES das rotas do pedido para garantir prioridade
+// Rotas públicas do dashboard (login, teste, etc.)
+Route::domain($dashboardDomain)->group(function () {
+    // Rota de teste SEM autenticação para diagnosticar
+    Route::get('/test-dashboard-access', function() {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dashboard domain está funcionando!',
+            'host' => request()->getHost(),
+            'authenticated' => auth()->check(),
+            'user' => auth()->user() ? auth()->user()->id : null,
+        ]);
+    })->name('dashboard.test-access');
+    
+    // Rotas de autenticação também devem funcionar no subdomínio
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('dashboard.login');
+    Route::post('/login', [LoginController::class, 'login'])->name('dashboard.auth.login');
+});
+
+// Rotas do dashboard COM autenticação
 Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
@@ -428,38 +327,105 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
 
 });
 
-// Rotas do dashboard vinculadas ao subdomínio correto
-Route::domain($dashboardDomain)->middleware('auth')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
-    Route::get('/pdv', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('dashboard.pdv.index');
-    Route::get('/pedidos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders.index');
-    Route::get('/clientes', [\App\Http\Controllers\Dashboard\CustomersController::class, 'index'])->name('dashboard.customers.index');
-    Route::post('/clientes/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
-    Route::get('/produtos', [\App\Http\Controllers\Dashboard\ProductsController::class, 'index'])->name('dashboard.products.index');
-    Route::get('/categorias', [\App\Http\Controllers\Dashboard\CategoriesController::class, 'index'])->name('dashboard.categories.index');
-    Route::get('/cupons', [\App\Http\Controllers\Dashboard\CouponsController::class, 'index'])->name('dashboard.coupons.index');
-    Route::get('/entregas', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'index'])->name('dashboard.deliveries.index');
-    Route::post('/entregas/{order}/status', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'updateStatus'])->name('dashboard.deliveries.status');
-    Route::post('/customers/{customer}/send-pending-orders', [\App\Http\Controllers\Dashboard\DebtsController::class, 'sendPendingOrdersSummary'])->name('dashboard.customers.sendPendingOrders');
-    Route::post('/customers/debts/{debt}/settle', [\App\Http\Controllers\Dashboard\DebtsController::class, 'settleDebt'])->name('dashboard.customers.debts.settle');
-    Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
-        'index' => 'dashboard.wholesale-prices.index',
-        'create' => 'dashboard.wholesale-prices.create',
-        'store' => 'dashboard.wholesale-prices.store',
-        'edit' => 'dashboard.wholesale-prices.edit',
-        'update' => 'dashboard.wholesale-prices.update',
-        'destroy' => 'dashboard.wholesale-prices.destroy',
-    ]);
-    Route::get('/precos-revenda', function () {
-        return redirect()->route('dashboard.wholesale-prices.index');
-    })->name('dashboard.wholesale-prices.alias');
-    Route::get('/cashback', [\App\Http\Controllers\Dashboard\CashbackController::class, 'index'])->name('dashboard.cashback.index');
-    Route::get('/fidelidade', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
-    Route::get('/relatorios', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
-    Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp.alias');
-    Route::get('/mercado-pago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp.alias');
-            Route::get('/status-templates', function () { return view('dashboard.settings.status-templates'); })->name('dashboard.settings.status-templates.alias');
-    Route::post('/settings/apis',         [\App\Http\Controllers\Dashboard\SettingsController::class, 'apisSave'])->name('dashboard.settings.apis.save');
+// Subdomínio: Pedido (Loja Front-end) - PÚBLICO
+Route::domain($pedidoDomain)->name('pedido.')->group(function () {
+    // Página inicial
+    Route::get('/', [MenuController::class, 'index'])->name('index');
+    
+    // Menu
+    Route::prefix('menu')->name('menu.')->group(function () {
+        Route::get('/', [MenuController::class, 'index'])->name('index');
+        Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
+        Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
+        Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
+        Route::get('/buscar', [MenuController::class, 'search'])->name('search');
+    });
+    
+    // Carrinho
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [CartController::class, 'show'])->name('index');
+        Route::get('/count', [CartController::class, 'count'])->name('count');
+        Route::get('/items', [CartController::class, 'items'])->name('items');
+        Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
+        Route::post('/add', [CartController::class, 'add'])->name('add');
+        Route::post('/update', [CartController::class, 'update'])->name('update');
+        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
+        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+    });
+    
+    // Checkout
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::get('/', [OrderController::class, 'checkout'])->name('index');
+        Route::post('/', [OrderController::class, 'store'])->name('store');
+        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
+    });
+    
+    // Finalizar pedido do PDV
+    Route::get('/pdv/complete/{order}', [OrderController::class, 'completePdvOrder'])->name('pdv.complete');
+    
+    // Pagamento
+    Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
+        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
+        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
+        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
+    });
+});
+
+// Rotas públicas equivalentes (sem depender do subdomínio) - fallback PÚBLICO
+// IMPORTANTE: Estas rotas funcionam quando o DNS não está configurado com subdomínio
+Route::prefix('pedido')->name('pedido.')->group(function () {
+    // Página inicial - /pedido/
+    Route::get('/', [MenuController::class, 'index'])->name('index');
+    
+    // Menu - /pedido/menu, /pedido/menu/categoria/{id}, etc.
+    Route::prefix('menu')->name('menu.')->group(function () {
+        Route::get('/', [MenuController::class, 'index'])->name('index');
+        Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
+        Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
+        Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
+        Route::get('/buscar', [MenuController::class, 'search'])->name('search');
+    });
+    
+            // Carrinho - /pedido/cart, /pedido/cart/add, etc.
+            Route::prefix('cart')->name('cart.')->group(function () {
+                Route::get('/', [CartController::class, 'show'])->name('index');
+                Route::get('/count', [CartController::class, 'count'])->name('count');
+                Route::get('/items', [CartController::class, 'items'])->name('items');
+                Route::get('/ai-suggestions', [CartController::class, 'aiSuggestions'])->name('ai');
+                Route::post('/add', [CartController::class, 'add'])->name('add');
+                Route::post('/update', [CartController::class, 'update'])->name('update');
+                Route::post('/remove', [CartController::class, 'remove'])->name('remove');
+                Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+                Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+            });
+    
+    // Checkout - /pedido/checkout
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::get('/', [OrderController::class, 'checkout'])->name('index');
+        Route::post('/', [OrderController::class, 'store'])->name('store');
+        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/locate-address', [OrderController::class, 'locateAddress'])->name('locate-address');
+    });
+    
+    // Finalizar pedido do PDV - /pedido/pdv/complete/{order}
+    Route::get('/pdv/complete/{order}', [OrderController::class, 'completePdvOrder'])->name('pdv.complete');
+    
+    // Adicionar também calculate-discounts no grupo sem subdomínio
+    Route::post('/checkout/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('checkout.calculate-discounts');
+    Route::post('/checkout/locate-address', [OrderController::class, 'locateAddress'])->name('checkout.locate-address');
+    
+    // Pagamento - /pedido/payment/pix/{order}, etc.
+    Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
+        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
+        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
+        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
+    });
 });
 
 // Fallback: Rotas do dashboard SEM subdomínio (útil quando DNS ainda não aponta)
@@ -639,6 +605,76 @@ Route::get('/clear-cache-now', function () {
     return response()->json(['status' => 'success', 'cleared' => true]);
 })->name('tools.clear');
 
+// Rota de teste para diagnosticar problemas de subdomínio
+Route::get('/test-dashboard-route', function() use ($dashboardDomain, $pedidoDomain) {
+    $currentHost = request()->getHost();
+    $isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
+    
+    return response()->json([
+        'current_host' => $currentHost,
+        'is_dev_domain' => $isDevDomain,
+        'dashboard_domain' => $dashboardDomain,
+        'pedido_domain' => $pedidoDomain,
+        'matches_dashboard' => $currentHost === $dashboardDomain,
+        'matches_pedido' => $currentHost === $pedidoDomain,
+        'trust_hosts_allowed' => true, // Verificar manualmente no TrustHosts
+        'routes_cached' => file_exists(base_path('bootstrap/cache/routes-v7.php')),
+    ]);
+})->name('tools.test-dashboard-route');
+
 Route::prefix('webhooks')->group(function () {
     Route::post('/mercadopago', [WebhookController::class, 'mercadoPago'])->name('webhooks.mercadopago');
 });
+
+// API BotConversa - Sincronização de clientes (sem CSRF)
+Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
+    // Rota de teste simples (GET) para verificar se está funcionando
+    Route::get('/ping', function() {
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'API BotConversa está respondendo',
+            'timestamp' => date('Y-m-d H:i:s'),
+        ]);
+    })->name('ping');
+    
+    // Rota de teste completa (GET) para verificar se a API está funcionando
+    Route::get('/', [BotConversaController::class, 'test'])->name('test');
+    Route::get('/test', [BotConversaController::class, 'test'])->name('test.get');
+    
+    // Rotas de sincronização (POST) - usado pelo BotConversa enviando JSON via POST
+    Route::post('/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('sync-customer');
+    Route::post('/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers');
+});
+
+// ============================================
+// ROTA RAIZ GENÉRICA (FALLBACK)
+// IMPORTANTE: Esta rota deve vir POR ÚLTIMO para não interferir com Route::domain()
+// ============================================
+// Rota raiz genérica (fallback APENAS para domínio principal sem subdomínio)
+// Ela só é executada quando o host NÃO corresponde a nenhum subdomínio configurado
+Route::get('/', function () use ($dashboardDomain, $pedidoDomain, $primaryDomain) {
+    $host = request()->getHost();
+
+    // Se o host corresponde exatamente a um dos domínios configurados,
+    // as rotas Route::domain() devem ter tratado - se chegou aqui, algo está errado
+    if ($host === $dashboardDomain || $host === $pedidoDomain) {
+        // Se chegou aqui, significa que nenhuma rota Route::domain() foi encontrada
+        // Isso não deveria acontecer, mas vamos redirecionar para login se for dashboard
+        if ($host === $dashboardDomain) {
+            return redirect()->route('dashboard.login');
+        }
+        // Se for pedido, redirecionar para a página inicial
+        if ($host === $pedidoDomain) {
+            return redirect()->route('pedido.index');
+        }
+    }
+    
+    // Apenas para domínio principal ou localhost
+    if ($host === $primaryDomain || $host === 'localhost' || $host === '127.0.0.1') {
+        return redirect()->route('pedido.index');
+    }
+
+    // Se chegou aqui e não é nenhum dos domínios esperados, 
+    // provavelmente é um subdomínio não configurado
+    abort(404);
+})->name('home');

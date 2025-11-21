@@ -124,10 +124,30 @@
                     $hasLegacySubtitle = View::hasSection('page-subtitle');
                     $pageSubtitle = $hasModernSubtitle ? trim($__env->yieldContent('page_subtitle')) : ($hasLegacySubtitle ? trim($__env->yieldContent('page-subtitle')) : null);
                     $pageActionsSection = View::hasSection('page_actions') ? 'page_actions' : (View::hasSection('page-actions') ? 'page-actions' : null);
-                    $statCardsSection = View::hasSection('stat_cards') ? 'stat_cards' : (View::hasSection('stat-cards') ? 'stat-cards' : null);
-                    $quickFiltersSection = View::hasSection('quick_filters') ? 'quick_filters' : (View::hasSection('quick-filters') ? 'quick-filters' : null);
+                    
+                    // Verificar se as seções existem E têm conteúdo (não vazio)
+                    $statCardsSectionName = View::hasSection('stat_cards') ? 'stat_cards' : (View::hasSection('stat-cards') ? 'stat-cards' : null);
+                    $statCardsSection = null;
+                    if ($statCardsSectionName) {
+                        $statCardsContent = trim($__env->yieldContent($statCardsSectionName));
+                        $statCardsSection = $statCardsContent !== '' ? $statCardsSectionName : null;
+                    }
+                    
+                    $quickFiltersSectionName = View::hasSection('quick_filters') ? 'quick_filters' : (View::hasSection('quick-filters') ? 'quick-filters' : null);
+                    $quickFiltersSection = null;
+                    if ($quickFiltersSectionName) {
+                        $quickFiltersContent = trim($__env->yieldContent($quickFiltersSectionName));
+                        $quickFiltersSection = $quickFiltersContent !== '' ? $quickFiltersSectionName : null;
+                    }
+                    
                     $pageDescriptionSection = View::hasSection('page_description') ? 'page_description' : (View::hasSection('page-description') ? 'page-description' : null);
-                    $pageToolbarSection = View::hasSection('page_toolbar') ? 'page_toolbar' : (View::hasSection('page-toolbar') ? 'page-toolbar' : null);
+                    
+                    $pageToolbarSectionName = View::hasSection('page_toolbar') ? 'page_toolbar' : (View::hasSection('page-toolbar') ? 'page-toolbar' : null);
+                    $pageToolbarSection = null;
+                    if ($pageToolbarSectionName) {
+                        $pageToolbarContent = trim($__env->yieldContent($pageToolbarSectionName));
+                        $pageToolbarSection = $pageToolbarContent !== '' ? $pageToolbarSectionName : null;
+                    }
                 @endphp
 
                 <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">

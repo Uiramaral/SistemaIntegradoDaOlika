@@ -40,3 +40,4 @@ AND TRIM(c.telefone) != '';
 -- DROP TABLE IF EXISTS `clientes`;
 
 
+

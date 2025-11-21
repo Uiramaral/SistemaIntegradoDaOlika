@@ -58,8 +58,6 @@
             @endphp
             
             <div class="mb-12 category-section" data-category-id="{{ $categoryId }}">
-                <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-4">{{ $category->name }}</h2>
-                
                 @php
                     // Contador global de produtos para determinar quais imagens carregar eager
                     if (!isset($globalProductIndex)) {
@@ -67,8 +65,13 @@
                     }
                 @endphp
                 @if($displayType === 'grid')
-                    <!-- Grid (Grade) - 3 colunas no mobile, 5 no desktop -->
-                    <div class="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
+                    <!-- Título e contagem de produtos (estilo do site de referência) -->
+                    <div class="mb-6">
+                        <h2 class="text-3xl font-serif font-bold text-foreground">{{ $category->name }}</h2>
+                        <p class="text-muted-foreground mt-1">{{ $category->products->count() }} {{ $category->products->count() === 1 ? 'produto' : 'produtos' }}</p>
+                    </div>
+                    <!-- Grid (Grade) - Layout pixel-perfect do site de referência -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
                         @foreach($category->products as $product)
                             @php
                                 $shouldLoadEager = $globalProductIndex < 12;

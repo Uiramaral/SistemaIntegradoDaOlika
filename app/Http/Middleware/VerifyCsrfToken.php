@@ -19,6 +19,7 @@ class VerifyCsrfToken extends Middleware
         'cart/clear',
         'webhooks/*',
         'api/*',
+        'api/botconversa/*',
         'dashboard/customers/debts/*/settle',
         'customers/debts/*/settle',
     ];

@@ -13,22 +13,20 @@
 @section('og_image', $img)
 
 @section('content')
-<div class="max-w-4xl mx-auto overflow-x-hidden pb-32">
-    <!-- Breadcrumb -->
-    <nav class="mb-6 text-sm text-gray-600">
-        <a href="{{ route('pedido.index') }}" class="hover:text-primary">Cardápio</a>
-        @if($product->category)
-        <span class="mx-2">/</span>
-        <a href="{{ route('pedido.menu.category', $product->category->id) }}" class="hover:text-primary">{{ $product->category->name }}</a>
-        @endif
-        <span class="mx-2">/</span>
-        <span class="text-gray-900 break-words">{{ $product->name }}</span>
-    </nav>
+<div class="container mx-auto px-4 py-8">
+    <!-- Botão Voltar -->
+    <button onclick="window.history.back()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0">
+            <path d="m12 19-7-7 7-7"></path>
+            <path d="M19 12H5"></path>
+        </svg>
+        Voltar
+    </button>
 
     <!-- Product Details -->
-    <div class="grid md:grid-cols-2 gap-6 md:gap-8 mb-12">
+    <div class="grid md:grid-cols-2 gap-8 mb-12">
         <!-- Image -->
-        <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 relative">
+        <div class="rounded-lg overflow-hidden bg-muted relative">
             @php
                 $img = $product->image_url;
                 if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
@@ -51,28 +49,38 @@
         </div>
 
         <!-- Info -->
-        <div class="min-w-0">
-            @if($product->category)
-            <div class="inline-flex items-center rounded-full border px-3 py-1 font-semibold bg-primary text-primary-foreground text-sm mb-4">
-                {{ $product->category->name }}
+        <div class="flex flex-col gap-6">
+            <div>
+                @if($product->category)
+                <div class="text-sm text-muted-foreground mb-2">{{ $product->category->name }}</div>
+                @endif
+                <h1 class="text-3xl font-serif font-bold text-foreground mb-2">{{ $product->name }}</h1>
+                @php
+                    $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
+                    $initialPrice = ($variantsActive->count() > 0) ? (float)optional($variantsActive->first())->price : (float)$product->price;
+                @endphp
+                <p class="text-2xl font-bold text-primary">R$ {{ number_format($initialPrice, 2, ',', '.') }}</p>
+            </div>
+            
+            @if($product->description || ($product->ingredients ?? null))
+            <div class="space-y-6">
+                @if($product->description)
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Descrição</h3>
+                    <p class="text-muted-foreground">{{ $product->description }}</p>
+                </div>
+                @endif
+                
+                @if($product->ingredients ?? null)
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Ingredientes</h3>
+                    <p class="text-muted-foreground">{{ $product->ingredients }}</p>
+                </div>
+                @endif
             </div>
             @endif
-            
-            <h1 class="text-2xl md:text-3xl font-bold mb-4 break-words">{{ $product->name }}</h1>
-            
-            @if($product->description)
-            <p class="text-gray-600 mb-6 break-words">{{ $product->description }}</p>
-            @endif
 
-            <div class="mb-6">
-                <div class="flex items-baseline gap-3 mb-4">
-                    @php
-                        $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
-                        $initialPrice = ($variantsActive->count() > 0) ? (float)optional($variantsActive->first())->price : (float)$product->price;
-                    @endphp
-                    <span id="priceDisplay" class="text-3xl md:text-4xl font-bold text-primary">R$ {{ number_format($initialPrice, 2, ',', '.') }}</span>
-                </div>
-
+            <div class="space-y-6">
                 @if($variantsActive->count() > 0)
                 <div class="mb-6">
                     <div class="flex items-center gap-2 mb-3">
@@ -100,24 +108,34 @@
                 @endif
 
                 <!-- Quantity Selector -->
-                <div class="flex items-center gap-4 mb-6">
-                    <label class="text-sm font-medium text-gray-700">Quantidade:</label>
-                    <div class="flex items-center border rounded-lg">
-                        <button onclick="changeQuantity(-1)" class="px-3 py-2 hover:bg-gray-100" id="decreaseBtn">-</button>
-                        <input type="number" value="1" min="1" class="w-16 text-center border-x py-2" id="quantityInput">
-                        <button onclick="changeQuantity(1)" class="px-3 py-2 hover:bg-gray-100" id="increaseBtn">+</button>
+                <div>
+                    <label class="block text-sm font-medium text-foreground mb-2">Quantidade:</label>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeQuantity(-1)" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10" id="decreaseBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0">
+                                <path d="M5 12h14"></path>
+                            </svg>
+                        </button>
+                        <span class="px-4 text-lg font-semibold" id="quantityDisplay">1</span>
+                        <button onclick="changeQuantity(1)" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10" id="increaseBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0">
+                                <path d="M5 12h14"></path>
+                                <path d="M12 5v14"></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Observação do Item -->
-                <div class="mb-6">
-                    <label for="itemObservation" class="block text-sm font-medium text-gray-700 mb-2">Observação para este item (opcional)</label>
-                    <textarea id="itemObservation" rows="3" maxlength="500" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Ex: Sem cebola, bem passado, etc."></textarea>
-                    <p class="text-xs text-gray-500 mt-1">Máximo 500 caracteres</p>
-                </div>
-
-                <button onclick="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float)$initialPrice }})" class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors mb-4">
-                    Adicionar ao Carrinho
+                <button onclick="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float)$initialPrice }})" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 rounded-md px-8 w-full gap-2 shadow-warm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0">
+                        <path d="M5 12h14"></path>
+                        <path d="M12 5v14"></path>
+                    </svg>
+                    Adicionar ao carrinho - <span id="priceDisplay">R$ {{ number_format($initialPrice, 2, ',', '.') }}</span>
+                </button>
+                
+                <button onclick="window.location.href='{{ route('pedido.cart.index') }}'" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 rounded-md px-8 w-full">
+                    Ver carrinho
                 </button>
             </div>
 
@@ -175,16 +193,39 @@ let quantity = 1;
 
 function changeQuantity(delta) {
     quantity = Math.max(1, quantity + delta);
-    document.getElementById('quantityInput').value = quantity;
+    document.getElementById('quantityDisplay').textContent = quantity;
+    updatePriceDisplay();
 }
 
-document.getElementById('quantityInput').addEventListener('change', function() {
-    quantity = Math.max(1, parseInt(this.value) || 1);
-    this.value = quantity;
+function updatePriceDisplay() {
+    const variantRadio = document.querySelector('input[name="variantSelect"]:checked');
+    let currentPrice = {{ (float)$initialPrice }};
+    
+    if (variantRadio) {
+        const variantPrice = parseFloat(variantRadio.getAttribute('data-price') || '0');
+        if (!isNaN(variantPrice) && variantPrice > 0) {
+            currentPrice = variantPrice;
+        }
+    }
+    
+    const totalPrice = currentPrice * quantity;
+    const priceDisplay = document.getElementById('priceDisplay');
+    if (priceDisplay) {
+        priceDisplay.textContent = 'R$ ' + totalPrice.toFixed(2).replace('.', ',');
+    }
+}
+
+// Atualizar preço quando variante mudar
+document.addEventListener('DOMContentLoaded', function() {
+    const variantRadios = document.querySelectorAll('input[name="variantSelect"]');
+    variantRadios.forEach(radio => {
+        radio.addEventListener('change', updatePriceDisplay);
+    });
+    updatePriceDisplay();
 });
 
 async function addToCart(productId, productName, price) {
-    const qty = parseInt(document.getElementById('quantityInput').value) || 1;
+    const qty = quantity;
     const variantRadio = document.querySelector('input[name="variantSelect"]:checked');
     const itemObservation = document.getElementById('itemObservation')?.value.trim() || '';
     let variantId = null; 

@@ -22,3 +22,4 @@ AND c.telefone IS NOT NULL
 AND c.telefone != '';
 
 
+

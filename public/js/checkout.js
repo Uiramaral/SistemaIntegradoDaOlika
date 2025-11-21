@@ -279,9 +279,14 @@ function toggleZipCodeManualMode(enable, options = {}) {
         zipCodeManualButton.classList.remove('hidden');
         zipCodeManualButton.disabled = false;
         zipCodeManualButton.dataset.reason = reason || '';
-        zipCodeManualButton.textContent = reason
-            ? 'Confirmar endereço manualmente'
-            : 'Localizar meu endereço';
+        // Texto do botão adapta-se ao contexto
+        if (reason && (reason.includes('não encontrado') || reason.includes('não foi possível'))) {
+            zipCodeManualButton.textContent = 'Confirmar endereço manualmente';
+        } else if (reason && reason.includes('Preencha')) {
+            zipCodeManualButton.textContent = 'Não sei o CEP / Digitar manualmente';
+        } else {
+            zipCodeManualButton.textContent = 'Localizar meu endereço';
+        }
     } else {
         if (zipCodeInput.dataset.requiredOriginal === 'true') {
             zipCodeInput.setAttribute('required', 'required');
@@ -411,6 +416,239 @@ function applyCustomerPrefill(prefill, options = {}) {
     } else if (runSummaryUpdate) {
         updateFinalizeButtonState();
     }
+}
+
+// ============================================
+// MÓDULO: Busca de CEP
+// ============================================
+
+/**
+ * Busca endereço por CEP usando APIs públicas (ViaCEP e BrasilAPI como fallback)
+ * @param {string} cep - CEP formatado ou apenas números
+ * @returns {Promise<Object>} Dados do endereço no formato ViaCEP
+ * @throws {Error} Se o CEP não for encontrado ou houver erro na requisição
+ */
+async function buscarEnderecoPorCep(cep) {
+    // Normalizar CEP (remover formatação)
+    const cepDigits = String(cep).replace(/\D/g, '');
+    
+    if (cepDigits.length !== 8) {
+        throw new Error('CEP deve conter 8 dígitos');
+    }
+    
+    const apis = {
+        viacep: `https://viacep.com.br/ws/${cepDigits}/json/`,
+        brasilapi: `https://brasilapi.com.br/api/cep/v1/${cepDigits}`
+    };
+    
+    // Tentar ViaCEP primeiro
+    try {
+        const response = await fetch(apis.viacep, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.erro) {
+            throw new Error('CEP não encontrado');
+        }
+        
+        return data;
+    } catch (viaCepError) {
+        console.warn('ViaCEP falhou, tentando BrasilAPI:', viaCepError);
+        
+        // Fallback para BrasilAPI
+        try {
+            const response = await fetch(apis.brasilapi, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Normalizar resposta da BrasilAPI para formato ViaCEP
+            return {
+                logradouro: data.street || '',
+                bairro: data.neighborhood || data.district || '',
+                localidade: data.city || '',
+                uf: data.state || '',
+                erro: false
+            };
+        } catch (brasilApiError) {
+            console.error('BrasilAPI também falhou:', brasilApiError);
+            throw new Error('Não foi possível consultar o CEP. Verifique sua conexão.');
+        }
+    }
+}
+
+// ============================================
+// MÓDULO: Atualização do Formulário
+// ============================================
+
+/**
+ * Atualiza o formulário de checkout com dados do endereço
+ * @param {Object} options - Opções de atualização
+ * @param {Object} options.address - Dados do endereço (formato ViaCEP)
+ * @param {boolean} options.showManualAddress - Se deve mostrar campos de endereço manual
+ * @param {string} options.feedbackMessage - Mensagem de feedback para o usuário
+ * @param {string} options.feedbackClass - Classe CSS para a mensagem de feedback
+ */
+function updateCheckoutForm({ address = null, showManualAddress = false, feedbackMessage = '', feedbackClass = '' }) {
+    // Atualizar campos de endereço se dados disponíveis
+    if (address) {
+        const fields = {
+            address: address.logradouro || '',
+            neighborhood: address.bairro || '',
+            city: address.localidade || '',
+            state: address.uf ? address.uf.toUpperCase() : ''
+        };
+        
+        // Preencher campos
+        Object.keys(fields).forEach(fieldKey => {
+            const fieldId = fieldKey === 'address' ? 'address' : 
+                          fieldKey === 'neighborhood' ? 'neighborhood' :
+                          fieldKey === 'city' ? 'city' : 'state';
+            const field = document.getElementById(fieldId);
+            if (field && fields[fieldKey]) {
+                field.value = fields[fieldKey];
+                field.removeAttribute('readonly');
+                field.required = true;
+            }
+        });
+        
+        // Limpar estado de erro
+        clearAddressErrorState();
+    }
+    
+    // Mostrar/ocultar botão de endereço manual (usando zip_code_manual_button)
+    if (showManualAddress) {
+        toggleZipCodeManualMode(true, { reason: feedbackMessage || 'Preencha o endereço completo' });
+    } else {
+        toggleZipCodeManualMode(false);
+    }
+    
+    // Atualizar feedback visual
+    if (feedbackMessage) {
+        setCepFeedback(feedbackMessage, feedbackClass);
+    }
+    
+    // Atualizar estado do botão de finalizar
+    updateFinalizeButtonState();
+}
+
+// ============================================
+// MÓDULO: Feedback Visual
+// ============================================
+
+/**
+ * Mostra estado de loading durante busca de CEP
+ * @param {boolean} show - Se deve mostrar o loading
+ */
+function showCepLoadingState(show = true) {
+    const spinner = document.getElementById('cepLoadingSpinner');
+    if (spinner) {
+        spinner.classList.toggle('hidden', !show);
+    }
+    
+    if (zipCodeInput) {
+        if (show) {
+            zipCodeInput.classList.add('border-blue-400', 'ring-2', 'ring-blue-200');
+            setCepFeedback('Buscando endereço...', 'text-xs text-blue-600 mt-1');
+        } else {
+            zipCodeInput.classList.remove('border-blue-400', 'ring-2', 'ring-blue-200');
+        }
+    }
+}
+
+/**
+ * Mostra feedback de sucesso após encontrar CEP
+ */
+function showCepSuccessFeedback() {
+    if (zipCodeInput) {
+        zipCodeInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+        zipCodeInput.classList.add('border-green-400', 'ring-2', 'ring-green-200');
+        setTimeout(() => {
+            zipCodeInput.classList.remove('border-green-400', 'ring-2', 'ring-green-200');
+        }, 2000);
+    }
+    setCepFeedback('Endereço encontrado!', 'text-xs text-green-600 mt-1');
+}
+
+/**
+ * Mostra feedback de erro para CEP não encontrado
+ */
+function showCepNotFoundFeedback() {
+    if (zipCodeInput) {
+        zipCodeInput.classList.remove('border-blue-400', 'ring-2', 'ring-blue-200');
+        zipCodeInput.classList.add('border-yellow-400', 'ring-2', 'ring-yellow-200');
+    }
+    setCepFeedback('CEP não encontrado. Por favor, preencha o endereço manualmente.', 'text-xs text-yellow-600 mt-1 font-medium');
+}
+
+/**
+ * Mostra feedback de erro genérico
+ * @param {string} message - Mensagem de erro
+ */
+function showCepErrorFeedback(message = 'Erro ao consultar CEP. Verifique sua conexão e tente novamente.') {
+    if (zipCodeInput) {
+        zipCodeInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+    }
+    setCepFeedback(message, 'text-xs text-red-500 mt-1 font-medium');
+}
+
+// Filtrar cupons de frete grátis quando não há frete
+function filtrarCuponsFreteGratis(deliveryFee) {
+    const couponSelect = document.getElementById('coupon_code_public');
+    if (!couponSelect) return;
+    
+    const options = couponSelect.querySelectorAll('option');
+    let selectedValue = couponSelect.value; // Salvar valor selecionado
+    
+    options.forEach(option => {
+        if (!option.value) return; // Pular option vazio
+        
+        // Verificar se o texto do option indica frete grátis
+        const optionText = option.textContent.toLowerCase();
+        const isFreteGratis = optionText.includes('frete') && (
+            optionText.includes('grátis') || 
+            optionText.includes('gratis') || 
+            optionText.includes('frete grátis') ||
+            optionText.includes('frete gratis')
+        );
+        
+        if (isFreteGratis) {
+            if (deliveryFee <= 0) {
+                // Esconder e desabilitar cupom de frete grátis quando não há frete
+                option.style.display = 'none';
+                option.disabled = true;
+                // Se estava selecionado, limpar seleção
+                if (option.value === selectedValue) {
+                    couponSelect.value = '';
+                }
+            } else {
+                // Mostrar se há frete
+                option.style.display = '';
+                option.disabled = false;
+            }
+        } else {
+            // Outros cupons sempre visíveis
+            option.style.display = '';
+            option.disabled = false;
+        }
+    });
 }
 
 async function handleDeliveryFeeSuccess(feeData, options = {}) {
@@ -1616,7 +1854,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             }, 500);
         } else if (cepDigits.length !== 8) {
             setCepFeedback('', '');
-            showCepLoading(false);
+            showCepLoadingState(false);
             window.checkoutData.freteCalculado = false;
             window.checkoutData.deliveryFeeLocked = false;
             window.checkoutData.allowFinalizeWithoutFrete = false;
@@ -1666,104 +1904,23 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         return cache[cep]?.data || null;
     }
     
-    function showCepLoading(show = true) {
-        const spinner = document.getElementById('cepLoadingSpinner');
-        if (spinner) {
-            spinner.classList.toggle('hidden', !show);
-        }
-        if (zipCodeInput) {
-            zipCodeInput.classList.toggle('border-blue-400', show);
-            zipCodeInput.classList.toggle('ring-2', show);
-            zipCodeInput.classList.toggle('ring-blue-200', show);
-        }
-    }
+    // Funções antigas removidas - agora usamos as funções modulares:
+    // - buscarEnderecoPorCep() - substitui buscarCepViaAPI()
+    // - updateCheckoutForm() - substitui preencherEndereco()
+    // - showCepLoadingState() - substitui showCepLoading()
     
-    function preencherEndereco(data) {
-        if (data.logradouro) {
-            const addressField = document.getElementById('address');
-            if (addressField) {
-                addressField.value = data.logradouro;
-                addressField.removeAttribute('readonly');
-                addressField.required = true;
-            }
-        }
-        if (data.bairro) {
-            const neighborhoodField = document.getElementById('neighborhood');
-            if (neighborhoodField) {
-                neighborhoodField.value = data.bairro;
-                neighborhoodField.removeAttribute('readonly');
-                neighborhoodField.required = true;
-            }
-        }
-        if (data.localidade) {
-            const cityField = document.getElementById('city');
-            if (cityField) {
-                cityField.value = data.localidade;
-                cityField.removeAttribute('readonly');
-                cityField.required = true;
-            }
-        }
-        if (data.uf) {
-            const stateField = document.getElementById('state');
-            if (stateField) {
-                stateField.value = data.uf.toUpperCase();
-                stateField.removeAttribute('readonly');
-                stateField.required = true;
-            }
-        }
-    }
-    
-    async function buscarCepViaAPI(cep, api = 'viacep') {
-        const apis = {
-            viacep: `https://viacep.com.br/ws/${cep}/json/`,
-            brasilapi: `https://brasilapi.com.br/api/cep/v1/${cep}`
-        };
-        
-        const url = apis[api] || apis.viacep;
-        
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Normalizar resposta da BrasilAPI para formato ViaCEP
-            if (api === 'brasilapi' && data) {
-                return {
-                    logradouro: data.street || '',
-                    bairro: data.neighborhood || data.district || '',
-                    localidade: data.city || '',
-                    uf: data.state || '',
-                    erro: false
-                };
-            }
-            
-            return data;
-        } catch (error) {
-            console.warn(`Erro ao buscar CEP na API ${api}:`, error);
-            throw error;
-        }
-    }
-    
+    /**
+     * Busca CEP e atualiza formulário
+     * Refatorado para usar funções modulares
+     */
     async function buscarCep() {
         const cep = zipCodeInput.value.replace(/\D/g, '');
         console.log('buscarCep: Iniciando busca para CEP:', cep);
-        clearAddressErrorState();
-        showCepLoading(false);
-
+        
         // Validação prévia do formato
         if (cep.length !== 8) {
             if (cep.length > 0) {
-                setCepFeedback('Digite um CEP com 8 dígitos', 'text-xs text-red-500 mt-1');
-                zipCodeInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+                showCepErrorFeedback('Digite um CEP com 8 dígitos');
             }
             window.checkoutData.autoLookupEnabled = false;
             window.checkoutData.skipLookupUntil = Date.now() + 2000;
@@ -1773,11 +1930,25 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             return;
         }
         
+        // Limpar estado de erro anterior
+        clearAddressErrorState();
+        
         // Verificar cache primeiro
         const cached = getCachedCep(cep);
         if (cached && !cached.erro) {
             console.log('CEP encontrado no cache:', cached);
-            preencherEndereco(cached);
+            
+            // Atualizar formulário com dados do cache
+            updateCheckoutForm({
+                address: cached,
+                showManualAddress: false,
+                feedbackMessage: 'Endereço encontrado!',
+                feedbackClass: 'text-xs text-green-600 mt-1'
+            });
+            
+            showCepSuccessFeedback();
+            
+            // Calcular frete após preenchimento do endereço
             await calcularFreteAposCep(cep, false);
             return;
         }
@@ -1785,164 +1956,147 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         // Marcar que está buscando CEP e frete ainda não calculado
         window.checkoutData.freteCalculado = false;
         window.checkoutData.deliveryFeeLocked = false;
+        window.checkoutData.autoLookupEnabled = false;
         updateFinalizeButtonState();
         
-        setCepFeedback('Buscando endereço...', 'text-xs text-blue-600 mt-1');
-        showCepLoading(true);
-        
-        let data = null;
-        let viaCepFound = false;
+        // Mostrar loading
+        showCepLoadingState(true);
         
         try {
-            window.checkoutData.autoLookupEnabled = false;
+            // Usar função modular para buscar endereço
+            const addressData = await buscarEnderecoPorCep(cep);
             
-            // Tentar ViaCEP primeiro
-            try {
-                data = await buscarCepViaAPI(cep, 'viacep');
-                viaCepFound = data && !data.erro;
-                
-                // Salvar no cache se encontrado
-                if (viaCepFound) {
-                    setCepCache(cep, data);
-                }
-            } catch (viaCepError) {
-                console.warn('ViaCEP falhou, tentando BrasilAPI:', viaCepError);
-                
-                // Fallback para BrasilAPI
-                try {
-                    data = await buscarCepViaAPI(cep, 'brasilapi');
-                    viaCepFound = data && !data.erro;
-                    
-                    if (viaCepFound) {
-                        setCepCache(cep, data);
-                    }
-                } catch (brasilApiError) {
-                    console.error('BrasilAPI também falhou:', brasilApiError);
-                    throw new Error('Não foi possível consultar o CEP. Verifique sua conexão.');
-                }
-            }
+            // Salvar no cache
+            setCepCache(cep, addressData);
             
+            // Verificar se todos os campos foram preenchidos
+            const requiredFields = ['address', 'neighborhood', 'city', 'state'];
+            const missingFields = requiredFields.filter(fieldId => {
+                const field = document.getElementById(fieldId);
+                return !field || !field.value.trim();
+            });
+            
+            // Atualizar formulário com dados encontrados
+            updateCheckoutForm({
+                address: addressData,
+                showManualAddress: false,
+                feedbackMessage: missingFields.length > 0 
+                    ? 'Alguns campos não foram preenchidos automaticamente. Complete-os manualmente.'
+                    : 'Endereço encontrado!',
+                feedbackClass: missingFields.length > 0 
+                    ? 'text-xs text-yellow-600 mt-1'
+                    : 'text-xs text-green-600 mt-1'
+            });
+            
+            // Mostrar feedback de sucesso
+            showCepLoadingState(false);
+            showCepSuccessFeedback();
+            
+            // Atualizar estados
+            window.checkoutData.manualAddressPending = false;
+            window.checkoutData.manualOriginalZip = null;
+            window.checkoutData.manualGeneralizedZip = null;
+            window.checkoutData.allowFinalizeWithoutFrete = false;
+            window.checkoutData.manualFreteReason = null;
             window.checkoutData.autoLookupEnabled = true;
             window.checkoutData.skipLookupUntil = Date.now() + 1500;
             
-            const requiredFields = ['address', 'neighborhood', 'city', 'state'];
-            const originalCepDigits = zipCodeInput.value.replace(/\D/g, '');
-            let manualEntryRequired = false;
-
-            if (viaCepFound) {
-                showCepLoading(false);
-                setCepFeedback('Endereço encontrado!', 'text-xs text-green-600 mt-1');
-                zipCodeInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
-                zipCodeInput.classList.add('border-green-400', 'ring-2', 'ring-green-200');
-                setTimeout(() => {
-                    zipCodeInput.classList.remove('border-green-400', 'ring-2', 'ring-green-200');
-                }, 2000);
-                window.checkoutData.manualAddressPending = false;
-                window.checkoutData.manualOriginalZip = null;
-                window.checkoutData.manualGeneralizedZip = null;
-
-                preencherEndereco(data);
-                
-                const missingAutofill = requiredFields.filter(fieldId => {
-                    const field = document.getElementById(fieldId);
-                    return !field || !field.value.trim();
+            // Marcar campos faltantes se houver
+            if (missingFields.length > 0) {
+                setAddressErrorState(true, {
+                    fields: missingFields,
+                    focusFieldId: missingFields[0],
+                    placeholderMessage: 'Preencha este campo manualmente'
                 });
-
-                if (missingAutofill.length > 0) {
-                    setAddressErrorState(true, {
-                        fields: missingAutofill,
-                        focusFieldId: missingAutofill[0],
-                        placeholderMessage: 'Preencha este campo manualmente'
-                    });
-                    setCepFeedback('Alguns campos não foram preenchidos automaticamente. Complete-os manualmente.', 'text-xs text-yellow-600 mt-1');
-                } else {
-                    clearAddressErrorState();
-                }
-
-                toggleZipCodeManualMode(false, { focusZip: false });
-                document.getElementById('btn-manual-address')?.classList.add('hidden');
-                window.checkoutData.allowFinalizeWithoutFrete = false;
-                window.checkoutData.manualFreteReason = null;
-            } else {
-                showCepLoading(false);
-                manualEntryRequired = true;
-                const wasAlreadyPending = window.checkoutData.manualAddressPending === true;
+            }
+            
+            toggleZipCodeManualMode(false, { focusZip: false });
+            
+            // Calcular frete após preenchimento do endereço
+            await calcularFreteAposCep(cep, false);
+            
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            
+            // Ocultar loading
+            showCepLoadingState(false);
+            
+            // Determinar tipo de erro e mostrar feedback apropriado
+            const errorMessage = error.message || 'Erro ao consultar CEP. Verifique sua conexão e tente novamente.';
+            const isCepNotFound = errorMessage.includes('não encontrado') || errorMessage.includes('CEP não encontrado');
+            
+            if (isCepNotFound) {
+                // CEP não encontrado - mostrar opção de preenchimento manual
+                showCepNotFoundFeedback();
+                
+                const originalCepDigits = zipCodeInput.value.replace(/\D/g, '');
                 window.checkoutData.manualAddressPending = true;
                 window.checkoutData.manualOriginalZip = originalCepDigits;
                 window.checkoutData.allowFinalizeWithoutFrete = false;
                 window.checkoutData.manualFreteReason = 'CEP não encontrado. Informe o endereço completo.';
-                
-                setCepFeedback('CEP não encontrado. Por favor, preencha o endereço manualmente.', 'text-xs text-yellow-600 mt-1 font-medium');
-                zipCodeInput.classList.remove('border-blue-400', 'ring-2', 'ring-blue-200');
-                zipCodeInput.classList.add('border-yellow-400', 'ring-2', 'ring-yellow-200');
                 
                 toggleZipCodeManualMode(true, {
                     reason: 'CEP não encontrado. Informe o endereço completo.',
                     focusZip: false
                 });
                 
-                // Mostrar botão de preenchimento manual
-                const btnManual = document.getElementById('btn-manual-address');
-                if (btnManual) {
-                    btnManual.classList.remove('hidden');
-                }
-
+                updateCheckoutForm({
+                    address: null,
+                    showManualAddress: true,
+                    feedbackMessage: 'Não encontramos esse CEP. Ajustamos para o CEP geral da região. Informe o endereço completo abaixo.',
+                    feedbackClass: 'text-xs text-yellow-600 mt-1'
+                });
+                
                 generalizeZipCode({
                     forceClear: true,
                     ensureEditable: true,
                     feedbackMessage: 'Não encontramos esse CEP. Ajustamos para o CEP geral da região. Informe o endereço completo abaixo.'
                 });
-
+                
                 setAddressErrorState(true, {
                     fields: requiredFields,
                     focusFieldId: requiredFields[0],
                     placeholderMessage: 'Digite o endereço completo'
                 });
-
+                
                 if (manualFieldsAreComplete()) {
                     scheduleManualLookup();
                 }
+            } else {
+                // Erro de conexão ou outro erro
+                showCepErrorFeedback(errorMessage);
+                
+                window.checkoutData.freteCalculado = false;
+                window.checkoutData.deliveryFeeLocked = false;
+                window.checkoutData.allowFinalizeWithoutFrete = true;
+                window.checkoutData.manualFreteReason = 'Erro ao consultar CEP. Informe o endereço completo manualmente.';
+                window.checkoutData.autoLookupEnabled = false;
+                window.checkoutData.skipLookupUntil = Date.now() + 2000;
+                
+                toggleZipCodeManualMode(true, { 
+                    reason: 'Erro ao consultar CEP. Informe o endereço completo.',
+                    focusZip: false 
+                });
+                
+                updateCheckoutForm({
+                    address: null,
+                    showManualAddress: true,
+                    feedbackMessage: 'Erro ao consultar CEP. Informe o endereço completo abaixo.',
+                    feedbackClass: 'text-xs text-red-500 mt-1'
+                });
+                
+                generalizeZipCode({
+                    ensureEditable: true,
+                    feedbackMessage: 'Erro ao consultar CEP. Informe o endereço completo abaixo.',
+                    feedbackClass: 'text-xs text-red-500 mt-1'
+                });
+                
+                setAddressErrorState(true, {
+                    fields: ['address', 'neighborhood', 'city', 'state'],
+                    focusFieldId: 'address',
+                    placeholderMessage: 'Digite o endereço completo'
+                });
             }
-            
-            // Calcular frete após CEP ser encontrado
-            await calcularFreteAposCep(cep, manualEntryRequired);
-            
-        } catch (error) {
-            showCepLoading(false);
-            console.error('Erro ao buscar CEP:', error);
-            
-            const errorMessage = error.message || 'Erro ao consultar CEP. Verifique sua conexão e tente novamente.';
-            setCepFeedback(errorMessage, 'text-xs text-red-500 mt-1 font-medium');
-            zipCodeInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
-            
-            window.checkoutData.freteCalculado = false;
-            window.checkoutData.deliveryFeeLocked = false;
-            window.checkoutData.allowFinalizeWithoutFrete = true;
-            window.checkoutData.manualFreteReason = 'Erro ao consultar CEP. Informe o endereço completo manualmente.';
-            window.checkoutData.autoLookupEnabled = false;
-            window.checkoutData.skipLookupUntil = Date.now() + 2000;
-            
-            toggleZipCodeManualMode(true, { 
-                reason: 'Erro ao consultar CEP. Informe o endereço completo.',
-                focusZip: false 
-            });
-            
-            const btnManual = document.getElementById('btn-manual-address');
-            if (btnManual) {
-                btnManual.classList.remove('hidden');
-            }
-            
-            generalizeZipCode({
-                ensureEditable: true,
-                feedbackMessage: 'Erro ao consultar CEP. Informe o endereço completo abaixo.',
-                feedbackClass: 'text-xs text-red-500 mt-1'
-            });
-            
-            setAddressErrorState(true, {
-                fields: ['address', 'neighborhood', 'city', 'state'],
-                focusFieldId: 'address',
-                placeholderMessage: 'Digite o endereço completo'
-            });
             
             updateFinalizeButtonState();
         }
@@ -2018,11 +2172,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
                 window.checkoutData.manualAddressPending = true;
                 window.checkoutData.manualOriginalZip = cep;
                 
-                const btnManual = document.getElementById('btn-manual-address');
-                if (btnManual) {
-                    btnManual.classList.remove('hidden');
-                }
-                
+                // Botão já será mostrado pelo toggleZipCodeManualMode acima
                 generalizeZipCode({
                     ensureEditable: true,
                     feedbackMessage: errorMessage,
@@ -2069,10 +2219,7 @@ document.getElementById('number')?.addEventListener('blur', async function() {
             window.checkoutData.manualAddressPending = true;
             window.checkoutData.manualOriginalZip = cep;
             
-            const btnManual = document.getElementById('btn-manual-address');
-            if (btnManual) {
-                btnManual.classList.remove('hidden');
-            }
+            // Botão já será mostrado pelo toggleZipCodeManualMode acima
             
             generalizeZipCode({
                 ensureEditable: true,
@@ -2099,48 +2246,6 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         
         // Focar no campo número
         document.getElementById('number').focus();
-    }
-    
-    // Filtrar cupons de frete grátis quando não há frete
-    function filtrarCuponsFreteGratis(deliveryFee) {
-        const couponSelect = document.getElementById('coupon_code_public');
-        if (!couponSelect) return;
-        
-        const options = couponSelect.querySelectorAll('option');
-        let selectedValue = couponSelect.value; // Salvar valor selecionado
-        
-        options.forEach(option => {
-            if (!option.value) return; // Pular option vazio
-            
-            // Verificar se o texto do option indica frete grátis
-            const optionText = option.textContent.toLowerCase();
-            const isFreteGratis = optionText.includes('frete') && (
-                optionText.includes('grátis') || 
-                optionText.includes('gratis') || 
-                optionText.includes('frete grátis') ||
-                optionText.includes('frete gratis')
-            );
-            
-            if (isFreteGratis) {
-                if (deliveryFee <= 0) {
-                    // Esconder e desabilitar cupom de frete grátis quando não há frete
-                    option.style.display = 'none';
-                    option.disabled = true;
-                    // Se estava selecionado, limpar seleção
-                    if (option.value === selectedValue) {
-                        couponSelect.value = '';
-                    }
-                } else {
-                    // Mostrar se há frete
-                    option.style.display = '';
-                    option.disabled = false;
-                }
-            } else {
-                // Outros cupons sempre visíveis
-                option.style.display = '';
-                option.disabled = false;
-            }
-        });
     }
     
     // Filtrar cupons ao carregar a página e atualizar resumo
@@ -2456,30 +2561,9 @@ document.getElementById('number')?.addEventListener('blur', async function() {
     // Tornar buscarCep disponível globalmente para debug
     window.buscarCep = buscarCep;
     
-    // Botão "Não sei o CEP / Digitar manualmente"
-    document.getElementById('btn-manual-address')?.addEventListener('click', function() {
-        toggleZipCodeManualMode(true, { 
-            reason: 'Preencha o endereço completo abaixo',
-            focusZip: false 
-        });
-        this.classList.add('hidden');
-        
-        // Limpar CEP se necessário
-        if (zipCodeInput) {
-            zipCodeInput.value = '';
-            zipCodeInput.focus();
-        }
-        
-        // Habilitar campos manualmente
-        ensureManualFieldsEditable();
-        setCepFeedback('Preencha todos os campos do endereço abaixo', 'text-xs text-blue-600 mt-1');
-        
-        // Focar no primeiro campo
-        const addressField = document.getElementById('address');
-        if (addressField) {
-            setTimeout(() => addressField.focus(), 100);
-        }
-    });
+    // Event listener único para o botão de endereço manual (zip_code_manual_button)
+    // Este listener já existe na linha 1529 e lida com a localização manual do endereço
+    // Não precisamos de outro listener duplicado
 })();
 
 // Função para validar cupom antes do submit

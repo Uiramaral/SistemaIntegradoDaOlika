@@ -1,0 +1,31 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirecionar apenas as chamadas da API BotConversa para o Laravel
+    # Isso mantém o domínio principal servindo o index padrão,
+    # mas as rotas da API passam pelo Laravel
+    
+    # IMPORTANTE: Ajuste o caminho conforme sua estrutura real
+    # Se o Laravel estiver em /home/usuario/sistema/public/
+    # O caminho relativo a partir do public_html seria: ../sistema/public/
+    # Ou use caminho absoluto: /sistema/public/
+    
+    # Redirecionar /api/botconversa/* para o index.php do Laravel
+    RewriteCond %{REQUEST_URI} ^/api/botconversa
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # IMPORTANTE: Ajuste o caminho aqui - opções abaixo:
+    
+    # Opção 1: Se Laravel está em public_html/sistema/public/
+    RewriteRule ^api/botconversa(.*)$ sistema/public/index.php [L,QSA]
+    
+    # Opção 2: Se Laravel está em /home/usuario/sistema/public/ (fora do public_html)
+    # RewriteRule ^api/botconversa(.*)$ ../sistema/public/index.php [L,QSA]
+    
+    # Opção 3: Caminho absoluto (ajuste conforme necessário)
+    # RewriteRule ^api/botconversa(.*)$ /sistema/public/index.php [L,QSA]
+    
+    # Opção 4: Se Laravel está em menuolika/public/
+    # RewriteRule ^api/botconversa(.*)$ menuolika/public/index.php [L,QSA]
+</IfModule>
+

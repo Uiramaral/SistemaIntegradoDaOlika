@@ -47,6 +47,49 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BotConversaController;
 
+// ============================================
+// API BotConversa - Sincronização de clientes (sem CSRF)
+// CRÍTICO: Deve vir PRIMEIRO, antes de TUDO, incluindo autenticação e subdomínios
+// Isso garante que as rotas da API não sejam interceptadas por outras rotas
+// IMPORTANTE: Essas rotas são globais e funcionam em QUALQUER domínio/subdomínio
+// Essas rotas devem funcionar tanto em menuolika.com.br quanto em pedido.menuolika.com.br
+// ============================================
+
+// Rotas específicas (sem prefix group) para garantir máxima prioridade
+// IMPORTANTE: Estas rotas são globais e não dependem de subdomínio
+Route::get('/api/botconversa/ping', function() {
+    $host = request()->getHost();
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'API BotConversa está respondendo (domínio principal)',
+        'host' => $host,
+        'timestamp' => date('Y-m-d H:i:s'),
+    ]);
+})->name('api.botconversa.ping.main');
+
+Route::get('/api/botconversa/test', [BotConversaController::class, 'test'])->name('api.botconversa.test.get.main');
+Route::get('/api/botconversa', [BotConversaController::class, 'test'])->name('api.botconversa.test.main');
+Route::post('/api/botconversa/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('api.botconversa.sync-customer.main');
+Route::post('/api/botconversa/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('api.botconversa.sync-customers.main');
+
+// Também manter o grupo para consistência (mas as rotas específicas acima têm prioridade)
+Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
+    Route::get('/ping', function() {
+        $host = request()->getHost();
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'API BotConversa está respondendo (via group)',
+            'host' => $host,
+            'timestamp' => date('Y-m-d H:i:s'),
+        ]);
+    })->name('ping.group');
+    
+    Route::get('/', [BotConversaController::class, 'test'])->name('test.group');
+    Route::get('/test', [BotConversaController::class, 'test'])->name('test.get.group');
+    Route::post('/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('sync-customer.group');
+    Route::post('/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers.group');
+});
+
 // Autenticação
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('auth.login');
@@ -329,6 +372,23 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
 
 // Subdomínio: Pedido (Loja Front-end) - PÚBLICO
 Route::domain($pedidoDomain)->name('pedido.')->group(function () {
+    // API BotConversa também funciona no subdomínio (redundância para garantir)
+    Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
+        Route::get('/ping', function() {
+            return response()->json([
+                'status' => 'ok',
+                'message' => 'API BotConversa está respondendo (subdomínio pedido)',
+                'host' => request()->getHost(),
+                'timestamp' => date('Y-m-d H:i:s'),
+            ]);
+        })->name('ping.pedido');
+        
+        Route::get('/', [BotConversaController::class, 'test'])->name('test.pedido');
+        Route::get('/test', [BotConversaController::class, 'test'])->name('test.get.pedido');
+        Route::post('/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('sync-customer.pedido');
+        Route::post('/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers.pedido');
+    });
+    
     // Página inicial
     Route::get('/', [MenuController::class, 'index'])->name('index');
     
@@ -624,26 +684,6 @@ Route::get('/test-dashboard-route', function() use ($dashboardDomain, $pedidoDom
 
 Route::prefix('webhooks')->group(function () {
     Route::post('/mercadopago', [WebhookController::class, 'mercadoPago'])->name('webhooks.mercadopago');
-});
-
-// API BotConversa - Sincronização de clientes (sem CSRF)
-Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
-    // Rota de teste simples (GET) para verificar se está funcionando
-    Route::get('/ping', function() {
-        return response()->json([
-            'status' => 'ok',
-            'message' => 'API BotConversa está respondendo',
-            'timestamp' => date('Y-m-d H:i:s'),
-        ]);
-    })->name('ping');
-    
-    // Rota de teste completa (GET) para verificar se a API está funcionando
-    Route::get('/', [BotConversaController::class, 'test'])->name('test');
-    Route::get('/test', [BotConversaController::class, 'test'])->name('test.get');
-    
-    // Rotas de sincronização (POST) - usado pelo BotConversa enviando JSON via POST
-    Route::post('/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('sync-customer');
-    Route::post('/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers');
 });
 
 // ============================================

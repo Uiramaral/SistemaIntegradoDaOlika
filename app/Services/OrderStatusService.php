@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\OrderStatusUpdated;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -377,6 +378,30 @@ class OrderStatusService
                 'status_code' => $newCode
             ]);
         }
+
+        if (!$skipNotifications) {
+            $this->dispatchOrderEvent($order->fresh(['customer', 'items']), $newCode, $deliveryNote);
+        }
+    }
+
+    /**
+     * Mapeia status internos do pedido para eventos públicos consumidos pelo bot WhatsApp.
+     */
+    private function dispatchOrderEvent(Order $order, string $status, ?string $note = null): void
+    {
+        $map = [
+            'pending' => 'order_created',
+            'confirmed' => 'order_created',
+            'preparing' => 'order_preparing',
+            'ready' => 'order_ready',
+            'delivered' => 'order_completed',
+        ];
+
+        if (!isset($map[$status])) {
+            return;
+        }
+
+        event(new OrderStatusUpdated($order, $map[$status], $note));
     }
 }
 

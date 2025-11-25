@@ -14,10 +14,17 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=302]
 
-    # IMPORTANTE: Prevenir acesso direto a arquivos PHP (exceto index.php)
-    # Isso garante que todos os arquivos PHP sejam processados pelo Laravel
+    # CRÍTICO: Prevenir execução direta de QUALQUER arquivo PHP (exceto index.php)
+    # Isso garante que TODOS os arquivos PHP sejam processados pelo Laravel
+    RewriteCond %{REQUEST_FILENAME} -f
     RewriteCond %{REQUEST_FILENAME} \.php$
     RewriteCond %{REQUEST_FILENAME} !index\.php$
+    RewriteRule ^.*$ index.php [L]
+
+    # Prevenir acesso direto a diretórios específicos que podem ter arquivos PHP
+    # Redirecionar tudo em /api/ para o Laravel processar
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^.*$ index.php [L]
 
     # Send Requests To Front Controller...

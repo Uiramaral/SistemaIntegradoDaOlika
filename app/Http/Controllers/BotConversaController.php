@@ -11,6 +11,63 @@ use Illuminate\Support\Facades\Validator;
 class BotConversaController extends Controller
 {
     /**
+     * Converte data do formato BotConversa (DD.MM.YYYY) para formato MySQL (Y-m-d)
+     * 
+     * Aceita formatos: DD.MM.YYYY (ex: 12.11.2025) ou Y-m-d (ex: 2025-11-12)
+     * 
+     * @param string|null $date Data no formato DD.MM.YYYY ou Y-m-d
+     * @return string|null Data no formato Y-m-d ou null se inválida
+     */
+    private function convertDateFromBotConversa($date)
+    {
+        if (empty($date) || !is_string($date)) {
+            return null;
+        }
+
+        $date = trim($date);
+
+        // Se já estiver no formato Y-m-d, validar e retornar
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches)) {
+            $year = (int)$matches[1];
+            $month = (int)$matches[2];
+            $day = (int)$matches[3];
+            
+            if (checkdate($month, $day, $year)) {
+                return $date;
+            }
+        }
+
+        // Tentar converter do formato DD.MM.YYYY (formato BotConversa)
+        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $date, $matches)) {
+            $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+            $year = $matches[3];
+            
+            // Validar se a data é válida
+            if (checkdate((int)$month, (int)$day, (int)$year)) {
+                return sprintf('%s-%s-%s', $year, $month, $day);
+            }
+        }
+
+        // Tentar outros formatos usando Carbon como fallback
+        try {
+            // Tentar formato DD.MM.YYYY
+            $carbon = \Carbon\Carbon::createFromFormat('d.m.Y', $date);
+            if ($carbon) {
+                return $carbon->format('Y-m-d');
+            }
+        } catch (\Exception $e) {
+            // Se não conseguir converter, logar e retornar null
+            Log::warning('BotConversa: Formato de data não reconhecido', [
+                'date' => $date,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
      * Endpoint de teste/health check
      * 
      * @return \Illuminate\Http\JsonResponse
@@ -101,13 +158,13 @@ class BotConversaController extends Controller
                 'city' => 'nullable|string|max:255',
                 'state' => 'nullable|string|max:2',
                 'zip_code' => 'nullable|string|max:10',
-                'birth_date' => 'nullable|date',
+                'birth_date' => 'nullable|string', // Aceitar string para formato DD.MM.YYYY
                 'cpf' => 'nullable|string|max:14',
                 'preferences' => 'nullable|array',
                 
-                // Datas especiais
-                'created_at' => 'nullable|date',
-                'last_order_at' => 'nullable|date',
+                // Datas especiais - aceitar string para permitir formato DD.MM.YYYY
+                'created_at' => 'nullable|string',
+                'last_order_at' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -124,6 +181,28 @@ class BotConversaController extends Controller
             }
 
             $data = $validator->validated();
+
+            // Converter datas do formato BotConversa (DD.MM.YYYY) para Y-m-d
+            if (isset($data['created_at'])) {
+                $data['created_at'] = $this->convertDateFromBotConversa($data['created_at']);
+                if ($data['created_at'] === null) {
+                    unset($data['created_at']); // Remove se não conseguir converter
+                }
+            }
+            if (isset($data['last_order_at'])) {
+                $data['last_order_at'] = $this->convertDateFromBotConversa($data['last_order_at']);
+                if ($data['last_order_at'] === null) {
+                    unset($data['last_order_at']); // Remove se não conseguir converter
+                }
+            }
+            if (isset($data['birth_date'])) {
+                $convertedBirthDate = $this->convertDateFromBotConversa($data['birth_date']);
+                if ($convertedBirthDate !== null) {
+                    $data['birth_date'] = $convertedBirthDate;
+                } else {
+                    unset($data['birth_date']); // Remove se não conseguir converter
+                }
+            }
 
             // Normalizar telefone (remover caracteres especiais)
             $phone = preg_replace('/[^0-9]/', '', $data['phone']);
@@ -384,8 +463,8 @@ class BotConversaController extends Controller
                 'customers.*.name' => 'required|string|max:255',
                 'customers.*.email' => 'nullable|email|max:255',
                 'customers.*.newsletter' => 'nullable|boolean',
-                'customers.*.created_at' => 'nullable|date',
-                'customers.*.last_order_at' => 'nullable|date',
+                'customers.*.created_at' => 'nullable|string', // Aceitar string para formato DD.MM.YYYY
+                'customers.*.last_order_at' => 'nullable|string', // Aceitar string para formato DD.MM.YYYY
             ]);
 
             if ($validator->fails()) {
@@ -397,6 +476,27 @@ class BotConversaController extends Controller
             }
 
             $customers = $request->input('customers');
+            
+            // Converter datas do formato BotConversa (DD.MM.YYYY) para Y-m-d
+            foreach ($customers as &$customerData) {
+                if (isset($customerData['created_at'])) {
+                    $convertedDate = $this->convertDateFromBotConversa($customerData['created_at']);
+                    if ($convertedDate !== null) {
+                        $customerData['created_at'] = $convertedDate;
+                    } else {
+                        unset($customerData['created_at']);
+                    }
+                }
+                if (isset($customerData['last_order_at'])) {
+                    $convertedDate = $this->convertDateFromBotConversa($customerData['last_order_at']);
+                    if ($convertedDate !== null) {
+                        $customerData['last_order_at'] = $convertedDate;
+                    } else {
+                        unset($customerData['last_order_at']);
+                    }
+                }
+            }
+            unset($customerData); // Liberar referência
             $results = [
                 'created' => 0,
                 'updated' => 0,

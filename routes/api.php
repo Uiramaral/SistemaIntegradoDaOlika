@@ -116,3 +116,26 @@ Route::prefix('fiados')->name('api.fiados.')->group(function () {
     Route::get('/saldo', [\App\Http\Controllers\DebtsController::class, 'balance'])->name('balance');
     Route::post('/{debt}/baixa', [\App\Http\Controllers\DebtsController::class, 'settle'])->name('settle');
 });
+
+// ============================================
+// API BotConversa - Sincronização de clientes (sem CSRF - middleware api)
+// IMPORTANTE: Estas rotas também estão em routes/web.php para garantir funcionamento
+// ============================================
+Route::prefix('botconversa')->name('api.botconversa.')->group(function () {
+    // Rota de teste simples (GET) para verificar se está funcionando
+    Route::get('/ping', function() {
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'API BotConversa está respondendo (via routes/api.php)',
+            'timestamp' => date('Y-m-d H:i:s'),
+        ]);
+    })->name('ping');
+    
+    // Rota de teste completa (GET) para verificar se a API está funcionando
+    Route::get('/', [\App\Http\Controllers\BotConversaController::class, 'test'])->name('test');
+    Route::get('/test', [\App\Http\Controllers\BotConversaController::class, 'test'])->name('test.get');
+    
+    // Rotas de sincronização (POST) - usado pelo BotConversa enviando JSON via POST
+    Route::post('/sync-customer', [\App\Http\Controllers\BotConversaController::class, 'syncCustomer'])->name('sync-customer');
+    Route::post('/sync-customers', [\App\Http\Controllers\BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers');
+});

@@ -335,23 +335,15 @@
                                     </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-muted-foreground">Entrega</span>
-                                        <div class="text-right">
-                                            <span id="summaryDeliveryFeeOriginal" class="text-xs text-muted-foreground line-through mr-2 hidden"></span>
-                                            <span id="summaryDeliveryFee" class="font-semibold text-primary">
-                                                @if($initialFreteCalculado && $initialDeliveryFee > 0)
-                                                    R$ {{ number_format($initialDeliveryFee, 2, ',', '.') }}
-                                                @elseif($initialFreteCalculado && $initialDeliveryFee == 0)
-                                                    Grátis
-                                                @else
-                                                    Aguardando CEP
-                                                @endif
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <!-- Linha de desconto de frete (oculta por padrão) -->
-                                    <div id="summaryDeliveryDiscountRow" class="flex justify-between text-sm text-green-600 hidden">
-                                        <span id="summaryDeliveryDiscountLabel" class="text-muted-foreground">Desconto no frete</span>
-                                        <span id="summaryDeliveryDiscount" class="font-semibold">- R$ 0,00</span>
+                                        <span id="summaryDeliveryFee" class="font-semibold text-primary">
+                                            @if($initialFreteCalculado && $initialDeliveryFee > 0)
+                                                R$ {{ number_format($initialDeliveryFee, 2, ',', '.') }}
+                                            @elseif($initialFreteCalculado && $initialDeliveryFee == 0)
+                                                Grátis
+                                            @else
+                                                Aguardando CEP
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
 

@@ -1,0 +1,57 @@
+/* Estilos específicos do tema Natal */
+body.natal-theme {
+    background-color: #FFF8DC;
+    color: #1a1a1a;
+}
+
+/* Cores Natal */
+.bg-natal-red { background-color: #C41E3A; }
+.bg-natal-green { background-color: #228B22; }
+.bg-natal-gold { background-color: #FFD700; }
+.bg-natal-cream { background-color: #FFF8DC; }
+.text-natal-red { color: #C41E3A; }
+.text-natal-gold { color: #FFD700; }
+
+/* Gradiente Natal */
+.natal-gradient {
+    background: linear-gradient(135deg, #C41E3A 0%, #228B22 100%);
+}
+
+/* Efeito de neve */
+.natal-snow {
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 1px, transparent 1px),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 1px, transparent 1px),
+        radial-gradient(circle at 40% 20%, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 50px 50px, 80px 80px, 30px 30px;
+    background-position: 0 0, 20px 20px, 40px 40px;
+}
+
+/* Animação shimmer */
+.natal-shimmer {
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Hover effects para tema natal */
+.hover\:bg-natal-red\/90:hover {
+    background-color: rgba(196, 30, 58, 0.9);
+}
+
+.hover\:bg-gray-200:hover {
+    background-color: #e5e7eb;
+}
+
+/* Transições */
+.transition-colors {
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.transition-all {
+    transition: all 0.2s;
+}
+

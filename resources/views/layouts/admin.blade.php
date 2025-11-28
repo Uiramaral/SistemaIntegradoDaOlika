@@ -18,40 +18,40 @@
             [
                 'title' => 'Menu Principal',
                 'items' => [
-                    ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'path' => '/', 'pattern' => '/'],
-                    ['label' => 'Pedidos', 'icon' => 'receipt', 'path' => '/orders', 'pattern' => 'orders*'],
-                    ['label' => 'Clientes', 'icon' => 'users', 'path' => '/customers', 'pattern' => 'customers*'],
-                    ['label' => 'Entregas', 'icon' => 'truck', 'path' => '/deliveries', 'pattern' => 'deliveries*'],
+                    ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
+                    ['label' => 'PDV', 'icon' => 'monitor', 'route' => 'dashboard.pdv.index', 'routePattern' => 'dashboard.pdv.*'],
+                    ['label' => 'Pedidos', 'icon' => 'receipt', 'route' => 'dashboard.orders.index', 'routePattern' => 'dashboard.orders.*'],
+                    ['label' => 'Clientes', 'icon' => 'users', 'route' => 'dashboard.customers.index', 'routePattern' => 'dashboard.customers.*'],
+                    ['label' => 'Entregas', 'icon' => 'truck', 'route' => 'dashboard.deliveries.index', 'routePattern' => 'dashboard.deliveries.*'],
                 ],
             ],
             [
                 'title' => 'Produtos',
                 'items' => [
-                    ['label' => 'Produtos', 'icon' => 'package', 'path' => '/products', 'pattern' => 'products*'],
-                    ['label' => 'Categorias', 'icon' => 'tag', 'path' => '/categories', 'pattern' => 'categories*'],
-                    ['label' => 'Preços de Revenda', 'icon' => 'shopping-bag', 'path' => '/precos-revenda', 'pattern' => 'precos-revenda*'],
+                    ['label' => 'Produtos', 'icon' => 'package', 'route' => 'dashboard.products.index', 'routePattern' => 'dashboard.products.*'],
+                    ['label' => 'Categorias', 'icon' => 'tag', 'route' => 'dashboard.categories.index', 'routePattern' => 'dashboard.categories.*'],
+                    ['label' => 'Preços de Revenda', 'icon' => 'shopping-bag', 'route' => 'dashboard.wholesale-prices.index', 'routePattern' => 'dashboard.wholesale-prices.*'],
                 ],
             ],
             [
                 'title' => 'Marketing',
                 'items' => [
-                    ['label' => 'Cupons', 'icon' => 'percent', 'path' => '/coupons', 'pattern' => 'coupons*'],
-                    ['label' => 'Cashback', 'icon' => 'gift', 'path' => '/cashback', 'pattern' => 'cashback*'],
+                    ['label' => 'Cupons', 'icon' => 'percent', 'route' => 'dashboard.coupons.index', 'routePattern' => 'dashboard.coupons.*'],
+                    ['label' => 'Cashback', 'icon' => 'gift', 'route' => 'dashboard.cashback.index', 'routePattern' => 'dashboard.cashback.*'],
                 ],
             ],
             [
                 'title' => 'Integrações',
                 'items' => [
-                    ['label' => 'WhatsApp', 'icon' => 'message-square', 'path' => '/whatsapp', 'pattern' => 'whatsapp*'],
-                    ['label' => 'Mercado Pago', 'icon' => 'credit-card', 'path' => '/mercado-pago', 'pattern' => 'mercado-pago*'],
+                    ['label' => 'WhatsApp', 'icon' => 'message-square', 'route' => 'dashboard.settings.whatsapp', 'routePattern' => 'dashboard.settings.whatsapp*'],
+                    ['label' => 'Mercado Pago', 'icon' => 'credit-card', 'route' => 'dashboard.settings.mp', 'routePattern' => 'dashboard.settings.mp*'],
                 ],
             ],
             [
                 'title' => 'Sistema',
                 'items' => [
-                    ['label' => 'Relatórios', 'icon' => 'chart-column', 'path' => '/reports', 'pattern' => 'reports*'],
-                    ['label' => 'Configurações', 'icon' => 'settings', 'path' => '/settings', 'pattern' => 'settings*'],
-                    ['label' => 'PDV', 'icon' => 'monitor', 'path' => '/pdv', 'pattern' => 'pdv*'],
+                    ['label' => 'Relatórios', 'icon' => 'chart-column', 'route' => 'dashboard.reports', 'routePattern' => 'dashboard.reports*'],
+                    ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings'],
                 ],
             ],
         ];
@@ -83,11 +83,8 @@
                             <ul class="mt-2 space-y-1">
                                 @foreach ($group['items'] as $item)
                                     @php
-                                        $href = $item['path'] === '/' ? url('/') : url($item['path']);
-                                        $pattern = $item['pattern'] ?? trim($item['path'], '/') . '*';
-                                        $isActive = $item['path'] === '/'
-                                            ? url()->current() === url('/')
-                                            : request()->is($pattern);
+                                        $href = route($item['route']);
+                                        $isActive = request()->routeIs($item['routePattern']);
                                     @endphp
                                     <li>
                                         <a href="{{ $href }}"

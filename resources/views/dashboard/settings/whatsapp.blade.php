@@ -155,7 +155,7 @@
                             <h3 class="text-2xl font-semibold leading-none tracking-tight">Templates de Mensagem</h3>
                             <p class="text-sm text-muted-foreground">Gerencie templates utilizados nos status dos pedidos</p>
                         </div>
-                        <a href="{{ route('dashboard.status-templates.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">Gerenciar Templates</a>
+                        <a href="{{ route('dashboard.settings.status-templates') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">Gerenciar Templates</a>
                     </div>
                 </div>
                 <div class="p-6 pt-0">
@@ -185,7 +185,7 @@
                         @empty
                             <div class="rounded-lg border p-8 text-center text-muted-foreground">
                                 <p>Nenhum template cadastrado ainda.</p>
-                                <a href="{{ route('dashboard.status-templates.index') }}" class="text-primary hover:underline mt-2 inline-block">Criar primeiro template</a>
+                                <a href="{{ route('dashboard.settings.status-templates') }}" class="text-primary hover:underline mt-2 inline-block">Criar primeiro template</a>
                             </div>
                         @endforelse
                     </div>
@@ -240,7 +240,7 @@
                     @empty
                         <div class="rounded-lg border p-8 text-center text-muted-foreground">
                             <p>Nenhum status cadastrado ainda.</p>
-                            <a href="{{ route('dashboard.status-templates.index') }}" class="text-primary hover:underline mt-2 inline-block">Gerenciar status</a>
+                            <a href="{{ route('dashboard.settings.status-templates') }}" class="text-primary hover:underline mt-2 inline-block">Gerenciar status</a>
                         </div>
                     @endforelse
                     

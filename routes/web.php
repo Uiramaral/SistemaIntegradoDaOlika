@@ -330,11 +330,11 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/settings/mercadopago',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpSave'])->name('dashboard.settings.mp.save');
     Route::post('/settings/mercadopago/methods',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpMethodsSave'])->name('dashboard.settings.mp.methods.save');
     Route::post('/settings/apis',         [\App\Http\Controllers\Dashboard\SettingsController::class, 'apisSave'])->name('dashboard.settings.apis.save');
-    Route::get('/settings/status-templates', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'index'])->name('dashboard.status-templates.index');
-    Route::post('/settings/status-templates/status/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'updateStatus'])->name('dashboard.status-templates.status.update');
-    Route::post('/settings/status-templates/template', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'saveTemplate'])->name('dashboard.status-templates.template.save');
-    Route::delete('/settings/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'deleteTemplate'])->name('dashboard.status-templates.template.delete');
-    Route::get('/settings/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'getTemplate'])->name('dashboard.status-templates.template.get');
+    Route::get('/settings/status-templates', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'index'])->name('dashboard.settings.status-templates');
+    Route::post('/settings/status-templates/status/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'updateStatus'])->name('dashboard.settings.status-templates.status.update');
+    Route::post('/settings/status-templates/template', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'saveTemplate'])->name('dashboard.settings.status-templates.template.save');
+    Route::delete('/settings/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'deleteTemplate'])->name('dashboard.settings.status-templates.template.delete');
+    Route::get('/settings/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'getTemplate'])->name('dashboard.settings.status-templates.template.get');
     
     // Configurações: Dias e horários de entrega
     Route::prefix('settings/entrega')->name('dashboard.settings.delivery.')->group(function () {
@@ -512,9 +512,16 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Route::get('/cashback', [\App\Http\Controllers\Dashboard\CashbackController::class, 'index'])->name('dashboard.cashback.index');
     Route::get('/fidelidade', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'index'])->name('dashboard.loyalty');
     Route::get('/relatorios', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
+    Route::get('/configuracoes', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
+    Route::get('/entregas', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'index'])->name('dashboard.deliveries.index');
+    Route::post('/entregas/{order}/status', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'updateStatus'])->name('dashboard.deliveries.status');
     Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
     Route::get('/mercado-pago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
-    Route::get('/status-templates', function () { return view('dashboard.settings.status-templates'); })->name('dashboard.settings.status-templates');
+    Route::get('/status-templates', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'index'])->name('dashboard.settings.status-templates');
+    Route::post('/status-templates/status/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'updateStatus'])->name('dashboard.settings.status-templates.status.update');
+    Route::post('/status-templates/template', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'saveTemplate'])->name('dashboard.settings.status-templates.template.save');
+    Route::delete('/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'deleteTemplate'])->name('dashboard.settings.status-templates.template.delete');
+    Route::get('/status-templates/template/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'getTemplate'])->name('dashboard.settings.status-templates.template.get');
     Route::post('/settings/apis', [\App\Http\Controllers\Dashboard\SettingsController::class, 'apisSave'])->name('dashboard.settings.apis.save');
     
     // Rotas de produtos (resource e auxiliares)
@@ -544,6 +551,23 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
         Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fiscalReceiptEscPos');
         Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
         Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
+    });
+    
+    // Configurações: Dias e horários de entrega (fallback)
+    Route::prefix('entrega')->name('dashboard.settings.delivery.')->group(function () {
+        Route::get('/agendamentos', [\App\Http\Controllers\Dashboard\DeliverySchedulesController::class, 'index'])->name('schedules.index');
+        Route::post('/agendamentos', [\App\Http\Controllers\Dashboard\DeliverySchedulesController::class, 'store'])->name('schedules.store');
+        Route::put('/agendamentos/{schedule}', [\App\Http\Controllers\Dashboard\DeliverySchedulesController::class, 'update'])->name('schedules.update');
+        Route::delete('/agendamentos/{schedule}', [\App\Http\Controllers\Dashboard\DeliverySchedulesController::class, 'destroy'])->name('schedules.destroy');
+    });
+    
+    // Taxas de entrega por distância (fallback)
+    Route::prefix('taxas-entrega')->name('dashboard.delivery-pricing.')->group(function(){
+        Route::get('/', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'store'])->name('store');
+        Route::post('/simulate', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'simulate'])->name('simulate');
+        Route::put('/{pricing}', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'update'])->name('update');
+        Route::delete('/{pricing}', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'destroy'])->name('destroy');
     });
 });
 
@@ -664,6 +688,48 @@ Route::get('/clear-cache-now', function () {
     Artisan::call('optimize:clear');
     return response()->json(['status' => 'success', 'cleared' => true]);
 })->name('tools.clear');
+
+// Rota de teste para integração WhatsApp (protegida por autenticação)
+Route::middleware('auth')->get('/test-whatsapp-notification', function () {
+    try {
+        $pedido = \App\Models\Order::with(['customer', 'items.product', 'address'])
+            ->whereHas('customer', function($q) {
+                $q->whereNotNull('phone')->where('phone', '!=', '');
+            })
+            ->latest()
+            ->first();
+        
+        if (!$pedido) {
+            return response()->json([
+                'error' => 'Nenhum pedido com cliente e telefone encontrado para teste.',
+                'suggestion' => 'Crie um pedido de teste com um cliente que tenha telefone cadastrado.'
+            ], 404);
+        }
+        
+        // Disparar evento de teste
+        event(new \App\Events\OrderStatusUpdated($pedido, 'order_created', 'Teste de integração WhatsApp'));
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Evento OrderStatusUpdated disparado com sucesso!',
+            'order' => [
+                'id' => $pedido->id,
+                'number' => $pedido->order_number,
+                'customer' => $pedido->customer->name ?? 'N/A',
+                'phone' => $pedido->customer->phone ?? 'N/A',
+            ],
+            'webhook_url' => config('notifications.wa_webhook_url'),
+            'webhook_configured' => !empty(config('notifications.wa_webhook_url')),
+            'note' => 'Verifique os logs do Laravel (storage/logs/laravel.log) e do Railway para confirmar o envio.'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Erro ao disparar evento de teste',
+            'message' => $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTraceAsString() : null
+        ], 500);
+    }
+})->name('tools.test-whatsapp');
 
 // Rota de teste para diagnosticar problemas de subdomínio
 Route::get('/test-dashboard-route', function() use ($dashboardDomain, $pedidoDomain) {

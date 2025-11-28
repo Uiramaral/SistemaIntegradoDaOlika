@@ -1,55 +1,85 @@
-# Git Sync Script - Sistema Integrado da Olika
-# PowerShell Version
+# ---------------------------------------------
+# Script: git-sync.ps1
+# Autor: Thomas (GPT-5)
+# Descrição: Atualiza os repositórios Git da Olika
+# ---------------------------------------------
 
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Git Sync - Sistema Integrado da Olika" -ForegroundColor Cyan
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
+# Força codificação UTF-8 (corrige caracteres especiais)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# Mudar para o diretório do script
-Set-Location $PSScriptRoot
+# Interrompe execução em caso de erro
+$ErrorActionPreference = "Stop"
 
-# [1/4] Pull
-Write-Host "[1/4] Puxando atualizações do repositório remoto..." -ForegroundColor Yellow
-git pull origin main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERRO: Falha ao fazer pull. Abortando." -ForegroundColor Red
-    Read-Host "Pressione Enter para sair"
-    exit 1
-}
-Write-Host ""
+# Caminhos locais
+$PastaSistema = "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika"
+$PastaWhatsApp = "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\olika-whatsapp-integration"
 
-# [2/4] Add
-Write-Host "[2/4] Adicionando arquivos modificados..." -ForegroundColor Yellow
-git add .
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERRO: Falha ao adicionar arquivos. Abortando." -ForegroundColor Red
-    Read-Host "Pressione Enter para sair"
-    exit 1
-}
-Write-Host ""
+# Repositórios remotos
+$RepoSistema = "https://github.com/Uiramaral/SistemaIntegradoDaOlika.git"
+$RepoWhatsApp = "https://github.com/Uiramaral/olika-whatsapp-integration.git"
 
-# [3/4] Commit
-Write-Host "[3/4] Fazendo commit..." -ForegroundColor Yellow
-git commit -m "Atualizações de UI: hero compacto, modal otimizado, cupons em grade"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "AVISO: Nenhuma mudança para commitar." -ForegroundColor Yellow
+function Atualizar-Repo {
+    param (
+        [string]$Path,
+        [string]$Remote,
+        [string]$Nome,
+        [string[]]$Ignorar = @()
+    )
+
+    Write-Host "----------------------------------------" -ForegroundColor Cyan
+    Write-Host "🔄 Atualizando repositório: $Nome" -ForegroundColor Yellow
+    Write-Host "----------------------------------------" -ForegroundColor Cyan
+
+    Set-Location $Path
+
+    if (-not (Test-Path ".git")) {
+        Write-Host "🚀 Inicializando repositório Git..." -ForegroundColor Green
+        git init | Out-Null
+        git remote add origin $Remote
+    }
+
+    # Atualiza o .gitignore (sem causar erro)
+    if ($Ignorar.Count -gt 0) {
+        Write-Host "🧩 Atualizando .gitignore..." -ForegroundColor Gray
+
+        if (-not (Test-Path ".gitignore")) {
+            New-Item -ItemType File -Path ".gitignore" | Out-Null
+        }
+
+        foreach ($item in $Ignorar) {
+            $pattern = [regex]::Escape($item)
+            $exists = Select-String -Path ".gitignore" -Pattern $pattern -SimpleMatch -ErrorAction SilentlyContinue
+            if (-not $exists) {
+                Add-Content ".gitignore" "`n$item"
+            }
+        }
+    }
+
+    git add .
+
+    try {
+        git commit -m "Atualização automática em $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-Null
+    }
+    catch {
+        Write-Host "⚠️ Nenhuma modificação nova para commitar." -ForegroundColor DarkYellow
+    }
+
+    git branch -M main
+    git push -u origin main
+
+    Write-Host "✅ Atualização concluída para $Nome!" -ForegroundColor Green
     Write-Host ""
 }
-Write-Host ""
 
-# [4/4] Push
-Write-Host "[4/4] Enviando para o repositório remoto..." -ForegroundColor Yellow
-git push origin main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERRO: Falha ao fazer push." -ForegroundColor Red
-    Read-Host "Pressione Enter para sair"
-    exit 1
-}
-Write-Host ""
+# Atualiza o repositório principal (Sistema Unificado)
+Atualizar-Repo -Path $PastaSistema `
+               -Remote $RepoSistema `
+               -Nome "Sistema Unificado da Olika" `
+               -Ignorar @(".env", "olika-whatsapp-integration/")
 
-Write-Host "============================================" -ForegroundColor Green
-Write-Host "  Processo concluído com sucesso!" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Read-Host "Pressione Enter para fechar"
+# Atualiza o repositório do WhatsApp Integration
+Atualizar-Repo -Path $PastaWhatsApp `
+               -Remote $RepoWhatsApp `
+               -Nome "Olika WhatsApp Integration"
 
+Write-Host "🎉 Todos os repositórios foram atualizados com sucesso!" -ForegroundColor Green

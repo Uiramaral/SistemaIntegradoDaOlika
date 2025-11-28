@@ -20,7 +20,7 @@
       </div>
       <div class="p-6 pt-0 grid gap-3">
         @forelse($statuses as $st)
-          <form action="{{ route('dashboard.status-templates.status.update', $st->id) }}" method="POST" class="rounded-md border p-3 space-y-3">
+          <form action="{{ route('dashboard.settings.status-templates.status.update', $st->id) }}" method="POST" class="rounded-md border p-3 space-y-3">
             @csrf
             <div class="grid md:grid-cols-2 gap-3">
               <div class="space-y-1">
@@ -65,7 +65,7 @@
         <p class="text-sm text-muted-foreground">Crie e edite templates utilizados nos status</p>
       </div>
       <div class="p-6 pt-0 space-y-6">
-        <form action="{{ route('dashboard.status-templates.template.save') }}" method="POST" class="space-y-4">
+        <form action="{{ route('dashboard.settings.status-templates.template.save') }}" method="POST" class="space-y-4">
           @csrf
           <input type="hidden" name="id" id="tpl_id" value="">
           <div class="grid md:grid-cols-2 gap-4">
@@ -99,7 +99,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <button type="button" class="rounded-md border px-3 py-1 text-xs" onclick="editTemplate({{ $tpl->id }})">Editar</button>
-                  <form action="{{ route('dashboard.status-templates.template.delete', $tpl->id) }}" method="POST" onsubmit="return confirm('Excluir este template?')">
+                  <form action="{{ route('dashboard.settings.status-templates.template.delete', $tpl->id) }}" method="POST" onsubmit="return confirm('Excluir este template?')">
                     @csrf
                     @method('DELETE')
                     <button class="rounded-md border px-3 py-1 text-xs text-red-600">Excluir</button>

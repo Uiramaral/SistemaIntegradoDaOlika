@@ -3,18 +3,27 @@
 namespace App\Listeners;
 
 use App\Events\OrderStatusUpdated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class SendOrderWhatsAppNotification implements ShouldQueue
+/**
+ * Listener para envio de notificações WhatsApp via bot Railway
+ * 
+ * IMPORTANTE: Executa de forma SÍNCRONA (sem fila) para ambiente compartilhado
+ * onde não há queue worker rodando continuamente.
+ */
+class SendOrderWhatsAppNotification
 {
-    use InteractsWithQueue;
-
-    public int $tries = 3;
-    public int $backoff = 15;
+    /**
+     * Número de tentativas em caso de falha
+     */
+    private const MAX_RETRIES = 3;
+    
+    /**
+     * Intervalo entre tentativas (em milissegundos)
+     */
+    private const RETRY_DELAY_MS = 15000;
 
     /**
      * Handle the event.
@@ -24,12 +33,27 @@ class SendOrderWhatsAppNotification implements ShouldQueue
         $webhookUrl = config('notifications.wa_webhook_url');
 
         if (empty($webhookUrl)) {
-            Log::debug('WhatsApp webhook URL não configurado, ignorando disparo.', [
+            Log::warning('⚠️ WhatsApp webhook URL não configurado! Configure WHATSAPP_WEBHOOK_URL no .env', [
                 'event' => $event->event,
                 'order_id' => $event->order->id,
+                'order_number' => $event->order->order_number ?? null,
+                'config_key' => 'notifications.wa_webhook_url',
+                'env_var' => 'WHATSAPP_WEBHOOK_URL',
             ]);
 
             return;
+        }
+        
+        // Log quando o listener é executado (para debug)
+        Log::info('📤 SendOrderWhatsAppNotification executado', [
+            'order_id' => $event->order->id,
+            'event' => $event->event,
+            'webhook_url' => $webhookUrl,
+        ]);
+
+        // Garantir que a URL termina com /api/notify se não especificado
+        if (!str_ends_with($webhookUrl, '/api/notify') && !str_ends_with($webhookUrl, '/send-message')) {
+            $webhookUrl = rtrim($webhookUrl, '/') . '/api/notify';
         }
 
         $order = $event->order->loadMissing(['customer', 'items.product', 'address']);
@@ -92,41 +116,90 @@ class SendOrderWhatsAppNotification implements ShouldQueue
 
         $headers = [
             'X-Source-System' => config('app.name', 'olika'),
+            'Content-Type' => 'application/json',
         ];
 
+        // O bot aceita x-api-token, x-webhook-token ou x-olika-token
         if ($token = config('notifications.wa_token')) {
+            $headers['X-Olika-Token'] = $token;
+            // Fallback para compatibilidade
             $headers['X-Webhook-Token'] = $token;
         }
 
-        try {
-            $response = Http::timeout((int) config('notifications.wa_timeout', 10))
-                ->asJson()
-                ->withHeaders($headers)
-                ->post($webhookUrl, $payload);
+        // Retry manual para ambiente compartilhado (sem filas)
+        $lastError = null;
+        $attempt = 0;
+        
+        while ($attempt < self::MAX_RETRIES) {
+            $attempt++;
+            
+            try {
+                $response = Http::timeout((int) config('notifications.wa_timeout', 10))
+                    ->asJson()
+                    ->withHeaders($headers)
+                    ->post($webhookUrl, $payload);
 
-            if ($response->failed()) {
-                Log::warning('WhatsApp webhook retorno de erro.', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
+                if ($response->failed()) {
+                    $lastError = [
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ];
+                    
+                    Log::warning('WhatsApp webhook retorno de erro.', [
+                        'attempt' => $attempt,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                        'order_id' => $order->id,
+                    ]);
+                    
+                    // Se não for o último attempt, aguardar antes de tentar novamente
+                    if ($attempt < self::MAX_RETRIES) {
+                        usleep(self::RETRY_DELAY_MS * 1000); // Converter para microsegundos
+                        continue;
+                    }
+                    
+                    $response->throw();
+                }
+
+                Log::info('WhatsApp webhook enviado com sucesso.', [
                     'order_id' => $order->id,
+                    'event' => $event->event,
+                    'attempt' => $attempt,
                 ]);
-
-                $response->throw();
+                
+                // Sucesso - sair do loop
+                return;
+                
+            } catch (\Throwable $e) {
+                $lastError = [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ];
+                
+                Log::warning('Falha ao enviar payload WhatsApp webhook (tentativa ' . $attempt . '/' . self::MAX_RETRIES . ').', [
+                    'order_id' => $order->id,
+                    'event' => $event->event,
+                    'attempt' => $attempt,
+                    'error' => $e->getMessage(),
+                ]);
+                
+                // Se não for o último attempt, aguardar antes de tentar novamente
+                if ($attempt < self::MAX_RETRIES) {
+                    usleep(self::RETRY_DELAY_MS * 1000); // Converter para microsegundos
+                    continue;
+                }
             }
-
-            Log::info('WhatsApp webhook enviado com sucesso.', [
-                'order_id' => $order->id,
-                'event' => $event->event,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Falha ao enviar payload WhatsApp webhook.', [
-                'order_id' => $order->id,
-                'event' => $event->event,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
         }
+        
+        // Se chegou aqui, todas as tentativas falharam
+        Log::error('Falha ao enviar payload WhatsApp webhook após ' . self::MAX_RETRIES . ' tentativas.', [
+            'order_id' => $order->id,
+            'event' => $event->event,
+            'last_error' => $lastError,
+        ]);
+        
+        // Não lançar exceção para não quebrar o fluxo principal
+        // Apenas logar o erro
     }
 
     private function normalizePhone(string $phone): string

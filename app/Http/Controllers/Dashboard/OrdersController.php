@@ -22,7 +22,15 @@ class OrdersController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['customer', 'address', 'payment'])
+        // Otimizado: selecionar apenas campos necessários e eager loading específico
+        $query = Order::with([
+                'customer:id,name,phone,email',
+                'address:id,order_id,street,number,neighborhood,city',
+                'payment:id,order_id,status,status_detail'
+            ])
+            ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
+                     'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 
+                     'address_id', 'payment_id', 'scheduled_delivery_at')
             ->orderBy('created_at', 'desc');
 
         // Busca por cliente ou número do pedido

@@ -1,0 +1,370 @@
+@extends('pedido.layout')
+
+@section('title', 'Olika - Pães Artesanais | Cardápio Digital')
+
+@section('content')
+@php
+    $cartCount = session('cart_count', 0);
+    $cart = session('cart', []);
+    if (empty($cartCount) && !empty($cart)) {
+        $cartCount = array_sum(array_column($cart, 'qty'));
+    }
+@endphp
+
+<!-- Categories Filter -->
+<div class="flex items-center justify-between gap-4 mb-8">
+    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1">
+        <a href="{{ route('pedido.index') }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors border border-gray-200 bg-orange-500 text-white hover:bg-orange-600 h-10 px-4 py-2 whitespace-nowrap">
+            Todos
+        </a>
+        @if(isset($categories) && $categories->count() > 0)
+            @foreach($categories as $cat)
+            <a href="{{ route('pedido.menu.category', $cat->id) }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors border border-gray-200 bg-white hover:bg-gray-50 h-10 px-4 py-2 whitespace-nowrap">
+                {{ $cat->name }}
+            </a>
+            @endforeach
+        @endif
+    </div>
+    <div class="flex gap-1 border rounded-lg p-1">
+        <button id="viewModeGridPublic" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-8 w-8" title="Grade">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                <path d="M3 9h18"></path>
+                <path d="M3 15h18"></path>
+                <path d="M9 3v18"></path>
+                <path d="M15 3v18"></path>
+            </svg>
+        </button>
+        <button id="viewModeListPublic" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-gray-100 h-8 w-8" title="Lista">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                <path d="M3 12h.01"></path>
+                <path d="M3 18h.01"></path>
+                <path d="M3 6h.01"></path>
+                <path d="M8 12h13"></path>
+                <path d="M8 18h13"></path>
+                <path d="M8 6h13"></path>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- Categoria Novidades !! (sempre primeiro, rolagem horizontal) -->
+@if(isset($newProducts) && $newProducts->count() > 0)
+<div class="mb-12">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Novidades !! 🎉</h2>
+        <div class="flex gap-2 items-center">
+            <button id="scrollNovidadesLeft" class="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Rolar para esquerda">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m15 18-6-6 6-6"></path>
+                </svg>
+            </button>
+            <button id="scrollNovidadesRight" class="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Rolar para direita">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m9 18 6-6-6-6"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="novidadesContainer" class="overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4" style="scroll-behavior: smooth;">
+        <div class="flex gap-4" style="width: max-content;">
+            @foreach($newProducts as $product)
+            @php
+                $minVariantPrice = $product->variants()->where('is_active', true)->min('price');
+                $hasActiveVariants = $minVariantPrice !== null;
+                $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
+                $isPurchasable = $displayPrice > 0;
+                if (!$isPurchasable) { continue; }
+            @endphp
+            <div class="rounded-lg border bg-white shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300 flex flex-col" style="min-width: 140px; max-width: 140px; flex-shrink: 0;">
+                <div class="relative overflow-hidden aspect-square">
+                    @php
+                        $img = $product->image_url;
+                        if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
+                        elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+                        $img = $img ?? asset('images/produto-placeholder.jpg');
+                    @endphp
+                    <img src="{{ $img }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="openQuickView({{ $product->id }})">
+                </div>
+                <div class="p-1.5 flex-1 flex flex-col">
+                    <div class="flex-1 min-h-0 mb-1">
+                        <h3 class="font-semibold mb-0.5 text-xs break-words line-clamp-2 leading-tight">{{ $product->name }}</h3>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-auto">
+                        <span class="font-bold text-orange-500 text-xs leading-tight">
+                            R$ {{ number_format($displayPrice, 2, ',', '.') }}
+                        </span>
+                        @if($hasActiveVariants)
+                            <button onclick="openQuickView({{ $product->id }})" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-6 rounded-md px-2 text-xs w-full">Escolher</button>
+                        @else
+                            <button onclick="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $displayPrice }})" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-6 rounded-md px-2 text-xs w-full">+</button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+@endif
+
+<!-- Products Views -->
+@if(isset($products) && $products && $products->count() > 0)
+
+<!-- Lista (inicialmente oculta) - Layout compacto -->
+<div id="productsListPublic" class="hidden space-y-2 md:space-y-3">
+    @foreach($products as $product)
+    @php
+        $minVariantPrice = $product->variants()->where('is_active', true)->min('price');
+        $hasActiveVariants = $minVariantPrice !== null;
+        $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
+        $isPurchasable = $displayPrice > 0;
+        if (!$isPurchasable) { continue; }
+        // Mesma lógica de imagem
+        $img = $product->image_url;
+        if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
+        elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+        $img = $img ?? asset('images/produto-placeholder.jpg');
+    @endphp
+    <div class="rounded-lg border bg-white shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300 flex flex-row gap-2 md:gap-3 p-2 md:p-3">
+        <div class="relative overflow-hidden w-20 h-20 md:w-24 md:h-24 flex-shrink-0 rounded">
+            <img src="{{ $img }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="openQuickView({{ $product->id }})">
+        </div>
+        <div class="flex-1 flex flex-col justify-between min-w-0 py-1">
+            <div class="min-w-0">
+                <h3 class="font-semibold mb-1 text-sm md:text-base truncate">{{ $product->name }}</h3>
+                <p class="text-gray-600 mb-1 text-xs md:text-sm line-clamp-1 hidden md:block">{{ $product->description ? \Illuminate\Support\Str::limit($product->description, 80) : '' }}</p>
+            </div>
+            <div class="flex items-center justify-between gap-2 mt-auto">
+                <span class="font-bold text-orange-500 text-base md:text-lg whitespace-nowrap">
+                    @if($hasActiveVariants)
+                        a partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}
+                    @else
+                        R$ {{ number_format($displayPrice, 2, ',', '.') }}
+                    @endif
+                </span>
+                @if($hasActiveVariants)
+                    <button onclick="openQuickView({{ $product->id }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-8 md:h-9 rounded-md px-2 md:px-3 text-xs">Escolher</button>
+                @else
+                    <button onclick="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $displayPrice }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-8 md:h-9 rounded-md px-2 md:px-3 text-xs">+</button>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endforeach
+</div>
+
+<!-- Grid -->
+<div id="productsGridPublic" class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 lg:gap-6">
+    @foreach($products as $product)
+    @php
+        $minVariantPrice = $product->variants()->where('is_active', true)->min('price');
+        $hasActiveVariants = $minVariantPrice !== null;
+        $displayPrice = ($product->price > 0) ? (float)$product->price : ((float)$minVariantPrice ?: 0);
+        $isPurchasable = $displayPrice > 0;
+        if (!$isPurchasable) { continue; }
+        // Mesma lógica de imagem
+        $img = $product->image_url;
+        if (!$img && $product->cover_image) { $img = asset('storage/'.$product->cover_image); }
+        elseif(!$img && $product->images && $product->images->count()>0){ $img = asset('storage/'.$product->images->first()->path); }
+        $img = $img ?? asset('images/produto-placeholder.jpg');
+    @endphp
+    <div class="rounded-lg border bg-white shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300 flex flex-col h-full">
+        <div class="relative overflow-hidden aspect-square">
+            <img src="{{ $img }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="openQuickView({{ $product->id }})">
+            @if($product->category)
+            <div class="inline-flex items-center rounded-full border px-2 py-0.5 font-semibold transition-colors absolute top-1.5 right-1.5 bg-orange-500 text-white text-xs leading-tight">
+                {{ $product->category->name }}
+            </div>
+            @endif
+        </div>
+        <div class="p-2 md:p-3 flex-1 flex flex-col">
+            <div class="flex-1 min-h-0 mb-1">
+                <h3 class="font-semibold mb-0.5 text-xs md:text-sm line-clamp-2 leading-tight">{{ $product->name }}</h3>
+                <p class="text-gray-600 mb-1 text-xs line-clamp-2 hidden md:block">{{ $product->description ? \Illuminate\Support\Str::limit($product->description, 80) : '' }}</p>
+            </div>
+            <div class="flex items-center justify-between gap-1 md:gap-2 mt-auto">
+                <span class="font-bold text-orange-500 text-sm md:text-lg leading-tight">
+                    @if($hasActiveVariants)
+                        <span class="hidden md:inline">a partir de </span>R$ {{ number_format($displayPrice, 2, ',', '.') }}
+                    @else
+                        R$ {{ number_format($displayPrice, 2, ',', '.') }}
+                    @endif
+                </span>
+                @if($hasActiveVariants)
+                    <button onclick="openQuickView({{ $product->id }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-7 md:h-9 rounded-md px-2 md:px-3 text-xs">Escolher</button>
+                @else
+                    @if($displayPrice <= 0)
+                        <span class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium bg-gray-200 text-gray-500 h-7 md:h-9 rounded-md px-2 md:px-3 text-xs cursor-not-allowed">-</span>
+                    @else
+                    <button onclick="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $displayPrice }})" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors bg-orange-500 text-white hover:bg-orange-600 h-7 md:h-9 rounded-md px-2 md:px-3 text-xs">+</button>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+    @endforeach
+</div>
+
+@else
+<div class="text-center py-12">
+    <p class="text-gray-600">Nenhum produto disponível no momento.</p>
+</div>
+@endif
+
+@endsection
+
+@push('scripts')
+<script>
+// Toggle Grid/Lista
+(function() {
+    const gridBtn = document.getElementById('viewModeGridPublic');
+    const listBtn = document.getElementById('viewModeListPublic');
+    const gridView = document.getElementById('productsGridPublic');
+    const listView = document.getElementById('productsListPublic');
+    
+    if (!gridBtn || !listBtn || !gridView || !listView) return;
+    
+    // Salvar preferência no localStorage
+    const savedView = localStorage.getItem('productViewMode') || 'grid';
+    
+    function setGridView() {
+        gridView.classList.remove('hidden');
+        listView.classList.add('hidden');
+        gridBtn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        gridBtn.classList.remove('hover:bg-gray-100');
+        listBtn.classList.remove('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        listBtn.classList.add('hover:bg-gray-100');
+        localStorage.setItem('productViewMode', 'grid');
+    }
+    
+    function setListView() {
+        gridView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        listBtn.classList.add('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        listBtn.classList.remove('hover:bg-gray-100');
+        gridBtn.classList.remove('bg-orange-500', 'text-white', 'hover:bg-orange-600');
+        gridBtn.classList.add('hover:bg-gray-100');
+        localStorage.setItem('productViewMode', 'list');
+    }
+    
+    gridBtn.addEventListener('click', setGridView);
+    listBtn.addEventListener('click', setListView);
+    
+    // Aplicar preferência salva ao carregar
+    if (savedView === 'list') {
+        setListView();
+    } else {
+        setGridView();
+    }
+})();
+
+// Scroll horizontal da seção Novidades
+(function() {
+    const container = document.getElementById('novidadesContainer');
+    const leftBtn = document.getElementById('scrollNovidadesLeft');
+    const rightBtn = document.getElementById('scrollNovidadesRight');
+    
+    if (!container || !leftBtn || !rightBtn) return;
+    
+    const scrollAmount = 156; // 140px (largura card) + 16px (gap)
+    
+    leftBtn.addEventListener('click', () => {
+        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+    
+    rightBtn.addEventListener('click', () => {
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+    
+    // Atualizar visibilidade dos botões baseado na posição do scroll
+    function updateButtons() {
+        const { scrollLeft, scrollWidth, clientWidth } = container;
+        leftBtn.style.opacity = scrollLeft > 0 ? '1' : '0.5';
+        leftBtn.style.pointerEvents = scrollLeft > 0 ? 'auto' : 'none';
+        rightBtn.style.opacity = scrollLeft < scrollWidth - clientWidth - 10 ? '1' : '0.5';
+        rightBtn.style.pointerEvents = scrollLeft < scrollWidth - clientWidth - 10 ? 'auto' : 'none';
+    }
+    
+    container.addEventListener('scroll', updateButtons);
+    updateButtons(); // Inicial
+})();
+
+async function addToCart(productId, productName, price) {
+  try {
+    if (!price || Number(price) <= 0) { showNotification('Produto sem preço disponível. Selecione uma opção ou tente outro item.', 'error'); return; }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const response = await fetch('{{ route("pedido.cart.add") }}', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' },
+      body: JSON.stringify({ product_id: productId, qty: 1, price })
+    });
+    const data = await response.json();
+    if (data.ok || data.success) {
+      const badge = document.querySelector('a[href*="cart"] .absolute');
+      if (badge) {
+        const count = parseInt(badge.textContent) || 0; badge.textContent = data.cart_count || count + 1; badge.parentElement.classList.remove('hidden');
+      }
+      if (typeof window.updateCartBadge === 'function') { window.updateCartBadge(data.cart_count || 0); }
+      showNotification('Produto adicionado ao carrinho!');
+    } else {
+      showNotification(data.message || 'Não foi possível adicionar este produto agora.', 'error');
+    }
+  } catch (e) { console.error(e); showNotification('Erro ao adicionar produto','error'); }
+}
+
+function showNotification(message, type='success'){
+  const el = document.createElement('div');
+  el.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 ${type==='success'?'bg-green-500':'bg-red-500'} text-white`;
+  el.innerHTML = `<span>${message}</span>${type==='success' ? ` <a href='{{ route('pedido.cart.index') }}' class='ml-3 inline-block bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1 rounded'>Ver Carrinho</a>` : ''}`;
+  document.body.appendChild(el); setTimeout(()=>el.remove(), 3500);
+}
+
+// Fallback simples de quick-view: abrir a página do produto
+function openQuickView(id){
+  window.location.href = '{{ route('pedido.menu.product', ['product'=>0]) }}'.replace('/0', '/' + id);
+}
+</script>
+
+<script>
+// Mini-painel flutuante no catálogo
+(function(){
+  const panel = document.createElement('div');
+  panel.id = 'catalogCartPanel';
+  panel.className = 'fixed right-4 bottom-20 md:bottom-8 z-40 hidden';
+  panel.innerHTML = `
+    <div class="bg-white/95 backdrop-blur border rounded-xl shadow-lg p-3 flex items-center gap-3">
+      <div class="text-sm">
+        <div class="text-gray-500 leading-none mb-1">Total</div>
+        <div id="catalogCartTotal" class="text-xl font-bold text-orange-600">R$ 0,00</div>
+      </div>
+      <a href='{{ route('pedido.cart.index') }}' class='inline-flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded-lg'>Ver Carrinho</a>
+    </div>`;
+  document.body.appendChild(panel);
+
+  function brl(n){return Number(n||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});}
+
+  async function refreshPanel(){
+    try{
+      const res = await fetch('{{ route("pedido.cart.items") }}', {headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}});
+      const data = await res.json();
+      const total = Number(data.total||0);
+      if (total>0){
+        panel.classList.remove('hidden');
+        const el = document.getElementById('catalogCartTotal');
+        if (el) el.textContent = 'R$ ' + brl(total);
+      } else {
+        panel.classList.add('hidden');
+      }
+    }catch(e){ /* silencioso */ }
+  }
+
+  // atualiza ao carregar e de tempos em tempos
+  refreshPanel();
+  setInterval(refreshPanel, 7000);
+  // integra com updateCartBadge se existir
+  const _old = window.updateCartBadge;
+  window.updateCartBadge = function(count){ if (typeof _old==='function') _old(count); refreshPanel(); };
+})();
+</script>
+@endpush

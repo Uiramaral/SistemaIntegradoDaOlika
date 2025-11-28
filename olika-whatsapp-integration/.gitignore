@@ -1,8 +1,4 @@
 node_modules/
-session/
+auth_info_baileys/
 .env
-npm-debug.log*
-yarn-error.log*
-pnpm-lock.yaml
-package-lock.json
-
+.DS_Store

@@ -394,14 +394,28 @@ class OrderStatusService
             'confirmed' => 'order_created',
             'preparing' => 'order_preparing',
             'ready' => 'order_ready',
+            'out_for_delivery' => 'order_ready', // Mapeia para order_ready (pedido a caminho)
             'delivered' => 'order_completed',
         ];
 
         if (!isset($map[$status])) {
+            Log::debug('Status não mapeado para evento WhatsApp', [
+                'status' => $status,
+                'order_id' => $order->id,
+            ]);
             return;
         }
 
-        event(new OrderStatusUpdated($order, $map[$status], $note));
+        $eventType = $map[$status];
+        
+        Log::info('📨 Disparando evento OrderStatusUpdated', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $status,
+            'event' => $eventType,
+        ]);
+        
+        event(new OrderStatusUpdated($order, $eventType, $note));
     }
 }
 

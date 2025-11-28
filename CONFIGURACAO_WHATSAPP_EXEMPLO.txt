@@ -1,0 +1,54 @@
+===========================================
+ONDE E COMO CONFIGURAR A URL DO WHATSAPP
+===========================================
+
+📁 ARQUIVO: .env prod
+📍 LOCALIZAÇÃO: Raiz do projeto
+
+===========================================
+ANTES (linhas 94-98):
+===========================================
+
+WHATSAPP_API_URL=
+WHATSAPP_API_KEY=
+WHATSAPP_WEBHOOK_URL=
+WHATSAPP_SESSION_NAME=olika_session
+WHATSAPP_DEFAULT_PHONE=5571999999999
+
+===========================================
+DEPOIS (substitua as linhas 94-98 por):
+===========================================
+
+WHATSAPP_API_URL=
+WHATSAPP_API_KEY=
+# URL do bot WhatsApp no Railway (NOVO - Integração com bot Railway)
+WHATSAPP_WEBHOOK_URL=https://olika-bot.up.railway.app/api/notify
+# Token de autenticação (deve ser o mesmo configurado no Railway)
+WHATSAPP_WEBHOOK_TOKEN=olika_secret_token
+# Código do país padrão (55 = Brasil)
+WHATSAPP_DEFAULT_COUNTRY_CODE=55
+# Timeout para requisições HTTP (em segundos)
+WHATSAPP_WEBHOOK_TIMEOUT=10
+WHATSAPP_SESSION_NAME=olika_session
+WHATSAPP_DEFAULT_PHONE=5571999999999
+
+===========================================
+⚠️ IMPORTANTE:
+===========================================
+
+1. Substitua "olika_secret_token" pelo token real do Railway
+2. O token deve ser EXATAMENTE igual ao configurado no Railway
+3. Após salvar, execute: php artisan config:clear
+
+===========================================
+COMO ENCONTRAR O TOKEN NO RAILWAY:
+===========================================
+
+1. Acesse: https://railway.app
+2. Entre no projeto do bot WhatsApp
+3. Vá em "Variables" (Variáveis)
+4. Procure por: API_SECRET ou WEBHOOK_TOKEN
+5. Copie o valor e cole no .env
+
+===========================================
+

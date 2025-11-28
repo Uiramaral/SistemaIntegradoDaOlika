@@ -720,6 +720,30 @@ async function handleDeliveryFeeSuccess(feeData, options = {}) {
     setTimeout(async () => {
         await updateOrderSummary(null, deliveryFee);
     }, 100);
+    
+    // Atualização direta do elemento de frete como fallback
+    // Isso garante que o frete seja exibido mesmo se houver erro no updateOrderSummary
+    const summaryDeliveryFeeEl = document.getElementById('summaryDeliveryFee');
+    if (summaryDeliveryFeeEl) {
+        console.log('handleDeliveryFeeSuccess: Atualizando summaryDeliveryFee diretamente:', deliveryFee);
+        if (deliveryFee > 0) {
+            summaryDeliveryFeeEl.textContent = `R$ ${Number(deliveryFee).toFixed(2).replace('.', ',')}`;
+            summaryDeliveryFeeEl.classList.remove('text-yellow-600', 'text-gray-500', 'text-sm');
+            summaryDeliveryFeeEl.classList.add('font-semibold', 'text-primary');
+        } else {
+            summaryDeliveryFeeEl.textContent = 'Grátis';
+            summaryDeliveryFeeEl.classList.remove('text-yellow-600', 'text-gray-500', 'text-sm');
+            summaryDeliveryFeeEl.classList.add('text-green-700', 'font-medium');
+        }
+    }
+    
+    // Atualizar também o total
+    const summaryTotalEl = document.getElementById('summaryTotal');
+    const subtotal = parseFloat(window.checkoutData?.subtotal) || 0;
+    const total = subtotal + deliveryFee;
+    if (summaryTotalEl) {
+        summaryTotalEl.textContent = `R$ ${Number(total).toFixed(2).replace('.', ',')}`;
+    }
 
     filtrarCuponsFreteGratis(deliveryFee);
 
@@ -958,6 +982,12 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             requestBody.order_id = config.order.id;
         }
         
+        console.log('updateOrderSummary: Enviando request para calculateDiscounts', {
+            url: config.routes?.calculateDiscounts,
+            currentDeliveryFee: currentDeliveryFee,
+            requestBody: requestBody
+        });
+        
         const response = await fetch(config.routes?.calculateDiscounts || '', {
             method: 'POST',
             headers: {
@@ -967,6 +997,17 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             },
             body: JSON.stringify(requestBody)
         });
+        
+        console.log('updateOrderSummary: Resposta HTTP', {
+            status: response.status,
+            ok: response.ok
+        });
+        
+        if (!response.ok) {
+            console.error('updateOrderSummary: Erro na resposta HTTP', response.status);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         console.log('updateOrderSummary: Resposta completa do servidor', {
@@ -1019,33 +1060,41 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             couponDiscount: couponDiscount
         });
         
-        if (couponMessage && typeof couponMessage === 'string' && couponMessage.trim() !== '') {
-            // Sempre exibir mensagem específica do backend (tem prioridade)
-            console.log('updateOrderSummary: Exibindo mensagem específica do cupom:', couponMessage);
-            couponFeedback.textContent = couponMessage.trim();
-            couponFeedback.className = 'text-sm mt-2 text-red-600';
-            // Limpar cupom aplicado se houver erro
-            document.getElementById('applied_coupon_code').value = '';
-            document.getElementById('coupon_code_public').value = '';
-            document.getElementById('coupon_code_private').value = '';
-        } else if (couponCode && couponDiscount > 0) {
-            // Cupom aplicado com sucesso
-            console.log('updateOrderSummary: Cupom aplicado com sucesso, desconto:', couponDiscount);
-            couponFeedback.textContent = 'Cupom aplicado!';
-            couponFeedback.className = 'text-sm mt-2 text-green-600';
-        } else if (couponCode && couponDiscount === 0) {
-            // Cupom informado mas sem desconto - mostrar mensagem genérica apenas se não houver mensagem específica
-            console.log('updateOrderSummary: Cupom sem desconto, sem mensagem específica do backend');
-            couponFeedback.textContent = 'Cupom não pôde ser aplicado.';
-            couponFeedback.className = 'text-sm mt-2 text-yellow-600';
-        } else {
-            // Sem cupom ou sem mensagem
-            couponFeedback.textContent = '';
-            couponFeedback.className = 'text-sm mt-2 text-gray-600';
+        if (couponFeedback) {
+            if (couponMessage && typeof couponMessage === 'string' && couponMessage.trim() !== '') {
+                // Sempre exibir mensagem específica do backend (tem prioridade)
+                console.log('updateOrderSummary: Exibindo mensagem específica do cupom:', couponMessage);
+                couponFeedback.textContent = couponMessage.trim();
+                couponFeedback.className = 'text-sm mt-2 text-red-600';
+                // Limpar cupom aplicado se houver erro
+                const appliedCouponEl = document.getElementById('applied_coupon_code');
+                const couponPublicEl = document.getElementById('coupon_code_public');
+                const couponPrivateEl = document.getElementById('coupon_code_private');
+                if (appliedCouponEl) appliedCouponEl.value = '';
+                if (couponPublicEl) couponPublicEl.value = '';
+                if (couponPrivateEl) couponPrivateEl.value = '';
+            } else if (couponCode && couponDiscount > 0) {
+                // Cupom aplicado com sucesso
+                console.log('updateOrderSummary: Cupom aplicado com sucesso, desconto:', couponDiscount);
+                couponFeedback.textContent = 'Cupom aplicado!';
+                couponFeedback.className = 'text-sm mt-2 text-green-600';
+            } else if (couponCode && couponDiscount === 0) {
+                // Cupom informado mas sem desconto - mostrar mensagem genérica apenas se não houver mensagem específica
+                console.log('updateOrderSummary: Cupom sem desconto, sem mensagem específica do backend');
+                couponFeedback.textContent = 'Cupom não pôde ser aplicado.';
+                couponFeedback.className = 'text-sm mt-2 text-yellow-600';
+            } else {
+                // Sem cupom ou sem mensagem
+                couponFeedback.textContent = '';
+                couponFeedback.className = 'text-sm mt-2 text-gray-600';
+            }
         }
         
         // Atualizar display
-        document.getElementById('summarySubtotal').textContent = `R$ ${Number(currentSubtotal).toFixed(2).replace('.', ',')}`;
+        const summarySubtotalEl = document.getElementById('summarySubtotal');
+        if (summarySubtotalEl) {
+            summarySubtotalEl.textContent = `R$ ${Number(currentSubtotal).toFixed(2).replace('.', ',')}`;
+        }
         
         // Garantir que os valores sejam números válidos (já foram priorizados acima)
         if (isNaN(deliveryDiscountAmount)) deliveryDiscountAmount = 0;
@@ -1067,6 +1116,9 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         // Exibir desconto de entrega e valores
         const deliveryFeeOriginalEl = document.getElementById('summaryDeliveryFeeOriginal');
         const deliveryFeeEl = document.getElementById('summaryDeliveryFee');
+        const discountRow = document.getElementById('summaryDeliveryDiscountRow');
+        const discountLabel = document.getElementById('summaryDeliveryDiscountLabel');
+        const discountValueEl = document.getElementById('summaryDeliveryDiscount');
         
         // Mostrar valor original se houver desconto E baseDeliveryFee for maior que o valor final
         const hasDiscount = deliveryDiscountAmount > 0 && baseDeliveryFee > 0;
@@ -1074,45 +1126,66 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         
         if (shouldShowOriginal) {
             // Mostrar valor original riscado e desconto
-            deliveryFeeOriginalEl.textContent = `R$ ${Number(baseDeliveryFee).toFixed(2).replace('.', ',')}`;
-            deliveryFeeOriginalEl.classList.remove('hidden');
+            if (deliveryFeeOriginalEl) {
+                deliveryFeeOriginalEl.textContent = `R$ ${Number(baseDeliveryFee).toFixed(2).replace('.', ',')}`;
+                deliveryFeeOriginalEl.classList.remove('hidden');
+            }
             
-            const discountRow = document.getElementById('summaryDeliveryDiscountRow');
-            const discountLabel = document.getElementById('summaryDeliveryDiscountLabel');
-            discountLabel.textContent = `Desconto no frete (${deliveryDiscountPercent}%)`;
-            document.getElementById('summaryDeliveryDiscount').textContent = `- R$ ${Number(deliveryDiscountAmount).toFixed(2).replace('.', ',')}`;
-            discountRow.classList.remove('hidden');
+            if (discountLabel) {
+                discountLabel.textContent = `Desconto no frete (${deliveryDiscountPercent}%)`;
+            }
+            if (discountValueEl) {
+                discountValueEl.textContent = `- R$ ${Number(deliveryDiscountAmount).toFixed(2).replace('.', ',')}`;
+            }
+            if (discountRow) {
+                discountRow.classList.remove('hidden');
+            }
         } else {
             // Sem desconto - esconder valor original
-            deliveryFeeOriginalEl.classList.add('hidden');
-            document.getElementById('summaryDeliveryDiscountRow').classList.add('hidden');
+            if (deliveryFeeOriginalEl) {
+                deliveryFeeOriginalEl.classList.add('hidden');
+            }
+            if (discountRow) {
+                discountRow.classList.add('hidden');
+            }
         }
         
         // Mostrar frete final (já com desconto aplicado)
         // IMPORTANTE: Só atualizar se realmente foi calculado (currentDeliveryFee não é null)
-        if (currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))) {
-            // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
-            if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
-                // Frete grátis por desconto de 100%
-                deliveryFeeEl.textContent = 'Grátis';
-                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
-                deliveryFeeEl.classList.add('text-green-700', 'font-medium');
-            } else if (currentDeliveryFee > 0) {
-                // Há frete a pagar
-                deliveryFeeEl.textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
-                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm', 'text-green-700');
-                deliveryFeeEl.classList.add('text-gray-900', 'font-medium');
+        console.log('updateOrderSummary: Atualizando elemento summaryDeliveryFee', {
+            deliveryFeeEl: !!deliveryFeeEl,
+            currentDeliveryFee: currentDeliveryFee,
+            isNull: currentDeliveryFee === null,
+            isUndefined: currentDeliveryFee === undefined,
+            isNaN: isNaN(parseFloat(currentDeliveryFee)),
+            freteCalculado: window.checkoutData?.freteCalculado
+        });
+        
+        if (deliveryFeeEl) {
+            if (currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))) {
+                // Só mostrar "Grátis" se realmente houver desconto de 100% OU se o frete foi configurado como grátis
+                if (currentDeliveryFee <= 0 && baseDeliveryFee > 0 && deliveryDiscountAmount > 0) {
+                    // Frete grátis por desconto de 100%
+                    deliveryFeeEl.textContent = 'Grátis';
+                    deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
+                    deliveryFeeEl.classList.add('text-green-700', 'font-medium');
+                } else if (currentDeliveryFee > 0) {
+                    // Há frete a pagar
+                    deliveryFeeEl.textContent = `R$ ${Number(currentDeliveryFee).toFixed(2).replace('.', ',')}`;
+                    deliveryFeeEl.classList.remove('text-gray-500', 'text-sm', 'text-green-700');
+                    deliveryFeeEl.classList.add('text-gray-900', 'font-medium');
+                } else {
+                    // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
+                    deliveryFeeEl.textContent = 'Grátis';
+                    deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
+                    deliveryFeeEl.classList.add('text-green-700', 'font-medium');
+                }
             } else {
-                // Frete zero sem desconto (pode ser configurado como grátis ou retirada)
-                deliveryFeeEl.textContent = 'Grátis';
-                deliveryFeeEl.classList.remove('text-gray-500', 'text-sm');
-                deliveryFeeEl.classList.add('text-green-700', 'font-medium');
+                // Frete ainda não foi calculado - manter texto inicial
+                deliveryFeeEl.textContent = 'Aguardando CEP';
+                deliveryFeeEl.classList.remove('text-gray-900', 'text-green-700', 'font-medium');
+                deliveryFeeEl.classList.add('text-yellow-600', 'text-sm', 'font-medium');
             }
-        } else {
-            // Frete ainda não foi calculado - manter texto inicial
-            deliveryFeeEl.textContent = 'Informe o CEP';
-            deliveryFeeEl.classList.remove('text-gray-900', 'text-green-700', 'font-medium');
-            deliveryFeeEl.classList.add('text-gray-500', 'text-sm', 'font-medium');
         }
         
         // Marcar como calculado SEMPRE que recebemos um valor (mesmo 0 = grátis)
@@ -1171,7 +1244,10 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             document.getElementById('summaryCashbackEarned').classList.add('hidden');
         }
         
-        document.getElementById('summaryTotal').textContent = `R$ ${Number(total).toFixed(2).replace('.', ',')}`;
+        const summaryTotalEl = document.getElementById('summaryTotal');
+        if (summaryTotalEl) {
+            summaryTotalEl.textContent = `R$ ${Number(total).toFixed(2).replace('.', ',')}`;
+        }
         
         // Log final do total
         console.log('updateOrderSummary: Total final calculado e exibido:', total);
@@ -1199,11 +1275,17 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         };
         
         // Atualizar campos hidden do formulário com dados de desconto de frete
-        document.getElementById('hidden_delivery_fee').value = Number(currentDeliveryFee).toFixed(2);
-        document.getElementById('hidden_base_delivery_fee').value = Number(baseDeliveryFee || currentDeliveryFee).toFixed(2);
-        document.getElementById('hidden_delivery_discount_percent').value = Number(deliveryDiscountPercent || 0).toFixed(0);
-        document.getElementById('hidden_delivery_discount_amount').value = Number(deliveryDiscountAmount || 0).toFixed(2);
-        document.getElementById('hidden_delivery_fee_locked').value = window.checkoutData.deliveryFeeLocked ? 1 : 0;
+        const hiddenDeliveryFeeEl = document.getElementById('hidden_delivery_fee');
+        const hiddenBaseDeliveryFeeEl = document.getElementById('hidden_base_delivery_fee');
+        const hiddenDiscountPercentEl = document.getElementById('hidden_delivery_discount_percent');
+        const hiddenDiscountAmountEl = document.getElementById('hidden_delivery_discount_amount');
+        const hiddenDeliveryFeeLockedEl = document.getElementById('hidden_delivery_fee_locked');
+        
+        if (hiddenDeliveryFeeEl) hiddenDeliveryFeeEl.value = Number(currentDeliveryFee || 0).toFixed(2);
+        if (hiddenBaseDeliveryFeeEl) hiddenBaseDeliveryFeeEl.value = Number(baseDeliveryFee || currentDeliveryFee || 0).toFixed(2);
+        if (hiddenDiscountPercentEl) hiddenDiscountPercentEl.value = Number(deliveryDiscountPercent || 0).toFixed(0);
+        if (hiddenDiscountAmountEl) hiddenDiscountAmountEl.value = Number(deliveryDiscountAmount || 0).toFixed(2);
+        if (hiddenDeliveryFeeLockedEl) hiddenDeliveryFeeLockedEl.value = window.checkoutData?.deliveryFeeLocked ? 1 : 0;
         
         // Verificação de consistência: alertar se houver discrepância
         const expectedTotal = currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed;

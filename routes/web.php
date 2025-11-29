@@ -326,6 +326,16 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::get('/settings/whatsapp',      [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
     Route::post('/settings/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.settings.whatsapp.save');
     Route::post('/settings/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.settings.whatsapp.notifications.save');
+    Route::get('/settings/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.settings.whatsapp.qr');
+    Route::get('/settings/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.settings.whatsapp.status');
+    Route::post('/settings/whatsapp/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappDisconnect'])->name('dashboard.settings.whatsapp.disconnect');
+    
+    // WhatsApp (rotas alternativas para /dashboard/whatsapp)
+    Route::get('/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.whatsapp.qr');
+    Route::get('/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.whatsapp.status');
+    Route::post('/whatsapp/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappDisconnect'])->name('dashboard.whatsapp.disconnect');
+    Route::post('/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.whatsapp.save');
+    Route::post('/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.whatsapp.notifications.save');
     Route::get('/settings/mercadopago',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
     Route::post('/settings/mercadopago',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpSave'])->name('dashboard.settings.mp.save');
     Route::post('/settings/mercadopago/methods',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpMethodsSave'])->name('dashboard.settings.mp.methods.save');

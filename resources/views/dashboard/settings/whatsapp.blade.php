@@ -99,6 +99,23 @@
         </div>
 
         <div data-tab-content="settings" class="tab-content mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <!-- Seção de Conexão WhatsApp -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm mb-6">
+                <div class="flex flex-col space-y-1.5 p-6">
+                    <h3 class="text-2xl font-semibold leading-none tracking-tight">Conexão WhatsApp</h3>
+                    <p class="text-sm text-muted-foreground">Status da conexão e pareamento via QR Code</p>
+                </div>
+                <div class="p-6 pt-0">
+                    <div id="whatsapp-connection-status" class="space-y-4">
+                        <!-- Status será carregado via JavaScript -->
+                        <div class="flex items-center justify-center p-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <span class="ml-3 text-muted-foreground">Carregando status...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="flex flex-col space-y-1.5 p-6">
                     <h3 class="text-2xl font-semibold leading-none tracking-tight">Configurações da Integração</h3>
@@ -264,6 +281,7 @@
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('.tab-button');
@@ -292,6 +310,261 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add active state to clicked tab
             this.classList.add('active');
         });
+    });
+    
+    // Gerenciamento de conexão WhatsApp
+    const connectionStatusDiv = document.getElementById('whatsapp-connection-status');
+    let statusCheckInterval = null;
+    
+    async function fetchWhatsAppStatus() {
+        try {
+            // Tenta primeiro a rota /whatsapp/status, depois fallback para /settings/whatsapp/status
+            let url = '/dashboard/whatsapp/status';
+            let response = await fetch(url);
+            if (!response.ok) {
+                url = '{{ route("dashboard.settings.whatsapp.status") }}';
+                response = await fetch(url);
+            }
+            const status = await response.json();
+            return status;
+        } catch (error) {
+            console.error('Erro ao buscar status:', error);
+            return { connected: false, error: 'Erro ao conectar com o servidor' };
+        }
+    }
+    
+    async function fetchQRCode() {
+        try {
+            // Tenta primeiro a rota /whatsapp/qr, depois fallback para /settings/whatsapp/qr
+            let url = '/dashboard/whatsapp/qr';
+            let response = await fetch(url);
+            if (!response.ok) {
+                url = '{{ route("dashboard.settings.whatsapp.qr") }}';
+                response = await fetch(url);
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Erro ao buscar QR Code:', error);
+            return { qr: null, connected: false };
+        }
+    }
+    
+    function renderConnectionStatus(status, qrData) {
+        const isConnected = status.connected || false;
+        const hasQR = qrData && qrData.qr;
+        const user = status.user;
+        
+        let html = '';
+        
+        if (isConnected) {
+            html = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-6 w-6 text-green-600">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-green-900">✅ Conectado ao WhatsApp</p>
+                                ${user && user.id ? `<p class="text-sm text-green-700">Conta: ${user.id}</p>` : '<p class="text-sm text-green-700">WhatsApp Business conectado</p>'}
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 border-green-300">
+                            Online
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button onclick="disconnectWhatsApp()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 h-10 px-4 py-2" id="disconnect-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" x2="9" y1="12" y2="12"></line>
+                            </svg>
+                            Desconectar WhatsApp
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (hasQR) {
+            html = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 border rounded-lg bg-amber-50 border-amber-200">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle h-6 w-6 text-amber-600">
+                                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-amber-900">Aguardando Pareamento</p>
+                                <p class="text-sm text-amber-700">Escaneie o QR Code abaixo com seu WhatsApp Business</p>
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 border-amber-300">
+                            Desconectado
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center p-6 border rounded-lg bg-white">
+                        <div id="qrcode-container" class="mb-4"></div>
+                        <p class="text-sm text-muted-foreground text-center">Abra o WhatsApp no seu celular e escaneie este código</p>
+                        <button onclick="refreshQRCode()" class="mt-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                                <path d="M21 3v5h-5"></path>
+                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                                <path d="M8 16H3v5"></path>
+                            </svg>
+                            Atualizar QR Code
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Renderizar QR Code
+            setTimeout(() => {
+                if (typeof QRCode !== 'undefined') {
+                    const container = document.getElementById('qrcode-container');
+                    if (container) {
+                        container.innerHTML = '';
+                        QRCode.toCanvas(container, qrData.qr, {
+                            width: 256,
+                            margin: 2,
+                            color: {
+                                dark: '#000000',
+                                light: '#FFFFFF'
+                            }
+                        }, function (error) {
+                            if (error) {
+                                console.error('Erro ao gerar QR Code:', error);
+                                container.innerHTML = '<p class="text-red-600">Erro ao gerar QR Code</p>';
+                            }
+                        });
+                    }
+                }
+            }, 100);
+        } else {
+            html = `
+                <div class="flex items-center justify-between p-4 border rounded-lg bg-gray-50 border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle h-6 w-6 text-gray-400">
+                                <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-900">Aguardando QR Code</p>
+                            <p class="text-sm text-gray-600">O QR Code será gerado automaticamente quando necessário</p>
+                        </div>
+                    </div>
+                    <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600 border-gray-300">
+                        Aguardando
+                    </div>
+                </div>
+            `;
+        }
+        
+        connectionStatusDiv.innerHTML = html;
+    }
+    
+    async function updateConnectionStatus() {
+        const [status, qrData] = await Promise.all([
+            fetchWhatsAppStatus(),
+            fetchQRCode()
+        ]);
+        
+        renderConnectionStatus(status, qrData);
+    }
+    
+    window.refreshQRCode = async function() {
+        const qrData = await fetchQRCode();
+        const status = await fetchWhatsAppStatus();
+        renderConnectionStatus(status, qrData);
+    };
+    
+    window.disconnectWhatsApp = async function() {
+        if (!confirm('Tem certeza que deseja desconectar o WhatsApp? Será necessário fazer um novo pareamento.')) {
+            return;
+        }
+        
+        const btn = document.getElementById('disconnect-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin">⏳</span> Desconectando...';
+        }
+        
+        try {
+            // Tenta primeiro a rota /whatsapp/disconnect, depois fallback
+            let url = '/dashboard/whatsapp/disconnect';
+            // Obter token CSRF do formulário ou meta tag
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                             document.querySelector('input[name="_token"]')?.value || 
+                             '{{ csrf_token() }}';
+            
+            let response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                url = '{{ route("dashboard.settings.whatsapp.disconnect") }}';
+                response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ ' + result.message);
+                // Atualizar status imediatamente
+                setTimeout(() => {
+                    updateConnectionStatus();
+                }, 1000);
+            } else {
+                alert('❌ ' + (result.message || result.error || 'Erro ao desconectar'));
+            }
+        } catch (error) {
+            console.error('Erro ao desconectar:', error);
+            alert('❌ Erro ao desconectar WhatsApp. Tente novamente.');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" x2="9" y1="12" y2="12"></line>
+                    </svg>
+                    Desconectar WhatsApp
+                `;
+            }
+        }
+    };
+    
+    // Atualizar status inicial
+    updateConnectionStatus();
+    
+    // Atualizar a cada 5 segundos
+    statusCheckInterval = setInterval(updateConnectionStatus, 5000);
+    
+    // Limpar intervalo quando sair da página
+    window.addEventListener('beforeunload', () => {
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+        }
     });
 });
 </script>

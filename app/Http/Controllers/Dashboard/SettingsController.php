@@ -272,7 +272,129 @@ class SettingsController extends Controller
             'statuses_with_notifications' => $statuses->where('notify_customer', true)->count(),
         ];
 
-        return view('dashboard.settings.whatsapp', compact('row', 'templates', 'statuses', 'stats'));
+        // URL da API do Railway (do banco ou .env)
+        $whatsappApiUrl = $row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app');
+        $whatsappApiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+        
+        return view('dashboard.settings.whatsapp', compact('row', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey'));
+    }
+    
+    /**
+     * Proxy para obter QR Code do bot WhatsApp
+     */
+    public function whatsappQR()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/qr');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao buscar QR Code'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar QR Code: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para obter status da conexão WhatsApp
+     */
+    public function whatsappStatus()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/status');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao buscar status'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar status: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para desconectar WhatsApp manualmente
+     */
+    public function whatsappDisconnect()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/disconnect');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao desconectar'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao desconectar WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
     }
 
     public function whatsappSave(Request $r)
@@ -286,14 +408,23 @@ class SettingsController extends Controller
 
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
 
+        // Verificar se a tabela tem colunas de timestamp
+        $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                         Schema::hasColumn('whatsapp_settings', 'updated_at');
+
         if ($row) {
-            DB::table('whatsapp_settings')->where('id', $row->id)->update($data + ['updated_at' => now()]);
+            $updateData = $data;
+            if ($hasTimestamps) {
+                $updateData['updated_at'] = now();
+            }
+            DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
         } else {
-            DB::table('whatsapp_settings')->insert($data + [
-                'active' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $insertData = $data + ['active' => 1];
+            if ($hasTimestamps) {
+                $insertData['created_at'] = now();
+                $insertData['updated_at'] = now();
+            }
+            DB::table('whatsapp_settings')->insert($insertData);
         }
 
         return back()->with('success', 'Configurações do WhatsApp salvas com sucesso!');

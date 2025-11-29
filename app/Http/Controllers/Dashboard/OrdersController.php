@@ -25,8 +25,8 @@ class OrdersController extends Controller
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
                 'customer:id,name,phone,email',
-                'address:id,order_id,street,number,neighborhood,city',
-                'payment:id,order_id,status,status_detail'
+                'address:id,street,number,neighborhood,city,state,cep,complement',
+                'payment:id,order_id,status,provider,provider_id'
             ])
             ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
                      'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 

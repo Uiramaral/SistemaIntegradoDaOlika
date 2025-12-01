@@ -1,0 +1,267 @@
+/* ======================================
+   OLIKA OVERRIDE v3.1 - PRIORIDADE MÁXIMA
+   Sobrescreve TODOS os estilos antigos
+   ÚLTIMA VERSÃO - FORÇA APLICAÇÃO DE CORES
+   CARREGADO: SIM
+   ====================================== */
+
+/* TESTE VISÍVEL - REMOVER DEPOIS */
+body::before {
+  content: "CSS OVERRIDE v3.1 CARREGADO" !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  background: #ea580c !important;
+  color: #fff !important;
+  padding: 0.5rem 1rem !important;
+  z-index: 99999 !important;
+  font-size: 12px !important;
+  display: none !important; /* Desativar depois de confirmar */
+}
+
+/* ==================== CORES BASE - FORÇAR APLICAÇÃO ==================== */
+:root {
+  --color-primary: 25 95% 50% !important;
+  --color-primary-foreground: 0 0% 100% !important;
+  --color-bg: 30 33% 98% !important;
+  --color-card: 0 0% 100% !important;
+  --color-border: 210 20% 93% !important;
+  --color-foreground: 220 15% 20% !important;
+  --color-muted: 215 16% 47% !important;
+  --color-sidebar-bg: 222 47% 11% !important;
+  --color-sidebar-text: 0 0% 95% !important;
+}
+
+/* ==================== BODY E FUNDO ==================== */
+body,
+html {
+  background: hsl(var(--color-bg)) !important;
+  background-color: #faf9f8 !important;
+  color: hsl(var(--color-foreground)) !important;
+}
+
+main,
+.main,
+[class*="bg-background"] {
+  background: hsl(var(--color-bg)) !important;
+  background-color: #faf9f8 !important;
+}
+
+/* ==================== SIDEBAR - FORÇAR CORES ==================== */
+/* Variáveis CSS da sidebar */
+:root {
+  --sidebar: 222 47% 11% !important;
+  --sidebar-foreground: 0 0% 95% !important;
+  --sidebar-accent: 25 95% 50% !important;
+  --sidebar-accent-foreground: 0 0% 100% !important;
+  --sidebar-border: 222 47% 15% !important;
+}
+
+/* Sidebar container */
+#sidebar,
+aside#sidebar,
+.sidebar,
+[class*="bg-sidebar"]:not([class*="bg-sidebar-accent"]) {
+  background: hsl(var(--color-sidebar-bg)) !important;
+  background-color: #0f172a !important;
+  background: hsl(var(--sidebar)) !important;
+  color: hsl(var(--color-sidebar-text)) !important;
+  color: #e5e7eb !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Texto da sidebar */
+#sidebar .text-xl,
+aside#sidebar .text-xl,
+#sidebar span[class*="font-bold"],
+aside#sidebar span[class*="font-bold"],
+#sidebar [class*="text-sidebar-primary"],
+aside#sidebar [class*="text-sidebar-primary"] {
+  color: #fff !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Links da sidebar - estado normal */
+#sidebar nav a,
+aside#sidebar nav a,
+#sidebar nav li a,
+aside#sidebar nav li a,
+#sidebar a[class*="text-sidebar-foreground"],
+aside#sidebar a[class*="text-sidebar-foreground"] {
+  color: #e5e7eb !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Links da sidebar - estado ativo */
+#sidebar nav a.active,
+aside#sidebar nav a.active,
+#sidebar nav a[class*="bg-sidebar-accent"],
+aside#sidebar nav a[class*="bg-sidebar-accent"],
+#sidebar nav a[class*="text-sidebar-accent-foreground"],
+aside#sidebar nav a[class*="text-sidebar-accent-foreground"],
+#sidebar nav li a[class*="bg-sidebar-accent"],
+aside#sidebar nav li a[class*="bg-sidebar-accent"],
+#sidebar nav ul li a[class*="bg-sidebar-accent"],
+aside#sidebar nav ul li a[class*="bg-sidebar-accent"],
+#sidebar nav ul li a[class*="shadow"],
+aside#sidebar nav ul li a[class*="shadow"] {
+  background: hsl(var(--color-primary)) !important;
+  background-color: #ea580c !important;
+  background: hsl(var(--sidebar-accent)) !important;
+  background: hsl(25, 95%, 50%) !important;
+  color: #fff !important;
+  color: hsl(var(--sidebar-accent-foreground)) !important;
+  color: hsl(0, 0%, 100%) !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Links da sidebar - hover */
+#sidebar nav a:hover,
+aside#sidebar nav a:hover,
+#sidebar nav a[class*="hover:bg-sidebar-accent"],
+aside#sidebar nav a[class*="hover:bg-sidebar-accent"],
+#sidebar nav a[class*="hover:text-sidebar-accent-foreground"],
+aside#sidebar nav a[class*="hover:text-sidebar-accent-foreground"],
+#sidebar nav ul li a:hover,
+aside#sidebar nav ul li a:hover {
+  background: hsl(var(--color-primary)) !important;
+  background-color: #ea580c !important;
+  background: hsl(var(--sidebar-accent)) !important;
+  background: hsl(25, 95%, 50%) !important;
+  color: #fff !important;
+  color: hsl(var(--sidebar-accent-foreground)) !important;
+  color: hsl(0, 0%, 100%) !important;
+}
+
+/* Ícones da sidebar */
+#sidebar nav a i[data-lucide],
+aside#sidebar nav a i[data-lucide],
+#sidebar nav a i,
+aside#sidebar nav a i {
+  color: inherit !important;
+}
+
+/* Títulos de grupos da sidebar */
+#sidebar p[class*="text-sidebar-foreground"],
+aside#sidebar p[class*="text-sidebar-foreground"] {
+  color: rgba(229, 231, 235, 0.7) !important;
+  color: hsl(var(--sidebar-foreground) / 0.7) !important;
+}
+
+/* ==================== CARDS ==================== */
+.card,
+.stat-card,
+.rounded-lg.border.bg-card,
+.grid > div[class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  background: hsl(var(--color-card)) !important;
+  background-color: #fff !important;
+  border: 1px solid hsl(var(--color-border)) !important;
+  border-color: #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ==================== BOTÕES PRIMÁRIOS ==================== */
+button.bg-primary,
+a.bg-primary,
+.btn-primary,
+[class*="bg-primary"][class*="text-primary-foreground"] {
+  background: hsl(var(--color-primary)) !important;
+  background-color: #ea580c !important;
+  color: hsl(var(--color-primary-foreground)) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+button.bg-primary:hover,
+a.bg-primary:hover,
+.btn-primary:hover {
+  background-color: #f97316 !important;
+  opacity: 0.9 !important;
+}
+
+/* ==================== STAT CARDS ==================== */
+.grid.gap-4 > div.rounded-lg.border.bg-card {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 1.2rem 1.4rem !important;
+}
+
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-xs.font-semibold {
+  color: #6b7280 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+}
+
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-xl.font-bold,
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-2xl.font-bold {
+  color: #111827 !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+}
+
+.grid.gap-4 > div.rounded-lg.border.bg-card span[class*="flex"][class*="items-center"] {
+  background: rgba(234, 88, 12, 0.1) !important;
+  color: #ea580c !important;
+  border-radius: 8px !important;
+  width: 3rem !important;
+  height: 3rem !important;
+}
+
+/* ==================== HEADER ==================== */
+header,
+header.sticky {
+  background: #fff !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+/* ==================== REMOVER CORES ANTIGAS ==================== */
+/* Sobrescrever qualquer cor do Tailwind que esteja conflitando */
+.bg-gray-50 { background-color: #faf9f8 !important; }
+.bg-gray-100 { background-color: #f3f4f6 !important; }
+.text-gray-600 { color: #6b7280 !important; }
+.text-gray-700 { color: #1f2937 !important; }
+.text-gray-800 { color: #1f2937 !important; }
+.text-gray-900 { color: #111827 !important; }
+
+/* Garantir que o laranja seja aplicado */
+.text-orange-500,
+.text-orange-600 {
+  color: #ea580c !important;
+}
+
+.bg-orange-500,
+.bg-orange-600 {
+  background-color: #ea580c !important;
+}
+
+/* ==================== FORÇAR CORES LARANJA NA SIDEBAR ==================== */
+/* Aplicar diretamente nos elementos com classes Tailwind */
+#sidebar nav ul li a.bg-sidebar-accent,
+aside#sidebar nav ul li a.bg-sidebar-accent,
+#sidebar nav ul li a[class*="bg-sidebar-accent"],
+aside#sidebar nav ul li a[class*="bg-sidebar-accent"] {
+  background-color: #ea580c !important;
+  background: #ea580c !important;
+  color: #fff !important;
+}
+
+/* Forçar cor laranja em qualquer elemento com shadow que contenha sidebar-accent */
+#sidebar nav ul li a[class*="shadow"][class*="bg-sidebar-accent"],
+aside#sidebar nav ul li a[class*="shadow"][class*="bg-sidebar-accent"] {
+  background-color: #ea580c !important;
+  background: #ea580c !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.3) !important;
+}
+
+/* Garantir que hover também use laranja */
+#sidebar nav ul li a:hover,
+aside#sidebar nav ul li a:hover {
+  background-color: #ea580c !important;
+  background: #ea580c !important;
+  color: #fff !important;
+}
+

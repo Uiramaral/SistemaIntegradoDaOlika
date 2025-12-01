@@ -1,0 +1,426 @@
+/* ======================================
+   OLIKA DASHBOARD v3.1 - Layout Principal
+   ====================================== */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: hsl(var(--color-bg));
+}
+
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: hsl(var(--color-sidebar-bg));
+  color: hsl(var(--color-sidebar-text));
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-logo {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.sidebar-logo img {
+  width: 140px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+}
+
+.sidebar-logo .text-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--color-sidebar-text));
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  color: hsl(var(--color-sidebar-text));
+  border-radius: var(--radius);
+  font-weight: 500;
+  text-decoration: none;
+  transition: var(--transition);
+  position: relative;
+  font-size: 0.9rem;
+}
+
+.sidebar-nav a i,
+.sidebar-nav a svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.sidebar-nav a.active,
+.sidebar-nav a:hover {
+  background: hsl(var(--color-primary));
+  color: hsl(var(--color-primary-foreground));
+}
+
+.sidebar-nav a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: hsl(var(--color-primary));
+  opacity: 0;
+  transform: scaleY(0);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  border-radius: 0 3px 3px 0;
+}
+
+.sidebar-nav a:hover::before,
+.sidebar-nav a.active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Grupos de navegação */
+.sidebar-nav-group {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-nav-group-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--color-sidebar-text) / 0.6);
+  padding: 0.5rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Botão Sair */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid hsl(var(--color-sidebar-text) / 0.1);
+}
+
+.sidebar-footer button,
+.sidebar-footer a {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  color: hsl(var(--color-sidebar-text));
+  border-radius: var(--radius);
+  font-weight: 500;
+  text-decoration: none;
+  transition: var(--transition);
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.sidebar-footer button:hover,
+.sidebar-footer a:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--color-bg));
+  margin-left: 260px;
+  min-height: 100vh;
+}
+
+/* ==================== HEADER ==================== */
+.header {
+  background: hsl(var(--color-card));
+  border-bottom: 1px solid hsl(var(--color-border));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: hsl(var(--color-foreground));
+  margin: 0;
+}
+
+.header-subtitle {
+  font-size: 0.875rem;
+  color: hsl(var(--color-muted));
+  margin-top: 0.25rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.header-user-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--color-foreground));
+}
+
+.header-user-email {
+  font-size: 0.75rem;
+  color: hsl(var(--color-muted));
+}
+
+.header-notifications {
+  position: relative;
+  cursor: pointer;
+}
+
+.header-notifications i,
+.header-notifications svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: hsl(var(--color-muted));
+  transition: var(--transition);
+}
+
+.header-notifications:hover i,
+.header-notifications:hover svg {
+  color: hsl(var(--color-foreground));
+}
+
+.header-notifications-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: hsl(var(--color-primary));
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ==================== MAIN CONTENT AREA ==================== */
+main {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ==================== COMPATIBILIDADE COM ESTRUTURA EXISTENTE ==================== */
+/* Sidebar existente (#sidebar) - admin.blade.php */
+#sidebar,
+aside#sidebar {
+  width: 260px !important;
+  min-width: 260px !important;
+  background: hsl(var(--color-sidebar-bg)) !important;
+  color: hsl(var(--color-sidebar-text)) !important;
+}
+
+#sidebar .text-xl,
+aside#sidebar .text-xl,
+#sidebar span[class*="font-bold"] {
+  color: hsl(var(--color-sidebar-text)) !important;
+  font-weight: 700 !important;
+  font-size: 1.25rem !important;
+}
+
+#sidebar nav a,
+aside#sidebar nav a {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.5rem 0.75rem !important;
+  color: hsl(var(--color-sidebar-text)) !important;
+  border-radius: var(--radius) !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  transition: var(--transition) !important;
+  position: relative !important;
+  margin: 0.125rem 0 !important;
+}
+
+#sidebar nav a i[data-lucide],
+aside#sidebar nav a i[data-lucide] {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  color: inherit !important;
+}
+
+#sidebar nav a.active,
+aside#sidebar nav a.active,
+#sidebar nav a[class*="bg-sidebar-accent"],
+aside#sidebar nav a[class*="bg-sidebar-accent"] {
+  background: hsl(var(--color-primary)) !important;
+  color: hsl(var(--color-primary-foreground)) !important;
+  box-shadow: none !important;
+}
+
+#sidebar nav a:hover,
+aside#sidebar nav a:hover {
+  background: hsl(var(--color-primary)) !important;
+  color: hsl(var(--color-primary-foreground)) !important;
+}
+
+#sidebar nav a::before,
+aside#sidebar nav a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: hsl(var(--color-primary));
+  opacity: 0;
+  transform: scaleY(0);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  border-radius: 0 3px 3px 0;
+}
+
+#sidebar nav a:hover::before,
+#sidebar nav a.active::before,
+aside#sidebar nav a:hover::before,
+aside#sidebar nav a.active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Títulos de grupos na sidebar */
+#sidebar p[class*="uppercase"],
+aside#sidebar p[class*="uppercase"] {
+  color: hsl(var(--color-sidebar-text) / 0.7) !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.1em !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0 !important;
+}
+
+/* Botão Sair */
+#sidebar form button,
+aside#sidebar form button {
+  color: hsl(var(--color-sidebar-text)) !important;
+  border-radius: var(--radius) !important;
+  padding: 0.5rem 0.75rem !important;
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+#sidebar form button:hover,
+aside#sidebar form button:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+/* Main content existente */
+.flex.flex-col.flex-1 {
+  margin-left: 260px !important;
+}
+
+@media (min-width: 768px) {
+  .flex.flex-col.flex-1 {
+    margin-left: 260px !important;
+  }
+}
+
+/* Header existente */
+header.sticky,
+header[class*="sticky"] {
+  background: hsl(var(--color-card)) !important;
+  border-bottom: 1px solid hsl(var(--color-border)) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Backdrop existente */
+#sidebar-backdrop {
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ==================== RESPONSIVIDADE ==================== */
+@media (max-width: 768px) {
+  .sidebar,
+  #sidebar,
+  aside#sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 100;
+  }
+  
+  .sidebar.open,
+  #sidebar.open,
+  aside#sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .main,
+  .flex.flex-col.flex-1 {
+    margin-left: 0 !important;
+  }
+  
+  .header {
+    padding: 1rem;
+  }
+  
+  main {
+    padding: 1rem;
+  }
+  
+  .sidebar-backdrop {
+    display: block !important;
+  }
+  
+  .sidebar-backdrop.active {
+    opacity: 1 !important;
+    pointer-events: all !important;
+  }
+}
+

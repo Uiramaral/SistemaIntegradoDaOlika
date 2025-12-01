@@ -1,71 +1,76 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Dashboard - Olika')</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@yield('title', 'Dashboard - Olika')</title>
+  
+  @php
+    $cssVersion = env('APP_ASSETS_VERSION', '3.1');
+  @endphp
 
-    @php
-        $cssVersion = env('APP_ASSETS_VERSION', '2.6');
-    @endphp
+  {{-- Google Fonts --}}
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  {{-- Phosphor Icons --}}
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    {{-- CSS principal --}}
-    @if(file_exists(public_path('css/style.css')))
-    <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ $cssVersion }}">
-    @endif
-    
-    {{-- Tema v2.6 --}}
-    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.6.css') }}?v={{ $cssVersion }}">
-    
-    {{-- Ajustes finos v2.6 --}}
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.6.css') }}?v={{ $cssVersion }}">
+  {{-- CSS Core --}}
+  <link rel="stylesheet" href="{{ asset('css/core/olika-design-system.css') }}?v={{ $cssVersion }}">
+  <link rel="stylesheet" href="{{ asset('css/core/olika-dashboard.css') }}?v={{ $cssVersion }}">
+  <link rel="stylesheet" href="{{ asset('css/core/olika-components.css') }}?v={{ $cssVersion }}">
+  <link rel="stylesheet" href="{{ asset('css/core/olika-forms.css') }}?v={{ $cssVersion }}">
+  <link rel="stylesheet" href="{{ asset('css/core/olika-animations.css') }}?v={{ $cssVersion }}">
 
-    {{-- CSS específico da página, se existir --}}
-    @stack('styles')
+  {{-- CSS específico da página --}}
+  @stack('styles')
 
-    @livewireStyles
-    
-    <script defer src="https://unpkg.com/lucide@latest"></script>
+  @livewireStyles
 </head>
 
-<body class="bg-dashboard text-gray-800">
-    <div class="flex min-h-screen">
-        {{-- Sidebar --}}
-        @include('dashboard.partials.sidebar')
+<body>
+  <div class="layout">
+    <x-sidebar />
 
-        {{-- Conteúdo principal --}}
-        <div class="flex flex-col flex-1">
-            @include('dashboard.partials.header')
+    <div class="main">
+      <x-header />
 
-            <main class="p-6 md:p-8 bg-dashboard">
-                @if(session('success'))
-                    <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm mb-4">
-                        {{ session('success') }}
-                    </div>
-                @endif
+      <main>
+        @if(session('success'))
+          <div class="card" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); margin-bottom: 1.5rem;">
+            <div style="color: #16a34a; font-weight: 500;">{{ session('success') }}</div>
+          </div>
+        @endif
 
-                @if(session('error'))
-                    <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm mb-4">
-                        {{ session('error') }}
-                    </div>
-                @endif
+        @if(session('error'))
+          <div class="card" style="background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.3); margin-bottom: 1.5rem;">
+            <div style="color: #dc2626; font-weight: 500;">{{ session('error') }}</div>
+          </div>
+        @endif
 
-                @if($errors->any())
-                    <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm mb-4">
-                        <ul class="list-disc space-y-1 pl-5 text-sm">
-                            @foreach($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+        @if($errors->any())
+          <div class="card" style="background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.3); margin-bottom: 1.5rem;">
+            <ul style="color: #dc2626; list-style: disc; padding-left: 1.5rem;">
+              @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+              @endforeach
+            </ul>
+          </div>
+        @endif
 
-                @yield('content')
-            </main>
-        </div>
+        @yield('content')
+      </main>
     </div>
+  </div>
 
-    @livewireScripts
-    @stack('scripts')
+  {{-- Backdrop para mobile --}}
+  <div class="sidebar-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; opacity: 0; transition: opacity 0.3s ease; pointer-events: none;"></div>
+
+  {{-- JavaScript Core --}}
+  <script type="module" src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
+  <script type="module" src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
+
+  @livewireScripts
+  @stack('scripts')
 </body>
 </html>

@@ -1,0 +1,110 @@
+/* ======================================
+   OLIKA ANIMATIONS v3.1
+   Microinterações e Animações
+   ====================================== */
+
+/* ==================== FADE IN UP ==================== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card,
+.stat-card {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ==================== RIPPLE EFFECT ==================== */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ripple 0.4s linear;
+  background: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ==================== SLIDE IN ==================== */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-nav a {
+  animation: slideInRight 0.3s ease-out backwards;
+}
+
+.sidebar-nav a:nth-child(1) { animation-delay: 0.05s; }
+.sidebar-nav a:nth-child(2) { animation-delay: 0.1s; }
+.sidebar-nav a:nth-child(3) { animation-delay: 0.15s; }
+.sidebar-nav a:nth-child(4) { animation-delay: 0.2s; }
+.sidebar-nav a:nth-child(5) { animation-delay: 0.25s; }
+.sidebar-nav a:nth-child(6) { animation-delay: 0.3s; }
+
+/* ==================== PULSE ==================== */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ==================== SPIN ==================== */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ==================== SMOOTH TRANSITIONS ==================== */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Desabilitar animações para usuários que preferem reduzir movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

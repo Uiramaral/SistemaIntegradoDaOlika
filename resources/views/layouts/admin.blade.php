@@ -6,61 +6,36 @@
     <title>@yield('title', 'Olika Admin')</title>
 
     @php
-        $cssVersion = env('APP_ASSETS_VERSION', '2.3');
+        $cssVersion = env('APP_ASSETS_VERSION', '3.1');
     @endphp
     
     <!-- =======================
-         OLIKA DASHBOARD STYLES
-         ORDEM CRÍTICA: dashboard-theme-v2.3.css DEVE SER O ÚLTIMO
+         OLIKA DASHBOARD v3.1 - SISTEMA MODULAR
+         Apenas CSS Core do novo sistema
          ======================= -->
     
-    <!-- 1. App CSS (se existir) -->
-    @if(file_exists(public_path('css/app.css')))
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ $cssVersion }}">
-    @endif
+    {{-- Google Fonts --}}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
     
-    <!-- 2. Base Tailwind -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $cssVersion }}">
+    {{-- Phosphor Icons --}}
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- 3. Tema base (cores, tipografia, botões) -->
-    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}">
-    
-    <!-- 4. Correções estruturais -->
-    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
-    
-    <!-- 5. Pacote global de correções v2 -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 6. Modais -->
-    <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 7. Ajustes finos v2.4 (cards de métricas, layout, etc) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.4.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 8. Pixel Perfect v2.5 (ajustes finos de altura, sombras, padding) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.5.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 9. Pixel Perfect v3.0 (padrão visual completo baseado nas imagens) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-pixel-perfect.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 11. Tema v2.6 (novo tema unificado) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.6.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 12. Ajustes finos v2.6 -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.6.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- Desativar arquivos redundantes -->
-    {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
-    {{-- <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}"> --}}
-    {{-- <link rel="stylesheet" href="{{ asset('css/all-styles.css') }}"> --}}
-
+    {{-- Lucide Icons --}}
     <script defer src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Estilos específicos de páginas (ANTES do tema final) -->
+    
+    {{-- CSS Core v3.1 --}}
+    <link rel="stylesheet" href="{{ asset('css/core/olika-design-system.css') }}?v={{ $cssVersion }}" media="all">
+    <link rel="stylesheet" href="{{ asset('css/core/olika-dashboard.css') }}?v={{ $cssVersion }}" media="all">
+    <link rel="stylesheet" href="{{ asset('css/core/olika-components.css') }}?v={{ $cssVersion }}" media="all">
+    <link rel="stylesheet" href="{{ asset('css/core/olika-forms.css') }}?v={{ $cssVersion }}" media="all">
+    <link rel="stylesheet" href="{{ asset('css/core/olika-animations.css') }}?v={{ $cssVersion }}" media="all">
+    <link rel="stylesheet" href="{{ asset('css/core/olika-compatibility.css') }}?v={{ $cssVersion }}" media="all">
+    
+    {{-- CSS específico da página --}}
     @stack('styles')
     
-    <!-- 10. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all" id="olika-theme-final">
+    {{-- Override final v3.1 (último CSS carregado) --}}
+    <link rel="stylesheet" href="{{ asset('css/core/olika-override-v3.1.css') }}?v={{ $cssVersion }}" media="all" id="olika-override-final">
 </head>
 <body class="bg-background text-foreground antialiased">
     @php
@@ -384,6 +359,10 @@
         });
     </script>
     @stack('scripts')
+    
+    {{-- JavaScript Core v3.1 --}}
+    <script type="module" src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
+    <script type="module" src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
     
     <!-- Fallback de estilos críticos (caso o CSS não carregue) -->
     <style>

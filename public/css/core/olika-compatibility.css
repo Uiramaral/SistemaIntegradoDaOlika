@@ -1,0 +1,108 @@
+/* ======================================
+   OLIKA COMPATIBILITY v3.1
+   Compatibilidade com estrutura existente
+   ====================================== */
+
+/* Garantir que produtos apareçam no PDV */
+.pdv-page button.product-quick-add,
+.pdv-page button[data-product-id],
+.grid button[data-product-id] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.pdv-page .grid[class*="grid-cols"] {
+  display: grid !important;
+  visibility: visible !important;
+}
+
+/* Garantir que stat cards funcionem com estrutura existente */
+.grid.gap-4 > div.rounded-lg.border.bg-card {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+}
+
+/* Ajustar espaçamento dos stat cards existentes */
+.grid.gap-4 > div.rounded-lg.border.bg-card .flex.items-center.justify-between {
+  margin-bottom: 0.5rem;
+}
+
+/* Garantir que ícones apareçam */
+.grid.gap-4 > div.rounded-lg.border.bg-card span[class*="flex"][class*="items-center"][class*="justify-center"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 3rem !important;
+  height: 3rem !important;
+  background: hsl(var(--color-primary) / 0.1) !important;
+  border-radius: var(--radius) !important;
+  color: hsl(var(--color-primary)) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Ajustar valores nos stat cards */
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-xl.font-bold,
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-2xl.font-bold {
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  color: hsl(var(--color-foreground)) !important;
+  margin: 0 !important;
+}
+
+/* Ajustar labels */
+.grid.gap-4 > div.rounded-lg.border.bg-card .text-xs.font-semibold {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: hsl(var(--color-muted)) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Garantir que cards de conteúdo funcionem */
+.rounded-lg.border.bg-card.shadow-sm {
+  background: hsl(var(--color-card)) !important;
+  border: 1px solid hsl(var(--color-border)) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Ajustar tabelas existentes */
+table.w-full {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+table.w-full tbody tr {
+  background: hsl(var(--color-card)) !important;
+  border: 1px solid hsl(var(--color-border)) !important;
+  border-radius: var(--radius) !important;
+  margin-bottom: 0.5rem !important;
+}
+
+table.w-full tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Garantir que botões primários funcionem */
+button.bg-primary,
+a.bg-primary,
+[class*="bg-primary"][class*="text-primary-foreground"] {
+  background: hsl(var(--color-primary)) !important;
+  color: hsl(var(--color-primary-foreground)) !important;
+  border: none !important;
+  border-radius: var(--radius) !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 500 !important;
+  transition: var(--transition) !important;
+}
+
+button.bg-primary:hover,
+a.bg-primary:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+

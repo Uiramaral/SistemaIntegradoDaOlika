@@ -1,0 +1,43 @@
+/* ======================================
+   OLIKA DESIGN SYSTEM v3.1
+   Sistema de Design Unificado
+   ====================================== */
+
+:root {
+  --color-primary: 25 95% 50%;
+  --color-primary-foreground: 0 0% 100%;
+  --color-bg: 30 33% 98%;
+  --color-card: 0 0% 100%;
+  --color-border: 210 20% 93%;
+  --color-foreground: 220 15% 20%;
+  --color-muted: 215 16% 47%;
+  --color-sidebar-bg: 222 47% 11%;
+  --color-sidebar-text: 0 0% 95%;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+  --radius: 10px;
+  --transition: all 0.2s ease;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: hsl(var(--color-bg));
+  font-family: var(--font-sans);
+  color: hsl(var(--color-foreground));
+  margin: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+

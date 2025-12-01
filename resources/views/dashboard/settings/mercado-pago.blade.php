@@ -16,71 +16,19 @@
         <div class="text-sm [&_p]:leading-relaxed">Configure suas credenciais do Mercado Pago para começar a receber pagamentos online.</div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 pt-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-muted-foreground">Total Processado</p>
-                        <p class="text-2xl font-bold">R$ {{ number_format($totalProcessed ?? 0, 2, ',', '.') }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dollar-sign h-8 w-8 text-primary">
-                        <line x1="12" x2="12" y1="2" y2="22"></line>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 pt-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-muted-foreground">Transações</p>
-                        <p class="text-2xl font-bold">{{ number_format($totalTransactions ?? 0, 0, ',', '.') }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card h-8 w-8 text-primary">
-                        <rect width="20" height="14" x="2" y="5" rx="2"></rect>
-                        <line x1="2" x2="22" y1="10" y2="10"></line>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 pt-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-muted-foreground">Taxa de Aprovação</p>
-                        <p class="text-2xl font-bold">{{ number_format($approvalRate ?? 0, 1, ',', '.') }}%</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up h-8 w-8 text-success">
-                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-                        <polyline points="16 7 22 7 22 13"></polyline>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 pt-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-muted-foreground">Ticket Médio</p>
-                        <p class="text-2xl font-bold">R$ {{ number_format($averageTicket ?? 0, 2, ',', '.') }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dollar-sign h-8 w-8 text-primary">
-                        <line x1="12" x2="12" y1="2" y2="22"></line>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-stat-grid :items="[
+        ['label' => 'Total Processado', 'value' => 'R$ ' . number_format($totalProcessed ?? 0, 2, ',', '.'), 'icon' => 'dollar-sign'],
+        ['label' => 'Transações', 'value' => number_format($totalTransactions ?? 0, 0, ',', '.'), 'icon' => 'credit-card'],
+        ['label' => 'Taxa de Aprovação', 'value' => number_format($approvalRate ?? 0, 1, ',', '.') . '%', 'icon' => 'trending-up'],
+        ['label' => 'Ticket Médio', 'value' => 'R$ ' . number_format($averageTicket ?? 0, 2, ',', '.'), 'icon' => 'bar-chart'],
+    ]" />
 
     <div dir="ltr" data-orientation="horizontal" class="space-y-4">
-        <div role="tablist" aria-orientation="horizontal" class="h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-1 sm:grid-cols-3">
-            <button type="button" role="tab" data-tab="settings" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active">Configurações</button>
-            <button type="button" role="tab" data-tab="methods" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">Métodos de Pagamento</button>
-            <button type="button" role="tab" data-tab="transactions" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">Transações</button>
-        </div>
+        <x-tab-bar type="buttons" :tabs="[
+            ['id' => 'settings', 'label' => 'Configurações', 'data-tab' => 'settings'],
+            ['id' => 'methods', 'label' => 'Métodos de Pagamento', 'data-tab' => 'methods'],
+            ['id' => 'transactions', 'label' => 'Transações', 'data-tab' => 'transactions'],
+        ]" active="settings" />
 
         <div data-tab-content="settings" class="tab-content mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">

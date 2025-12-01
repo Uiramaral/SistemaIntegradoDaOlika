@@ -24,77 +24,20 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-4 gap-3">
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Templates Ativos</p>
-                        <p class="text-xl font-bold">{{ $stats['active_templates'] ?? 0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text h-5 w-5 text-primary flex-shrink-0 ml-2">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" x2="8" y1="13" y2="13"></line>
-                        <line x1="16" x2="8" y1="17" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Total de Templates</p>
-                        <p class="text-xl font-bold">{{ $stats['total_templates'] ?? 0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder h-5 w-5 text-primary flex-shrink-0 ml-2">
-                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Status Configurados</p>
-                        <p class="text-xl font-bold">{{ $stats['total_statuses'] ?? 0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-checks h-5 w-5 text-primary flex-shrink-0 ml-2">
-                        <path d="m3 17 2 2 4-4"></path>
-                        <path d="M3 7l2 2 4-4"></path>
-                        <path d="M13 6h8"></path>
-                        <path d="M13 12h8"></path>
-                        <path d="M13 18h8"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Notificações Ativas</p>
-                        <p class="text-xl font-bold">{{ $stats['statuses_with_notifications'] ?? 0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell h-5 w-5 text-primary flex-shrink-0 ml-2">
-                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-stat-grid :items="[
+        ['label' => 'Templates Ativos', 'value' => ($stats['active_templates'] ?? 0), 'icon' => 'file-text'],
+        ['label' => 'Total de Templates', 'value' => ($stats['total_templates'] ?? 0), 'icon' => 'folder'],
+        ['label' => 'Status Configurados', 'value' => ($stats['total_statuses'] ?? 0), 'icon' => 'list-checks'],
+        ['label' => 'Notificações Ativas', 'value' => ($stats['statuses_with_notifications'] ?? 0), 'icon' => 'bell'],
+    ]" />
 
     <div dir="ltr" data-orientation="horizontal" class="space-y-4">
-        <div role="tablist" aria-orientation="horizontal" class="h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-4">
-            <button type="button" role="tab" data-tab="settings" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active">Configurações</button>
-            <button type="button" role="tab" data-tab="campaigns" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">Campanhas</button>
-            <button type="button" role="tab" data-tab="templates" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">Templates</button>
-            <button type="button" role="tab" data-tab="notifications" class="tab-button inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">Notificações</button>
-        </div>
+        <x-tab-bar type="buttons" :tabs="[
+            ['id' => 'settings', 'label' => 'Configurações', 'data-tab' => 'settings'],
+            ['id' => 'campaigns', 'label' => 'Campanhas', 'data-tab' => 'campaigns'],
+            ['id' => 'templates', 'label' => 'Templates', 'data-tab' => 'templates'],
+            ['id' => 'notifications', 'label' => 'Notificações', 'data-tab' => 'notifications'],
+        ]" active="settings" />
 
         <div data-tab-content="settings" class="tab-content mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <!-- Seção de Instâncias WhatsApp -->
@@ -410,6 +353,49 @@
                 <span class="ml-3 text-muted-foreground">Carregando código...</span>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Instância -->
+<div id="add-instance-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
+    <div class="bg-white rounded-lg shadow-2xl w-full mx-4 p-5 max-h-[90vh] overflow-y-auto" style="max-width: 28rem !important; width: calc(100% - 2rem) !important;">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Nova Instância WhatsApp</h3>
+            <button onclick="closeAddInstanceModal()" class="text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                    <path d="M18 6L6 18"></path>
+                    <path d="M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="add-instance-form" onsubmit="saveInstance(event)" class="space-y-4">
+            @csrf
+            <div>
+                <label class="text-sm font-medium mb-1 block">Nome da Instância</label>
+                <input type="text" name="name" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Principal (Vendas)">
+            </div>
+            <div>
+                <label class="text-sm font-medium mb-1 block">URL da API</label>
+                <input type="url" name="api_url" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="https://whatsapp-01.up.railway.app">
+            </div>
+            <div>
+                <label class="text-sm font-medium mb-1 block">Token da API (opcional)</label>
+                <input type="text" name="api_token" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Token de segurança">
+            </div>
+            <div>
+                <label class="text-sm font-medium mb-1 block">Número do WhatsApp</label>
+                <input type="text" name="phone_number" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="5571999999999">
+                <p class="text-xs text-muted-foreground mt-1">Será preenchido automaticamente após pareamento</p>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeAddInstanceModal()" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent h-10 px-4">
+                    Cancelar
+                </button>
+                <button type="submit" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                    Criar Instância
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

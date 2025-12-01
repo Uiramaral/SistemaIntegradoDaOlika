@@ -18,48 +18,12 @@
 
     <!-- Estatísticas -->
     @if(isset($stats))
-    <div class="grid grid-cols-4 gap-3">
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Total</p>
-                        <p class="text-xl font-bold">{{ $stats['total'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Ativos</p>
-                        <p class="text-xl font-bold text-green-600">{{ $stats['active'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Públicos</p>
-                        <p class="text-xl font-bold text-blue-600">{{ $stats['public'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-muted-foreground mb-1">Privados</p>
-                        <p class="text-xl font-bold text-purple-600">{{ $stats['private'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-stat-grid :items="[
+        ['label' => 'Total', 'value' => ($stats['total'] ?? 0), 'icon' => 'layers'],
+        ['label' => 'Ativos', 'value' => ($stats['active'] ?? 0), 'icon' => 'check-circle'],
+        ['label' => 'Públicos', 'value' => ($stats['public'] ?? 0), 'icon' => 'users'],
+        ['label' => 'Privados', 'value' => ($stats['private'] ?? 0), 'icon' => 'lock'],
+    ]" />
     @endif
 
     <!-- Filtros -->

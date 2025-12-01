@@ -1,11 +1,8 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'PDV - Ponto de Venda')
-@section('page_subtitle', 'Criar novo pedido')
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('css/pages/pdv.css') }}?v={{ time() }}">
-@endpush
+{{-- CSS antigo removido - usando apenas Photo-Zen design system --}}
 
 @section('content')
 <div class="space-y-6">
@@ -73,11 +70,18 @@
             <!-- Itens do Pedido -->
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="flex flex-col space-y-1.5 p-4 pb-3 border-b border-border/60">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Itens do Pedido</h3>
+                    <h3 class="text-lg font-semibold leading-none tracking-tight">Produtos</h3>
                 </div>
                 <div class="p-4">
                     <div id="pdv-items-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-                        <p class="text-sm text-muted-foreground text-center py-6">Nenhum item adicionado</p>
+                        <div class="flex flex-col items-center justify-center gap-3 py-8 text-center text-muted-foreground">
+                            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
+                                <i data-lucide="shopping-cart" class="h-5 w-5"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-foreground text-sm">Nenhum produto adicionado</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -89,6 +93,10 @@
                 </div>
                 <div class="p-4 pt-0 space-y-4">
                     <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Total de Itens:</span>
+                            <span id="summary-items-count">0</span>
+                        </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Subtotal:</span>
                             <span id="summary-subtotal">R$ 0,00</span>
@@ -130,7 +138,7 @@
 
                         <div class="border-t pt-2 flex justify-between font-semibold">
                             <span>Total:</span>
-                            <span id="summary-total" class="text-orange-600">R$ 0,00</span>
+                            <span id="summary-total" class="text-primary">R$ 0,00</span>
                         </div>
                     </div>
 
@@ -956,7 +964,19 @@ function renderItems() {
     const itemsEl = document.getElementById('pdv-items-list');
     
     if (pdvState.items.length === 0) {
-        itemsEl.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8">Nenhum item adicionado</p>';
+        itemsEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center gap-3 py-8 text-center text-muted-foreground">
+                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
+                    <i data-lucide="shopping-cart" class="h-5 w-5"></i>
+                </span>
+                <div>
+                    <p class="font-semibold text-foreground text-sm">Nenhum produto adicionado</p>
+                </div>
+            </div>
+        `;
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
         return;
     }
     
@@ -996,6 +1016,7 @@ function renderItems() {
 
 // Atualizar resumo
 function updateSummary() {
+    const itemsCount = pdvState.items.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
     
@@ -1013,8 +1034,15 @@ function updateSummary() {
     // Calcular total final
     const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
     
+    const itemsCountEl = document.getElementById('summary-items-count');
+    if (itemsCountEl) {
+        itemsCountEl.textContent = itemsCount;
+    }
     document.getElementById('summary-subtotal').textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
-    document.getElementById('summary-delivery').textContent = 'R$ ' + deliveryFee.toFixed(2).replace('.', ',');
+    const summaryDeliveryEl = document.getElementById('summary-delivery');
+    if (summaryDeliveryEl) {
+        summaryDeliveryEl.textContent = 'R$ ' + deliveryFee.toFixed(2).replace('.', ',');
+    }
     document.getElementById('summary-total').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
     
     if (totalDiscount > 0) {

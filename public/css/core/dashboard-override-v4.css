@@ -1,0 +1,103 @@
+/* ======================================
+   DASHBOARD OVERRIDE v4.0
+   Força aplicação das cores do Lovable Design System
+   ====================================== */
+
+/* ==================== CORES BASE ==================== */
+:root {
+  --color-bg: #faf8f5 !important;
+  --color-sidebar-bg: #3b2f26 !important;
+  --color-sidebar-active: #e86b00 !important;
+  --color-text: #1e1c19 !important;
+  --color-muted: #9c938c !important;
+  --color-border: #e5ded8 !important;
+}
+
+/* ==================== BODY E FUNDO ==================== */
+body {
+  background: var(--color-bg) !important;
+  background: #faf8f5 !important;
+  color: var(--color-text) !important;
+  color: #1e1c19 !important;
+}
+
+/* ==================== SIDEBAR ==================== */
+#sidebar,
+aside#sidebar,
+.sidebar {
+  background: var(--color-sidebar-bg) !important;
+  background: #3b2f26 !important;
+  color: #fff !important;
+}
+
+#sidebar nav a,
+aside#sidebar nav a,
+.sidebar nav a {
+  color: #fff !important;
+}
+
+#sidebar nav a.active,
+aside#sidebar nav a.active,
+.sidebar nav a.active,
+#sidebar nav li a.active,
+aside#sidebar nav li a.active,
+.sidebar nav li a.active,
+#sidebar nav a[class*="bg-sidebar-accent"],
+aside#sidebar nav a[class*="bg-sidebar-accent"] {
+  background: var(--color-sidebar-active) !important;
+  background: #e86b00 !important;
+  color: #fff !important;
+  border-left-color: #fff !important;
+}
+
+#sidebar nav a:hover,
+aside#sidebar nav a:hover,
+.sidebar nav a:hover,
+#sidebar nav li a:hover,
+aside#sidebar nav li a:hover {
+  background: var(--color-sidebar-active) !important;
+  background: #e86b00 !important;
+  color: #fff !important;
+}
+
+/* ==================== MAIN CONTENT ==================== */
+main,
+.main,
+.flex.flex-1.flex-col,
+[class*="bg-background"] {
+  background: var(--color-bg) !important;
+  background: #faf8f5 !important;
+}
+
+/* ==================== CARDS ==================== */
+.card,
+[class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  background: #fff !important;
+  border: 1px solid var(--color-border) !important;
+  border-color: #e5ded8 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ==================== BOTÕES ==================== */
+.btn-primary,
+button.bg-primary,
+a.bg-primary {
+  background: var(--color-sidebar-active) !important;
+  background: #e86b00 !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover,
+button.bg-primary:hover,
+a.bg-primary:hover {
+  background: #d86900 !important;
+}
+
+/* ==================== TEXTOS ==================== */
+.text-muted,
+[class*="text-muted"] {
+  color: var(--color-muted) !important;
+  color: #9c938c !important;
+}
+

@@ -1,0 +1,66 @@
+/* Utility Classes */
+.bg-background {
+  background-color: var(--color-bg);
+}
+
+.bg-card {
+  background-color: var(--color-card);
+}
+
+.bg-sidebar {
+  background-color: var(--color-sidebar-bg);
+}
+
+.text-foreground {
+  color: var(--color-text);
+}
+
+.text-muted {
+  color: var(--color-muted);
+}
+
+.border-border {
+  border-color: var(--color-border);
+}
+
+.text-sidebar-foreground {
+  color: var(--color-sidebar-foreground);
+}
+
+.text-sidebar-accent {
+  color: var(--color-sidebar-active);
+}
+
+.border-sidebar-border {
+  border-color: var(--color-sidebar-border);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  #sidebar {
+    transform: translateX(-100%);
+  }
+  
+  #sidebar:not(.-translate-x-full) {
+    transform: translateX(0);
+  }
+}

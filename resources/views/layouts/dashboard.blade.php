@@ -1,76 +1,77 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('title', 'Dashboard - Olika')</title>
-  
-  @php
-    $cssVersion = env('APP_ASSETS_VERSION', '3.1');
-  @endphp
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@yield('title', 'Dashboard - OLIKA')</title>
 
-  {{-- Google Fonts --}}
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
-  
-  {{-- Phosphor Icons --}}
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-  {{-- CSS Core --}}
-  <link rel="stylesheet" href="{{ asset('css/core/olika-design-system.css') }}?v={{ $cssVersion }}">
-  <link rel="stylesheet" href="{{ asset('css/core/olika-dashboard.css') }}?v={{ $cssVersion }}">
-  <link rel="stylesheet" href="{{ asset('css/core/olika-components.css') }}?v={{ $cssVersion }}">
-  <link rel="stylesheet" href="{{ asset('css/core/olika-forms.css') }}?v={{ $cssVersion }}">
-  <link rel="stylesheet" href="{{ asset('css/core/olika-animations.css') }}?v={{ $cssVersion }}">
-
-  {{-- CSS específico da página --}}
-  @stack('styles')
-
-  @livewireStyles
+    <!-- CSS Principal -->
+    <link rel="stylesheet" href="{{ asset('css/core/dashboard-theme-v4.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/core/dashboard-components.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/core/dashboard-animations.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/core/dashboard-utilities.css') }}">
 </head>
+<body class="fade-in bg-background text-foreground font-sans">
 
-<body>
-  <div class="layout">
-    <x-sidebar />
+<div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 z-40 -translate-x-full md:translate-x-0">
+        <div class="flex items-center justify-between border-b border-sidebar-border p-4">
+            <span class="font-display text-xl font-semibold tracking-tight">OLIKA</span>
+            <button id="sidebar-close" class="md:hidden text-sidebar-foreground hover:text-sidebar-accent">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
 
-    <div class="main">
-      <x-header />
+        <nav class="flex-1 p-4 space-y-4">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-sidebar-foreground/70 mb-2">Menu Principal</p>
+                <ul class="space-y-1">
+                    <li><a href="{{ route('dashboard.index') }}" class="nav-link {{ request()->routeIs('dashboard.index') ? 'active' : '' }}"><i class="ph ph-squares-four"></i> Visão Geral</a></li>
+                    <li><a href="{{ route('dashboard.pdv.index') }}" class="nav-link {{ request()->routeIs('dashboard.pdv.*') ? 'active' : '' }}"><i class="ph ph-monitor"></i> PDV</a></li>
+                    <li><a href="{{ route('dashboard.orders.index') }}" class="nav-link {{ request()->routeIs('dashboard.orders.*') ? 'active' : '' }}"><i class="ph ph-receipt"></i> Pedidos</a></li>
+                    <li><a href="{{ route('dashboard.customers.index') }}" class="nav-link {{ request()->routeIs('dashboard.customers.*') ? 'active' : '' }}"><i class="ph ph-users"></i> Clientes</a></li>
+                    <li><a href="{{ route('dashboard.deliveries.index') }}" class="nav-link {{ request()->routeIs('dashboard.deliveries.*') ? 'active' : '' }}"><i class="ph ph-truck"></i> Entregas</a></li>
+                </ul>
+            </div>
+        </nav>
 
-      <main>
-        @if(session('success'))
-          <div class="card" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); margin-bottom: 1.5rem;">
-            <div style="color: #16a34a; font-weight: 500;">{{ session('success') }}</div>
-          </div>
-        @endif
+        <div class="border-t border-sidebar-border p-4">
+            <form action="{{ route('auth.logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="flex items-center gap-3 text-sidebar-foreground hover:text-destructive w-full">
+                    <i class="ph ph-sign-out"></i> Sair
+                </button>
+            </form>
+        </div>
+    </aside>
 
-        @if(session('error'))
-          <div class="card" style="background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.3); margin-bottom: 1.5rem;">
-            <div style="color: #dc2626; font-weight: 500;">{{ session('error') }}</div>
-          </div>
-        @endif
+    <!-- Conteúdo Principal -->
+    <div class="flex flex-col flex-1">
+        <header class="border-b bg-card backdrop-blur-sm flex items-center justify-between p-4">
+            <div class="flex items-center gap-3">
+                <button id="sidebar-open" class="md:hidden"><i class="ph ph-list"></i></button>
+                <h1 class="font-display text-xl font-semibold">@yield('title', 'Visão Geral')</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('dashboard.orders.index') }}" class="btn"><i class="ph ph-list-checks"></i> Pedidos</a>
+                <a href="{{ route('dashboard.reports') }}" class="btn-primary"><i class="ph ph-chart-bar"></i> Relatórios</a>
+            </div>
+        </header>
 
-        @if($errors->any())
-          <div class="card" style="background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.3); margin-bottom: 1.5rem;">
-            <ul style="color: #dc2626; list-style: disc; padding-left: 1.5rem;">
-              @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-              @endforeach
-            </ul>
-          </div>
-        @endif
-
-        @yield('content')
-      </main>
+        <main class="p-6 flex-1 bg-background overflow-y-auto">
+            @yield('content')
+        </main>
     </div>
-  </div>
+</div>
 
-  {{-- Backdrop para mobile --}}
-  <div class="sidebar-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; opacity: 0; transition: opacity 0.3s ease; pointer-events: none;"></div>
-
-  {{-- JavaScript Core --}}
-  <script type="module" src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
-  <script type="module" src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
-
-  @livewireScripts
-  @stack('scripts')
+<!-- Scripts -->
+<script type="module" src="{{ asset('js/dashboard.js') }}"></script>
+<script type="module" src="{{ asset('js/dashboard-sidebar.js') }}"></script>
+<script type="module" src="{{ asset('js/dashboard-tabs.js') }}"></script>
+<script defer src="{{ asset('js/dashboard-animations.js') }}"></script>
 </body>
 </html>

@@ -6,57 +6,39 @@
     <title>@yield('title', 'Olika Admin')</title>
 
     @php
-        $cssVersion = env('APP_ASSETS_VERSION', '3.1');
+        $cssVersion = env('APP_ASSETS_VERSION', '4.0');
     @endphp
     
     <!-- =======================
-         OLIKA DASHBOARD v3.1 - SISTEMA MODULAR
-         Ordem CRÍTICA: design-system primeiro, bridge depois, override por último
+         OLIKA Dashboard - Lovable Design System v4.0
          ======================= -->
     
     {{-- Google Fonts --}}
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     
-    {{-- Tailwind CDN (para garantir compatibilidade) --}}
-    <script src="https://cdn.tailwindcss.com"></script>
+    {{-- Lucide Icons (Photo-Zen uses Lucide) --}}
+    <script src="https://unpkg.com/lucide@latest"></script>
     
-    {{-- Phosphor Icons --}}
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    {{-- OLIKA Design System - Pixel Perfect Photo-Zen --}}
+    <link rel="stylesheet" href="{{ asset('css/olika-design-system.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/olika-dashboard-pixel-perfect.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/olika-header-fix.css') }}">
     
-    {{-- Lucide Icons --}}
-    <script defer src="https://unpkg.com/lucide@latest"></script>
-    
-    {{-- 1. DESIGN SYSTEM (PRIMEIRO - Define variáveis CSS) --}}
-    <link rel="stylesheet" href="{{ asset('css/core/olika-design-system.css') }}?v={{ $cssVersion }}" media="all">
-    
-    {{-- 2. BRIDGE (Compatibilidade com layout antigo) --}}
-    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}" media="all">
-    
-    {{-- 3. LAYOUT FIXES (Correções estruturais) --}}
-    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}" media="all">
-    
-    {{-- 4. CSS CORE v3.1 --}}
-    <link rel="stylesheet" href="{{ asset('css/core/olika-dashboard.css') }}?v={{ $cssVersion }}" media="all">
-    <link rel="stylesheet" href="{{ asset('css/core/olika-components.css') }}?v={{ $cssVersion }}" media="all">
-    <link rel="stylesheet" href="{{ asset('css/core/olika-forms.css') }}?v={{ $cssVersion }}" media="all">
-    <link rel="stylesheet" href="{{ asset('css/core/olika-animations.css') }}?v={{ $cssVersion }}" media="all">
-    <link rel="stylesheet" href="{{ asset('css/core/olika-compatibility.css') }}?v={{ $cssVersion }}" media="all">
-    
-    {{-- 5. CSS específico da página --}}
+    {{-- CSS específico da página (ANTES do override) --}}
     @stack('styles')
     
-    {{-- 6. OVERRIDE FINAL (ÚLTIMO - Sobrescreve tudo) --}}
-    <link rel="stylesheet" href="{{ asset('css/core/olika-override-v3.1.css') }}?v={{ $cssVersion }}" media="all" id="olika-override-final">
+    {{-- Override FINAL - deve ser o último para garantir prioridade --}}
+    {{-- <link rel="stylesheet" href="{{ asset('css/olika-override-pixel-perfect.css') }}">--}}
 </head>
-<body class="bg-background text-foreground antialiased flex min-h-screen">
+<body class="fade-in">
     @php
         $navGroups = [
             [
                 'title' => 'Menu Principal',
                 'items' => [
                     ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
-                    ['label' => 'PDV', 'icon' => 'monitor', 'route' => 'dashboard.pdv.index', 'routePattern' => 'dashboard.pdv.*'],
-                    ['label' => 'Pedidos', 'icon' => 'receipt', 'route' => 'dashboard.orders.index', 'routePattern' => 'dashboard.orders.*'],
+                    ['label' => 'PDV', 'icon' => 'shopping-cart', 'route' => 'dashboard.pdv.index', 'routePattern' => 'dashboard.pdv.*'],
+                    ['label' => 'Pedidos', 'icon' => 'package', 'route' => 'dashboard.orders.index', 'routePattern' => 'dashboard.orders.*'],
                     ['label' => 'Clientes', 'icon' => 'users', 'route' => 'dashboard.customers.index', 'routePattern' => 'dashboard.customers.*'],
                     ['label' => 'Entregas', 'icon' => 'truck', 'route' => 'dashboard.deliveries.index', 'routePattern' => 'dashboard.deliveries.*'],
                 ],
@@ -73,7 +55,7 @@
                 'title' => 'Marketing',
                 'items' => [
                     ['label' => 'Cupons', 'icon' => 'percent', 'route' => 'dashboard.coupons.index', 'routePattern' => 'dashboard.coupons.*'],
-                    ['label' => 'Cashback', 'icon' => 'gift', 'route' => 'dashboard.cashback.index', 'routePattern' => 'dashboard.cashback.*'],
+                    ['label' => 'Cashback', 'icon' => 'gift-box', 'route' => 'dashboard.cashback.index', 'routePattern' => 'dashboard.cashback.*'],
                 ],
             ],
             [
@@ -192,24 +174,10 @@
                                 <span class="sr-only">Abrir menu</span>
                             </button>
 
-                            @if ($hasPageHeader)
-                                <div class="flex flex-col gap-1">
-                                    @yield('page_header')
-                                </div>
-                            @else
-                                <div class="flex flex-col gap-1">
-                                    <h1 class="text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
-                                        {{ $pageTitle ?? trim($__env->yieldContent('title', 'Dashboard')) }}
-                                    </h1>
-                                    @if ($pageSubtitle)
-                                        <p class="text-sm text-muted-foreground">{{ $pageSubtitle }}</p>
-                                    @elseif ($pageDescriptionSection)
-                                        <div class="text-sm text-muted-foreground">
-                                            @yield($pageDescriptionSection)
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
+                            {{-- Photo-Zen: Header sempre mostra "Dashboard" --}}
+                            <h1 class="text-lg font-semibold tracking-tight text-foreground" style="font-size: 1.125rem !important; font-weight: 600 !important; color: hsl(222, 47%, 11%) !important;">
+                                Dashboard
+                            </h1>
                         </div>
 
                         <div class="flex items-center gap-3">
@@ -219,13 +187,15 @@
                                 </div>
                             @endif
 
-                            <div class="hidden flex-col items-end text-sm md:flex">
-                                <span class="font-medium text-foreground">{{ Auth::user()->name ?? 'Admin' }}</span>
-                                <span class="text-xs text-muted-foreground">{{ Auth::user()->email ?? 'admin@olika.com' }}</span>
-                            </div>
+                            {{-- Photo-Zen: Botão Baixar Design --}}
+                            <button class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <i data-lucide="download" class="h-4 w-4"></i>
+                                <span>Baixar Design</span>
+                            </button>
+
                             <button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                <i data-lucide="bell" class="h-5 w-5"></i>
-                                <span class="sr-only">Notificações</span>
+                                <i data-lucide="user" class="h-5 w-5"></i>
+                                <span class="sr-only">Perfil</span>
                             </button>
                         </div>
                     </div>
@@ -233,6 +203,22 @@
 
                 <main class="flex-1 bg-background overflow-y-auto">
                     <div class="max-w-screen-2xl mx-auto p-6 space-y-6">
+                        {{-- Page Title and Subtitle (Photo-Zen style) --}}
+                        @if ($pageTitle || $pageSubtitle)
+                            <div class="space-y-1 mb-6">
+                                @if ($pageTitle)
+                                    <h1 class="text-2xl font-semibold tracking-tight text-foreground" style="font-size: 1.5rem !important; font-weight: 600 !important; color: hsl(222, 47%, 11%) !important; margin: 0 !important; margin-bottom: 0.25rem !important;">
+                                        {{ $pageTitle }}
+                                    </h1>
+                                @endif
+                                @if ($pageSubtitle)
+                                    <p class="text-sm text-muted-foreground" style="font-size: 0.875rem !important; color: hsl(220, 9%, 46%) !important; margin: 0 !important; margin-top: 0.25rem !important;">
+                                        {{ $pageSubtitle }}
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
+                        
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
                                 {{ session('success') }}
@@ -371,9 +357,18 @@
     </script>
     @stack('scripts')
     
-    {{-- JavaScript Core v3.1 (carregado no final para garantir que DOM esteja pronto) --}}
-    <script defer src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
-    <script defer src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
+    {{-- OLIKA Utilities --}}
+    <script src="{{ asset('js/olika-utilities.js') }}"></script>
+    <script src="{{ asset('js/sidebar-toggle.js') }}"></script>
+    
+    {{-- Initialize Lucide Icons --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+    </script>
     
     {{-- Estilos críticos movidos para olika-override-v3.1.css --}}
 </body>

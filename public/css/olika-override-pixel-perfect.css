@@ -1,0 +1,187 @@
+/* OLIKA Override - Photo-Zen Pixel Perfect */
+/* FORÇA as cores exatas do Photo-Zen com !important */
+
+/* Reset de qualquer CSS antigo */
+* {
+  --background: 0 0% 98% !important;
+  --foreground: 222 47% 11% !important;
+  --card: 0 0% 100% !important;
+  --primary: 24 95% 53% !important;
+  --primary-foreground: 0 0% 100% !important;
+  --secondary: 220 14% 96% !important;
+  --muted: 220 14% 96% !important;
+  --muted-foreground: 220 9% 46% !important;
+  --border: 220 13% 91% !important;
+  --sidebar-background: 222 47% 11% !important;
+  --sidebar-foreground: 0 0% 98% !important;
+  --sidebar-primary: 24 95% 53% !important;
+  --sidebar-accent: 24 95% 53% !important;
+  --sidebar-accent-foreground: 0 0% 100% !important;
+}
+
+/* Sidebar - Photo-Zen Exact Colors - FORÇADO */
+#sidebar,
+aside#sidebar,
+.sidebar {
+  background: hsl(222, 47%, 11%) !important;
+  background-color: hsl(222, 47%, 11%) !important;
+  color: hsl(0, 0%, 98%) !important;
+}
+
+#sidebar *,
+aside#sidebar * {
+  color: hsl(0, 0%, 98%) !important;
+}
+
+#sidebar .text-xl,
+aside#sidebar .text-xl,
+#sidebar span.text-xl {
+  color: hsl(24, 95%, 53%) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+}
+
+#sidebar a,
+aside#sidebar a {
+  color: hsl(0, 0%, 98%) !important;
+}
+
+#sidebar a:hover,
+aside#sidebar a:hover {
+  background: hsl(24, 95%, 53%) !important;
+  background-color: hsl(24, 95%, 53%) !important;
+  color: hsl(0, 0%, 100%) !important;
+}
+
+#sidebar a.bg-sidebar-accent,
+#sidebar a[class*="bg-sidebar-accent"],
+aside#sidebar a.bg-sidebar-accent,
+aside#sidebar a[class*="bg-sidebar-accent"],
+#sidebar a[style*="background"]:has([data-lucide]),
+aside#sidebar a[style*="background"]:has([data-lucide]) {
+  background: hsl(24, 95%, 53%) !important;
+  background-color: hsl(24, 95%, 53%) !important;
+  color: hsl(0, 0%, 100%) !important;
+  box-shadow: 0 0 0 1px hsl(24, 95%, 53%) !important;
+}
+
+/* Header - Photo-Zen Exact - FORÇADO */
+header.sticky,
+header {
+  background: hsl(0, 0%, 100% / 0.95) !important;
+  background-color: hsl(0, 0%, 100% / 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  border-bottom: 1px solid hsl(220, 13%, 91%) !important;
+}
+
+header h1,
+header .text-lg {
+  color: hsl(222, 47%, 11%) !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+/* Main Content - Photo-Zen Exact - FORÇADO */
+main,
+main.bg-background {
+  background: hsl(0, 0%, 98%) !important;
+  background-color: hsl(0, 0%, 98%) !important;
+}
+
+body {
+  background: hsl(0, 0%, 98%) !important;
+  background-color: hsl(0, 0%, 98%) !important;
+}
+
+/* Page Title - Photo-Zen Exact - FORÇADO */
+h1.text-2xl,
+h1[class*="text-2xl"] {
+  color: hsl(222, 47%, 11%) !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
+}
+
+p.text-sm.text-muted-foreground,
+p[class*="text-muted-foreground"] {
+  color: hsl(220, 9%, 46%) !important;
+  font-size: 0.875rem !important;
+}
+
+/* Cards - Photo-Zen Exact - FORÇADO */
+.rounded-lg.border.bg-card,
+.bg-card,
+.card {
+  background: hsl(0, 0%, 100%) !important;
+  background-color: hsl(0, 0%, 100%) !important;
+  border-color: hsl(220, 13%, 91%) !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Stat Cards - Photo-Zen Exact - FORÇADO */
+.text-foreground,
+[class*="text-foreground"] {
+  color: hsl(222, 47%, 11%) !important;
+}
+
+.text-muted-foreground,
+[class*="text-muted-foreground"] {
+  color: hsl(220, 9%, 46%) !important;
+}
+
+.text-primary,
+[class*="text-primary"] {
+  color: hsl(24, 95%, 53%) !important;
+}
+
+.bg-primary\/10,
+[class*="bg-primary/10"],
+[class*="bg-primary"] {
+  background: hsl(24, 95%, 53% / 0.1) !important;
+  background-color: hsl(24, 95%, 53% / 0.1) !important;
+}
+
+/* Buttons - Photo-Zen Exact - FORÇADO */
+.btn-primary,
+button.btn-primary,
+a.btn-primary,
+[class*="btn-primary"] {
+  background: hsl(24, 95%, 53%) !important;
+  background-color: hsl(24, 95%, 53%) !important;
+  color: hsl(0, 0%, 100%) !important;
+  border: none !important;
+}
+
+.btn,
+button.btn,
+a.btn,
+[class*="btn"]:not(.btn-primary) {
+  background: hsl(220, 14%, 96%) !important;
+  background-color: hsl(220, 14%, 96%) !important;
+  color: hsl(222, 47%, 11%) !important;
+  border: 1px solid hsl(220, 13%, 91%) !important;
+}
+
+/* Border colors - FORÇADO */
+.border-border,
+[class*="border-border"],
+.border {
+  border-color: hsl(220, 13%, 91%) !important;
+}
+
+/* Remove qualquer estilo antigo */
+.old-style,
+[class*="v2"],
+[class*="v3"],
+[class*="legacy"] {
+  display: none !important;
+}
+
+/* Forçar cores do Photo-Zen em todos os elementos */
+.min-h-screen {
+  background: hsl(0, 0%, 98%) !important;
+}
+
+.w-full.bg-background {
+  background: hsl(0, 0%, 98%) !important;
+}

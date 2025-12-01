@@ -1002,7 +1002,7 @@ select:not([multiple]) {
     header .hidden.flex-col.items-end {
         display: none !important;
     }
-}
+
 
 /* ==== TABLET ADJUSTMENTS ==== */
 @media (min-width: 768px) and (max-width: 1023.98px) {

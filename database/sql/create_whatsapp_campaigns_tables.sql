@@ -32,3 +32,4 @@ CREATE TABLE IF NOT EXISTS `whatsapp_campaign_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+

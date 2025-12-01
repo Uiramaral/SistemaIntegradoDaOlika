@@ -34,6 +34,12 @@
     <!-- 6. Modais -->
     <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}" media="all">
     
+    <!-- 7. Ajustes finos v2.4 (cards de métricas, layout, etc) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.4.css') }}?v={{ $cssVersion }}" media="all">
+    
+    <!-- 8. Pixel Perfect v2.5 (ajustes finos de altura, sombras, padding) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.5.css') }}?v={{ $cssVersion }}" media="all">
+    
     <!-- Desativar arquivos redundantes -->
     {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
     {{-- <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}"> --}}
@@ -41,9 +47,10 @@
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Estilos específicos de páginas (ANTES do tema final) -->
     @stack('styles')
     
-    <!-- 7. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO, INCLUSIVE @stack) -->
+    <!-- 9. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO) -->
     <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all" id="olika-theme-final">
 </head>
 <body class="bg-background text-foreground antialiased">
@@ -368,5 +375,12 @@
         });
     </script>
     @stack('scripts')
+    
+    <!-- Fallback de estilos críticos (caso o CSS não carregue) -->
+    <style>
+        body { background-color: #faf9f8 !important; }
+        #sidebar, aside#sidebar, .sidebar { background-color: #0f172a !important; color: #e5e7eb !important; }
+        #sidebar a.active, aside#sidebar a.active, .sidebar a.active { background-color: #ea580c !important; color: #fff !important; }
+    </style>
 </body>
 </html>

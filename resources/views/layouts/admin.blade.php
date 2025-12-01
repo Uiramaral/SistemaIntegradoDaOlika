@@ -6,7 +6,7 @@
     <title>@yield('title', 'Olika Admin')</title>
 
     @php
-        $cssVersion = env('APP_ASSETS_VERSION', '2.1');
+        $cssVersion = env('APP_ASSETS_VERSION', '2.3');
     @endphp
     
     <!-- =======================
@@ -23,10 +23,13 @@
     <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
     
     <!-- 4. Pacote global de correções v2 -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.css') }}?v={{ $cssVersion }}" media="all">
     
     <!-- 5. Modais -->
-    <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}" media="all">
+    
+    <!-- 6. Tema completo v2.3 (DEVE SER O ÚLTIMO) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all">
     
     <!-- Desativar arquivos redundantes -->
     {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
@@ -220,7 +223,7 @@
                     </div>
                 </header>
 
-                <main class="flex-1 bg-background overflow-y-auto">
+                <main class="flex-1 bg-[#faf9f8] overflow-y-auto">
                     <div class="max-w-screen-2xl mx-auto p-6 space-y-6">
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">

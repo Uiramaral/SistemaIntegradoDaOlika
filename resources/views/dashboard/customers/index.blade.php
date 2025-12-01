@@ -1,36 +1,32 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Clientes - OLIKA Dashboard')
+@section('page_title', 'Clientes')
+@section('page_subtitle', 'Gerencie sua base de clientes')
+
+@section('page_actions')
+    <form method="POST" action="{{ route('dashboard.customers.updateStats') }}" class="inline" onsubmit="return confirm('Deseja atualizar as estatísticas de TODOS os clientes? (total_orders, total_spent, last_order_at, loyalty_balance)');">
+        @csrf
+        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw h-4 w-4">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                <path d="M21 3v5h-5"></path>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                <path d="M3 21v-5h5"></path>
+            </svg>
+            Atualizar Estatísticas
+        </button>
+    </form>
+    <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        Novo Cliente
+    </a>
+@endsection
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Clientes</h1>
-            <p class="text-muted-foreground">Gerencie sua base de clientes</p>
-        </div>
-        <div class="dashboard-actions">
-            <form method="POST" action="{{ route('dashboard.customers.updateStats') }}" class="inline w-full sm:w-auto" onsubmit="return confirm('Deseja atualizar as estatísticas de TODOS os clientes? (total_orders, total_spent, last_order_at, loyalty_balance)');">
-                @csrf
-                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-2 w-full sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw h-4 w-4">
-                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                        <path d="M21 3v5h-5"></path>
-                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                        <path d="M3 21v-5h5"></path>
-                    </svg>
-                    Atualizar Estatísticas
-                </button>
-            </form>
-            <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2 w-full sm:w-auto text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
-                    <path d="M5 12h14"></path>
-                    <path d="M12 5v14"></path>
-                </svg>
-                Novo Cliente
-            </a>
-        </div>
-    </div>
+<div class="space-y-6">
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6">
             <div class="relative">
@@ -67,7 +63,7 @@
                                     }
                                 @endphp
                                 <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Cliente">
                                         <div class="flex items-center gap-3">
                                             <span class="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
                                                 <span class="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">{{ $initials }}</span>
@@ -86,7 +82,7 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Contato">
                                         @if($customer->phone)
                                         <div class="flex items-center gap-1 text-muted-foreground">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone h-3 w-3">
@@ -98,9 +94,9 @@
                                         <span class="text-muted-foreground text-sm">-</span>
                                         @endif
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-medium">{{ $customer->total_orders ?? 0 }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-semibold">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-medium" data-label="Pedidos">{{ $customer->total_orders ?? 0 }}</td>
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-semibold" data-label="Total Gasto">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</td>
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell" data-label="Débitos">
                                         @php
                                             $debtsBalance = (float)($customer->total_debts ?? 0);
                                         @endphp
@@ -110,7 +106,7 @@
                                             <span class="text-muted-foreground">R$ 0,00</span>
                                         @endif
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell" data-label="Ações">
                                         <div class="mobile-actions">
                                             <a href="{{ route('dashboard.customers.show', $customer->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full sm:w-auto text-center">Ver perfil</a>
                                         </div>

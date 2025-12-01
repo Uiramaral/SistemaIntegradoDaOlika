@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\CustomerDebt;
 use App\Models\Order;
-use App\Services\BotConversaService;
+use App\Services\WhatsAppService;
 use App\Services\MercadoPagoApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,15 +45,13 @@ class DebtsController extends Controller
                 return redirect()->back()->with('error', 'Não foi possível encontrar os pedidos associados aos débitos.');
             }
 
-            $botService = new BotConversaService();
+            $whatsappService = new WhatsAppService();
             
-            if (!$botService->isConfigured()) {
-                return redirect()->back()->with('error', 'BotConversa não está configurado.');
+            if (!$whatsappService->isEnabled()) {
+                return redirect()->back()->with('error', 'Nenhuma instância WhatsApp conectada. Verifique as configurações de WhatsApp.');
             }
 
-            $phone = $botService->normalizePhoneBR($customer->phone);
-            
-            if (!$phone) {
+            if (!$customer->phone) {
                 return redirect()->back()->with('error', 'Cliente não possui telefone cadastrado.');
             }
 
@@ -66,7 +64,9 @@ class DebtsController extends Controller
                 
                 $message = $this->buildOrderSummaryMessage($order);
                 
-                if ($botService->sendTextMessage($phone, $message)) {
+                $result = $whatsappService->sendText($customer->phone, $message);
+                
+                if (isset($result['success']) && $result['success']) {
                     $totalAmount += $order->final_amount ?? $order->total_amount ?? 0;
                     $sentCount++;
                     
@@ -76,6 +76,7 @@ class DebtsController extends Controller
                     Log::warning('Erro ao enviar resumo de pedido pendente', [
                         'customer_id' => $customer->id,
                         'order_id' => $order->id,
+                        'error' => $result['error'] ?? 'Erro desconhecido',
                     ]);
                 }
             }
@@ -139,9 +140,12 @@ class DebtsController extends Controller
             // Enviar mensagem final com total e PIX
             $finalMessage = $this->buildFinalSummaryMessage($orders->count(), $totalAmount, $pixData);
             
-            if (!$botService->sendTextMessage($phone, $finalMessage)) {
+            $result = $whatsappService->sendText($customer->phone, $finalMessage);
+            
+            if (!isset($result['success']) || !$result['success']) {
                 Log::warning('Erro ao enviar mensagem final com total', [
                     'customer_id' => $customer->id,
+                    'error' => $result['error'] ?? 'Erro desconhecido',
                 ]);
             }
 

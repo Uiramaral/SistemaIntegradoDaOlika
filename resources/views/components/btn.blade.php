@@ -8,9 +8,9 @@
 @php
 $base = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-1';
 $sizes = [
-  'sm' => 'text-sm px-3 py-1.5',
-  'md' => 'text-sm px-4 py-2',
-  'lg' => 'text-base px-5 py-2.5',
+  'sm' => 'text-sm px-3 py-1.5 h-8',
+  'md' => 'text-sm px-4 py-2.5 h-10',
+  'lg' => 'text-base px-5 py-3 h-12',
 ];
 $variants = [
   'primary'   => 'bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-200',

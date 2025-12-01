@@ -1,25 +1,22 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Relatórios - OLIKA Dashboard')
+@section('page_title', 'Relatórios')
+@section('page_subtitle', 'Analise o desempenho do seu negócio')
+
+@section('page_actions')
+    <form method="GET" action="{{ route('dashboard.reports') }}" class="flex items-center gap-2">
+        <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <span class="text-muted-foreground">até</span>
+        <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar h-4 w-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+            Filtrar
+        </button>
+    </form>
+@endsection
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">Relatórios</h1>
-      <p class="text-muted-foreground">Analise o desempenho do seu negócio</p>
-    </div>
-    <form method="GET" action="{{ route('dashboard.reports') }}" class="flex items-center gap-2">
-      <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <span class="text-muted-foreground">até</span>
-      <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar h-4 w-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-        Filtrar
-      </button>
-    </form>
-  </div>
-
+<div class="space-y-6">
   <!-- Métricas de Analytics -->
   <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
     <div class="flex flex-col space-y-1.5 p-6">

@@ -16,7 +16,7 @@ use App\Models\Coupon;
 use App\Models\Setting;
 use App\Models\OrderDeliveryFee;
 use App\Services\MercadoPagoApi;
-use App\Services\BotConversaService;
+use App\Services\WhatsAppService;
 use App\Services\DistanceCalculatorService;
 use App\Models\DeliveryFee;
 use Carbon\Carbon;
@@ -479,11 +479,11 @@ class PDVController extends Controller
                         'payment_status' => 'pending',
                     ]);
 
-                    // Enviar mensagem ao cliente via BotConversa (se configurado)
+                    // Enviar mensagem ao cliente via WhatsApp (se configurado)
                     if ($customer->phone) {
                         try {
-                            $botConversa = new BotConversaService();
-                            if ($botConversa->isConfigured()) {
+                            $whatsappService = new WhatsAppService();
+                            if ($whatsappService->isEnabled()) {
                                 $message = "Olá, {$customer->name}! 🛒\n\n";
                                 $message .= "Seu pedido #{$orderNumber} foi criado!\n\n";
                                 $message .= "Total: R$ " . number_format($finalAmount, 2, ',', '.') . "\n\n";
@@ -503,12 +503,23 @@ class PDVController extends Controller
                                 $message .= $paymentUrl . "\n\n";
                                 $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
 
-                                // Enviar mensagem simples (não usar sendPaidOrderJson ainda pois não está pago)
-                                // BotConversaService pode ter um método sendMessage simples, ou usar outro serviço
-                                // Por enquanto, apenas log
-                                Log::info('PDV: Mensagem preparada para envio ao cliente', [
+                                // Enviar mensagem via WhatsApp
+                                $result = $whatsappService->sendText($customer->phone, $message);
+                                
+                                if (isset($result['success']) && $result['success']) {
+                                    Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
+                                        'order_id' => $order->id,
+                                        'customer_phone' => $customer->phone,
+                                    ]);
+                                } else {
+                                    Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
+                                        'order_id' => $order->id,
+                                        'error' => $result['error'] ?? 'Erro desconhecido',
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
                                     'order_id' => $order->id,
-                                    'customer_phone' => $customer->phone,
                                 ]);
                             }
                         } catch (\Exception $e) {
@@ -738,10 +749,10 @@ class PDVController extends Controller
             $token = md5($order->id . $order->order_number . config('app.key'));
             $completeUrl = 'https://pedido.menuolika.com.br/pdv/complete/' . $order->order_number . '?token=' . urlencode($token);
 
-            // Enviar mensagem via BotConversa
+            // Enviar mensagem via WhatsApp
             try {
-                $botConversa = new BotConversaService();
-                if ($botConversa->isConfigured()) {
+                $whatsappService = new WhatsAppService();
+                if ($whatsappService->isEnabled()) {
                     // Construir resumo do pedido
                     $message = "Olá, {$customer->name}! 🛒\n\n";
                     $message .= "Seu pedido foi criado!\n\n";
@@ -767,21 +778,24 @@ class PDVController extends Controller
                     $message .= $completeUrl . "\n\n";
                     $message .= "Após finalizar, você será direcionado para o pagamento.";
 
-                    // Enviar mensagem simples via BotConversa
-                    $phoneE164 = $botConversa->normalizePhoneBR($customer->phone);
+                    // Enviar mensagem via WhatsApp
+                    $result = $whatsappService->sendText($customer->phone, $message);
                     
-                    if ($phoneE164) {
-                        $botConversa->sendTextMessage($phoneE164, $message);
+                    if (isset($result['success']) && $result['success']) {
+                        Log::info('PDV: Pedido enviado ao cliente via WhatsApp', [
+                            'order_id' => $order->id,
+                            'order_number' => $orderNumber,
+                            'customer_phone' => $customer->phone,
+                            'complete_url' => $completeUrl,
+                        ]);
+                    } else {
+                        Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
+                            'order_id' => $order->id,
+                            'error' => $result['error'] ?? 'Erro desconhecido',
+                        ]);
                     }
-
-                    Log::info('PDV: Pedido enviado ao cliente via BotConversa', [
-                        'order_id' => $order->id,
-                        'order_number' => $orderNumber,
-                        'customer_phone' => $customer->phone,
-                        'complete_url' => $completeUrl,
-                    ]);
                 } else {
-                    Log::warning('PDV: BotConversa não configurado, mensagem não enviada', [
+                    Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
                         'order_id' => $order->id,
                         'order_number' => $orderNumber,
                     ]);

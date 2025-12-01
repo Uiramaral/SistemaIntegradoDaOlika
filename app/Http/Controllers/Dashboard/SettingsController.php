@@ -249,6 +249,15 @@ class SettingsController extends Controller
     {
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
         
+        // Buscar múltiplas instâncias
+        try {
+            $instances = \App\Models\WhatsappInstance::orderBy('name')->get();
+        } catch (\Exception $e) {
+            // Se a tabela não existir ainda, retornar collection vazia
+            $instances = collect([]);
+            Log::warning('Tabela whatsapp_instances não encontrada. Execute o SQL de criação primeiro.');
+        }
+        
         // Buscar templates
         $templates = DB::table('whatsapp_templates')
             ->orderBy('slug')
@@ -276,7 +285,7 @@ class SettingsController extends Controller
         $whatsappApiUrl = $row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app');
         $whatsappApiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
         
-        return view('dashboard.settings.whatsapp', compact('row', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey'));
+        return view('dashboard.settings.whatsapp', compact('row', 'instances', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey'));
     }
     
     /**
@@ -358,6 +367,86 @@ class SettingsController extends Controller
     }
     
     /**
+     * Proxy para limpar credenciais corrompidas
+     */
+    public function whatsappClearAuth()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/clear-auth');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao limpar credenciais'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao limpar credenciais WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para iniciar conexão WhatsApp manualmente
+     */
+    public function whatsappConnect()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/connect');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao iniciar conexão'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao iniciar conexão WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
      * Proxy para desconectar WhatsApp manualmente
      */
     public function whatsappDisconnect()
@@ -404,6 +493,7 @@ class SettingsController extends Controller
             'api_url' => 'required|url|max:255',
             'api_key' => 'required|string|max:255',
             'sender_name' => 'nullable|string|max:100',
+            'whatsapp_phone' => 'required|string|max:20|regex:/^[0-9]+$/',
         ]);
 
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
@@ -427,7 +517,123 @@ class SettingsController extends Controller
             DB::table('whatsapp_settings')->insert($insertData);
         }
 
+        // Notificar o bot Node.js sobre a mudança do número (se mudou)
+        if ($row && isset($data['whatsapp_phone']) && $row->whatsapp_phone !== $data['whatsapp_phone']) {
+            Log::info('Número do WhatsApp alterado de ' . $row->whatsapp_phone . ' para ' . $data['whatsapp_phone']);
+            
+            // Notificar o bot para reiniciar com o novo número
+            try {
+                $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+                $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+                
+                $ch = curl_init($apiUrl . '/api/whatsapp/restart');
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => [
+                        'x-api-token: ' . $apiKey,
+                        'Content-Type: application/json'
+                    ],
+                    CURLOPT_TIMEOUT => 10
+                ]);
+                
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('✅ Bot notificado para reiniciar com novo número');
+                } else {
+                    Log::warning('⚠️ Falha ao notificar bot sobre mudança de número. HTTP: ' . $httpCode);
+                }
+            } catch (\Exception $e) {
+                Log::error('Erro ao notificar bot sobre mudança de número: ' . $e->getMessage());
+            }
+        }
+        
         return back()->with('success', 'Configurações do WhatsApp salvas com sucesso!');
+    }
+    
+    /**
+     * API endpoint para retornar configurações do WhatsApp (usado pelo bot Node.js)
+     */
+    public function whatsappSettingsApi()
+    {
+        // Autenticação por token (para Node.js)
+        $token = request()->header('X-API-Token');
+        $validToken = env('API_SECRET') ?? env('WEBHOOK_TOKEN');
+        
+        // Log para debug
+        Log::info('whatsappSettingsApi: Verificando autenticação', [
+            'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
+            'token_valido_existe' => !empty($validToken),
+            'token_valido_preview' => $validToken ? '***' . substr($validToken, -4) : 'não definido',
+            'tokens_iguais' => $token === $validToken,
+            'token_recebido_length' => $token ? strlen($token) : 0,
+            'token_valido_length' => $validToken ? strlen($validToken) : 0,
+            'ip' => request()->ip()
+        ]);
+        
+        if (empty($validToken)) {
+            Log::error('whatsappSettingsApi: Token de validação não configurado no .env (API_SECRET ou WEBHOOK_TOKEN)');
+            return response()->json([
+                'error' => 'Server configuration error',
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+            ], 500);
+        }
+        
+        if ($token !== $validToken) {
+            Log::warning('whatsappSettingsApi: Tentativa de acesso não autorizado', [
+                'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
+                'token_esperado' => '***' . substr($validToken, -4),
+                'tokens_iguais' => $token === $validToken,
+                'ip' => request()->ip()
+            ]);
+            return response()->json([
+                'error' => 'Unauthorized',
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420') // Fallback mesmo em erro
+            ], 403);
+        }
+        
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            
+            if (!$row) {
+                Log::warning('whatsappSettingsApi: Nenhuma configuração ativa encontrada');
+                return response()->json([
+                    'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+                ]);
+            }
+            
+            // Log para debug
+            Log::info('whatsappSettingsApi: Configuração encontrada', [
+                'whatsapp_phone' => $row->whatsapp_phone,
+                'whatsapp_phone_raw' => $row->whatsapp_phone ?? 'NULL',
+                'env_whatsapp_phone' => env('WHATSAPP_PHONE'),
+                'has_whatsapp_phone' => isset($row->whatsapp_phone) && !empty($row->whatsapp_phone),
+                'row_id' => $row->id ?? null
+            ]);
+            
+            // ✅ PRIORIDADE: Banco de dados primeiro, depois .env
+            // Garantir que sempre retornamos uma string, nunca NULL
+            $phone = !empty($row->whatsapp_phone) ? (string) trim($row->whatsapp_phone) : env('WHATSAPP_PHONE', '5571987019420');
+            
+            Log::info('whatsappSettingsApi: Retornando número', [
+                'phone' => $phone,
+                'fonte' => !empty($row->whatsapp_phone) ? 'banco_de_dados' : 'env'
+            ]);
+            
+            return response()->json([
+                'whatsapp_phone' => $phone
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar configurações WhatsApp: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+            ]);
+        }
     }
     
     /**

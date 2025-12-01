@@ -1,22 +1,17 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Cashback')
-@section('page_title', 'Cashback')
+@section('page_title', 'Programa de Cashback')
+@section('page_subtitle', 'Recompense seus clientes fiéis com cashback em compras')
+
+@section('page_actions')
+    <a href="{{ route('dashboard.cashback.create') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        Nova Transação
+    </a>
+@endsection
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-  <div>
-    <h1 class="text-3xl font-bold tracking-tight">Programa de Cashback</h1>
-    <p class="text-muted-foreground">Recompense seus clientes fiéis com cashback em compras</p>
-  </div>
-  
-  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
-    <div></div>
-    <a href="{{ route('dashboard.cashback.create') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto text-center">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
-      Nova Transação
-    </a>
-  </div>
+<div class="space-y-6">
 
   @if(session('success'))
     <div class="rounded-lg border bg-green-50 border-green-200 p-4 text-green-700 mb-4">
@@ -24,15 +19,15 @@
     </div>
   @endif
 
-  <div class="grid gap-4 md:grid-cols-4">
+  <div class="grid grid-cols-4 gap-3">
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="p-6 pt-6">
+      <div class="p-4">
         <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-muted-foreground">Total Gerado</p>
-            <p class="text-2xl font-bold">R$ {{ number_format($totalCredits ?? 0, 2, ',', '.') }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-muted-foreground mb-1">Total Gerado</p>
+            <p class="text-xl font-bold">R$ {{ number_format($totalCredits ?? 0, 2, ',', '.') }}</p>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dollar-sign h-8 w-8 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dollar-sign h-5 w-5 text-primary flex-shrink-0 ml-2">
             <line x1="12" x2="12" y1="2" y2="22"></line>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
@@ -41,13 +36,13 @@
     </div>
     
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="p-6 pt-6">
+      <div class="p-4">
         <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-muted-foreground">Total Utilizado</p>
-            <p class="text-2xl font-bold">R$ {{ number_format($totalDebits ?? 0, 2, ',', '.') }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-muted-foreground mb-1">Total Utilizado</p>
+            <p class="text-xl font-bold">R$ {{ number_format($totalDebits ?? 0, 2, ',', '.') }}</p>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-down h-8 w-8 text-red-600">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-down h-5 w-5 text-red-600 flex-shrink-0 ml-2">
             <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
             <polyline points="16 17 22 17 22 11"></polyline>
           </svg>
@@ -56,13 +51,13 @@
     </div>
     
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="p-6 pt-6">
+      <div class="p-4">
         <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-muted-foreground">Saldo Disponível</p>
-            <p class="text-2xl font-bold">R$ {{ number_format($totalAvailable ?? 0, 2, ',', '.') }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-muted-foreground mb-1">Saldo Disponível</p>
+            <p class="text-xl font-bold">R$ {{ number_format($totalAvailable ?? 0, 2, ',', '.') }}</p>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-award h-8 w-8 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-award h-5 w-5 text-primary flex-shrink-0 ml-2">
             <path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"></path>
             <circle cx="12" cy="8" r="6"></circle>
           </svg>
@@ -71,13 +66,13 @@
     </div>
     
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="p-6 pt-6">
+      <div class="p-4">
         <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-muted-foreground">Clientes com Saldo</p>
-            <p class="text-2xl font-bold">{{ $activeCustomers ?? 0 }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-muted-foreground mb-1">Clientes com Saldo</p>
+            <p class="text-xl font-bold">{{ $activeCustomers ?? 0 }}</p>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users h-8 w-8 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users h-5 w-5 text-primary flex-shrink-0 ml-2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>

@@ -5,8 +5,124 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Olika Admin')</title>
 
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
+    @php
+        $cssVersion = time(); // Forçar atualização sempre
+    @endphp
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
+    @if(request()->routeIs('dashboard.pdv.*'))
+    <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}?v={{ $cssVersion }}">
+    @endif
+    
+    <style>
+        /* Estilos críticos inline para garantir aplicação */
+        input[type="text"]:not([type="checkbox"]):not([type="radio"]),
+        input[type="email"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="password"],
+        input[type="search"],
+        select:not([multiple]),
+        textarea {
+            min-height: 2.5rem !important;
+            height: 2.5rem !important;
+            padding: 0.625rem 0.875rem !important;
+        }
+        
+        textarea {
+            min-height: 5rem !important;
+            height: auto !important;
+        }
+        
+        button:not(.btn-sm):not(.btn-lg):not([class*="text-lg"]),
+        .btn:not(.btn-sm):not(.btn-lg),
+        a[role="button"]:not([class*="text-lg"]) {
+            min-height: 2.5rem !important;
+            padding: 0.625rem 1rem !important;
+        }
+        
+        /* Modal reduzido */
+        #edit-instance-modal > div,
+        #add-instance-modal > div,
+        #pairing-code-modal > div {
+            max-width: 28rem !important;
+            padding: 1.25rem !important;
+        }
+        
+        /* PDV - Correções específicas FORÇADAS */
+        /* Todos os inputs do PDV */
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        input[type="tel"],
+        select,
+        textarea {
+            min-height: 2.5rem !important;
+            height: 2.5rem !important;
+            padding: 0.625rem 0.875rem !important;
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+            box-sizing: border-box !important;
+        }
+        
+        textarea {
+            min-height: 5rem !important;
+            height: auto !important;
+            padding: 0.75rem 0.875rem !important;
+        }
+        
+        /* Todos os botões do PDV */
+        button:not(.btn-sm):not(.btn-lg),
+        .btn:not(.btn-sm):not(.btn-lg) {
+            min-height: 2.5rem !important;
+            height: 2.5rem !important;
+            padding: 0.625rem 1rem !important;
+            font-size: 0.875rem !important;
+            box-sizing: border-box !important;
+        }
+        
+        /* Campo de busca de cliente - mais espaço */
+        #customer-search {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+        
+        /* Botão Novo Cliente - não expandir */
+        #btn-new-customer {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+        }
+        
+        /* Campo de cupom - input maior */
+        #coupon-code {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+        
+        /* Botão Aplicar - não expandir */
+        #btn-apply-coupon {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+        }
+        
+        /* Grid de produtos */
+        .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
+            gap: 1rem !important;
+            row-gap: 1rem !important;
+            column-gap: 1rem !important;
+        }
+        
+        /* Cards de produtos */
+        .product-quick-add {
+            min-height: 8rem !important;
+            padding: 1.25rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+        }
+    </style>
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
 
@@ -238,7 +354,9 @@
                         @endif
 
                         <div class="dashboard-content">
-                            @yield('content')
+                            <div class="space-y-6">
+                                @yield('content')
+                            </div>
                         </div>
                     </div>
                 </main>

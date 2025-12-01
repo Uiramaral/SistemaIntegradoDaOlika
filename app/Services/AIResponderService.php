@@ -37,12 +37,14 @@ class AIResponderService
     }
 
     /** Chama OpenAI API — retorna texto final da IA */
-    public function reply(string $userText, array $context = []): ?string
+    public function reply(string $userText, array $context = [], ?string $customSystemPrompt = null): ?string
     {
         if(!$this->isEnabled()) return null;
 
+        $systemPrompt = $customSystemPrompt ?? $this->system;
+        
         $messages = [
-            ["role"=>"system", "content"=>$this->system],
+            ["role"=>"system", "content"=>$systemPrompt],
             ["role"=>"user",   "content"=>$userText]
         ];
 

@@ -1,13 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Configurações - OLIKA Dashboard')
+@section('page_title', 'Configurações')
+@section('page_subtitle', 'Ajuste integrações e chaves de API do sistema')
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p class="text-muted-foreground">Ajuste integrações e chaves de API do sistema</p>
-    </div>
+<div class="space-y-6">
 
     @if(session('success'))
         <div class="rounded-lg border bg-green-50 text-green-900 px-4 py-3">{{ session('success') }}</div>

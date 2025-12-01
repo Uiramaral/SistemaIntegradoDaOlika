@@ -165,6 +165,120 @@
         }
         body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
         * { border-color: hsl(var(--border)); }
+        
+        /* Padronização de espaçamentos */
+        .dashboard-content-wrapper {
+            max-width: 1280px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* Tabelas responsivas */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+        
+        .table-responsive table {
+            width: 100%;
+            min-width: 640px;
+        }
+        
+        @media (max-width: 768px) {
+            .table-responsive {
+                display: block;
+            }
+            
+            .table-responsive table {
+                display: block;
+                width: 100%;
+            }
+            
+            .table-responsive thead {
+                display: none;
+            }
+            
+            .table-responsive tbody {
+                display: block;
+            }
+            
+            .table-responsive tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid hsl(var(--border));
+                border-radius: 8px;
+                padding: 1rem;
+                background: hsl(var(--card));
+            }
+            
+            .table-responsive td {
+                display: block;
+                text-align: right;
+                padding: 0.5rem 0;
+                border: none;
+                border-bottom: 1px solid hsl(var(--border) / 0.5);
+            }
+            
+            .table-responsive td:last-child {
+                border-bottom: none;
+            }
+            
+            .table-responsive td::before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: hsl(var(--muted-foreground));
+            }
+        }
+        
+        /* Cards padronizados */
+        .card-standard {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: calc(var(--radius) + 2px);
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+        
+        /* Espaçamento consistente entre seções */
+        .section-spacing {
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (min-width: 768px) {
+            .section-spacing {
+                margin-bottom: 2rem;
+            }
+        }
+        
+        /* Botões padronizados */
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            padding: 0.5rem 1rem;
+            border-radius: calc(var(--radius) - 2px);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+            padding: 0.5rem 1rem;
+            border-radius: calc(var(--radius) - 2px);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            opacity: 0.9;
+        }
     </style>
     @stack('styles')
 </head>
@@ -188,63 +302,103 @@
                                     <h1 class="font-bold text-xl text-primary transition-all">OLIKA</h1>
                                     <p class="text-xs text-muted-foreground">Dashboard</p>
                                 </div>
-                                <div data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
-                                    <div data-sidebar="group-label" class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0">Menu Principal</div>
-                                    <div data-sidebar="group-content" class="w-full text-sm">
-                                        <ul data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-1">
-                                            @php
-                                                $currentRoute = request()->path();
-                                                $menuItems = [
-                                                    ['url' => route('dashboard.index'), 'label' => 'Visão Geral', 'icon' => 'lucide-layout-dashboard'],
-                                                    ['url' => route('dashboard.pdv.index'), 'label' => 'PDV', 'icon' => 'lucide-shopping-cart'],
-                                                    ['url' => route('dashboard.orders.index'), 'label' => 'Pedidos', 'icon' => 'lucide-file-text'],
-                                                    ['url' => route('dashboard.customers.index'), 'label' => 'Clientes', 'icon' => 'lucide-users'],
-                                                    ['url' => route('dashboard.products.index'), 'label' => 'Produtos', 'icon' => 'lucide-package'],
-                                                    ['url' => route('dashboard.categories.index'), 'label' => 'Categorias', 'icon' => 'lucide-folder-tree'],
-                                                    ['url' => route('dashboard.coupons.index'), 'label' => 'Cupons', 'icon' => 'lucide-ticket'],
-                                                    ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet'],
-                                                    ['url' => route('dashboard.loyalty'), 'label' => 'Fidelidade', 'icon' => 'lucide-heart'],
-                                                    ['url' => route('dashboard.reports'), 'label' => 'Relatórios', 'icon' => 'lucide-chart-column'],
-                                                    ['url' => route('dashboard.settings'), 'label' => 'Configurações', 'icon' => 'lucide-settings2'],
-                                                    ['url' => route('dashboard.settings.whatsapp'), 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle'],
-                                                    ['url' => route('dashboard.settings.mp'), 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card'],
-                                                    ['url' => route('dashboard.settings.status-templates'), 'label' => 'Status & Templates', 'icon' => 'lucide-settings2'],
-                                                ];
-                                                $iconMap = [
-                                                    'lucide-layout-dashboard' => '<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>',
-                                                    'lucide-shopping-cart' => '<circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>',
-                                                    'lucide-file-text' => '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
-                                                    'lucide-users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
-                                                    'lucide-package' => '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path><path d="m7.5 4.27 9 5.15"></path>',
-                                                    'lucide-folder-tree' => '<path d="M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M3 5a2 2 0 0 0 2 2h3"></path><path d="M3 3v13a2 2 0 0 0 2 2h3"></path>',
-                                                    'lucide-ticket' => '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path>',
-                                                    'lucide-wallet' => '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path>',
-                                                    'lucide-heart' => '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>',
-                                                    'lucide-chart-column' => '<path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path>',
-                                                    'lucide-message-circle' => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>',
-                                                    'lucide-credit-card' => '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>',
-                                                    'lucide-settings2' => '<path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle>',
-                                                ];
-                                            @endphp
-                                            @foreach($menuItems as $item)
-                                                @php
-                                                    $itemPath = parse_url($item['url'], PHP_URL_PATH);
-                                                    $itemPath = ltrim($itemPath, '/');
-                                                    $isActive = ($currentRoute === $itemPath) || ($currentRoute === '' && $itemPath === '') || str_contains($currentRoute, $itemPath);
-                                                    $activeClass = $isActive ? 'bg-accent text-accent-foreground font-medium' : '';
-                                                @endphp
-                                                <li data-sidebar="menu-item" class="group/menu-item relative">
-                                                    <a data-sidebar="menu-button" data-size="default" data-active="{{ $isActive ? 'true' : 'false' }}" class="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" @if($isActive) aria-current="page" @endif>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide {{ $item['icon'] }} h-4 w-4">
-                                                            {!! $iconMap[$item['icon']] ?? '' !!}
-                                                        </svg>
-                                                        <span>{{ $item['label'] }}</span>
-                                                    </a>
-                                                </li>
-                                            @endforeach
-                                        </ul>
+                                @php
+                                    $currentRoute = request()->path();
+                                    $iconMap = [
+                                        'lucide-layout-dashboard' => '<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>',
+                                        'lucide-shopping-cart' => '<circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>',
+                                        'lucide-file-text' => '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
+                                        'lucide-users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+                                        'lucide-package' => '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path><path d="m7.5 4.27 9 5.15"></path>',
+                                        'lucide-folder-tree' => '<path d="M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M3 5a2 2 0 0 0 2 2h3"></path><path d="M3 3v13a2 2 0 0 0 2 2h3"></path>',
+                                        'lucide-ticket' => '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path>',
+                                        'lucide-wallet' => '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path>',
+                                        'lucide-heart' => '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>',
+                                        'lucide-chart-column' => '<path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path>',
+                                        'lucide-message-circle' => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>',
+                                        'lucide-credit-card' => '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>',
+                                        'lucide-settings2' => '<path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle>',
+                                        'lucide-truck' => '<path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"></path><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"></path><circle cx="7" cy="18" r="2"></circle><path d="M9 18h5"></path><circle cx="17" cy="18" r="2"></circle>',
+                                        'lucide-percent' => '<circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0l-11.45 11.45a5.5 5.5 0 0 0 7.78 7.78L20.84 12.39a5.5 5.5 0 0 0 0-7.78Z"></path>',
+                                    ];
+                                    
+                                    $menuGroups = [
+                                        [
+                                            'title' => 'Menu Principal',
+                                            'items' => [
+                                                ['url' => route('dashboard.index'), 'label' => 'Visão Geral', 'icon' => 'lucide-layout-dashboard', 'pattern' => ['', '/']],
+                                                ['url' => route('dashboard.pdv.index'), 'label' => 'PDV', 'icon' => 'lucide-shopping-cart', 'pattern' => ['pdv']],
+                                                ['url' => route('dashboard.orders.index'), 'label' => 'Pedidos', 'icon' => 'lucide-file-text', 'pattern' => ['orders', 'pedidos']],
+                                                ['url' => route('dashboard.customers.index'), 'label' => 'Clientes', 'icon' => 'lucide-users', 'pattern' => ['customers', 'clientes']],
+                                                ['url' => route('dashboard.deliveries.index'), 'label' => 'Entregas', 'icon' => 'lucide-truck', 'pattern' => ['deliveries', 'entregas']],
+                                            ],
+                                        ],
+                                        [
+                                            'title' => 'Produtos',
+                                            'items' => [
+                                                ['url' => route('dashboard.products.index'), 'label' => 'Produtos', 'icon' => 'lucide-package', 'pattern' => ['products', 'produtos']],
+                                                ['url' => route('dashboard.categories.index'), 'label' => 'Categorias', 'icon' => 'lucide-folder-tree', 'pattern' => ['categories', 'categorias']],
+                                                ['url' => route('dashboard.wholesale-prices.index'), 'label' => 'Preços de Revenda', 'icon' => 'lucide-wallet', 'pattern' => ['wholesale-prices', 'precos-revenda']],
+                                            ],
+                                        ],
+                                        [
+                                            'title' => 'Marketing',
+                                            'items' => [
+                                                ['url' => route('dashboard.coupons.index'), 'label' => 'Cupons', 'icon' => 'lucide-ticket', 'pattern' => ['coupons', 'cupons']],
+                                                ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet', 'pattern' => ['cashback']],
+                                            ],
+                                        ],
+                                        [
+                                            'title' => 'Integrações',
+                                            'items' => [
+                                                ['url' => route('dashboard.settings.whatsapp'), 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle', 'pattern' => ['whatsapp']],
+                                                ['url' => route('dashboard.settings.mp'), 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card', 'pattern' => ['mercadopago', 'mp']],
+                                            ],
+                                        ],
+                                        [
+                                            'title' => 'Sistema',
+                                            'items' => [
+                                                ['url' => route('dashboard.reports'), 'label' => 'Relatórios', 'icon' => 'lucide-chart-column', 'pattern' => ['reports', 'relatorios']],
+                                                ['url' => route('dashboard.settings'), 'label' => 'Configurações', 'icon' => 'lucide-settings2', 'pattern' => ['settings', 'configuracoes']],
+                                            ],
+                                        ],
+                                    ];
+                                @endphp
+                                @foreach($menuGroups as $group)
+                                    <div data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
+                                        <div data-sidebar="group-label" class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wider outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0">{{ $group['title'] }}</div>
+                                        <div data-sidebar="group-content" class="w-full text-sm">
+                                            <ul data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-1">
+                                                @foreach($group['items'] as $item)
+                                                    @php
+                                                        $itemPath = parse_url($item['url'], PHP_URL_PATH);
+                                                        $itemPath = ltrim($itemPath, '/');
+                                                        $isActive = false;
+                                                        foreach ($item['pattern'] as $pattern) {
+                                                            if ($currentRoute === $itemPath || 
+                                                                $currentRoute === $pattern || 
+                                                                $itemPath === $pattern ||
+                                                                str_contains($currentRoute, $pattern) ||
+                                                                str_starts_with($currentRoute, $pattern)) {
+                                                                $isActive = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                        $activeClass = $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : '';
+                                                    @endphp
+                                                    <li data-sidebar="menu-item" class="group/menu-item relative">
+                                                        <a data-sidebar="menu-button" data-size="default" data-active="{{ $isActive ? 'true' : 'false' }}" class="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" @if($isActive) aria-current="page" @endif>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide {{ $item['icon'] }} h-4 w-4">
+                                                                {!! $iconMap[$item['icon']] ?? '' !!}
+                                                            </svg>
+                                                            <span>{{ $item['label'] }}</span>
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
                                     </div>
-                                </div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -265,26 +419,40 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2">
-                            <div class="relative flex w-full min-w-0 flex-col">
-                                <div class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 mb-2">Menu Principal</div>
-                                <ul class="flex w-full min-w-0 flex-col gap-1 text-sm">
-                                    @foreach($menuItems as $item)
-                                        @php
-                                            $isActive = ($currentRoute === ltrim($item['url'], '/')) || ($currentRoute === '' && $item['url'] === '/');
-                                            $activeClass = $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : '';
-                                        @endphp
-                                        <li class="group/menu-item relative">
-                                            <a class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" onclick="toggleSidebar()" @if($isActive) aria-current="page" @endif>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                                                    {!! $iconMap[$item['icon']] ?? '' !!}
-                                                </svg>
-                                                <span>{{ $item['label'] }}</span>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
+                        <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-2">
+                            @foreach($menuGroups as $group)
+                                <div class="relative flex w-full min-w-0 flex-col">
+                                    <div class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wider mb-2">{{ $group['title'] }}</div>
+                                    <ul class="flex w-full min-w-0 flex-col gap-1 text-sm">
+                                        @foreach($group['items'] as $item)
+                                            @php
+                                                $itemPath = parse_url($item['url'], PHP_URL_PATH);
+                                                $itemPath = ltrim($itemPath, '/');
+                                                $isActive = false;
+                                                foreach ($item['pattern'] as $pattern) {
+                                                    if ($currentRoute === $itemPath || 
+                                                        $currentRoute === $pattern || 
+                                                        $itemPath === $pattern ||
+                                                        str_contains($currentRoute, $pattern) ||
+                                                        str_starts_with($currentRoute, $pattern)) {
+                                                        $isActive = true;
+                                                        break;
+                                                    }
+                                                }
+                                                $activeClass = $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : '';
+                                            @endphp
+                                            <li class="group/menu-item relative">
+                                                <a class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" onclick="toggleSidebar()" @if($isActive) aria-current="page" @endif>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                                                        {!! $iconMap[$item['icon']] ?? '' !!}
+                                                    </svg>
+                                                    <span>{{ $item['label'] }}</span>
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -299,6 +467,18 @@
                                 </svg>
                                 <span class="sr-only">Toggle Sidebar</span>
                             </button>
+                            @php
+                                $pageTitle = View::hasSection('page_title') ? trim($__env->yieldContent('page_title')) : (View::hasSection('page-title') ? trim($__env->yieldContent('page-title')) : (View::hasSection('title') ? trim($__env->yieldContent('title')) : 'Dashboard'));
+                                $pageSubtitle = View::hasSection('page_subtitle') ? trim($__env->yieldContent('page_subtitle')) : (View::hasSection('page-subtitle') ? trim($__env->yieldContent('page-subtitle')) : null);
+                            @endphp
+                            @if($pageTitle !== 'Dashboard' || $pageSubtitle)
+                                <div class="flex flex-col gap-0.5">
+                                    <h1 class="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{{ $pageTitle }}</h1>
+                                    @if($pageSubtitle)
+                                        <p class="text-xs text-muted-foreground sm:text-sm">{{ $pageSubtitle }}</p>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="flex-1"></div>
                             @auth
                                 <div class="flex items-center gap-3">
@@ -322,29 +502,31 @@
                         </div>
                     </header>
                     <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden max-w-full">
-                        @if(session('success'))
-                            <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                                {{ session('success') }}
-                            </div>
-                        @endif
+                        <div class="max-w-7xl mx-auto space-y-6">
+                            @if(session('success'))
+                                <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
+                                    {{ session('success') }}
+                                </div>
+                            @endif
 
-                        @if(session('error'))
-                            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                                {{ session('error') }}
-                            </div>
-                        @endif
+                            @if(session('error'))
+                                <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
+                                    {{ session('error') }}
+                                </div>
+                            @endif
 
-                        @if(isset($errors) && $errors->any())
-                            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                                <ul class="list-disc list-inside">
-                                    @foreach($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
+                            @if(isset($errors) && $errors->any())
+                                <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
+                                    <ul class="list-disc space-y-1 pl-5 text-sm">
+                                        @foreach($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
 
-                        @yield('content')
+                            @yield('content')
+                        </div>
                     </main>
                 </div>
             </div>

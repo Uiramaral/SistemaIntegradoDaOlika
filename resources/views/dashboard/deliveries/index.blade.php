@@ -1,15 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Entregas - OLIKA Dashboard')
+@section('page_title', 'Painel de Entregas')
+@section('page_subtitle', 'Visão simplificada dos pedidos com entrega agendada, pronta para o time de rua')
 
 @section('content')
 <div class="space-y-6">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Painel de Entregas</h1>
-        <p class="text-muted-foreground">
-            Visão simplificada dos pedidos com entrega agendada, pronta para o time de rua.
-        </p>
-    </div>
 
     @if(session('success'))
         <div class="rounded-md border border-green-200 bg-green-50 text-green-700 p-4">

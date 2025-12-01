@@ -314,15 +314,17 @@ class OrdersController extends Controller
     }
 
     /**
-     * Envia o recibo do pedido pago via WhatsApp Business (BotConversa)
+     * Envia o recibo do pedido pago via WhatsApp
      */
     public function sendReceipt(Request $request, Order $order)
     {
         try {
-            if ($order->payment_status !== 'paid') {
+            // Permite enviar recibo para qualquer status exceto estornado
+            // O controller valida se há instância WhatsApp conectada
+            if ($order->payment_status === 'refunded') {
                 return redirect()
                     ->back()
-                    ->with('error', 'O pedido precisa estar com pagamento confirmado para enviar o recibo.');
+                    ->with('error', 'Não é possível enviar recibo para pedidos estornados.');
             }
 
             $order->loadMissing('customer', 'items.product', 'items.variant', 'address');
@@ -333,28 +335,28 @@ class OrdersController extends Controller
                     ->with('error', 'O cliente não possui telefone cadastrado para enviar o recibo via WhatsApp.');
             }
 
-            /** @var BotConversaService $bot */
-            $bot = app(BotConversaService::class);
+            $whatsappService = new WhatsAppService();
 
-            if (!$bot->isConfigured()) {
+            if (!$whatsappService->isEnabled()) {
                 return redirect()
                     ->back()
-                    ->with('error', 'Integração com WhatsApp (BotConversa) não está configurada.');
+                    ->with('error', 'Nenhuma instância WhatsApp conectada. Verifique as configurações de WhatsApp.');
             }
 
-            $sent = $bot->sendPaidOrderJson($order);
+            $result = $whatsappService->sendReceipt($order);
 
-            if (!$sent) {
+            if (!isset($result['success']) || !$result['success']) {
+                $errorMsg = $result['error'] ?? 'Não foi possível enviar o recibo via WhatsApp.';
                 return redirect()
                     ->back()
-                    ->with('error', 'Não foi possível enviar o recibo via WhatsApp. Verifique os logs para mais detalhes.');
+                    ->with('error', $errorMsg);
             }
 
             if (empty($order->notified_paid_at)) {
                 $order->forceFill(['notified_paid_at' => now()])->save();
             }
 
-            Log::info('OrdersController: Recibo enviado pelo WhatsApp Business', [
+            Log::info('OrdersController: Recibo enviado via WhatsApp', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'customer_id' => $order->customer->id ?? null,
@@ -362,9 +364,9 @@ class OrdersController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Recibo enviado com sucesso via WhatsApp Business.');
+                ->with('success', 'Recibo enviado com sucesso via WhatsApp!');
         } catch (\Throwable $e) {
-            Log::error('OrdersController: Erro ao enviar recibo via WhatsApp Business', [
+            Log::error('OrdersController: Erro ao enviar recibo via WhatsApp', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -385,6 +387,12 @@ class OrdersController extends Controller
             'payment',
             'orderDeliveryFee'
         ]);
+
+        // Verificar se tem débito aberto
+        $hasOpenDebt = \App\Models\CustomerDebt::where('order_id', $order->id)
+            ->where('type', 'debit')
+            ->where('status', 'open')
+            ->exists();
 
         // Histórico de status
         $statusHistory = DB::table('order_status_history')
@@ -448,7 +456,59 @@ class OrdersController extends Controller
             'paymentGatewayStatus' => $mpInfo['status'],
             'paymentStatusDetail' => $mpInfo['status_detail'],
             'paymentReviewNotifiedAt' => $mpInfo['notified_at'],
+            'hasOpenDebt' => $hasOpenDebt,
         ]));
+    }
+
+    /**
+     * Registrar pedido como débito (fiado)
+     */
+    public function registerAsDebit(Request $request, Order $order)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Verificar se já existe um débito para este pedido
+            $existingDebt = \App\Models\CustomerDebt::where('order_id', $order->id)
+                ->where('type', 'debit')
+                ->where('status', 'open')
+                ->first();
+
+            if ($existingDebt) {
+                return redirect()->back()->with('error', 'Este pedido já está registrado como débito.');
+            }
+
+            if (!$order->customer_id) {
+                return redirect()->back()->with('error', 'O pedido deve ter um cliente associado para lançar como débito.');
+            }
+
+            // Criar registro de débito
+            \App\Models\CustomerDebt::create([
+                'customer_id' => $order->customer_id,
+                'order_id' => $order->id,
+                'amount' => $order->final_amount ?? $order->total_amount,
+                'type' => 'debit',
+                'status' => 'open',
+                'description' => "Pedido #{$order->order_number} - Lançado manualmente como débito",
+            ]);
+
+            // Se quiser marcar como "Aguardando Pagamento" explicitamente
+            if ($order->payment_status !== 'pending') {
+                $order->payment_status = 'pending';
+                $order->save();
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Pedido lançado como débito com sucesso!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erro ao lançar pedido como débito', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->with('error', 'Erro ao lançar como débito: ' . $e->getMessage());
+        }
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -1911,6 +1971,48 @@ class OrdersController extends Controller
         }
         
         $order->save();
+        
+        // Atualizar débitos abertos relacionados a este pedido
+        $this->updateOrderDebts($order);
+    }
+    
+    /**
+     * Atualiza os débitos abertos relacionados a um pedido quando o total muda
+     */
+    private function updateOrderDebts(Order $order)
+    {
+        try {
+            // Buscar débitos abertos relacionados a este pedido
+            $debts = \App\Models\CustomerDebt::where('order_id', $order->id)
+                ->where('type', 'debit')
+                ->where('status', 'open')
+                ->get();
+            
+            if ($debts->isEmpty()) {
+                return; // Não há débitos para atualizar
+            }
+            
+            $newAmount = $order->final_amount ?? $order->total_amount ?? 0;
+            
+            foreach ($debts as $debt) {
+                // Atualizar o valor do débito para o novo total do pedido
+                $debt->amount = $newAmount;
+                $debt->description = "Pedido #{$order->order_number} - Lançado manualmente como débito";
+                $debt->save();
+                
+                Log::info('Débito atualizado após alteração no pedido', [
+                    'order_id' => $order->id,
+                    'debt_id' => $debt->id,
+                    'new_amount' => $newAmount,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log do erro mas não interrompe o fluxo
+            Log::warning('Erro ao atualizar débitos do pedido', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

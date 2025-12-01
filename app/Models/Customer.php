@@ -16,6 +16,7 @@ class Customer extends Authenticatable
         'visitor_id',
         'name',
         'phone',
+        'preferred_gateway_phone',
         'email',
         'address',
         'neighborhood',

@@ -4,9 +4,10 @@
 
 Esta documentação descreve a integração completa entre o sistema Laravel e o bot WhatsApp hospedado no Railway, utilizando a biblioteca Baileys para comunicação com a API do WhatsApp. A integração permite o envio automático de notificações de status de pedidos para clientes via WhatsApp.
 
-**Versão:** 1.0.0  
+**Versão:** 1.1.0  
 **Data:** Janeiro 2025  
-**Status:** ✅ Implementado e Funcional
+**Status:** ✅ Implementado e Funcional  
+**Última Atualização:** 2025-01-27
 
 ---
 
@@ -291,6 +292,30 @@ return [
 ];
 ```
 
+#### 1.6. API Endpoint para Configurações do WhatsApp
+
+**Arquivo:** `app/Http/Controllers/Dashboard/SettingsController.php`
+
+**Método:** `whatsappSettingsApi()`
+
+**Rota:** `GET /api/whatsapp/settings`
+
+**Autenticação:** Header `X-API-Token` (deve ser igual a `API_SECRET` ou `WEBHOOK_TOKEN`)
+
+**Resposta:**
+```json
+{
+  "whatsapp_phone": "5571987019420"
+}
+```
+
+**Características:**
+- ✅ Prioriza número do banco de dados (`whatsapp_settings.whatsapp_phone`)
+- ✅ Fallback para variável de ambiente `WHATSAPP_PHONE`
+- ✅ Fallback padrão: `5571987019420`
+- ✅ Autenticação obrigatória via token
+- ✅ Logs detalhados para debug
+
 ---
 
 ### 2. Bot WhatsApp (Railway)
@@ -324,6 +349,9 @@ olika-whatsapp-integration/
 - ✅ Reconexão automática com backoff exponencial
 - ✅ Salvamento seguro de credenciais
 - ✅ Tratamento global de exceções
+- ✅ Código de pareamento (substitui QR Code)
+- ✅ Busca número do WhatsApp do banco de dados (prioridade sobre .env)
+- ✅ Graceful shutdown para encerramento limpo
 
 **Funções Exportadas:**
 
@@ -339,23 +367,94 @@ module.exports = {
 
 ```javascript
 const sendMessage = async (phone, message) => {
-  if (!globalSock) {
-    throw new Error('Socket não está conectado.');
+  const sock = global.sock;
+  
+  // Verificar conexão antes de tentar enviar
+  if (!sock) {
+    throw new Error('Socket não está conectado. Aguarde a conexão ser estabelecida.');
   }
   
-  // Normaliza telefone: 5511999999999 -> 5511999999999@s.whatsapp.net
+  if (!sock.user && (!sock.ws || sock.ws.readyState !== 1)) {
+    throw new Error('WhatsApp não está conectado. Aguarde a conexão ser estabelecida.');
+  }
+  
+  // Normalizar número de telefone
   let normalizedPhone = phone.replace(/\D/g, '');
   if (!phone.includes('@s.whatsapp.net')) {
     normalizedPhone = `${normalizedPhone}@s.whatsapp.net`;
   }
   
-  const result = await globalSock.sendMessage(normalizedPhone, { text: message });
+  // Timeout interno de 5 segundos
+  const sendPromise = sock.sendMessage(normalizedPhone, { text: message });
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout interno: sendMessage demorou mais de 5s')), 5000);
+  });
+  
+  const result = await Promise.race([sendPromise, timeoutPromise]);
   
   return {
     success: true,
     messageId: result?.key?.id,
   };
 };
+```
+
+**Função `isConnected`:**
+
+```javascript
+const isConnected = () => {
+  // Usar variável global de estado (mais confiável)
+  if (!global.isWhatsAppConnected) {
+    return false;
+  }
+  
+  // Verificar se o socket existe e o WebSocket está aberto
+  const sock = global.sock;
+  if (!sock) {
+    return false;
+  }
+  
+  // Verificar estado do WebSocket (readyState: 1 = OPEN)
+  const wsState = sock?.ws?.readyState;
+  return wsState === 1;
+};
+```
+
+**Função `getWhatsAppPhone` (Busca número do banco de dados):**
+
+```javascript
+async function getWhatsAppPhone() {
+  const laravelApiUrl = process.env.LARAVEL_API_URL || 'https://devdashboard.menuolika.com.br';
+  const laravelApiKey = process.env.API_SECRET || API_TOKEN;
+  
+  try {
+    // Fazer requisição para /api/whatsapp/settings no Laravel
+    const response = await fetch(`${laravelApiUrl}/api/whatsapp/settings`, {
+      headers: {
+        'X-API-Token': laravelApiKey,
+        'Accept': 'application/json'
+      },
+      timeout: 5000
+    });
+    
+    if (response.status === 403) {
+      logger.warn('Erro de autenticação ao buscar número do WhatsApp');
+      return process.env.WHATSAPP_PHONE || "5571987019420";
+    }
+    
+    const settings = await response.json();
+    
+    // PRIORIDADE: Banco de dados > .env > Padrão
+    if (settings.whatsapp_phone && String(settings.whatsapp_phone).trim() !== '') {
+      return String(settings.whatsapp_phone).trim();
+    }
+    
+    return process.env.WHATSAPP_PHONE || "5571987019420";
+  } catch (error) {
+    logger.warn('Erro ao buscar número do WhatsApp, usando fallback:', error.message);
+    return process.env.WHATSAPP_PHONE || "5571987019420";
+  }
+}
 ```
 
 ---
@@ -371,7 +470,9 @@ app.get('/', (req, res) => {
   res.json({
     status: 'running',
     connected: isConnected(),
-    timestamp: new Date().toISOString()
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    port: PORT
   });
 });
 ```
@@ -381,7 +482,9 @@ app.get('/', (req, res) => {
 {
   "status": "running",
   "connected": true,
-  "timestamp": "2025-01-27T18:30:00.000Z"
+  "uptime": 3600,
+  "timestamp": "2025-01-27T18:30:00.000Z",
+  "port": 8080
 }
 ```
 
@@ -414,43 +517,179 @@ app.post('/send-message', requireAuth, async (req, res) => {
 }
 ```
 
-##### `POST /api/notify` - Endpoint Principal (Laravel)
+##### `GET /api/whatsapp/status` - Status da Conexão WhatsApp
 
 ```javascript
-app.post('/api/notify', requireAuth, async (req, res) => {
-  const { event, order, customer, phone, message } = req.body;
+app.get('/api/whatsapp/status', requireAuth, (req, res) => {
+  const sock = global.sock;
+  const user = sock?.user;
+  const connected = isConnected();
   
-  // Validação
-  if (!phone && !customer?.phone) {
-    return res.status(400).json({ 
-      error: 'Telefone do cliente é obrigatório' 
+  // Retornar código de pareamento apenas se não estiver conectado
+  const pairingCode = connected ? null : (global.currentPairingCode || null);
+  
+  res.json({
+    connected: connected,
+    pairingCode: pairingCode,
+    user: user ? {
+      id: user.id,
+      name: user.name || null
+    } : null,
+    last_updated: new Date().toISOString()
+  });
+});
+```
+
+**Resposta (Conectado):**
+```json
+{
+  "connected": true,
+  "pairingCode": null,
+  "user": {
+    "id": "5511999999999",
+    "name": "Nome do WhatsApp"
+  },
+  "last_updated": "2025-01-27T18:30:00.000Z"
+}
+```
+
+**Resposta (Não Conectado):**
+```json
+{
+  "connected": false,
+  "pairingCode": "12345678",
+  "user": null,
+  "last_updated": "2025-01-27T18:30:00.000Z"
+}
+```
+
+##### `POST /api/whatsapp/disconnect` - Desconectar WhatsApp Manualmente
+
+```javascript
+app.post('/api/whatsapp/disconnect', requireAuth, async (req, res) => {
+  const result = await disconnect();
+  
+  if (result.success) {
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      message: result.message
     });
   }
+});
+```
 
-  if (!isConnected()) {
-    return res.status(503).json({ 
-      error: 'WhatsApp não está conectado.',
-      retry: true 
-    });
-  }
+##### `POST /api/whatsapp/restart` - Reiniciar Conexão com Novo Número
 
-  // Determina telefone
-  const targetPhone = phone || customer?.phone;
+```javascript
+app.post('/api/whatsapp/restart', requireAuth, async (req, res) => {
+  // Buscar novo número do banco de dados
+  const newPhone = await getWhatsAppPhone();
+  global.currentWhatsAppPhone = newPhone;
   
-  // Formata mensagem
-  let finalMessage = message;
-  if (!finalMessage && order) {
-    finalMessage = formatOrderMessage(event, order, customer);
+  // Desconectar conexão atual
+  if (global.sock) {
+    await disconnect();
   }
   
-  // Envia
-  const result = await sendMessage(targetPhone, finalMessage);
+  // Aguardar antes de reconectar
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  // Reconectar com novo número
+  startSock(newPhone).catch(err => {
+    logger.error(`Erro ao reconectar: ${err.message}`);
+  });
   
   res.json({
     success: true,
-    messageId: result.messageId,
-    sent_at: new Date().toISOString()
+    message: `Conexão reiniciada com número: ${newPhone}`,
+    new_phone: newPhone
   });
+});
+```
+
+##### `POST /api/notify` - Endpoint Principal (Laravel)
+
+**IMPORTANTE:** Este endpoint possui timeout de 8 segundos para evitar erro 502 do Railway.
+
+```javascript
+app.post('/api/notify', requireAuth, async (req, res) => {
+  // Timeout de segurança: resposta em no máximo 8 segundos
+  let responseTimeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(504).json({
+        success: false,
+        error: 'Timeout interno: aplicação não respondeu a tempo',
+        retry: true,
+        timeout: true
+      });
+    }
+  }, 8000);
+
+  try {
+    const { event, order, customer, phone, message } = req.body;
+    
+    // Verificar conexão ANTES de qualquer processamento
+    if (!isConnected()) {
+      return res.status(503).json({ 
+        success: false,
+        error: 'WhatsApp não conectado. Tente novamente em alguns segundos.',
+        retry: true,
+        connected: false
+      });
+    }
+
+    // Determinar telefone
+    const targetPhone = phone || customer?.phone;
+    
+    if (!targetPhone) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Telefone do cliente é obrigatório (phone ou customer.phone)' 
+      });
+    }
+
+    // Formata mensagem
+    let finalMessage = message;
+    if (!finalMessage && order) {
+      finalMessage = formatOrderMessage(event, order, customer);
+    }
+    
+    // Enviar mensagem com timeout interno (6 segundos)
+    const sendPromise = sendMessage(targetPhone, finalMessage);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout ao enviar mensagem (6s)')), 6000);
+    });
+
+    const result = await Promise.race([sendPromise, timeoutPromise]);
+    clearTimeout(responseTimeout);
+    
+    res.json({
+      success: true,
+      messageId: result.messageId,
+      sent_at: new Date().toISOString()
+    });
+  } catch (error) {
+    clearTimeout(responseTimeout);
+    
+    if (error.message.includes('Timeout')) {
+      return res.status(503).json({ 
+        success: false,
+        error: 'Timeout ao enviar mensagem. WhatsApp pode estar reconectando.',
+        retry: true,
+        timeout: true
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false,
+      error: error.message || 'Falha no envio WhatsApp'
+    });
+  }
 });
 ```
 
@@ -498,7 +737,9 @@ const requireAuth = (req, res, next) => {
     const API_TOKEN = process.env.API_SECRET;
     const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || API_TOKEN;
     
+    // Se não tiver token configurado, bloquear por segurança
     if (!API_TOKEN && !WEBHOOK_TOKEN) {
+        logger.error('ERRO CRÍTICO: Nenhum token configurado no .env');
         return res.status(500).json({ error: 'Configuração de servidor inválida' });
     }
 
@@ -507,10 +748,122 @@ const requireAuth = (req, res, next) => {
     if (validToken) {
         next();
     } else {
+        logger.warn(`Tentativa de acesso negado. Token recebido: ${token ? '***' : 'nenhum'}`);
         res.status(403).json({ error: 'Acesso negado' });
     }
 };
 ```
+
+**Graceful Shutdown:**
+
+```javascript
+const gracefulShutdown = async (signal) => {
+    logger.info(`Sinal ${signal} recebido. Iniciando Graceful Shutdown...`);
+    
+    // 1. Tenta desconectar o WhatsApp de forma limpa
+    if (global.sock) {
+        logger.info('Encerrando conexão Baileys (logout)...');
+        try {
+            await global.sock.logout();
+            logger.info('Baileys desconectado e credenciais salvas.');
+        } catch (error) {
+            logger.error('Falha no logout Baileys, tentando encerrar o socket:', error.message);
+            try {
+                await global.sock.end();
+            } catch (e) {
+                logger.error('Erro ao encerrar socket:', e.message);
+            }
+        }
+    }
+    
+    // 2. Fecha o servidor HTTP para novas conexões
+    if (server) {
+        server.close(() => {
+            logger.info('Servidor HTTP encerrado.');
+            process.exit(0);
+        });
+        
+        // 3. Timeout para forçar o encerramento se o Baileys travar
+        setTimeout(() => {
+            logger.error('Shutdown timeout. Forçando encerramento.');
+            process.exit(1);
+        }, 10000); // 10 segundos para o Railway
+    } else {
+        process.exit(0);
+    }
+};
+
+// Capturar os sinais de encerramento do sistema (Railway envia SIGTERM)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+```
+
+---
+
+## 🔐 Autenticação e Conexão WhatsApp
+
+### Código de Pareamento
+
+O sistema utiliza **código de pareamento numérico** em vez de QR Code para conectar o WhatsApp Business.
+
+**Como funciona:**
+
+1. Quando o bot inicia e não está conectado, gera automaticamente um código de 8 dígitos
+2. O código é válido por aproximadamente 90 segundos
+3. Se expirar, um novo código é gerado automaticamente
+4. O código pode ser obtido via endpoint `/api/whatsapp/status`
+
+**Como parear:**
+
+1. Abra o **WhatsApp Business** no seu celular
+2. Toque em **Menu (⋮)** → **Aparelhos conectados**
+3. Toque em **Conectar um dispositivo**
+4. Selecione **Conectar via código**
+5. Digite o código de 8 dígitos exibido no dashboard
+
+**Endpoint para obter código:**
+
+```bash
+GET /api/whatsapp/status
+Headers: X-Olika-Token: seu_token
+```
+
+**Resposta (não conectado):**
+```json
+{
+  "connected": false,
+  "pairingCode": "12345678",
+  "user": null,
+  "last_updated": "2025-01-27T18:30:00.000Z"
+}
+```
+
+**Resposta (conectado):**
+```json
+{
+  "connected": true,
+  "pairingCode": null,
+  "user": {
+    "id": "5511999999999",
+    "name": "Nome do WhatsApp"
+  },
+  "last_updated": "2025-01-27T18:30:00.000Z"
+}
+```
+
+### Gerenciamento de Número do WhatsApp
+
+O número do WhatsApp é gerenciado através do banco de dados Laravel, com prioridade:
+
+1. **Banco de dados** (`whatsapp_settings.whatsapp_phone`) - **PRIORIDADE MÁXIMA**
+2. Variável de ambiente (`WHATSAPP_PHONE`) - Fallback
+3. Número padrão (`5571987019420`) - Último recurso
+
+**Quando o número muda no dashboard:**
+- O Laravel notifica automaticamente o bot via `/api/whatsapp/restart`
+- O bot desconecta a conexão atual
+- O bot busca o novo número do banco de dados
+- O bot reconecta com o novo número
 
 ---
 
@@ -549,9 +902,20 @@ WHATSAPP_WEBHOOK_TIMEOUT=10
 API_SECRET=olika_secret_token
 WEBHOOK_TOKEN=olika_secret_token
 
-# Porta do servidor
-PORT=3000
+# Porta do servidor (Railway usa 8080 por padrão)
+PORT=8080
+
+# URL da API do Laravel (para buscar número do WhatsApp do banco)
+LARAVEL_API_URL=https://devdashboard.menuolika.com.br
+
+# Número do WhatsApp (fallback se não encontrar no banco)
+WHATSAPP_PHONE=5571987019420
 ```
+
+**⚠️ IMPORTANTE:**
+- O número do WhatsApp é buscado do banco de dados via API `/api/whatsapp/settings`
+- A prioridade é: **Banco de dados > Variável de ambiente (.env) > Padrão**
+- Se o número mudar no dashboard Laravel, o bot será notificado automaticamente via `/api/whatsapp/restart`
 
 ---
 
@@ -737,6 +1101,13 @@ event(new \App\Events\OrderStatusUpdated($pedido, 'order_created', 'Teste de int
 
 ### 3. Teste Manual do Bot
 
+**Teste de Status:**
+```bash
+curl -X GET https://olika-bot.up.railway.app/api/whatsapp/status \
+  -H "X-Olika-Token: seu_token_aqui"
+```
+
+**Teste de Notificação:**
 ```bash
 curl -X POST https://olika-bot.up.railway.app/api/notify \
   -H "Content-Type: application/json" \
@@ -762,6 +1133,18 @@ curl -X POST https://olika-bot.up.railway.app/api/notify \
   "messageId": "3EB0C767F26BXXXX",
   "sent_at": "2025-01-27T18:30:00.000Z"
 }
+```
+
+**Teste de Reinício (quando número muda):**
+```bash
+curl -X POST https://olika-bot.up.railway.app/api/whatsapp/restart \
+  -H "X-Olika-Token: seu_token_aqui"
+```
+
+**Teste de Desconexão:**
+```bash
+curl -X POST https://olika-bot.up.railway.app/api/whatsapp/disconnect \
+  -H "X-Olika-Token: seu_token_aqui"
 ```
 
 ---
@@ -819,9 +1202,24 @@ WhatsApp não está conectado. A mensagem será perdida.
 ```
 
 **Solução:**
-1. Verifique se o bot está conectado ao WhatsApp
+1. Verifique se o bot está conectado ao WhatsApp via `/api/whatsapp/status`
 2. Verifique os logs do Railway para problemas de conexão
-3. Pode ser necessário reautenticar (gerar novo QR Code)
+3. Se não estiver conectado, verifique se há código de pareamento disponível
+4. Use o código de pareamento no WhatsApp Business para conectar
+5. Se necessário, desconecte e reconecte via `/api/whatsapp/disconnect` e `/api/whatsapp/restart`
+
+### Problema: "Timeout interno" (504)
+
+**Sintomas:**
+```
+Timeout interno: aplicação não respondeu a tempo
+```
+
+**Solução:**
+1. O endpoint `/api/notify` tem timeout de 8 segundos
+2. Verifique se o WhatsApp está conectado e respondendo
+3. Pode indicar que o WhatsApp está reconectando
+4. O Laravel tentará novamente automaticamente (retry)
 
 ---
 
@@ -862,14 +1260,19 @@ app/
 │   └── SendOrderWhatsAppNotification.php # Listener
 ├── Providers/
 │   └── EventServiceProvider.php         # Registro
-└── Services/
-    └── OrderStatusService.php           # Dispara eventos
+├── Services/
+│   └── OrderStatusService.php           # Dispara eventos
+└── Http/
+    └── Controllers/
+        └── Dashboard/
+            └── SettingsController.php   # API /api/whatsapp/settings
 
 config/
 └── notifications.php                    # Configurações
 
 routes/
 └── web.php                              # Rota de teste
+└── api.php                              # Rota /api/whatsapp/settings
 ```
 
 ### Bot WhatsApp
@@ -882,8 +1285,12 @@ olika-whatsapp-integration/
 │   │   └── socket.js                    # Socket Baileys
 │   └── config/
 │       └── logger.js                    # Logger
+├── auth_info_baileys/                  # Credenciais (por número)
+│   └── {numero}/                        # Sessão por número
 └── package.json                         # Dependências
 ```
+
+**Nota:** As credenciais são armazenadas em `auth_info_baileys/{numero}/` para permitir múltiplas sessões por número.
 
 ---
 
@@ -967,11 +1374,19 @@ olika-whatsapp-integration/
 ### Bot WhatsApp
 
 - [x] Endpoint `/api/notify` criado
+- [x] Endpoint `/api/whatsapp/status` criado (com código de pareamento)
+- [x] Endpoint `/api/whatsapp/disconnect` criado
+- [x] Endpoint `/api/whatsapp/restart` criado
 - [x] Função `sendMessage` exportada
+- [x] Função `isConnected` implementada
+- [x] Função `getWhatsAppPhone` implementada (busca do banco)
 - [x] Autenticação implementada
 - [x] Formatação de mensagens implementada
 - [x] Health check endpoint criado
 - [x] Tratamento de erros implementado
+- [x] Timeout no `/api/notify` (8 segundos)
+- [x] Graceful shutdown implementado
+- [x] Código de pareamento (substitui QR Code)
 - [x] Logs detalhados
 
 ### Configuração
@@ -992,6 +1407,37 @@ olika-whatsapp-integration/
 
 ---
 
+## 🔄 Mudanças na Versão 1.1.0
+
+### Novidades
+
+1. **Código de Pareamento**
+   - Substituição do QR Code por código numérico de 8 dígitos
+   - Código expira em ~90 segundos
+   - Geração automática via `requestPairingCode()` do Baileys
+
+2. **Busca de Número do Banco de Dados**
+   - Prioridade: Banco de dados > Variável de ambiente > Padrão
+   - Endpoint Laravel: `/api/whatsapp/settings`
+   - Busca automática na inicialização e reconexão
+
+3. **Novos Endpoints**
+   - `GET /api/whatsapp/status` - Status da conexão e código de pareamento
+   - `POST /api/whatsapp/disconnect` - Desconectar manualmente
+   - `POST /api/whatsapp/restart` - Reiniciar com novo número
+
+4. **Melhorias de Performance**
+   - Timeout de 8 segundos no `/api/notify` para evitar 502
+   - Timeout interno de 6 segundos no envio de mensagem
+   - Graceful shutdown para encerramento limpo
+
+5. **Melhorias de Confiabilidade**
+   - Variável global `isWhatsAppConnected` para estado mais preciso
+   - Verificação de estado do WebSocket antes de enviar
+   - Tratamento específico para timeouts
+
+---
+
 ## ✅ Status Final
 
 **Implementação:** ✅ Completa  
@@ -1002,6 +1448,6 @@ olika-whatsapp-integration/
 ---
 
 **Última atualização:** 2025-01-27  
-**Versão:** 1.0.0  
+**Versão:** 1.1.0  
 **Autor:** Sistema Unificado da Olika
 

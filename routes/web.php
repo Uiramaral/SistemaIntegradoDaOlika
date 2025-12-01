@@ -233,6 +233,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/customers/debts/{debt}/settle', [\App\Http\Controllers\Dashboard\DebtsController::class, 'settleDebt'])->name('dashboard.customers.debts.settle');
     Route::post('/customers/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
     Route::put('/customers/{customer}/cashback', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateCashback'])->name('dashboard.customers.updateCashback');
+    Route::post('/customers/{customer}/adjust-debt-balance', [\App\Http\Controllers\Dashboard\CustomersController::class, 'adjustDebtBalance'])->name('dashboard.customers.adjustDebtBalance');
     Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
         'index' => 'dashboard.wholesale-prices.index',
         'create' => 'dashboard.wholesale-prices.create',
@@ -300,6 +301,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
         Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
         Route::post('/{order}/confirm-mercadopago', [\App\Http\Controllers\Dashboard\OrdersController::class, 'confirmMercadoPagoStatus'])->name('confirmMercadoPagoStatus');
+        Route::post('/{order}/register-debit', [\App\Http\Controllers\Dashboard\OrdersController::class, 'registerAsDebit'])->name('registerAsDebit');
     });
     
     // Alias para manter compatibilidade
@@ -328,11 +330,31 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/settings/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.settings.whatsapp.notifications.save');
     Route::get('/settings/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.settings.whatsapp.qr');
     Route::get('/settings/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.settings.whatsapp.status');
+    Route::post('/settings/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappConnect'])->name('dashboard.settings.whatsapp.connect');
+    Route::post('/settings/whatsapp/clear-auth', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappClearAuth'])->name('dashboard.settings.whatsapp.clear-auth');
     Route::post('/settings/whatsapp/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappDisconnect'])->name('dashboard.settings.whatsapp.disconnect');
+    
+    // Gerenciamento de Instâncias WhatsApp (Multi-instâncias)
+    Route::prefix('whatsapp/instances')->name('dashboard.whatsapp.instances.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\WhatsappInstanceController::class, 'index'])->name('index');
+        Route::get('/{id}', [\App\Http\Controllers\WhatsappInstanceController::class, 'show'])->name('show');
+        Route::post('/', [\App\Http\Controllers\WhatsappInstanceController::class, 'store'])->name('store');
+        Route::put('/{id}', [\App\Http\Controllers\WhatsappInstanceController::class, 'update'])->name('update');
+        Route::post('/{id}/connect', [\App\Http\Controllers\WhatsappInstanceController::class, 'connect'])->name('connect');
+    });
+
+    // Campanhas em Massa WhatsApp
+    Route::prefix('whatsapp/campaigns')->name('dashboard.whatsapp.campaigns.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\WhatsappCampaignController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\WhatsappCampaignController::class, 'store'])->name('store');
+    });
     
     // WhatsApp (rotas alternativas para /dashboard/whatsapp)
     Route::get('/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.whatsapp.qr');
     Route::get('/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.whatsapp.status');
+    Route::get('/whatsapp/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSettingsApi'])->name('dashboard.whatsapp.settings');
+    Route::post('/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappConnect'])->name('dashboard.whatsapp.connect');
+    Route::post('/whatsapp/clear-auth', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappClearAuth'])->name('dashboard.whatsapp.clear-auth');
     Route::post('/whatsapp/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappDisconnect'])->name('dashboard.whatsapp.disconnect');
     Route::post('/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.whatsapp.save');
     Route::post('/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.whatsapp.notifications.save');
@@ -526,6 +548,16 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Route::get('/entregas', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'index'])->name('dashboard.deliveries.index');
     Route::post('/entregas/{order}/status', [\App\Http\Controllers\Dashboard\DeliveryController::class, 'updateStatus'])->name('dashboard.deliveries.status');
     Route::get('/whatsapp', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
+    
+    // Gerenciamento de Instâncias WhatsApp (Multi-instâncias) - Fallback
+    Route::prefix('whatsapp/instances')->name('dashboard.whatsapp.instances.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\WhatsappInstanceController::class, 'index'])->name('index');
+        Route::get('/{id}', [\App\Http\Controllers\WhatsappInstanceController::class, 'show'])->name('show');
+        Route::post('/', [\App\Http\Controllers\WhatsappInstanceController::class, 'store'])->name('store');
+        Route::put('/{id}', [\App\Http\Controllers\WhatsappInstanceController::class, 'update'])->name('update');
+        Route::post('/{id}/connect', [\App\Http\Controllers\WhatsappInstanceController::class, 'connect'])->name('connect');
+    });
+    
     Route::get('/mercado-pago', [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
     Route::get('/status-templates', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'index'])->name('dashboard.settings.status-templates');
     Route::post('/status-templates/status/{id}', [\App\Http\Controllers\Dashboard\OrderStatusController::class, 'updateStatus'])->name('dashboard.settings.status-templates.status.update');
@@ -561,6 +593,7 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
         Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fiscalReceiptEscPos');
         Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
         Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('markPrinted');
+        Route::post('/{order}/register-debit', [\App\Http\Controllers\Dashboard\OrdersController::class, 'registerAsDebit'])->name('registerAsDebit');
     });
     
     // Configurações: Dias e horários de entrega (fallback)

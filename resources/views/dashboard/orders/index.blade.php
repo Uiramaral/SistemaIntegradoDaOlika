@@ -1,32 +1,28 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Pedidos - OLIKA Dashboard')
+@section('page_title', 'Pedidos')
+@section('page_subtitle', 'Gerencie todos os pedidos do restaurante')
+
+@section('page_actions')
+    <a href="{{ route('dashboard.orders.printerMonitor') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Monitor de Impressão
+    </a>
+    <a href="{{ route('dashboard.pdv.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        Novo Pedido
+    </a>
+@endsection
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Pedidos</h1>
-            <p class="text-muted-foreground">Gerencie todos os pedidos do restaurante</p>
-        </div>
-        <div class="dashboard-actions">
-            <a href="{{ route('dashboard.orders.printerMonitor') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 w-full sm:w-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Monitor de Impressão
-            </a>
-            <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2 w-full sm:w-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
-                    <path d="M5 12h14"></path>
-                    <path d="M12 5v14"></path>
-                </svg>
-                Novo Pedido
-            </button>
-        </div>
-    </div>
+<div class="space-y-6">
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6">
             <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col sm:flex-row gap-4">
@@ -109,8 +105,8 @@
                                     $paymentText = $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status);
                                 @endphp
                                 <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">{{ $order->order_number }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium" data-label="#">{{ $order->order_number }}</td>
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell" data-label="Cliente">
                                         <div>
                                             <div class="font-medium">{{ $order->customer->name ?? 'Cliente não informado' }}</div>
                                             @if($order->customer && $order->customer->phone)
@@ -118,14 +114,14 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-semibold">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-semibold" data-label="Total">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</td>
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Status">
                                         <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent {{ $statusColor }}">{{ $statusText }}</div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Pagamento">
                                         <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors {{ $paymentColor }}">{{ $paymentText }}</div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground" data-label="Quando">
                                         @php
                                             try {
                                                 $diff = $order->created_at->diffForHumans();
@@ -136,7 +132,7 @@
                                         {{ $diff }}
                                         <div class="text-xs">{{ $order->created_at->format('d/m/Y H:i') }}</div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell" data-label="Ações">
                                         <div class="flex gap-2 justify-end mobile-actions">
                                             <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3 w-full sm:w-auto" title="Imprimir Recibo Fiscal" data-order-id="{{ $order->id }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">

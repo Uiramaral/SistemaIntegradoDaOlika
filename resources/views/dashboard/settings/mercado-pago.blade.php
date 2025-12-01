@@ -1,13 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Mercado Pago - OLIKA Dashboard')
+@section('page_title', 'Integração Mercado Pago')
+@section('page_subtitle', 'Receba pagamentos online de forma segura e fácil')
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Integração Mercado Pago</h1>
-        <p class="text-muted-foreground">Receba pagamentos online de forma segura e fácil</p>
-    </div>
+<div class="space-y-6">
 
     <div role="alert" class="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground bg-background text-foreground">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert h-4 w-4">

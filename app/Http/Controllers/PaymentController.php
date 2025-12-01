@@ -360,17 +360,22 @@ class PaymentController extends Controller
                             \Log::warning('Falha ao baixar débitos após pagamento (polling)', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                         }
                         
-                        // Dispara webhook para BotConversa quando pago
+                        // Enviar recibo via WhatsApp quando pago
                         if (empty($order->notified_paid_at)) {
                             try {
-                                $bot = new \App\Services\BotConversaService();
-                                $ok = $bot->sendPaidOrderJson($order->loadMissing('items.product','customer','address'));
-                                if ($ok) { $order->notified_paid_at = now(); $order->save(); }
+                                $whatsappService = new \App\Services\WhatsAppService();
+                                if ($whatsappService->isEnabled() && $order->customer && $order->customer->phone) {
+                                    $result = $whatsappService->sendReceipt($order->loadMissing('items.product','customer','address'));
+                                    if (isset($result['success']) && $result['success']) {
+                                        $order->notified_paid_at = now();
+                                        $order->save();
+                                    }
+                                }
                                 
                                 // Enviar notificação para o número específico quando pedido for pago
-                                if ($bot->isConfigured() && in_array($order->payment_status, ['paid', 'approved'])) {
+                                if ($whatsappService->isEnabled() && in_array($order->payment_status, ['paid', 'approved'])) {
                                     try {
-                                        $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                                        $notificationPhone = '71981750546'; // Número fixo para notificações
                                         $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
                                         $message .= "Pedido: #{$order->order_number}\n";
                                         $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
@@ -378,13 +383,15 @@ class PaymentController extends Controller
                                         $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
                                         $message .= "Acesse o dashboard para ver os detalhes.";
                                         
-                                        $bot->sendTextMessage($notificationPhone, $message);
+                                        $result = $whatsappService->sendText($notificationPhone, $message);
                                         
-                                        \Log::info('PaymentController (polling): Notificação enviada para número de administrador', [
-                                            'order_id' => $order->id,
-                                            'order_number' => $order->order_number,
-                                            'phone' => $notificationPhone
-                                        ]);
+                                        if (isset($result['success']) && $result['success']) {
+                                            \Log::info('PaymentController (polling): Notificação enviada para número de administrador', [
+                                                'order_id' => $order->id,
+                                                'order_number' => $order->order_number,
+                                                'phone' => $notificationPhone
+                                            ]);
+                                        }
                                     } catch (\Throwable $e) {
                                         \Log::warning('PaymentController (polling): Erro ao enviar notificação para administrador', [
                                             'order_id' => $order->id,
@@ -393,7 +400,7 @@ class PaymentController extends Controller
                                     }
                                 }
                             } catch (\Throwable $e) { 
-                                \Log::warning('Falha ao notificar BotConversa no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+                                \Log::warning('Falha ao notificar WhatsApp no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                             }
                         }
                     }
@@ -612,25 +619,22 @@ class PaymentController extends Controller
             }
         }
 
-        // Notificar via BotConversa (evita duplicidade)
+        // Enviar recibo via WhatsApp (evita duplicidade)
         try {
             if (empty($order->notified_paid_at)) {
-                $bot = new \App\Services\BotConversaService();
-                // URL custom não é mais necessário - o serviço já lê das settings
-                $ok = $bot->sendPaidOrderJson($order->loadMissing('items.product','customer','address'));
-                if (!$ok && $bot->isConfigured()) {
-                    // Tenta fallback para configuração padrão
-                    $ok = $bot->sendPaidOrderJson($order);
-                }
-                if ($ok) {
-                    $order->notified_paid_at = now();
-                    $order->save();
+                $whatsappService = new \App\Services\WhatsAppService();
+                if ($whatsappService->isEnabled() && $order->customer && $order->customer->phone) {
+                    $result = $whatsappService->sendReceipt($order->loadMissing('items.product','customer','address'));
+                    if (isset($result['success']) && $result['success']) {
+                        $order->notified_paid_at = now();
+                        $order->save();
+                    }
                 }
                 
                 // Enviar notificação para o número específico quando pedido for pago
-                if ($bot->isConfigured() && $order->payment_status === 'paid') {
+                if ($whatsappService->isEnabled() && $order->payment_status === 'paid') {
                     try {
-                        $notificationPhone = '+5571981750546'; // Número fixo para notificações
+                        $notificationPhone = '71981750546'; // Número fixo para notificações
                         $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
                         $message .= "Pedido: #{$order->order_number}\n";
                         $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
@@ -638,13 +642,15 @@ class PaymentController extends Controller
                         $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
                         $message .= "Acesse o dashboard para ver os detalhes.";
                         
-                        $bot->sendTextMessage($notificationPhone, $message);
+                        $result = $whatsappService->sendText($notificationPhone, $message);
                         
-                        \Log::info('PaymentController: Notificação enviada para número de administrador', [
-                            'order_id' => $order->id,
-                            'order_number' => $order->order_number,
-                            'phone' => $notificationPhone
-                        ]);
+                        if (isset($result['success']) && $result['success']) {
+                            \Log::info('PaymentController: Notificação enviada para número de administrador', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'phone' => $notificationPhone
+                            ]);
+                        }
                     } catch (\Throwable $e) {
                         \Log::warning('PaymentController: Erro ao enviar notificação para administrador', [
                             'order_id' => $order->id,
@@ -654,7 +660,7 @@ class PaymentController extends Controller
                 }
             }
         } catch (\Throwable $e) {
-            \Log::warning('Falha ao notificar BotConversa', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+            \Log::warning('Falha ao notificar WhatsApp', ['order_id' => $order->id, 'err' => $e->getMessage()]);
         }
 
         // Evolution API (rodando em paralelo até a migração completa)

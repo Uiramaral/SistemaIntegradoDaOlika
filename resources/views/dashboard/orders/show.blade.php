@@ -1,27 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Detalhes do Pedido - OLIKA Dashboard')
+@section('page_title', 'Pedido #' . $order->order_number)
+@section('page_subtitle', 'Detalhes e gestão do pedido')
 
-@section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <!-- Header com ações -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('dashboard.orders.index') }}" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent hover:text-accent-foreground">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left h-5 w-5">
-                        <path d="m12 19-7-7 7-7"></path>
-                        <path d="M19 12H5"></path>
-                    </svg>
-                </a>
-                <div>
-                    <h1 class="text-3xl font-bold tracking-tight">Pedido #{{ $order->order_number }}</h1>
-                    <p class="text-muted-foreground">Detalhes e gestão do pedido</p>
-                </div>
-            </div>
-        </div>
-        <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
-            <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
+@section('page_actions')
+            <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
@@ -64,7 +47,7 @@
                 ];
                 $statusColor = $statusColors[$order->status] ?? 'bg-muted text-muted-foreground';
             @endphp
-            @if($order->payment_status === 'paid' && optional($order->customer)->phone)
+            @if($order->payment_status !== 'refunded' && optional($order->customer)->phone)
                 <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}">
                     @csrf
                     <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-success text-success-foreground hover:bg-success/90 h-9 px-4">
@@ -76,7 +59,7 @@
                     </button>
                 </form>
             @else
-                <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-muted text-muted-foreground h-9 px-4" disabled title="Disponível apenas para pedidos pagos com número de telefone do cliente.">
+                <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-muted text-muted-foreground h-9 px-4" disabled title="@if($order->payment_status === 'refunded')Pedido estornado não pode enviar recibo.@elseif(!optional($order->customer)->phone)Cliente não possui telefone cadastrado.@elseRecibo disponível apenas para pedidos não estornados.@endif">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
                         <path d="m22 2-7 20-4-9-9-4Z"></path>
                         <path d="M22 2 11 13"></path>
@@ -117,11 +100,11 @@
 
     <!-- Resumo do Pedido - Itens do Pedido -->
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm" id="order-items-section">
-        <div class="flex flex-col space-y-1.5 p-6">
+        <div class="flex flex-col p-4 pb-2">
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
-                <button type="button" id="btn-open-add-item-modal" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
+                <button type="button" id="btn-open-add-item-modal" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
                         <path d="M5 12h14"></path>
                         <path d="M12 5v14"></path>
                     </svg>
@@ -129,22 +112,22 @@
                 </button>
             </div>
         </div>
-        <div class="p-6 pt-0">
+        <div class="px-4 pb-4">
             <div class="overflow-x-auto">
                 <table class="w-full caption-bottom text-sm">
                     <thead class="[&_tr]:border-b">
                         <tr class="border-b transition-colors hover:bg-muted/50">
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Produto</th>
-                            <th class="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Qtd</th>
-                            <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Preço Unit.</th>
-                            <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Total</th>
-                            <th class="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Ações</th>
+                            <th class="h-10 px-3 text-left align-middle text-xs font-medium text-muted-foreground">Produto</th>
+                            <th class="h-10 px-3 text-center align-middle text-xs font-medium text-muted-foreground">Qtd</th>
+                            <th class="h-10 px-3 text-right align-middle text-xs font-medium text-muted-foreground">Preço Unit.</th>
+                            <th class="h-10 px-3 text-right align-middle text-xs font-medium text-muted-foreground">Total</th>
+                            <th class="h-10 px-3 text-center align-middle text-xs font-medium text-muted-foreground">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="[&_tr:last-child]:border-0" id="items-tbody">
                         @forelse($order->items as $item)
                             <tr class="border-b transition-colors hover:bg-muted/50" data-item-id="{{ $item->id }}">
-                                <td class="p-4 align-middle">
+                                <td class="py-2 px-3 align-middle">
                                     <div>
                                         <p class="font-medium item-name">
                                             @if(!$item->product_id && $item->custom_name)
@@ -162,27 +145,27 @@
                                         @endif
                                     </div>
                                 </td>
-                                <td class="p-4 align-middle text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <button type="button" class="btn-decrease-quantity inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="-1" title="Reduzir quantidade">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus">
+                                <td class="py-2 px-3 align-middle text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <button type="button" class="btn-decrease-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="-1" title="Reduzir quantidade">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus">
                                                 <path d="M5 12h14"></path>
                                             </svg>
                                         </button>
-                                        <span class="font-semibold min-w-[2rem] text-center item-quantity">{{ $item->quantity }}</span>
-                                        <button type="button" class="btn-increase-quantity inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="1" title="Aumentar quantidade">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                                        <span class="font-semibold min-w-[1.5rem] text-sm text-center item-quantity">{{ $item->quantity }}</span>
+                                        <button type="button" class="btn-increase-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="1" title="Aumentar quantidade">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
                                                 <path d="M5 12h14"></path>
                                                 <path d="M12 5v14"></path>
                                             </svg>
                                         </button>
                                     </div>
                                 </td>
-                                <td class="p-4 align-middle text-right item-unit-price">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
-                                <td class="p-4 align-middle text-right font-semibold item-total-price">R$ {{ number_format($item->total_price, 2, ',', '.') }}</td>
-                                <td class="p-4 align-middle text-center">
-                                    <button type="button" class="btn-remove-item inline-flex items-center justify-center rounded-md p-2 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" title="Remover item">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
+                                <td class="py-2 px-3 align-middle text-right text-sm item-unit-price">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
+                                <td class="py-2 px-3 align-middle text-right text-sm font-semibold item-total-price">R$ {{ number_format($item->total_price, 2, ',', '.') }}</td>
+                                <td class="py-2 px-3 align-middle text-center">
+                                    <button type="button" class="btn-remove-item inline-flex items-center justify-center rounded-md p-1.5 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" title="Remover item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
                                             <path d="M3 6h18"></path>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -194,24 +177,24 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td>
+                                <td colspan="5" class="py-4 px-3 text-center text-sm text-muted-foreground">Nenhum item encontrado.</td>
                             </tr>
                         @endforelse
                     </tbody>
                     <tfoot id="order-totals">
                         <tr class="border-t font-semibold">
-                            <td colspan="4" class="p-4 text-right">Subtotal:</td>
-                            <td class="p-4 text-right" id="subtotal">R$ {{ number_format($order->total_amount, 2, ',', '.') }}</td>
+                            <td colspan="4" class="py-2 px-3 text-right text-sm">Subtotal:</td>
+                            <td class="py-2 px-3 text-right text-sm" id="subtotal">R$ {{ number_format($order->total_amount, 2, ',', '.') }}</td>
                         </tr>
                         @if($order->delivery_fee > 0)
                         <tr>
-                            <td colspan="4" class="p-4 text-right text-muted-foreground">Taxa de Entrega:</td>
-                            <td class="p-4 text-right" id="delivery-fee">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</td>
+                            <td colspan="4" class="py-2 px-3 text-right text-xs text-muted-foreground">Taxa de Entrega:</td>
+                            <td class="py-2 px-3 text-right text-sm" id="delivery-fee">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</td>
                         </tr>
                         @endif
                         @if($order->discount_amount > 0)
                         <tr>
-                            <td colspan="4" class="p-4 text-right text-muted-foreground">
+                            <td colspan="4" class="py-2 px-3 text-right text-xs text-muted-foreground">
                                 <div class="flex items-center justify-end gap-2">
                                     <span>
                                         @if($order->coupon_code)
@@ -265,12 +248,12 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="p-4 text-right text-success" id="discount-amount">- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</td>
+                            <td class="py-2 px-3 text-right text-sm text-success" id="discount-amount">- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</td>
                         </tr>
                         @endif
-                        <tr class="border-t font-bold text-lg">
-                            <td colspan="4" class="p-4 text-right">Total:</td>
-                            <td class="p-4 text-right" id="final-total">R$ {{ number_format($order->final_amount, 2, ',', '.') }}</td>
+                        <tr class="border-t font-bold">
+                            <td colspan="4" class="py-2 px-3 text-right text-base">Total:</td>
+                            <td class="py-2 px-3 text-right text-base" id="final-total">R$ {{ number_format($order->final_amount, 2, ',', '.') }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -279,27 +262,27 @@
     </div>
 
     <!-- Grid de informações principais -->
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <!-- Informações do Cliente -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Cliente</h3>
+            <div class="flex flex-col p-4 pb-2">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Cliente</h3>
             </div>
-            <div class="p-6 pt-0 space-y-3">
+            <div class="px-4 pb-4 space-y-2">
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Nome</p>
-                    <p class="text-base font-semibold">{{ $order->customer->name ?? 'Não informado' }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Nome</p>
+                    <p class="text-sm font-semibold">{{ $order->customer->name ?? 'Não informado' }}</p>
                 </div>
                 @if($order->customer->phone ?? null)
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Telefone</p>
-                    <p class="text-base">{{ $order->customer->phone }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Telefone</p>
+                    <p class="text-sm">{{ $order->customer->phone }}</p>
                 </div>
                 @endif
                 @if($order->customer->email ?? null)
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Email</p>
-                    <p class="text-base">{{ $order->customer->email }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Email</p>
+                    <p class="text-sm">{{ $order->customer->email }}</p>
                 </div>
                 @endif
             </div>
@@ -307,30 +290,30 @@
 
         <!-- Informações de Entrega -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Entrega</h3>
+            <div class="flex flex-col p-4 pb-2">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Entrega</h3>
             </div>
-            <div class="p-6 pt-0 space-y-3">
+            <div class="px-4 pb-4 space-y-2">
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Tipo</p>
-                    <p class="text-base font-semibold">{{ $order->delivery_type_label }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Tipo</p>
+                    <p class="text-sm font-semibold">{{ $order->delivery_type_label }}</p>
                 </div>
                 @if($order->delivery_address)
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Endereço</p>
-                    <p class="text-base">{{ $order->delivery_address }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Endereço</p>
+                    <p class="text-sm">{{ $order->delivery_address }}</p>
                 </div>
                 @endif
                 @if($order->delivery_instructions)
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Instruções</p>
-                    <p class="text-base">{{ $order->delivery_instructions }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Instruções</p>
+                    <p class="text-sm">{{ $order->delivery_instructions }}</p>
                 </div>
                 @endif
                 @if($order->estimated_time)
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Tempo Estimado</p>
-                    <p class="text-base">{{ $order->estimated_time }} minutos</p>
+                    <p class="text-xs font-medium text-muted-foreground">Tempo Estimado</p>
+                    <p class="text-sm">{{ $order->estimated_time }} minutos</p>
                 </div>
                 @endif
             </div>
@@ -338,16 +321,16 @@
 
         <!-- Informações de Pagamento -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Pagamento</h3>
+            <div class="flex flex-col p-4 pb-2">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Pagamento</h3>
             </div>
-            <div class="p-6 pt-0 space-y-3">
+            <div class="px-4 pb-4 space-y-2">
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Método</p>
-                    <p class="text-base font-semibold">{{ ucfirst(str_replace('_', ' ', $order->payment_method)) }}</p>
+                    <p class="text-xs font-medium text-muted-foreground">Método</p>
+                    <p class="text-sm font-semibold">{{ ucfirst(str_replace('_', ' ', $order->payment_method)) }}</p>
                 </div>
                 <div>
-                    <p class="text-sm font-medium text-muted-foreground">Status</p>
+                    <p class="text-xs font-medium text-muted-foreground">Status</p>
                     @php
                         $paymentColors = [
                             'pending' => 'bg-muted text-muted-foreground',
@@ -357,14 +340,14 @@
                         ];
                         $paymentColor = $paymentColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
                     @endphp
-                    <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold mt-1 {{ $paymentColor }}">
+                    <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold mt-1 {{ $paymentColor }}">
                         {{ $order->payment_status_label }}
                     </div>
                 </div>
                 @if($order->payment_provider)
-        <div>
-                    <p class="text-sm font-medium text-muted-foreground">Provedor</p>
-                    <p class="text-base">{{ $order->payment_provider }}</p>
+                <div>
+                    <p class="text-xs font-medium text-muted-foreground">Provedor</p>
+                    <p class="text-sm">{{ $order->payment_provider }}</p>
                 </div>
                 @endif
             </div>
@@ -376,40 +359,60 @@
         .action-cards-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            align-items: stretch;
+            gap: 1rem;
+            align-items: start;
         }
         .action-cards-grid > div {
             display: flex;
             flex-direction: column;
-            min-height: 100%;
+        }
+        .action-cards-grid > div > div:first-child {
+            padding: 1rem 1.25rem;
         }
         .action-cards-grid > div > div:last-child {
+            padding: 0 1.25rem 1rem;
             flex: 1 1 auto;
             display: flex;
             flex-direction: column;
-            min-height: 0;
         }
         .action-cards-grid form {
-            flex: 1 1 auto;
             display: flex;
             flex-direction: column;
-            min-height: 0;
+            gap: 0.75rem;
         }
         .action-cards-grid .button-container {
             margin-top: auto;
-            padding-top: 1rem;
-            min-height: 3.5rem;
+            padding-top: 0.5rem;
             display: flex;
             align-items: flex-end;
             box-sizing: border-box;
-            flex-shrink: 0;
         }
-        /* Garantir que os botões tenham a mesma altura e fiquem na base */
         .action-cards-grid .button-container button {
             width: 100%;
-            height: 2.5rem;
+            height: 2.25rem;
             box-sizing: border-box;
+        }
+        .action-cards-grid h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        .action-cards-grid p {
+            font-size: 0.8rem;
+            line-height: 1.3;
+        }
+        .action-cards-grid .space-y-2 {
+            gap: 0.5rem;
+        }
+        .action-cards-grid textarea {
+            min-height: 3rem;
+            font-size: 0.875rem;
+        }
+        .action-cards-grid label {
+            font-size: 0.8rem;
+        }
+        .action-cards-grid select {
+            height: 2.25rem;
+            font-size: 0.875rem;
         }
         @media (max-width: 768px) {
             .action-cards-grid {
@@ -420,16 +423,16 @@
     <div class="action-cards-grid">
         <!-- Alterar Status -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Alterar Status</h3>
                 <p class="text-sm text-muted-foreground">Atualize o status do pedido</p>
             </div>
-            <div class="p-6 pt-0 flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.updateStatus', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow">
+            <div class="flex flex-col flex-grow">
+                <form action="{{ route('dashboard.orders.updateStatus', $order->id) }}" method="POST" class="flex flex-col flex-grow">
                     @csrf
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Status</label>
-                        <select name="status" id="order-status-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <select name="status" id="order-status-select" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                             @foreach($availableStatuses as $status)
                                 <option value="{{ $status->code }}" @selected($order->status === $status->code)>
                                     {{ $status->name }}
@@ -439,7 +442,7 @@
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Observação (opcional)</label>
-                        <textarea name="note" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Adicione uma observação sobre esta mudança..."></textarea>
+                        <textarea name="note" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Adicione uma observação..."></textarea>
                     </div>
                     <div class="space-y-2">
                         <div class="flex items-center gap-2">
@@ -448,7 +451,7 @@
                         </div>
                     </div>
                     <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
                             Atualizar Status
                         </button>
                     </div>
@@ -456,22 +459,78 @@
             </div>
         </div>
 
+        <!-- Lançar como Débito (Fiado) -->
+        @if($order->customer_id && $order->payment_status !== 'refunded')
+            @if($hasOpenDebt ?? false)
+                <div class="rounded-lg border border-blue-200 bg-blue-50 text-blue-900 shadow-sm flex flex-col">
+                    <div class="flex flex-col">
+                        <h3 class="text-lg font-semibold leading-none tracking-tight flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            Débito Registrado
+                        </h3>
+                        <p class="text-sm opacity-90">Este pedido já está lançado como fiado na conta do cliente.</p>
+                    </div>
+                    <div class="flex flex-col flex-grow justify-end">
+                        <button type="button" disabled class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-400 cursor-not-allowed px-4 py-2">
+                            Já Registrado
+                        </button>
+                    </div>
+                </div>
+            @else
+                <div class="rounded-lg border border-warning/50 bg-card text-card-foreground shadow-sm flex flex-col">
+                    <div class="flex flex-col">
+                        <h3 class="text-lg font-semibold leading-none tracking-tight text-warning-foreground">Lançar como Débito</h3>
+                        <p class="text-sm text-muted-foreground">
+                            @if(in_array(strtolower($order->payment_status), ['paid', 'approved']))
+                                Registrar como venda fiado mesmo com status de pagamento confirmado
+                            @else
+                                Registrar como venda fiado na conta do cliente
+                            @endif
+                        </p>
+                    </div>
+                    <div class="flex flex-col flex-grow">
+                        <form action="{{ route('dashboard.orders.registerAsDebit', $order->id) }}" method="POST" class="flex flex-col flex-grow" id="register-debit-form">
+                            @csrf
+                            <div class="button-container">
+                                <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-warning text-warning-foreground hover:bg-warning/90 px-4 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <path d="M12 13v-1"></path>
+                                        <path d="M12 17h.01"></path>
+                                    </svg>
+                                    Registrar Débito
+                                </button>
+                            </div>
+                        </form>
+                        <script>
+                            document.getElementById('register-debit-form')?.addEventListener('submit', function(e) {
+                                if (!confirm('Confirmar lançamento deste pedido como débito para o cliente?')) {
+                                    e.preventDefault();
+                                }
+                            });
+                        </script>
+                    </div>
+                </div>
+            @endif
+        @endif
+
         <!-- Estornar Pedido -->
         @if(in_array(strtolower($order->payment_status), ['paid', 'approved']) && $order->payment_status !== 'refunded')
         <div class="rounded-lg border border-destructive/50 bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight text-destructive">Estornar Pedido</h3>
                 <p class="text-sm text-muted-foreground">Cancelar venda e reverter todas as transações relacionadas</p>
             </div>
-            <div class="p-6 pt-0 flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.refund', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow" id="refundForm" onsubmit="return confirm('Tem certeza que deseja estornar este pedido? Esta ação irá:\n\n- Reverter cashback usado e ganho\n- Remover uso de cupom\n- Reverter pontos de fidelidade\n- Cancelar o pedido\n\nEsta ação não pode ser desfeita!');">
+            <div class="flex flex-col flex-grow">
+                <form action="{{ route('dashboard.orders.refund', $order->id) }}" method="POST" class="flex flex-col flex-grow" id="refundForm" onsubmit="return confirm('Tem certeza que deseja estornar este pedido? Esta ação irá:\n\n- Reverter cashback usado e ganho\n- Remover uso de cupom\n- Reverter pontos de fidelidade\n- Cancelar o pedido\n\nEsta ação não pode ser desfeita!');">
                     @csrf
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Motivo do estorno (opcional)</label>
-                        <textarea name="reason" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Informe o motivo do estorno..."></textarea>
+                        <textarea name="reason" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Informe o motivo do estorno..."></textarea>
                     </div>
                     <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw">
                                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
                                 <path d="M21 3v5h-5"></path>
@@ -488,11 +547,11 @@
 
         <!-- Aplicar Cupom -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Cupom de Desconto</h3>
                 <p class="text-sm text-muted-foreground">Aplique ou remova cupons</p>
             </div>
-            <div class="p-6 pt-0 space-y-4 flex flex-col flex-grow">
+            <div class="space-y-3 flex flex-col flex-grow">
                 @if($order->coupon_code)
                     <div class="rounded-lg border p-4 bg-muted">
                         <div class="flex items-center justify-between">
@@ -550,27 +609,27 @@
 
         <!-- Ajustar Taxa de Entrega -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Taxa de Entrega</h3>
                 <p class="text-sm text-muted-foreground">Ajuste manual da taxa de entrega</p>
             </div>
-            <div class="p-6 pt-0 flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.adjustDeliveryFee', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow">
+            <div class="flex flex-col flex-grow">
+                <form action="{{ route('dashboard.orders.adjustDeliveryFee', $order->id) }}" method="POST" class="flex flex-col flex-grow">
                     @csrf
-                    <div class="rounded-lg border p-4 bg-muted">
-                        <p class="text-sm text-muted-foreground mb-1">Taxa Atual</p>
-                        <p class="text-lg font-semibold">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</p>
+                    <div class="rounded-lg border p-3 bg-muted">
+                        <p class="text-xs text-muted-foreground mb-1">Taxa Atual</p>
+                        <p class="text-base font-semibold">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</p>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Nova Taxa</label>
-                        <input type="number" name="delivery_fee" step="0.01" min="0" value="{{ $order->delivery_fee }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                        <input type="number" name="delivery_fee" step="0.01" min="0" value="{{ $order->delivery_fee }}" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Motivo do Ajuste (opcional)</label>
-                        <input type="text" name="reason" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Desconto especial, erro no cálculo...">
+                        <input type="text" name="reason" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Desconto especial...">
                     </div>
                     <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
                             Atualizar Taxa
                         </button>
                     </div>
@@ -580,26 +639,26 @@
 
         <!-- Aplicar Desconto Manual -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Desconto Manual</h3>
                 <p class="text-sm text-muted-foreground">Aplique um desconto adicional</p>
             </div>
-            <div class="p-6 pt-0 flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.applyDiscount', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow">
+            <div class="flex flex-col flex-grow">
+                <form action="{{ route('dashboard.orders.applyDiscount', $order->id) }}" method="POST" class="flex flex-col flex-grow">
                     @csrf
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Tipo de Desconto</label>
-                        <select name="discount_type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <select name="discount_type" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                             <option value="percentage">Porcentagem (%)</option>
                             <option value="fixed">Valor Fixo (R$)</option>
                         </select>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Valor</label>
-                        <input type="number" name="discount_value" step="0.01" min="0" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: 10 ou 10.50" required>
+                        <input type="number" name="discount_value" step="0.01" min="0" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: 10 ou 10.50" required>
                     </div>
                     <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
                             Aplicar Desconto
                         </button>
                     </div>
@@ -609,25 +668,25 @@
 
         <!-- Editar Informações -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm md:col-span-2">
-            <div class="flex flex-col space-y-1.5 p-6">
+            <div class="flex flex-col">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Editar Informações do Pedido</h3>
                 <p class="text-sm text-muted-foreground">Atualize observações e instruções</p>
             </div>
-            <div class="p-6 pt-0">
-                <form action="{{ route('dashboard.orders.update', $order->id) }}" method="POST" class="space-y-4">
+            <div>
+                <form action="{{ route('dashboard.orders.update', $order->id) }}" method="POST" class="space-y-3">
             @csrf
             @method('PUT')
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Observações Internas</label>
-                        <textarea name="notes" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações visíveis apenas para a equipe...">{{ $order->notes }}</textarea>
+                        <textarea name="notes" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações visíveis apenas para a equipe...">{{ $order->notes }}</textarea>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Observações do Cliente</label>
-                        <textarea name="observations" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações do cliente...">{{ $order->observations }}</textarea>
+                        <textarea name="observations" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações do cliente...">{{ $order->observations }}</textarea>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Instruções de Entrega</label>
-                        <textarea name="delivery_instructions" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Instruções especiais para entrega...">{{ $order->delivery_instructions }}</textarea>
+                        <textarea name="delivery_instructions" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Instruções especiais para entrega...">{{ $order->delivery_instructions }}</textarea>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Data e Hora de Entrega Agendada</label>
@@ -687,12 +746,12 @@
     <!-- Histórico de Status -->
     @if($statusHistory->count() > 0)
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
+        <div class="flex flex-col">
             <h3 class="text-lg font-semibold leading-none tracking-tight">Histórico de Status</h3>
             <p class="text-sm text-muted-foreground">Linha do tempo de alterações</p>
         </div>
-        <div class="p-6 pt-0">
-            <div class="space-y-4">
+        <div>
+            <div class="space-y-3">
                 @foreach($statusHistory as $history)
                     <div class="flex gap-4">
                         <div class="flex flex-col items-center">
@@ -705,9 +764,9 @@
                                 <div class="w-0.5 h-full bg-border mt-2"></div>
                             @endif
                         </div>
-                        <div class="flex-1 pb-4">
+                        <div class="flex-1 pb-3">
                             <div class="flex items-center gap-2">
-                                <p class="font-semibold">
+                                <p class="text-sm font-semibold">
                                     @if($history->old_status)
                                         {{ ucfirst(str_replace('_', ' ', $history->old_status)) }} → {{ ucfirst(str_replace('_', ' ', $history->new_status)) }}
                                     @else
@@ -716,9 +775,9 @@
                                 </p>
                             </div>
                             @if($history->note)
-                                <p class="text-sm text-muted-foreground mt-1">{{ $history->note }}</p>
+                                <p class="text-xs text-muted-foreground mt-0.5">{{ $history->note }}</p>
                             @endif
-                            <p class="text-xs text-muted-foreground mt-1">{{ \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') }}</p>
+                            <p class="text-xs text-muted-foreground mt-0.5">{{ \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') }}</p>
                         </div>
                     </div>
                 @endforeach

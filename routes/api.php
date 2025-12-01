@@ -84,6 +84,9 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
     Route::post('/whatsapp', [\App\Http\Controllers\WebhookController::class, 'whatsApp'])->name('whatsapp');
 });
 
+// Webhook centralizado WhatsApp (Multi-instâncias) - Acessível externamente
+Route::post('/whatsapp/webhook', [\App\Http\Controllers\WhatsappInstanceController::class, 'handleWebhook'])->name('api.whatsapp.webhook');
+
 // Rotas do PDV
 Route::prefix('pdv')->name('api.pdv.')->group(function () {
     Route::get('/customers/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchCustomers'])->name('customers.search');
@@ -116,6 +119,10 @@ Route::prefix('fiados')->name('api.fiados.')->group(function () {
     Route::get('/saldo', [\App\Http\Controllers\DebtsController::class, 'balance'])->name('balance');
     Route::post('/{debt}/baixa', [\App\Http\Controllers\DebtsController::class, 'settle'])->name('settle');
 });
+
+// API WhatsApp Settings (para bot Node.js)
+Route::get('/whatsapp/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSettingsApi'])
+    ->name('api.whatsapp.settings');
 
 // ============================================
 // API BotConversa - Sincronização de clientes (sem CSRF - middleware api)

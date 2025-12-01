@@ -6,11 +6,32 @@
     <title>@yield('title', 'Olika Admin')</title>
 
     @php
-        $cssVersion = env('APP_ASSETS_VERSION', '1.2.0');
+        $cssVersion = env('APP_ASSETS_VERSION', '2.1');
     @endphp
+    
+    <!-- =======================
+         OLIKA DASHBOARD STYLES
+         ======================= -->
+    
+    <!-- 1. Base Tailwind -->
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $cssVersion }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}?v={{ $cssVersion }}">
+    
+    <!-- 2. Tema base (cores, tipografia, botões) -->
+    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}">
+    
+    <!-- 3. Correções estruturais -->
+    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
+    
+    <!-- 4. Pacote global de correções v2 -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.css') }}?v={{ $cssVersion }}">
+    
+    <!-- 5. Modais -->
     <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}">
+    
+    <!-- Desativar arquivos redundantes -->
+    {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
+    {{-- <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}"> --}}
+    {{-- <link rel="stylesheet" href="{{ asset('css/all-styles.css') }}"> --}}
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
 

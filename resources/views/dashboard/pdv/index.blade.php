@@ -56,25 +56,7 @@
         white-space: nowrap !important;
     }
     
-    .grid.grid-cols-3 {
-        display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 0.5rem !important;
-    }
-    
-    .product-quick-add {
-        min-height: 8rem !important;
-        padding: 1.25rem !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-    }
-    
-    .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
-        gap: 1rem !important;
-        row-gap: 1rem !important;
-        column-gap: 1rem !important;
-    }
+    /* Estilos específicos do PDV movidos para dashboard-fixes.css */
 </style>
 @endpush
 
@@ -167,7 +149,7 @@
 
                         <div class="space-y-2">
                             <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa de Entrega / Desconto Manual</label>
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div>
                                     <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.75rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
                                     <p class="text-xs text-muted-foreground mt-1">Taxa</p>

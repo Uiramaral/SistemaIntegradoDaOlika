@@ -159,7 +159,7 @@
         </div>
         @if(isset($orders) && method_exists($orders, 'links'))
             <div class="mt-4 flex justify-center">
-                {{ $orders->links() }}
+                {{ $orders->onEachSide(1)->links('vendor.pagination.compact') }}
             </div>
         @endif
     </div>

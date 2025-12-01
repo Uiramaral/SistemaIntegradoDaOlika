@@ -125,7 +125,7 @@
             </div>
             @if(method_exists($customers, 'links'))
                 <div class="p-4 border-t">
-                    {{ $customers->links() }}
+                    {{ $customers->onEachSide(1)->links('vendor.pagination.compact') }}
                 </div>
             @endif
         </div>

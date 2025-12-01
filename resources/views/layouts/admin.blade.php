@@ -6,123 +6,11 @@
     <title>@yield('title', 'Olika Admin')</title>
 
     @php
-        $cssVersion = time(); // Forçar atualização sempre
+        $cssVersion = env('APP_ASSETS_VERSION', '1.2.0');
     @endphp
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $cssVersion }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}?v={{ $cssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}">
-    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
-    @if(request()->routeIs('dashboard.pdv.*'))
-    <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}?v={{ $cssVersion }}">
-    @endif
-    
-    <style>
-        /* Estilos críticos inline para garantir aplicação */
-        input[type="text"]:not([type="checkbox"]):not([type="radio"]),
-        input[type="email"],
-        input[type="number"],
-        input[type="tel"],
-        input[type="password"],
-        input[type="search"],
-        select:not([multiple]),
-        textarea {
-            min-height: 2.5rem !important;
-            height: 2.5rem !important;
-            padding: 0.625rem 0.875rem !important;
-        }
-        
-        textarea {
-            min-height: 5rem !important;
-            height: auto !important;
-        }
-        
-        button:not(.btn-sm):not(.btn-lg):not([class*="text-lg"]),
-        .btn:not(.btn-sm):not(.btn-lg),
-        a[role="button"]:not([class*="text-lg"]) {
-            min-height: 2.5rem !important;
-            padding: 0.625rem 1rem !important;
-        }
-        
-        /* Modal reduzido */
-        #edit-instance-modal > div,
-        #add-instance-modal > div,
-        #pairing-code-modal > div {
-            max-width: 28rem !important;
-            padding: 1.25rem !important;
-        }
-        
-        /* PDV - Correções específicas FORÇADAS */
-        /* Todos os inputs do PDV */
-        input[type="text"],
-        input[type="number"],
-        input[type="email"],
-        input[type="tel"],
-        select,
-        textarea {
-            min-height: 2.5rem !important;
-            height: 2.5rem !important;
-            padding: 0.625rem 0.875rem !important;
-            font-size: 0.875rem !important;
-            line-height: 1.5 !important;
-            box-sizing: border-box !important;
-        }
-        
-        textarea {
-            min-height: 5rem !important;
-            height: auto !important;
-            padding: 0.75rem 0.875rem !important;
-        }
-        
-        /* Todos os botões do PDV */
-        button:not(.btn-sm):not(.btn-lg),
-        .btn:not(.btn-sm):not(.btn-lg) {
-            min-height: 2.5rem !important;
-            height: 2.5rem !important;
-            padding: 0.625rem 1rem !important;
-            font-size: 0.875rem !important;
-            box-sizing: border-box !important;
-        }
-        
-        /* Campo de busca de cliente - mais espaço */
-        #customer-search {
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-        }
-        
-        /* Botão Novo Cliente - não expandir */
-        #btn-new-customer {
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-        }
-        
-        /* Campo de cupom - input maior */
-        #coupon-code {
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-        }
-        
-        /* Botão Aplicar - não expandir */
-        #btn-apply-coupon {
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-        }
-        
-        /* Grid de produtos */
-        .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
-            gap: 1rem !important;
-            row-gap: 1rem !important;
-            column-gap: 1rem !important;
-        }
-        
-        /* Cards de produtos */
-        .product-quick-add {
-            min-height: 8rem !important;
-            padding: 1.25rem !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-        }
-    </style>
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
 
@@ -178,7 +66,7 @@
             <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/80 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
             <aside id="sidebar"
-                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] transition-transform duration-200 ease-in-out md:static md:translate-x-0">
+                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:w-64">
                 <div class="flex items-center justify-between border-b border-sidebar-border px-6 py-4">
                     <div class="flex items-center gap-3">
                         <span class="text-xl font-bold text-sidebar-primary tracking-tight">OLIKA</span>
@@ -264,7 +152,7 @@
                 @endphp
 
                 <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-                    <div class="flex h-16 items-center justify-between px-4 md:px-6">
+                    <div class="flex h-14 items-center justify-between px-4 md:px-6">
                         <div class="flex items-center gap-3">
                             <button id="sidebar-open"
                                     class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
@@ -311,8 +199,8 @@
                     </div>
                 </header>
 
-                <main class="flex-1">
-                    <div class="dashboard-wrapper">
+                <main class="flex-1 bg-background overflow-y-auto">
+                    <div class="max-w-screen-2xl mx-auto p-6 space-y-6">
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
                                 {{ session('success') }}
@@ -342,7 +230,7 @@
                         @endif
 
                         @if ($statCardsSection)
-                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="grid gap-4 grid-cols-2 md:grid-cols-4">
                                 @yield($statCardsSection)
                             </div>
                         @endif
@@ -353,11 +241,7 @@
                             </div>
                         @endif
 
-                        <div class="dashboard-content">
-                            <div class="space-y-6">
-                                @yield('content')
-                            </div>
-                        </div>
+                        @yield('content')
                     </div>
                 </main>
             </div>

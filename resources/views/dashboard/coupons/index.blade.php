@@ -187,7 +187,7 @@
                 </table>
             </div>
             <div class="mt-4">
-                {{ $coupons->links() }}
+                {{ $coupons->onEachSide(1)->links('vendor.pagination.compact') }}
             </div>
         </div>
     </div>

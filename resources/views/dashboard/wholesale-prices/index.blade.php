@@ -132,7 +132,7 @@
 
             @if($prices->hasPages())
                 <div class="mt-4">
-                    {{ $prices->links() }}
+                    {{ $prices->onEachSide(1)->links('vendor.pagination.compact') }}
                 </div>
             @endif
         </div>

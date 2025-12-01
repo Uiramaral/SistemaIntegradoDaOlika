@@ -40,6 +40,9 @@
     <!-- 8. Pixel Perfect v2.5 (ajustes finos de altura, sombras, padding) -->
     <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.5.css') }}?v={{ $cssVersion }}" media="all">
     
+    <!-- 9. Pixel Perfect v3.0 (padrão visual completo baseado nas imagens) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-pixel-perfect.css') }}?v={{ $cssVersion }}" media="all">
+    
     <!-- Desativar arquivos redundantes -->
     {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
     {{-- <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}"> --}}
@@ -50,7 +53,7 @@
     <!-- Estilos específicos de páginas (ANTES do tema final) -->
     @stack('styles')
     
-    <!-- 9. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO) -->
+    <!-- 10. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO) -->
     <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all" id="olika-theme-final">
 </head>
 <body class="bg-background text-foreground antialiased">

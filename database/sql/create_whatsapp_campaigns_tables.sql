@@ -31,3 +31,4 @@ CREATE TABLE IF NOT EXISTS `whatsapp_campaign_logs` (
   CONSTRAINT `whatsapp_campaign_logs_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+

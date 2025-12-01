@@ -11,25 +11,28 @@
     
     <!-- =======================
          OLIKA DASHBOARD STYLES
+         ORDEM CRÍTICA: dashboard-theme-v2.3.css DEVE SER O ÚLTIMO
          ======================= -->
     
-    <!-- 1. Base Tailwind -->
+    <!-- 1. App CSS (se existir) -->
+    @if(file_exists(public_path('css/app.css')))
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ $cssVersion }}">
+    @endif
+    
+    <!-- 2. Base Tailwind -->
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $cssVersion }}">
     
-    <!-- 2. Tema base (cores, tipografia, botões) -->
+    <!-- 3. Tema base (cores, tipografia, botões) -->
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}">
     
-    <!-- 3. Correções estruturais -->
+    <!-- 4. Correções estruturais -->
     <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}">
     
-    <!-- 4. Pacote global de correções v2 -->
+    <!-- 5. Pacote global de correções v2 -->
     <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.css') }}?v={{ $cssVersion }}" media="all">
     
-    <!-- 5. Modais -->
+    <!-- 6. Modais -->
     <link rel="stylesheet" href="{{ asset('css/modals.css') }}?v={{ $cssVersion }}" media="all">
-    
-    <!-- 6. Tema completo v2.3 (DEVE SER O ÚLTIMO) -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all">
     
     <!-- Desativar arquivos redundantes -->
     {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
@@ -39,6 +42,9 @@
     <script defer src="https://unpkg.com/lucide@latest"></script>
 
     @stack('styles')
+    
+    <!-- 7. Tema completo v2.3 (DEVE SER O ÚLTIMO - SOBRESCREVE TUDO, INCLUSIVE @stack) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.3.css') }}?v={{ $cssVersion }}" media="all" id="olika-theme-final">
 </head>
 <body class="bg-background text-foreground antialiased">
     @php

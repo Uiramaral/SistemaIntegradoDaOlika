@@ -43,6 +43,12 @@
     <!-- 9. Pixel Perfect v3.0 (padrão visual completo baseado nas imagens) -->
     <link rel="stylesheet" href="{{ asset('css/dashboard-pixel-perfect.css') }}?v={{ $cssVersion }}" media="all">
     
+    <!-- 11. Tema v2.6 (novo tema unificado) -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-theme-v2.6.css') }}?v={{ $cssVersion }}" media="all">
+    
+    <!-- 12. Ajustes finos v2.6 -->
+    <link rel="stylesheet" href="{{ asset('css/dashboard-fixes-v2.6.css') }}?v={{ $cssVersion }}" media="all">
+    
     <!-- Desativar arquivos redundantes -->
     {{-- <link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}"> --}}
     {{-- <link rel="stylesheet" href="{{ asset('css/dashboard-fixes.css') }}"> --}}

@@ -1,0 +1,25 @@
+/* ======================================
+   WhatsApp Settings - Estilos Específicos
+   ====================================== */
+
+/* Modais do WhatsApp */
+#pairing-code-modal,
+#add-instance-modal,
+#edit-instance-modal {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+.whatsapp-modal-content {
+  max-width: 28rem !important;
+  width: calc(100% - 2rem) !important;
+}
+
+#add-instance-modal > div,
+#edit-instance-modal > div {
+  max-width: 28rem !important;
+  width: calc(100% - 2rem) !important;
+}
+
+/* Barra de progresso dinâmica (mantida inline pois é JavaScript) */
+/* .h-full.bg-primary já está estilizado pelo sistema */
+

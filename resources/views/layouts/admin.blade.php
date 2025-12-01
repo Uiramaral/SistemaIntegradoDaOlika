@@ -11,11 +11,14 @@
     
     <!-- =======================
          OLIKA DASHBOARD v3.1 - SISTEMA MODULAR
-         Apenas CSS Core do novo sistema
+         Ordem CRÍTICA: design-system primeiro, bridge depois, override por último
          ======================= -->
     
     {{-- Google Fonts --}}
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    {{-- Tailwind CDN (para garantir compatibilidade) --}}
+    <script src="https://cdn.tailwindcss.com"></script>
     
     {{-- Phosphor Icons --}}
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -23,21 +26,29 @@
     {{-- Lucide Icons --}}
     <script defer src="https://unpkg.com/lucide@latest"></script>
     
-    {{-- CSS Core v3.1 --}}
+    {{-- 1. DESIGN SYSTEM (PRIMEIRO - Define variáveis CSS) --}}
     <link rel="stylesheet" href="{{ asset('css/core/olika-design-system.css') }}?v={{ $cssVersion }}" media="all">
+    
+    {{-- 2. BRIDGE (Compatibilidade com layout antigo) --}}
+    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}?v={{ $cssVersion }}" media="all">
+    
+    {{-- 3. LAYOUT FIXES (Correções estruturais) --}}
+    <link rel="stylesheet" href="{{ asset('css/layout-fixes.css') }}?v={{ $cssVersion }}" media="all">
+    
+    {{-- 4. CSS CORE v3.1 --}}
     <link rel="stylesheet" href="{{ asset('css/core/olika-dashboard.css') }}?v={{ $cssVersion }}" media="all">
     <link rel="stylesheet" href="{{ asset('css/core/olika-components.css') }}?v={{ $cssVersion }}" media="all">
     <link rel="stylesheet" href="{{ asset('css/core/olika-forms.css') }}?v={{ $cssVersion }}" media="all">
     <link rel="stylesheet" href="{{ asset('css/core/olika-animations.css') }}?v={{ $cssVersion }}" media="all">
     <link rel="stylesheet" href="{{ asset('css/core/olika-compatibility.css') }}?v={{ $cssVersion }}" media="all">
     
-    {{-- CSS específico da página --}}
+    {{-- 5. CSS específico da página --}}
     @stack('styles')
     
-    {{-- Override final v3.1 (último CSS carregado) --}}
+    {{-- 6. OVERRIDE FINAL (ÚLTIMO - Sobrescreve tudo) --}}
     <link rel="stylesheet" href="{{ asset('css/core/olika-override-v3.1.css') }}?v={{ $cssVersion }}" media="all" id="olika-override-final">
 </head>
-<body class="bg-background text-foreground antialiased">
+<body class="bg-background text-foreground antialiased flex min-h-screen">
     @php
         $navGroups = [
             [
@@ -82,8 +93,8 @@
         ];
     @endphp
 
-    <div class="min-h-screen w-full bg-background">
-        <div class="flex min-h-screen w-full">
+    <div class="min-h-screen w-full bg-background flex">
+        <div class="flex min-h-screen w-full flex-1">
             <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/80 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
             <aside id="sidebar"
@@ -220,7 +231,7 @@
                     </div>
                 </header>
 
-                <main class="flex-1 bg-[#faf9f8] overflow-y-auto">
+                <main class="flex-1 bg-background overflow-y-auto">
                     <div class="max-w-screen-2xl mx-auto p-6 space-y-6">
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
@@ -360,15 +371,10 @@
     </script>
     @stack('scripts')
     
-    {{-- JavaScript Core v3.1 --}}
-    <script type="module" src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
-    <script type="module" src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
+    {{-- JavaScript Core v3.1 (carregado no final para garantir que DOM esteja pronto) --}}
+    <script defer src="{{ asset('js/core/olika-utilities.js') }}?v={{ $cssVersion }}"></script>
+    <script defer src="{{ asset('js/core/olika-dashboard.js') }}?v={{ $cssVersion }}"></script>
     
-    <!-- Fallback de estilos críticos (caso o CSS não carregue) -->
-    <style>
-        body { background-color: #faf9f8 !important; }
-        #sidebar, aside#sidebar, .sidebar { background-color: #0f172a !important; color: #e5e7eb !important; }
-        #sidebar a.active, aside#sidebar a.active, .sidebar a.active { background-color: #ea580c !important; color: #fff !important; }
-    </style>
+    {{-- Estilos críticos movidos para olika-override-v3.1.css --}}
 </body>
 </html>

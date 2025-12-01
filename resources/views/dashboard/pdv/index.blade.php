@@ -4,60 +4,7 @@
 @section('page_subtitle', 'Criar novo pedido')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/pdv-fixes.css') }}?v={{ time() }}">
-<style>
-    /* Correções críticas PDV - Forçar aplicação */
-    input[type="text"],
-    input[type="number"],
-    input[type="email"],
-    input[type="tel"],
-    select,
-    textarea {
-        min-height: 2.5rem !important;
-        height: 2.5rem !important;
-        padding: 0.625rem 0.875rem !important;
-        font-size: 0.875rem !important;
-        line-height: 1.5 !important;
-        box-sizing: border-box !important;
-    }
-    
-    textarea {
-        min-height: 5rem !important;
-        height: auto !important;
-        padding: 0.75rem 0.875rem !important;
-    }
-    
-    button:not(.btn-sm):not(.btn-lg),
-    .btn:not(.btn-sm):not(.btn-lg) {
-        min-height: 2.5rem !important;
-        height: 2.5rem !important;
-        padding: 0.625rem 1rem !important;
-        font-size: 0.875rem !important;
-        box-sizing: border-box !important;
-    }
-    
-    #customer-search {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-    }
-    
-    #btn-new-customer {
-        flex-shrink: 0 !important;
-        white-space: nowrap !important;
-    }
-    
-    #coupon-code {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-    }
-    
-    #btn-apply-coupon {
-        flex-shrink: 0 !important;
-        white-space: nowrap !important;
-    }
-    
-    /* Estilos específicos do PDV movidos para dashboard-fixes.css */
-</style>
+<link rel="stylesheet" href="{{ asset('css/pages/pdv.css') }}?v={{ time() }}">
 @endpush
 
 @section('content')
@@ -151,15 +98,15 @@
                             <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa de Entrega / Desconto Manual</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div>
-                                    <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.75rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
+                                    <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa">
                                     <p class="text-xs text-muted-foreground mt-1">Taxa</p>
                                 </div>
                                 <div>
-                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.75rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
+                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
                                     <p class="text-xs text-muted-foreground mt-1">Valor fixo</p>
                                 </div>
                                 <div>
-                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.75rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
+                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
                                     <p class="text-xs text-muted-foreground mt-1">%</p>
                                 </div>
                             </div>
@@ -168,8 +115,8 @@
                         <div class="space-y-2">
                             <label class="block text-xs font-medium text-muted-foreground">Calcular por CEP</label>
                             <div class="flex flex-col gap-2 sm:flex-row">
-                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
-                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 1rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
+                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
+                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
                                     Calcular
                                 </button>
                             </div>
@@ -191,8 +138,8 @@
                         <div>
                             <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
                             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Código do cupom" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; line-height: 1.5 !important; box-sizing: border-box !important;">
-                                <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 1.25rem !important; font-size: 0.875rem !important; box-sizing: border-box !important; flex-shrink: 0;">
+                                <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Código do cupom">
+                                <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
                                     Aplicar
                                 </button>
                             </div>
@@ -201,7 +148,7 @@
 
                         <div>
                             <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
-                            <select id="delivery-type" class="w-full rounded-md border border-input bg-background text-sm" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; box-sizing: border-box !important;">
+                            <select id="delivery-type" class="w-full rounded-md border border-input bg-background text-sm">
                                 <option value="delivery">Entrega</option>
                                 <option value="pickup">Retirada</option>
                             </select>
@@ -209,7 +156,7 @@
 
                         <div>
                             <label class="block text-sm font-medium mb-2">Observações</label>
-                            <textarea id="order-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Observações do pedido..." style="min-height: 5rem !important; padding: 0.75rem 0.875rem !important; font-size: 0.875rem !important; line-height: 1.5 !important; box-sizing: border-box !important; resize: vertical;"></textarea>
+                            <textarea id="order-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Observações do pedido..."></textarea>
                         </div>
                     </div>
 
@@ -256,8 +203,8 @@
                         <div>
                             <label class="block text-sm font-medium mb-2">Buscar Cliente *</label>
                             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <input type="text" id="customer-search" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Digite nome, telefone ou email..." autocomplete="off" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; line-height: 1.5 !important; box-sizing: border-box !important; flex: 1 1 auto !important;">
-                                <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 1.25rem !important; font-size: 0.875rem !important; box-sizing: border-box !important; flex-shrink: 0 !important;">
+                                <input type="text" id="customer-search" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Digite nome, telefone ou email..." autocomplete="off">
+                                <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
                                     Novo Cliente
                                 </button>
                             </div>
@@ -291,13 +238,13 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium mb-2">Buscar Produto</label>
-                            <input type="text" id="product-search" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Digite o nome do produto para buscar..." autocomplete="off" style="min-height: 2.5rem !important; height: 2.5rem !important; padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; line-height: 1.5 !important; box-sizing: border-box !important;">
+                            <input type="text" id="product-search" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Digite o nome do produto para buscar..." autocomplete="off">
                             <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border rounded-md bg-background shadow-lg"></div>
                         </div>
 
                         <div class="mt-4">
                             <h4 class="text-sm font-medium mb-3">Produtos Frequentes</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2" style="gap: 1rem !important; row-gap: 1rem !important;">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
                                 @foreach($products as $product)
                                     @php
                                         $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
@@ -311,14 +258,14 @@
                                             ];
                                         })->toArray();
                                     @endphp
-                                    <button type="button" class="product-quick-add text-left border rounded-lg hover:bg-accent hover:border-primary transition-all shadow-sm hover:shadow-md" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}" style="min-height: 8rem !important; padding: 1.25rem !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; width: 100% !important; box-sizing: border-box !important; background: white !important;">
-                                        <p class="font-semibold text-sm mb-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; min-height: 3rem; margin-bottom: 0.75rem !important; word-break: break-word;">{{ $product->name }}</p>
-                                        <div style="margin-top: auto;">
+                                    <button type="button" class="product-quick-add text-left border rounded-lg hover:bg-accent hover:border-primary transition-all shadow-sm hover:shadow-md" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}">
+                                        <p class="font-semibold text-sm mb-2">{{ $product->name }}</p>
+                                        <div class="mt-auto">
                                             @if($hasVariants)
-                                                <p class="text-base font-bold text-primary product-price-display" style="margin-top: 0 !important; margin-bottom: 0.5rem !important;">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
-                                                <p class="text-xs text-blue-600 font-medium" style="margin-top: 0 !important; margin-bottom: 0 !important;">Escolher opção →</p>
+                                                <p class="text-base font-bold text-primary product-price-display mb-2">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                                <p class="text-xs text-blue-600 font-medium">Escolher opção →</p>
                                             @else
-                                                <p class="text-base font-bold text-primary product-price-display" style="margin-top: 0 !important; margin-bottom: 0 !important;">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                                <p class="text-base font-bold text-primary product-price-display">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
                                             @endif
                                         </div>
                                     </button>
@@ -333,7 +280,7 @@
 </div>
 
 <!-- Modal: Novo Cliente -->
-<div id="new-customer-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
+<div id="new-customer-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
     <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto relative">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
@@ -425,7 +372,7 @@
 </div>
 
 <!-- Modal: Confirmação de Finalização -->
-<div id="finalize-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
+<div id="finalize-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
     <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">

@@ -336,7 +336,7 @@
 </div>
 
 <!-- Modal para Código de Pareamento -->
-<div id="pairing-code-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
+<div id="pairing-code-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
     <div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 relative">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-semibold" id="pairing-modal-title">Código de Pareamento</h3>
@@ -357,8 +357,8 @@
 </div>
 
 <!-- Modal para Adicionar Instância -->
-<div id="add-instance-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
-    <div class="bg-white rounded-lg shadow-2xl w-full mx-4 p-5 max-h-[90vh] overflow-y-auto" style="max-width: 28rem !important; width: calc(100% - 2rem) !important;">
+<div id="add-instance-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
+    <div class="bg-white rounded-lg shadow-2xl w-full mx-4 p-5 max-h-[90vh] overflow-y-auto whatsapp-modal-content">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-semibold">Nova Instância WhatsApp</h3>
             <button onclick="closeAddInstanceModal()" class="text-gray-400 hover:text-gray-600">
@@ -400,8 +400,8 @@
 </div>
 
 <!-- Modal para Editar Instância -->
-<div id="edit-instance-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0, 0, 0, 0.75);">
-    <div class="bg-white rounded-lg shadow-2xl w-full mx-4 p-5 max-h-[90vh] overflow-y-auto" style="max-width: 28rem !important; width: calc(100% - 2rem) !important;">
+<div id="edit-instance-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
+    <div class="bg-white rounded-lg shadow-2xl w-full mx-4 p-5 max-h-[90vh] overflow-y-auto whatsapp-modal-content">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-semibold">Editar Instância WhatsApp</h3>
             <button onclick="closeEditInstanceModal()" class="text-gray-400 hover:text-gray-600">
@@ -445,6 +445,7 @@
 </div>
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/pages/whatsapp.css') }}?v={{ time() }}">
 <style>
 .tab-button.active {
     background-color: hsl(var(--background));

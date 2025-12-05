@@ -503,17 +503,26 @@ class PDVController extends Controller
                                 $message .= $paymentUrl . "\n\n";
                                 $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
 
+                                // Normalizar telefone antes de enviar
+                                $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+                                if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                                    $phoneNormalized = '55' . $phoneNormalized;
+                                }
+                                
                                 // Enviar mensagem via WhatsApp
-                                $result = $whatsappService->sendText($customer->phone, $message);
+                                $result = $whatsappService->sendText($phoneNormalized, $message);
                                 
                                 if (isset($result['success']) && $result['success']) {
                                     Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
                                         'order_id' => $order->id,
-                                        'customer_phone' => $customer->phone,
+                                        'customer_phone_original' => $customer->phone,
+                                        'phone_normalized' => $phoneNormalized,
                                     ]);
                                 } else {
                                     Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
                                         'order_id' => $order->id,
+                                        'customer_phone_original' => $customer->phone,
+                                        'phone_normalized' => $phoneNormalized,
                                         'error' => $result['error'] ?? 'Erro desconhecido',
                                     ]);
                                 }
@@ -752,6 +761,16 @@ class PDVController extends Controller
             // Enviar mensagem via WhatsApp
             try {
                 $whatsappService = new WhatsAppService();
+                
+                // Verificar se há instâncias configuradas
+                $instancesCount = \App\Models\WhatsappInstance::whereNotNull('api_url')->count();
+                Log::info('PDV: Verificando WhatsApp antes de enviar', [
+                    'order_id' => $order->id,
+                    'customer_phone' => $customer->phone,
+                    'instances_count' => $instancesCount,
+                    'is_enabled' => $whatsappService->isEnabled(),
+                ]);
+                
                 if ($whatsappService->isEnabled()) {
                     // Construir resumo do pedido
                     $message = "Olá, {$customer->name}! 🛒\n\n";
@@ -778,34 +797,140 @@ class PDVController extends Controller
                     $message .= $completeUrl . "\n\n";
                     $message .= "Após finalizar, você será direcionado para o pagamento.";
 
-                    // Enviar mensagem via WhatsApp
-                    $result = $whatsappService->sendText($customer->phone, $message);
+                    // VALIDAÇÃO CRÍTICA: Verificar se o cliente tem telefone válido
+                    if (empty($customer->phone) || trim($customer->phone) === '') {
+                        Log::error('PDV: Cliente não possui telefone cadastrado', [
+                            'order_id' => $order->id,
+                            'customer_id' => $customer->id,
+                            'customer_name' => $customer->name,
+                        ]);
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas o cliente não possui telefone cadastrado para receber via WhatsApp.',
+                            'whatsapp_error' => true,
+                        ]);
+                    }
+                    
+                    // Log do telefone original do cliente - VALIDAR que é o correto
+                    Log::info('PDV: Preparando envio WhatsApp', [
+                        'order_id' => $order->id,
+                        'customer_id' => $customer->id,
+                        'customer_name' => $customer->name,
+                        'customer_phone_original' => $customer->phone,
+                        'customer_phone_length' => strlen($customer->phone),
+                    ]);
+                    
+                    // Normalizar telefone (adicionar código do país se necessário)
+                    // IMPORTANTE: Usar o telefone do cliente do banco, não alterar
+                    $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+                    if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                        $phoneNormalized = '55' . $phoneNormalized;
+                    }
+                    
+                    // VALIDAÇÃO: Garantir que o número normalizado não está vazio
+                    if (empty($phoneNormalized) || strlen($phoneNormalized) < 10) {
+                        Log::error('PDV: Telefone normalizado inválido', [
+                            'order_id' => $order->id,
+                            'customer_id' => $customer->id,
+                            'customer_phone_original' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
+                        ]);
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas o telefone do cliente está em formato inválido.',
+                            'whatsapp_error' => true,
+                        ]);
+                    }
+                    
+                    // Log do telefone normalizado - VALIDAR antes de enviar
+                    Log::info('PDV: Telefone normalizado para envio', [
+                        'order_id' => $order->id,
+                        'customer_id' => $customer->id,
+                        'customer_phone_original' => $customer->phone,
+                        'phone_normalized' => $phoneNormalized,
+                        'phone_will_be_sent' => $phoneNormalized, // Este é o número que SERÁ enviado
+                    ]);
+
+                    // Enviar mensagem via WhatsApp - GARANTIR que usa o número correto do cliente
+                    // IMPORTANTE: $phoneNormalized deve ser o número do cliente, não outro
+                    $result = $whatsappService->sendText($phoneNormalized, $message);
                     
                     if (isset($result['success']) && $result['success']) {
                         Log::info('PDV: Pedido enviado ao cliente via WhatsApp', [
                             'order_id' => $order->id,
                             'order_number' => $orderNumber,
                             'customer_phone' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
                             'complete_url' => $completeUrl,
                         ]);
                     } else {
+                        $errorMsg = $result['error'] ?? 'Erro desconhecido';
                         Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
                             'order_id' => $order->id,
-                            'error' => $result['error'] ?? 'Erro desconhecido',
+                            'order_number' => $orderNumber,
+                            'customer_phone' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
+                            'error' => $errorMsg,
+                            'result' => $result,
+                        ]);
+                        // Retornar erro para o frontend saber que falhou
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas houve um problema ao enviar a mensagem via WhatsApp: ' . $errorMsg,
+                            'whatsapp_error' => true,
                         ]);
                     }
                 } else {
-                    Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
+                    Log::warning('PDV: WhatsApp não configurado ou sem instâncias conectadas', [
                         'order_id' => $order->id,
                         'order_number' => $orderNumber,
+                        'instances_count' => $instancesCount,
+                    ]);
+                    // Retornar aviso mas não falhar o pedido
+                    return response()->json([
+                        'success' => true,
+                        'order' => [
+                            'id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'total' => $finalAmount,
+                        ],
+                        'message' => 'Pedido criado com sucesso, mas não foi possível enviar via WhatsApp. Verifique se há instâncias de WhatsApp configuradas e conectadas.',
+                        'whatsapp_error' => true,
                     ]);
                 }
             } catch (\Exception $e) {
                 Log::error('PDV: Erro ao enviar mensagem ao cliente', [
                     'order_id' => $order->id,
+                    'order_number' => $orderNumber,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                // Não falhar o processo se o envio de mensagem falhar
+                // Não falhar o processo se o envio de mensagem falhar, mas avisar
+                return response()->json([
+                    'success' => true,
+                    'order' => [
+                        'id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'total' => $finalAmount,
+                    ],
+                    'message' => 'Pedido criado com sucesso, mas houve um erro ao enviar via WhatsApp: ' . $e->getMessage(),
+                    'whatsapp_error' => true,
+                ]);
             }
 
             DB::commit();

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Services\WhatsAppRouter;
 use App\Services\AIResponderService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class WhatsappInstanceController extends Controller
 {
@@ -183,10 +184,23 @@ class WhatsappInstanceController extends Controller
                 $gatewayPhone = $instancePhone ?? $request->input('instance_phone'); 
                 $customerPhone = $request->input('phone');         // Cliente
                 $message = $request->input('message');
+                $aiDisabled = $request->input('ai_disabled', false);
+                $messageType = $request->input('message_type', 'unknown');
 
-                if (!$gatewayPhone || !$customerPhone || !$message) {
+                if (!$gatewayPhone || !$customerPhone) {
                     // Log::warning...
                     return response()->json(['status' => 'ok', 'message' => 'Dados incompletos']);
+                }
+                
+                // 🚨 NOVA LÓGICA: Transferência Humana para Imagens/Vídeos
+                if ($aiDisabled && in_array($messageType, ['imageMessage', 'videoMessage'])) {
+                    $this->handleImageVideoTransfer($customerPhone, $messageType);
+                    return response()->json(['status' => 'ok', 'message' => 'Transferência humana acionada']);
+                }
+                
+                // Se não tiver mensagem de texto, não processar
+                if (!$message) {
+                    return response()->json(['status' => 'ok', 'message' => 'Mensagem sem texto']);
                 }
                 
                 // 1. Identificar/Criar Cliente e fixar preferência (Sticky Session)
@@ -268,6 +282,120 @@ class WhatsappInstanceController extends Controller
             ]);
             
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Trata transferência humana quando recebe imagem ou vídeo
+     * Cria uma exceção temporária de 5 minutos para desabilitar IA
+     * 
+     * @param string $customerPhone Número do cliente (apenas dígitos)
+     * @param string $messageType Tipo da mensagem ('imageMessage' ou 'videoMessage')
+     */
+    private function handleImageVideoTransfer(string $customerPhone, string $messageType): void
+    {
+        try {
+            // Limpar número (apenas dígitos)
+            $phoneDigits = preg_replace('/\D/', '', $customerPhone);
+            
+            if (empty($phoneDigits)) {
+                Log::warning('WhatsappInstanceController::handleImageVideoTransfer - Número inválido', [
+                    'customer_phone' => $customerPhone
+                ]);
+                return;
+            }
+            
+            // Verificar se a tabela existe
+            if (!DB::getSchemaBuilder()->hasTable('ai_exceptions')) {
+                Log::warning('WhatsappInstanceController::handleImageVideoTransfer - Tabela ai_exceptions não existe');
+                return;
+            }
+            
+            // Determinar motivo baseado no tipo
+            $reason = $messageType === 'imageMessage' ? 'image_received' : 'video_received';
+            
+            // Criar ou atualizar exceção com expiração de 5 minutos
+            $expiresAt = now()->addMinutes(5);
+            
+            // Verificar se já existe exceção ativa para este número
+            $existing = DB::table('ai_exceptions')
+                ->where('phone', $phoneDigits)
+                ->where('active', true)
+                ->first();
+            
+            if ($existing) {
+                // Atualizar exceção existente
+                DB::table('ai_exceptions')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'reason' => $reason,
+                        'expires_at' => $expiresAt,
+                        'updated_at' => now()
+                    ]);
+            } else {
+                // Criar nova exceção
+                DB::table('ai_exceptions')->insert([
+                    'phone' => $phoneDigits,
+                    'reason' => $reason,
+                    'active' => true,
+                    'expires_at' => $expiresAt,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            Log::info('WhatsappInstanceController::handleImageVideoTransfer - Exceção criada', [
+                'phone' => $phoneDigits,
+                'reason' => $reason,
+                'expires_at' => $expiresAt->toDateTimeString()
+            ]);
+            
+            // Opcional: Notificar admin sobre transferência humana
+            $this->notifyAdminAboutTransfer($phoneDigits, $messageType);
+            
+        } catch (\Exception $e) {
+            Log::error('WhatsappInstanceController::handleImageVideoTransfer - Erro', [
+                'error' => $e->getMessage(),
+                'customer_phone' => $customerPhone,
+                'message_type' => $messageType
+            ]);
+        }
+    }
+
+    /**
+     * Notifica admin sobre transferência humana (opcional)
+     * 
+     * @param string $phoneDigits Número do cliente
+     * @param string $messageType Tipo da mensagem
+     */
+    private function notifyAdminAboutTransfer(string $phoneDigits, string $messageType): void
+    {
+        try {
+            // Buscar telefone do admin nas configurações
+            $adminPhone = DB::table('whatsapp_settings')
+                ->where('active', 1)
+                ->value('admin_notification_phone');
+            
+            if (!$adminPhone) {
+                return; // Sem admin configurado, não notificar
+            }
+            
+            $messageTypeLabel = $messageType === 'imageMessage' ? 'imagem' : 'vídeo';
+            $message = "📸 Transferência Humana Acionada\n\n" .
+                      "Cliente: +{$phoneDigits}\n" .
+                      "Motivo: Enviou {$messageTypeLabel}\n" .
+                      "IA desabilitada por 5 minutos para atendimento manual.";
+            
+            // Enviar notificação via WhatsApp (se tiver instância ativa)
+            $instance = WhatsappInstance::where('status', 'CONNECTED')->first();
+            if ($instance) {
+                $instance->sendMessage($adminPhone, $message);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('WhatsappInstanceController::notifyAdminAboutTransfer - Erro', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

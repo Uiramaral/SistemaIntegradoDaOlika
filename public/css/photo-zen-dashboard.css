@@ -1,0 +1,254 @@
+/* ============================================
+   PHOTO-ZEN DASHBOARD - PIXEL PERFECT REPLICA
+   Baseado em: https://photo-zen-dashboard.lovable.app/
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+
+:root {
+  /* Cores principais - EXATAS do site original */
+  --background: 35 25% 96%;
+  --foreground: 25 30% 15%;
+  --card: 30 20% 98%;
+  --card-foreground: 25 30% 15%;
+  --popover: 30 20% 98%;
+  --popover-foreground: 25 30% 15%;
+  --primary: 25 75% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 35 20% 92%;
+  --secondary-foreground: 25 30% 15%;
+  --muted: 35 20% 92%;
+  --muted-foreground: 25 15% 45%;
+  --accent: 25 65% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --border: 30 20% 88%;
+  --input: 30 20% 88%;
+  --ring: 25 75% 45%;
+  --radius: 0.5rem;
+  
+  /* Sidebar - EXATO do site original */
+  --sidebar-background: 25 35% 12%;
+  --sidebar-foreground: 35 25% 96%;
+  --sidebar-primary: 25 75% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 25 30% 18%;
+  --sidebar-accent-foreground: 35 25% 96%;
+  --sidebar-border: 25 30% 18%;
+  --sidebar-ring: 25 75% 45%;
+  
+  /* Métricas */
+  --metric-bg: 30 20% 98%;
+  --metric-border: 30 20% 88%;
+  --metric-hover: 30 25% 95%;
+  
+  /* Transições */
+  --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  font-family: 'Inter', system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+/* Sidebar - EXATO do site original */
+.bg-sidebar {
+  background-color: hsl(var(--sidebar-background));
+}
+
+.text-sidebar-foreground {
+  color: hsl(var(--sidebar-foreground));
+}
+
+.text-sidebar-primary {
+  color: hsl(var(--sidebar-primary));
+}
+
+.bg-sidebar-accent {
+  background-color: hsl(var(--sidebar-accent));
+}
+
+.text-sidebar-accent-foreground {
+  color: hsl(var(--sidebar-accent-foreground));
+}
+
+.border-sidebar-border {
+  border-color: hsl(var(--sidebar-border));
+}
+
+/* Cards e métricas */
+.bg-card {
+  background-color: hsl(var(--card));
+}
+
+.bg-metric {
+  background-color: hsl(var(--metric-bg));
+}
+
+.border-metric {
+  border-color: hsl(var(--metric-border));
+}
+
+/* Botões primários */
+.bg-primary {
+  background-color: hsl(var(--primary));
+}
+
+.text-primary {
+  color: hsl(var(--primary));
+}
+
+.text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+
+/* Texto muted */
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Bordas */
+.border-border {
+  border-color: hsl(var(--border));
+}
+
+/* Transições */
+.transition-base {
+  transition: var(--transition-base);
+}
+
+.transition-smooth {
+  transition: var(--transition-smooth);
+}
+
+/* Sombras */
+.shadow-card {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-card-hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Cards - EXATO do site original */
+.card {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Métricas cards - EXATO do site original */
+.metric-card {
+  background-color: hsl(var(--metric-bg));
+  border: 1px solid hsl(var(--metric-border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-base);
+}
+
+.metric-card:hover {
+  background-color: hsl(var(--metric-hover));
+  box-shadow: var(--shadow-md);
+}
+
+/* Botões primários - EXATO do site original */
+.btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: var(--transition-base);
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+/* Inputs - EXATO do site original */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.5rem 0.75rem;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  transition: var(--transition-base);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  ring: 2px;
+  ring-color: hsl(var(--ring));
+}
+
+/* Links - EXATO do site original */
+a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+a:hover {
+  color: hsl(var(--primary) / 0.9);
+  text-decoration: underline;
+}
+
+/* Texto muted */
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Espaçamentos padrão */
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+

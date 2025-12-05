@@ -28,12 +28,12 @@
                     $address  = $order->address;
                     $phoneDigits = preg_replace('/\D/', '', optional($customer)->phone ?? '');
                     $mapQuery = rawurlencode(collect([
-                        $address->street ?? null,
-                        $address->number ?? null,
-                        $address->neighborhood ?? null,
-                        $address->city ?? null,
-                        $address->state ?? null,
-                        $address->cep ?? null,
+                        optional($address)->street ?? null,
+                        optional($address)->number ?? null,
+                        optional($address)->neighborhood ?? null,
+                        optional($address)->city ?? null,
+                        optional($address)->state ?? null,
+                        optional($address)->cep ?? null,
                     ])->filter()->implode(', '));
                     $deliveryTime = optional($order->scheduled_delivery_at)->format('d/m H:i');
                     $statusBadges = [
@@ -72,25 +72,33 @@
 
                         <div class="space-y-2">
                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</p>
-                            <div class="text-sm leading-relaxed">
-                                {{ $address->street ?? 'Rua não informada' }}{{ $address->number ? ', '.$address->number : '' }}<br>
-                                {{ $address->neighborhood ?? '' }} {{ $address->neighborhood ? '-' : '' }} {{ $address->city ?? '' }}/{{ $address->state ?? '' }}<br>
-                                {{ $address->cep ?? '' }}
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ $mapQuery }}" target="_blank"
-                                   class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                                    <i data-lucide="map-pin" class="h-4 w-4"></i>
-                                    Google Maps
-                                </a>
-                                @if(!empty($address->latitude) && !empty($address->longitude))
-                                    <a href="waze://?ll={{ $address->latitude }},{{ $address->longitude }}&navigate=yes"
-                                       class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                                        <i data-lucide="navigation" class="h-4 w-4"></i>
-                                        Abrir no Waze
-                                    </a>
-                                @endif
-                            </div>
+                            @if($address)
+                                <div class="text-sm leading-relaxed">
+                                    {{ $address->street ?? 'Rua não informada' }}{{ $address->number ? ', '.$address->number : '' }}<br>
+                                    {{ $address->neighborhood ?? '' }}{{ $address->neighborhood && ($address->city || $address->state) ? ' - ' : '' }}{{ $address->city ?? '' }}{{ ($address->city && $address->state) ? '/' : '' }}{{ $address->state ?? '' }}<br>
+                                    {{ $address->cep ?? '' }}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    @if($mapQuery)
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ $mapQuery }}" target="_blank"
+                                           class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
+                                            <i data-lucide="map-pin" class="h-4 w-4"></i>
+                                            Google Maps
+                                        </a>
+                                    @endif
+                                    @if(!empty($address->latitude) && !empty($address->longitude))
+                                        <a href="waze://?ll={{ $address->latitude }},{{ $address->longitude }}&navigate=yes"
+                                           class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
+                                            <i data-lucide="navigation" class="h-4 w-4"></i>
+                                            Abrir no Waze
+                                        </a>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="text-sm text-muted-foreground italic">
+                                    Endereço não cadastrado
+                                </div>
+                            @endif
                         </div>
 
                         @if($order->items->count())

@@ -42,6 +42,75 @@ class OrderStatusService
                 $order->save();
             }
         }
+        
+        // Registrar cashback quando o pagamento é confirmado
+        // Verificar se é confirmação de pagamento (paid ou confirmed)
+        $isPaymentConfirmed = in_array($statusCodeForLookup, ['paid', 'confirmed']) || 
+                             in_array($newCode, ['paid', 'confirmed']) ||
+                             $order->payment_status === 'paid';
+        
+        if ($isPaymentConfirmed && $order->customer_id) {
+            // IMPORTANTE: Recarregar o pedido do banco para garantir que temos os valores corretos de cashback
+            $order->refresh();
+            
+            try {
+                Log::info('OrderStatusService: Registrando cashback para pedido pago', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'cashback_used' => $order->cashback_used,
+                    'cashback_earned' => $order->cashback_earned,
+                    'customer_id' => $order->customer_id,
+                ]);
+                
+                // Verificar se já existe transação de cashback para este pedido (evitar duplicatas)
+                $existingCashback = \App\Models\CustomerCashback::where('order_id', $order->id)->first();
+                if ($existingCashback) {
+                    Log::warning('OrderStatusService: Cashback já registrado para este pedido, pulando', [
+                        'order_id' => $order->id,
+                        'existing_cashback_id' => $existingCashback->id,
+                    ]);
+                } else {
+                    // Débito: cashback usado
+                    if ($order->cashback_used > 0) {
+                        $debit = \App\Models\CustomerCashback::createDebit(
+                            $order->customer_id,
+                            $order->id,
+                            $order->cashback_used,
+                            "Uso de cashback no pedido #{$order->order_number}"
+                        );
+                        Log::info('OrderStatusService: Débito de cashback criado', [
+                            'debit_id' => $debit->id,
+                            'amount' => $debit->amount,
+                        ]);
+                    }
+                    
+                    // Crédito: cashback ganho
+                    if ($order->cashback_earned > 0) {
+                        $credit = \App\Models\CustomerCashback::createCredit(
+                            $order->customer_id,
+                            $order->id,
+                            $order->cashback_earned,
+                            "Cashback do pedido #{$order->order_number}"
+                        );
+                        Log::info('OrderStatusService: Crédito de cashback criado', [
+                            'credit_id' => $credit->id,
+                            'amount' => $credit->amount,
+                        ]);
+                    } else {
+                        Log::warning('OrderStatusService: Cashback ganho é zero ou nulo, não criando crédito', [
+                            'order_id' => $order->id,
+                            'cashback_earned' => $order->cashback_earned,
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::error('OrderStatusService: Falha ao registrar cashback', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        }
 
         // Histórico (só registrar se não foi solicitado para pular)
         if (!$skipHistory) {
@@ -209,42 +278,215 @@ class OrderStatusService
                             $processedText = str_replace("{{$key}}", $value, $processedText);
                         }
                         
-                        Log::info('OrderStatusService: Enviando WhatsApp para cliente', [
-                            'order_id' => $order->id,
-                            'phone' => $phoneNormalized,
-                            'template' => substr($processedText, 0, 50) . '...',
-                            'status_code' => $statusCodeForLookup
-                        ]);
+                        // Verificar se é confirmação de pagamento - usar número padrão
+                        $isPaymentConfirmation = in_array($statusCodeForLookup, ['paid', 'confirmed']) || 
+                                                 $order->payment_status === 'paid';
                         
-                        // Usar sendText que agora faz roteamento automático
-                        $result = $wa->sendText($phoneNormalized, $processedText);
+                        if ($isPaymentConfirmation) {
+                            // Buscar número padrão para confirmações de pagamento
+                            $defaultPhone = DB::table('whatsapp_settings')
+                                ->where('active', 1)
+                                ->value('default_payment_confirmation_phone');
+                            
+                            // Se não tiver configurado, usar o número padrão do WhatsApp
+                            if (empty($defaultPhone)) {
+                                $defaultPhone = DB::table('whatsapp_settings')
+                                    ->where('active', 1)
+                                    ->value('whatsapp_phone');
+                            }
+                            
+                            if ($defaultPhone) {
+                                // Buscar configuração do WhatsApp para obter API URL
+                                $whatsappSettings = DB::table('whatsapp_settings')
+                                    ->where('active', 1)
+                                    ->first();
+                                
+                                // Buscar instância pela API URL ou pelo número
+                                $defaultInstance = null;
+                                if ($whatsappSettings && $whatsappSettings->api_url) {
+                                    $defaultInstance = \App\Models\WhatsappInstance::where('api_url', $whatsappSettings->api_url)
+                                        ->orWhere('phone_number', $defaultPhone)
+                                        ->orWhere('phone_number', preg_replace('/\D/', '', $defaultPhone))
+                                        ->first();
+                                }
+                                
+                                // Se não encontrou, buscar primeira instância conectada
+                                if (!$defaultInstance) {
+                                    $defaultInstance = \App\Models\WhatsappInstance::where('status', 'CONNECTED')
+                                        ->orderBy('id')
+                                        ->first();
+                                }
+                                
+                                if ($defaultInstance) {
+                                    Log::info('OrderStatusService: Usando número padrão para confirmação de pagamento', [
+                                        'order_id' => $order->id,
+                                        'phone_customer' => $phoneNormalized,
+                                        'default_phone' => $defaultPhone,
+                                        'instance_name' => $defaultInstance->name,
+                                        'instance_api_url' => $defaultInstance->api_url,
+                                        'status_code' => $statusCodeForLookup
+                                    ]);
+                                    
+                                    // Usar sendFromInstance com a instância padrão
+                                    $result = $wa->sendFromInstance($defaultInstance, $phoneNormalized, $processedText);
+                                } else {
+                                    Log::warning('OrderStatusService: Instância padrão não encontrada, usando roteamento automático', [
+                                        'order_id' => $order->id,
+                                        'default_phone' => $defaultPhone,
+                                    ]);
+                                    // Fallback para roteamento automático
+                                    $result = $wa->sendText($phoneNormalized, $processedText);
+                                }
+                            } else {
+                                Log::warning('OrderStatusService: Número padrão não configurado, usando roteamento automático', [
+                                    'order_id' => $order->id,
+                                ]);
+                                // Fallback para roteamento automático
+                                $result = $wa->sendText($phoneNormalized, $processedText);
+                            }
+                        } else {
+                            Log::info('OrderStatusService: Enviando WhatsApp para cliente (roteamento automático)', [
+                                'order_id' => $order->id,
+                                'phone' => $phoneNormalized,
+                                'template' => substr($processedText, 0, 50) . '...',
+                                'status_code' => $statusCodeForLookup
+                            ]);
+                            
+                            // Usar sendText que agora faz roteamento automático
+                            $result = $wa->sendText($phoneNormalized, $processedText);
+                        }
                         
                         if (isset($result['success']) && $result['success']) {
                             Log::info('OrderStatusService: WhatsApp enviado com sucesso', [
                                 'order_id' => $order->id,
                                 'phone' => $phoneNormalized
                             ]);
+                            
+                            // Marcar mensagens pendentes deste pedido como enviadas
+                            DB::table('whatsapp_failed_messages')
+                                ->where('order_id', $order->id)
+                                ->where('recipient_phone', $phoneNormalized)
+                                ->where('status', 'pending')
+                                ->update([
+                                    'status' => 'sent',
+                                    'sent_at' => now(),
+                                    'updated_at' => now()
+                                ]);
                         } else {
+                            $errorMessage = $result['error'] ?? 'Erro desconhecido';
+                            $errorType = 'api_error';
+                            
+                            // Determinar tipo de erro
+                            if (isset($result['connection_error']) && $result['connection_error']) {
+                                $errorType = 'connection';
+                            } elseif (isset($result['http_status']) && $result['http_status'] >= 500) {
+                                $errorType = 'server_error';
+                            } elseif (isset($result['http_status']) && $result['http_status'] >= 400) {
+                                $errorType = 'client_error';
+                            }
+                            
                             Log::warning('OrderStatusService: Falha ao enviar WhatsApp', [
                                 'order_id' => $order->id,
                                 'phone' => $phoneNormalized,
-                                'error' => $result['error'] ?? 'Erro desconhecido'
+                                'error' => $errorMessage,
+                                'error_type' => $errorType
                             ]);
+                            
+                            // Salvar falha no banco de dados
+                            try {
+                                DB::table('whatsapp_failed_messages')->insert([
+                                    'order_id' => $order->id,
+                                    'recipient_phone' => $phoneNormalized,
+                                    'message' => $processedText,
+                                    'error_message' => $errorMessage,
+                                    'error_type' => $errorType,
+                                    'attempt_count' => 1,
+                                    'status' => 'pending',
+                                    'last_attempt_at' => now(),
+                                    'metadata' => json_encode([
+                                        'status_code' => $statusCodeForLookup,
+                                        'order_number' => $order->order_number ?? null,
+                                        'customer_name' => $order->customer->name ?? null,
+                                    ]),
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]);
+                            } catch (\Exception $e) {
+                                Log::error('OrderStatusService: Erro ao salvar falha no banco', [
+                                    'order_id' => $order->id,
+                                    'error' => $e->getMessage()
+                                ]);
+                            }
                         }
                     }
 
                     // Admin (opcional)
                     if ($shouldNotifyAdmin) {
-                        $admin = env('WHATSAPP_ADMIN_NUMBER');
+                        // Buscar número do admin do banco de dados (configuração ativa do WhatsApp)
+                        $whatsappSettings = DB::table('whatsapp_settings')
+                            ->where('active', 1)
+                            ->first();
                         
-                        if ($admin && $st) {
-                            $msgAdmin = "🔔 Pedido #{$order->order_number} mudou de status: {$st->name}";
+                        $admin = $whatsappSettings->admin_notification_phone ?? null;
+                        
+                        // Fallback para .env se não estiver configurado no banco
+                        if (!$admin) {
+                            $admin = env('WHATSAPP_ADMIN_NUMBER');
+                        }
+                        
+                        if (!$admin) {
+                            Log::warning('OrderStatusService: notify_admin está ativado mas número do admin não está configurado', [
+                                'order_id' => $order->id,
+                                'status_code' => $statusCodeForLookup,
+                                'status_name' => $st->name ?? 'N/A',
+                                'hint' => 'Configure o número em Dashboard > Integrações > WhatsApp > Configurações'
+                            ]);
+                        } elseif ($st) {
+                            $msgAdmin = "🔔 *Pedido #{$order->order_number} mudou de status: {$st->name}*\n\n";
+                            $msgAdmin .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
+                            $msgAdmin .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
+                            if ($statusCodeForLookup === 'paid' || $newCode === 'paid') {
+                                $msgAdmin .= "\n💰 *Pagamento confirmado!*";
+                            }
+                            
+                            Log::info('OrderStatusService: Enviando notificação para admin', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'admin_phone' => $admin,
+                                'status_code' => $statusCodeForLookup
+                            ]);
+                            
                             // O serviço vai tentar encontrar uma instância para enviar
                             // Como o admin não é um cliente, pode usar qualquer instância, 
                             // mas o router vai tentar achar pelo telefone. 
                             // Se não achar, vai usar fallback.
-                            $wa->sendText($admin, $msgAdmin);
+                            $result = $wa->sendText($admin, $msgAdmin);
+                            
+                            if (isset($result['success']) && $result['success']) {
+                                Log::info('OrderStatusService: Notificação de admin enviada com sucesso', [
+                                    'order_id' => $order->id,
+                                    'admin_phone' => $admin
+                                ]);
+                            } else {
+                                Log::warning('OrderStatusService: Falha ao enviar notificação de admin', [
+                                    'order_id' => $order->id,
+                                    'admin_phone' => $admin,
+                                    'error' => $result['error'] ?? 'Erro desconhecido'
+                                ]);
+                            }
+                        } else {
+                            Log::warning('OrderStatusService: notify_admin está ativado mas status não foi encontrado', [
+                                'order_id' => $order->id,
+                                'status_code' => $statusCodeForLookup,
+                                'new_code' => $newCode
+                            ]);
                         }
+                    } else {
+                        Log::debug('OrderStatusService: notify_admin está desativado para este status', [
+                            'order_id' => $order->id,
+                            'status_code' => $statusCodeForLookup,
+                            'status_name' => $st->name ?? 'N/A'
+                        ]);
                     }
                 }
             } catch (\Throwable $e) {

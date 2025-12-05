@@ -72,6 +72,18 @@ Route::get('/api/botconversa', [BotConversaController::class, 'test'])->name('ap
 Route::post('/api/botconversa/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('api.botconversa.sync-customer.main');
 Route::post('/api/botconversa/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('api.botconversa.sync-customers.main');
 
+// API Status da IA (para controle condicional do Gateway Node.js)
+// Método POST para segurança (token no header, dados no body)
+// IMPORTANTE: Rota global, funciona em qualquer domínio/subdomínio
+Route::post('/api/ai-status', [\App\Http\Controllers\AiStatusController::class, 'checkStatus'])
+    ->name('api.ai.status');
+
+// API Contexto do Cliente (para injeção de dados dinâmicos no prompt da IA)
+// Método POST para segurança (token no header, dados no body)
+// IMPORTANTE: Rota global, funciona em qualquer domínio/subdomínio
+Route::post('/api/customer-context', [\App\Http\Controllers\Api\CustomerSearchController::class, 'getContext'])
+    ->name('api.customer.context');
+
 // Também manter o grupo para consistência (mas as rotas específicas acima têm prioridade)
 Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
     Route::get('/ping', function() {
@@ -328,6 +340,11 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::get('/settings/whatsapp',      [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
     Route::post('/settings/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.settings.whatsapp.save');
     Route::post('/settings/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.settings.whatsapp.notifications.save');
+    
+    // Rotas para mensagens falhadas do WhatsApp
+    Route::get('/whatsapp/failed-messages', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'index'])->name('dashboard.whatsapp.failed-messages');
+    Route::post('/whatsapp/failed-messages/{id}/retry', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'retry'])->name('dashboard.whatsapp.failed-messages.retry');
+    Route::get('/whatsapp/failed-messages/pending-count', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'getPendingCount'])->name('dashboard.whatsapp.failed-messages.pending-count');
     Route::get('/settings/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.settings.whatsapp.qr');
     Route::get('/settings/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.settings.whatsapp.status');
     Route::post('/settings/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappConnect'])->name('dashboard.settings.whatsapp.connect');

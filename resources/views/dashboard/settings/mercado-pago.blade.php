@@ -33,25 +33,25 @@
         <div data-tab-content="settings" class="tab-content mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-2xl font-semibold leading-none tracking-tight">Configurações da Integração</h3>
+                    <h3 class="text-lg font-semibold leading-none tracking-tight">Configurações da Integração</h3>
                     <p class="text-sm text-muted-foreground">Configure suas credenciais do Mercado Pago</p>
                 </div>
                 <form action="{{ route('dashboard.settings.mp.save') }}" method="POST" class="p-6 pt-0 space-y-6">
                     @csrf
-                    <div class="flex items-center justify-between p-4 border rounded-lg">
+                    <div class="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card h-6 w-6 text-primary">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card h-5 w-5 text-primary">
                                     <rect width="20" height="14" x="2" y="5" rx="2"></rect>
                                     <line x1="2" x2="22" y1="10" y2="10"></line>
                                 </svg>
                             </div>
                             <div>
-                                <p class="font-semibold">Status da Conexão</p>
-                                <p class="text-sm text-muted-foreground">Configure suas credenciais</p>
+                                <p class="text-sm font-semibold">Status da Conexão</p>
+                                <p class="text-xs text-muted-foreground">Configure suas credenciais</p>
                             </div>
                         </div>
-                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground">Não Conectado</div>
+                        <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 border-red-300">Não Conectado</span>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="public-key">Public Key</label>

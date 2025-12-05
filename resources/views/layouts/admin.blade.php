@@ -19,16 +19,53 @@
     {{-- Lucide Icons (Photo-Zen uses Lucide) --}}
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    {{-- OLIKA Design System - Pixel Perfect Photo-Zen --}}
-    <link rel="stylesheet" href="{{ asset('css/olika-design-system.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/olika-dashboard-pixel-perfect.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/olika-header-fix.css') }}">
+    {{-- Photo-Zen Dashboard CSS - Pixel Perfect Replica --}}
+    <link rel="stylesheet" href="{{ asset('css/photo-zen-dashboard.css') }}">
     
-    {{-- CSS específico da página (ANTES do override) --}}
+    {{-- Tailwind CSS via CDN (temporário até configurar build) --}}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))',
+                        },
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))',
+                        },
+                        sidebar: {
+                            DEFAULT: 'hsl(var(--sidebar-background))',
+                            foreground: 'hsl(var(--sidebar-foreground))',
+                            primary: 'hsl(var(--sidebar-primary))',
+                            'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+                            accent: 'hsl(var(--sidebar-accent))',
+                            'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+                            border: 'hsl(var(--sidebar-border))',
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))',
+                        },
+                        border: 'hsl(var(--border))',
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
+                    },
+                },
+            },
+        }
+    </script>
+    
+    {{-- CSS específico da página --}}
     @stack('styles')
-    
-    {{-- Override FINAL - deve ser o último para garantir prioridade --}}
-    {{-- <link rel="stylesheet" href="{{ asset('css/olika-override-pixel-perfect.css') }}">--}}
 </head>
 <body class="fade-in">
     @php
@@ -61,6 +98,7 @@
             [
                 'title' => 'Integrações',
                 'items' => [
+                    ['label' => 'Mensagens Falhadas', 'icon' => 'alert-circle', 'route' => 'dashboard.whatsapp.failed-messages', 'routePattern' => 'dashboard.whatsapp.failed-messages*'],
                     ['label' => 'WhatsApp', 'icon' => 'message-square', 'route' => 'dashboard.settings.whatsapp', 'routePattern' => 'dashboard.settings.whatsapp*'],
                     ['label' => 'Mercado Pago', 'icon' => 'credit-card', 'route' => 'dashboard.settings.mp', 'routePattern' => 'dashboard.settings.mp*'],
                 ],
@@ -83,7 +121,7 @@
                    class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:w-64">
                 <div class="flex items-center justify-between border-b border-sidebar-border px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <span class="text-xl font-bold text-sidebar-primary tracking-tight">OLIKA</span>
+                        <span class="text-xl font-bold text-sidebar-primary tracking-tight" style="color: hsl(var(--sidebar-primary));">OLIKA</span>
                     </div>
                     <button id="sidebar-close"
                             class="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:hidden">
@@ -95,7 +133,7 @@
                 <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
                     @foreach ($navGroups as $group)
                         <div>
-                            <p class="flex h-8 items-center rounded-md px-2 text-xs font-medium uppercase tracking-widest text-sidebar-foreground/70">
+                            <p class="flex h-8 items-center rounded-md px-2 text-xs font-medium uppercase tracking-widest" style="color: hsl(var(--sidebar-foreground) / 0.7);">
                                 {{ $group['title'] }}
                             </p>
                             <ul class="mt-2 space-y-1">
@@ -106,7 +144,8 @@
                                     @endphp
                                     <li>
                                         <a href="{{ $href }}"
-                                           class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring {{ $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]' : 'text-sidebar-foreground' }}">
+                                           class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring {{ $isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-primary))]' : 'text-sidebar-foreground' }}"
+                                           style="{{ $isActive ? 'background-color: hsl(var(--sidebar-primary)); color: hsl(var(--sidebar-primary-foreground));' : 'color: hsl(var(--sidebar-foreground));' }}">
                                             <i data-lucide="{{ $item['icon'] }}" class="h-5 w-5"></i>
                                             <span class="truncate">{{ $item['label'] }}</span>
                                         </a>
@@ -129,7 +168,7 @@
                 </div>
             </aside>
 
-            <div class="flex flex-1 flex-col">
+            <div class="flex flex-1 flex-col min-w-0 overflow-x-hidden">
                 @php
                     $hasPageHeader = View::hasSection('page_header');
                     $hasModernTitle = View::hasSection('page_title');
@@ -165,35 +204,29 @@
                     }
                 @endphp
 
-                <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-                    <div class="flex h-14 items-center justify-between px-4 md:px-6">
-                        <div class="flex items-center gap-3">
+                <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
+                    <div class="flex h-auto min-h-14 items-center justify-between px-4 md:px-6 py-2 gap-3 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0 flex-shrink-0">
                             <button id="sidebar-open"
-                                    class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
+                                    class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden flex-shrink-0">
                                 <i data-lucide="menu" class="h-5 w-5"></i>
                                 <span class="sr-only">Abrir menu</span>
                             </button>
 
-                            {{-- Photo-Zen: Header sempre mostra "Dashboard" --}}
-                            <h1 class="text-lg font-semibold tracking-tight text-foreground" style="font-size: 1.125rem !important; font-weight: 600 !important; color: hsl(222, 47%, 11%) !important;">
-                                Dashboard
+                            {{-- Photo-Zen: Header mostra o nome da página --}}
+                            <h1 class="text-lg font-semibold tracking-tight truncate" style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground));">
+                                {{ $pageTitle ?: 'Dashboard' }}
                             </h1>
                         </div>
 
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 flex-wrap min-w-0 flex-shrink">
                             @if ($pageActionsSection)
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap min-w-0">
                                     @yield($pageActionsSection)
                                 </div>
                             @endif
 
-                            {{-- Photo-Zen: Botão Baixar Design --}}
-                            <button class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                <i data-lucide="download" class="h-4 w-4"></i>
-                                <span>Baixar Design</span>
-                            </button>
-
-                            <button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex-shrink-0" style="border-color: hsl(var(--border)); color: hsl(var(--muted-foreground));">
                                 <i data-lucide="user" class="h-5 w-5"></i>
                                 <span class="sr-only">Perfil</span>
                             </button>
@@ -201,24 +234,8 @@
                     </div>
                 </header>
 
-                <main class="flex-1 bg-background overflow-y-auto">
-                    <div class="max-w-screen-2xl mx-auto p-6 space-y-6">
-                        {{-- Page Title and Subtitle (Photo-Zen style) --}}
-                        @if ($pageTitle || $pageSubtitle)
-                            <div class="space-y-1 mb-6">
-                                @if ($pageTitle)
-                                    <h1 class="text-2xl font-semibold tracking-tight text-foreground" style="font-size: 1.5rem !important; font-weight: 600 !important; color: hsl(222, 47%, 11%) !important; margin: 0 !important; margin-bottom: 0.25rem !important;">
-                                        {{ $pageTitle }}
-                                    </h1>
-                                @endif
-                                @if ($pageSubtitle)
-                                    <p class="text-sm text-muted-foreground" style="font-size: 0.875rem !important; color: hsl(220, 9%, 46%) !important; margin: 0 !important; margin-top: 0.25rem !important;">
-                                        {{ $pageSubtitle }}
-                                    </p>
-                                @endif
-                            </div>
-                        @endif
-                        
+                <main class="flex-1 bg-background overflow-y-auto overflow-x-hidden" style="background-color: hsl(var(--background));">
+                    <div class="max-w-screen-2xl mx-auto p-6 space-y-6 w-full min-w-0">
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
                                 {{ session('success') }}
@@ -368,6 +385,141 @@
                 lucide.createIcons();
             }
         });
+    </script>
+    
+    {{-- Sistema de Verificação de Mensagens WhatsApp Falhadas --}}
+    <script>
+        (function() {
+            'use strict';
+            
+            let lastCheckedCount = 0;
+            let checkInterval = null;
+            const CHECK_INTERVAL = 30000; // Verificar a cada 30 segundos
+            
+            async function checkFailedMessages() {
+                try {
+                    const response = await fetch('/dashboard/whatsapp/failed-messages/pending-count', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) return;
+                    
+                    const data = await response.json();
+                    const currentCount = data.count || 0;
+                    
+                    // Se houver novas falhas, mostrar popup
+                    if (currentCount > 0 && currentCount > lastCheckedCount) {
+                        showFailedMessagesPopup(currentCount);
+                    }
+                    
+                    lastCheckedCount = currentCount;
+                } catch (error) {
+                    console.error('Erro ao verificar mensagens falhadas:', error);
+                }
+            }
+            
+            function showFailedMessagesPopup(count) {
+                // Verificar se já existe um popup
+                if (document.getElementById('whatsapp-failed-popup')) {
+                    return;
+                }
+                
+                const popup = document.createElement('div');
+                popup.id = 'whatsapp-failed-popup';
+                popup.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+                popup.innerHTML = `
+                    <div class="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 border border-destructive/20">
+                        <div class="p-6">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle text-destructive">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" x2="12" y1="8" y2="12"></line>
+                                            <line x1="12" x2="12.01" y1="16" y2="16"></line>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold mb-2">Mensagens WhatsApp Falhadas</h3>
+                                    <p class="text-sm text-muted-foreground mb-4">
+                                        ${count === 1 ? 'Foi detectada 1 mensagem' : `Foram detectadas ${count} mensagens`} que não foram enviadas com sucesso.
+                                    </p>
+                                    <div class="flex gap-2">
+                                        <button onclick="window.location.href='/dashboard/whatsapp/failed-messages'" class="flex-1 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
+                                            Ver Mensagens
+                                        </button>
+                                        <button onclick="closeFailedMessagesPopup()" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+                                            Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                                <button onclick="closeFailedMessagesPopup()" class="text-muted-foreground hover:text-foreground">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                                        <path d="M18 6 6 18"></path>
+                                        <path d="M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(popup);
+                
+                // Fechar ao clicar fora
+                popup.addEventListener('click', function(e) {
+                    if (e.target === popup) {
+                        closeFailedMessagesPopup();
+                    }
+                });
+            }
+            
+            function closeFailedMessagesPopup() {
+                const popup = document.getElementById('whatsapp-failed-popup');
+                if (popup) {
+                    popup.style.transition = 'opacity 0.3s';
+                    popup.style.opacity = '0';
+                    setTimeout(() => popup.remove(), 300);
+                }
+            }
+            
+            // Expor função globalmente
+            window.closeFailedMessagesPopup = closeFailedMessagesPopup;
+            
+            // Iniciar verificação quando a página carregar
+            function startChecking() {
+                // Verificar imediatamente após 5 segundos
+                setTimeout(checkFailedMessages, 5000);
+                
+                // Depois verificar periodicamente
+                checkInterval = setInterval(checkFailedMessages, CHECK_INTERVAL);
+            }
+            
+            // Parar verificação quando a página perder foco
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    if (checkInterval) {
+                        clearInterval(checkInterval);
+                        checkInterval = null;
+                    }
+                } else {
+                    if (!checkInterval) {
+                        startChecking();
+                    }
+                }
+            });
+            
+            // Iniciar quando DOM estiver pronto
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', startChecking);
+            } else {
+                startChecking();
+            }
+        })();
     </script>
     
     {{-- Estilos críticos movidos para olika-override-v3.1.css --}}

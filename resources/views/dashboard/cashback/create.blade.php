@@ -1,18 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Nova Transação de Cashback')
+@section('page_title', 'Nova Transação de Cashback')
+@section('page_subtitle', 'Criar uma nova transação de cashback manualmente')
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">Nova Transação de Cashback</h1>
-      <p class="text-muted-foreground">Criar uma nova transação de cashback manualmente</p>
-    </div>
-    <a href="{{ route('dashboard.cashback.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-      Voltar
-    </a>
-  </div>
+<div class="space-y-6">
 
   @if(session('error'))
     <div class="rounded-lg border bg-red-50 border-red-200 p-4 text-red-700">

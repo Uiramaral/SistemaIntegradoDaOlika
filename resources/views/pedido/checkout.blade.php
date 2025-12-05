@@ -297,13 +297,6 @@
                                             <div class="text-sm text-muted-foreground">Visa, Mastercard, Elo</div>
                                         </label>
                                     </div>
-                                    <div class="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-secondary/50 transition-smooth">
-                                        <input type="radio" name="payment_method" value="money" id="payment_money" class="aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                        <label for="payment_money" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
-                                            <div class="font-semibold">Dinheiro</div>
-                                            <div class="text-sm text-muted-foreground">Pagamento na entrega</div>
-                                        </label>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -344,6 +337,11 @@
                                                 Aguardando CEP
                                             @endif
                                         </span>
+                                    </div>
+                                    <!-- Linha de Cashback Usado (oculta por padrão) -->
+                                    <div id="summaryCashbackRow" class="flex justify-between text-sm hidden">
+                                        <span class="text-muted-foreground">Cashback</span>
+                                        <span id="summaryCashback" class="font-semibold text-green-600">- R$ 0,00</span>
                                     </div>
                                 </div>
 

@@ -45,7 +45,7 @@
                 <div class="flex flex-col space-y-1.5 p-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-2xl font-semibold leading-none tracking-tight">Instâncias WhatsApp</h3>
+                            <h3 class="text-lg font-semibold leading-none tracking-tight">Instâncias WhatsApp</h3>
                             <p class="text-sm text-muted-foreground">Gerencie múltiplas conexões WhatsApp</p>
                         </div>
                         <button onclick="showAddInstanceModal()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
@@ -53,7 +53,7 @@
                                 <path d="M5 12h14"></path>
                                 <path d="M12 5v14"></path>
                             </svg>
-                            Nova Instância
+                            + Nova Instância
                         </button>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
                                 <!-- Informações da Instância -->
                                 <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <p class="text-xs text-muted-foreground mb-1">Nome</p>
+                                        <p class="text-xs text-muted-foreground mb-1">Atendimento</p>
                                         <p class="font-semibold">{{ $instance->name }}</p>
                                     </div>
                                     <div>
@@ -130,7 +130,7 @@
                                                     <polyline points="16 17 21 12 16 7"></polyline>
                                                     <line x1="21" x2="9" y1="12" y2="12"></line>
                                                 </svg>
-                                                Desconectar
+                                                → Desconectar
                                             </button>
                                         @else
                                             <button onclick="connectInstance({{ $instance->id }})" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3">
@@ -153,6 +153,63 @@
                             <button onclick="showAddInstanceModal()" class="text-primary hover:underline mt-2 inline-block">Criar primeira instância</button>
                         </div>
                     @endforelse
+                </div>
+            </div>
+            
+            <!-- Seção de Configurações Gerais -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm mt-6">
+                <div class="flex flex-col space-y-1.5 p-6">
+                    <div>
+                        <h3 class="text-lg font-semibold leading-none tracking-tight">Configurações de Notificações</h3>
+                        <p class="text-sm text-muted-foreground">Configure o número que receberá notificações de admin</p>
+                    </div>
+                </div>
+                <div class="p-6 pt-0">
+                    <form action="{{ route('dashboard.settings.whatsapp.save') }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Número para Notificações de Admin</label>
+                            <input 
+                                type="text" 
+                                name="admin_notification_phone" 
+                                value="{{ $row->admin_notification_phone ?? '' }}" 
+                                placeholder="5571999999999" 
+                                pattern="[0-9]+"
+                                maxlength="20"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                            <p class="text-xs text-muted-foreground mt-1">
+                                Número no formato internacional sem espaços ou caracteres especiais. 
+                                Exemplo: 5571999999999 (55 = código do país Brasil, 71 = DDD, 999999999 = número)
+                            </p>
+                            <p class="text-xs text-amber-600 mt-1">
+                                ⚠️ Este número receberá notificações quando "Notificar Admin" estiver ativado nos status dos pedidos.
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Número Padrão para Confirmações de Pagamento</label>
+                            <input 
+                                type="text" 
+                                name="default_payment_confirmation_phone" 
+                                value="{{ $row->default_payment_confirmation_phone ?? $row->whatsapp_phone ?? '' }}" 
+                                placeholder="5571999999999" 
+                                pattern="[0-9]+"
+                                maxlength="20"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                            <p class="text-xs text-muted-foreground mt-1">
+                                Número do WhatsApp que será usado para enviar confirmações de pagamento aos clientes.
+                                Deixe em branco para usar o número padrão do WhatsApp configurado acima.
+                            </p>
+                            <p class="text-xs text-blue-600 mt-1">
+                                ℹ️ Este número será sempre usado para confirmações de pagamento, ignorando o roteamento automático.
+                            </p>
+                        </div>
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            Salvar Configuração
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -178,21 +235,72 @@
                                     <textarea name="message" rows="5" required class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Olá {nome}, hoje tem promoção!"></textarea>
                                     <p class="text-xs text-muted-foreground mt-1">Variáveis: {nome}, {telefone}</p>
                                 </div>
-                                <div>
-                                    <label class="text-sm font-medium mb-1 block">Público Alvo</label>
-                                    <select name="target_audience" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                        <option value="all">Todos os Clientes</option>
-                                        <option value="has_orders">Clientes que já compraram</option>
-                                        <option value="no_orders">Leads (nunca compraram)</option>
-                                    </select>
+                                
+                                <!-- Filtros Combinados -->
+                                <div class="space-y-3 p-3 border rounded-md bg-muted/30">
+                                    <label class="text-sm font-semibold mb-2 block">Filtros de Público</label>
+                                    
+                                    <div>
+                                        <label class="text-sm font-medium mb-1 block">Público Alvo Base</label>
+                                        <select name="target_audience" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                            <option value="all">Todos os Clientes</option>
+                                            <option value="has_orders">Clientes que já compraram</option>
+                                            <option value="no_orders">Leads (nunca compraram)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" name="filter_newsletter" value="1" class="h-4 w-4 text-primary">
+                                            <span class="text-sm font-medium">Apenas Newsletter (clientes que optaram por receber)</span>
+                                        </label>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm font-medium mb-1 block">Tipo de Cliente (combinar com Newsletter)</label>
+                                        <select name="filter_customer_type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                            <option value="all">Todos</option>
+                                            <option value="new_customers">Apenas Leads (nunca compraram)</option>
+                                            <option value="existing_customers">Apenas Clientes (já compraram)</option>
+                                        </select>
+                                        <p class="text-xs text-muted-foreground mt-1">Pode combinar com Newsletter para filtrar melhor</p>
+                                    </div>
                                 </div>
+                                
+                                <!-- Cliente Único para Testes -->
+                                <div class="p-3 border rounded-md bg-blue-50/50">
+                                    <label class="text-sm font-semibold mb-2 block">🧪 Teste com Cliente Único</label>
+                                    <select name="test_customer_id" id="test_customer_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <option value="">Nenhum (enviar para todos do filtro)</option>
+                                    </select>
+                                    <p class="text-xs text-muted-foreground mt-1">Selecione um cliente para enviar apenas para ele (útil para testes)</p>
+                                    <input type="text" id="test_customer_search" placeholder="Buscar cliente por nome, telefone ou email..." class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2">
+                                    <div id="test_customer_results" class="mt-2 hidden max-h-40 overflow-y-auto border rounded-md bg-background"></div>
+                                </div>
+                                
+                                <!-- Agendamento -->
+                                <div class="p-3 border rounded-md bg-amber-50/50">
+                                    <label class="text-sm font-semibold mb-2 block">📅 Agendar Campanha</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-medium mb-1 block">Data de Início</label>
+                                            <input type="date" name="scheduled_date" id="scheduled_date" min="{{ date('Y-m-d') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium mb-1 block">Horário</label>
+                                            <input type="time" name="scheduled_time" id="scheduled_time" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-muted-foreground mt-1">Deixe em branco para iniciar imediatamente</p>
+                                </div>
+                                
                                 <div>
                                     <label class="text-sm font-medium mb-1 block">Intervalo (segundos)</label>
                                     <input type="number" name="interval_seconds" value="15" min="5" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                     <p class="text-xs text-muted-foreground mt-1">Tempo entre cada envio para evitar bloqueio.</p>
                                 </div>
                                 <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                                    Iniciar Campanha
+                                    <span id="campaign-submit-text">Iniciar Campanha</span>
                                 </button>
                             </form>
                         </div>
@@ -1485,9 +1593,23 @@ async function createCampaign(event) {
     // Converter para inteiros
     data.interval_seconds = parseInt(data.interval_seconds);
     
+    // Processar checkbox de newsletter
+    data.filter_newsletter = formData.has('filter_newsletter') ? 1 : 0;
+    
+    // Verificar se há agendamento
+    const scheduledDate = data.scheduled_date;
+    const scheduledTime = data.scheduled_time;
+    const isScheduled = scheduledDate && scheduledTime;
+    
     const btn = form.querySelector('button[type="submit"]');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = 'Iniciando...';
+    const submitText = document.getElementById('campaign-submit-text');
+    const originalText = submitText ? submitText.textContent : btn.innerHTML;
+    
+    if (submitText) {
+        submitText.textContent = isScheduled ? 'Agendando...' : 'Iniciando...';
+    } else {
+        btn.innerHTML = isScheduled ? 'Agendando...' : 'Iniciando...';
+    }
     btn.disabled = true;
     
     try {
@@ -1509,6 +1631,10 @@ async function createCampaign(event) {
         if (response.ok) {
             alert('✅ ' + result.message);
             form.reset();
+            // Limpar seleção de cliente de teste
+            document.getElementById('test_customer_id').innerHTML = '<option value="">Nenhum (enviar para todos do filtro)</option>';
+            document.getElementById('test_customer_search').value = '';
+            document.getElementById('test_customer_results').classList.add('hidden');
             // Atualizar lista de campanhas (recarregar página por enquanto)
             location.reload();
         } else {
@@ -1518,10 +1644,139 @@ async function createCampaign(event) {
         console.error('Erro ao criar campanha:', error);
         alert('❌ Erro ao criar campanha. Tente novamente.');
     } finally {
-        btn.innerHTML = originalText;
+        if (submitText) {
+            submitText.textContent = originalText;
+        } else {
+            btn.innerHTML = originalText;
+        }
         btn.disabled = false;
     }
 }
+
+// Buscar clientes para teste
+let customerSearchTimeout = null;
+
+function selectTestCustomer(customerId, customerName, customerPhone) {
+    const select = document.getElementById('test_customer_id');
+    const search = document.getElementById('test_customer_search');
+    const results = document.getElementById('test_customer_results');
+    
+    // Limpar opções existentes e adicionar o selecionado
+    select.innerHTML = `<option value="${customerId}" selected>${customerName} - ${customerPhone}</option>`;
+    search.value = `${customerName} - ${customerPhone}`;
+    results.classList.add('hidden');
+}
+
+// Inicializar event listeners quando a aba de campanhas for aberta
+function initCampaignFormListeners() {
+    const scheduledDate = document.getElementById('scheduled_date');
+    const scheduledTime = document.getElementById('scheduled_time');
+    const testCustomerSearch = document.getElementById('test_customer_search');
+    
+    if (scheduledDate && !scheduledDate.dataset.listenerAdded) {
+        scheduledDate.addEventListener('change', updateSubmitButton);
+        scheduledDate.dataset.listenerAdded = 'true';
+    }
+    
+    if (scheduledTime && !scheduledTime.dataset.listenerAdded) {
+        scheduledTime.addEventListener('change', updateSubmitButton);
+        scheduledTime.dataset.listenerAdded = 'true';
+    }
+    
+    if (testCustomerSearch && !testCustomerSearch.dataset.listenerAdded) {
+        testCustomerSearch.addEventListener('input', function(e) {
+            const query = e.target.value.trim();
+            const resultsDiv = document.getElementById('test_customer_results');
+            const select = document.getElementById('test_customer_id');
+            
+            if (query.length < 2) {
+                resultsDiv?.classList.add('hidden');
+                return;
+            }
+            
+            clearTimeout(customerSearchTimeout);
+            customerSearchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/dashboard/pdv/search-customers?q=${encodeURIComponent(query)}`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) return;
+                    
+                    const data = await response.json();
+                    const customers = data.customers || [];
+                    
+                    if (customers.length === 0) {
+                        resultsDiv.innerHTML = '<div class="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado</div>';
+                        resultsDiv.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    resultsDiv.innerHTML = customers.map(customer => `
+                        <div class="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0" onclick="selectTestCustomer(${customer.id}, '${(customer.name || '').replace(/'/g, "\\'")}', '${(customer.phone || '').replace(/'/g, "\\'")}')">
+                            <div class="font-medium text-sm">${customer.name || 'Sem nome'}</div>
+                            <div class="text-xs text-muted-foreground">${customer.phone || ''} ${customer.email ? '• ' + customer.email : ''}</div>
+                        </div>
+                    `).join('');
+                    resultsDiv.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Erro ao buscar clientes:', error);
+                }
+            }, 300);
+        });
+        testCustomerSearch.dataset.listenerAdded = 'true';
+    }
+}
+
+// Inicializar quando a aba de campanhas for clicada
+document.addEventListener('DOMContentLoaded', function() {
+    const campaignsTab = document.querySelector('[data-tab="campaigns"]');
+    if (campaignsTab) {
+        campaignsTab.addEventListener('click', function() {
+            setTimeout(initCampaignFormListeners, 100);
+        });
+    }
+    // Também inicializar se a aba já estiver ativa
+    if (campaignsTab?.classList.contains('active')) {
+        setTimeout(initCampaignFormListeners, 100);
+    }
+});
+
+function updateSubmitButton() {
+    const date = document.getElementById('scheduled_date')?.value;
+    const time = document.getElementById('scheduled_time')?.value;
+    const submitText = document.getElementById('campaign-submit-text');
+    
+    if (submitText) {
+        if (date && time) {
+            const [year, month, day] = date.split('-');
+            const [hours, minutes] = time.split(':');
+            const scheduledDate = new Date(year, month - 1, day, hours, minutes);
+            const now = new Date();
+            
+            if (scheduledDate > now) {
+                submitText.textContent = `Agendar para ${day}/${month}/${year} às ${hours}:${minutes}`;
+            } else {
+                submitText.textContent = 'Iniciar Campanha';
+            }
+        } else {
+            submitText.textContent = 'Iniciar Campanha';
+        }
+    }
+}
+
+// Fechar resultados ao clicar fora
+document.addEventListener('click', function(e) {
+    const results = document.getElementById('test_customer_results');
+    const search = document.getElementById('test_customer_search');
+    
+    if (results && !results.contains(e.target) && e.target !== search) {
+        results.classList.add('hidden');
+    }
+});
 
 // Buscar Campanhas (executado ao carregar ou trocar de aba)
 async function fetchCampaigns() {
@@ -1541,9 +1796,25 @@ async function fetchCampaigns() {
             return;
         }
         
-        tbody.innerHTML = campaigns.map(c => `
+        tbody.innerHTML = campaigns.map(c => {
+            const scheduledInfo = c.scheduled_at ? 
+                `<div class="text-xs text-purple-600 mt-1">📅 ${new Date(c.scheduled_at).toLocaleString('pt-BR')}</div>` : '';
+            const testInfo = c.test_customer_id ? 
+                `<div class="text-xs text-blue-600 mt-1">🧪 Teste: Cliente ID ${c.test_customer_id}</div>` : '';
+            const filtersInfo = [];
+            if (c.filter_newsletter) filtersInfo.push('📧 Newsletter');
+            if (c.filter_customer_type === 'new_customers') filtersInfo.push('🆕 Leads');
+            if (c.filter_customer_type === 'existing_customers') filtersInfo.push('👥 Clientes');
+            const filtersText = filtersInfo.length > 0 ? `<div class="text-xs text-muted-foreground mt-1">${filtersInfo.join(' • ')}</div>` : '';
+            
+            return `
             <tr class="border-b transition-colors hover:bg-muted/50">
-                <td class="p-4 font-medium">${c.name}</td>
+                <td class="p-4 font-medium">
+                    <div>${c.name}</div>
+                    ${scheduledInfo}
+                    ${testInfo}
+                    ${filtersText}
+                </td>
                 <td class="p-4">
                     <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${getStatusBadgeClass(c.status)}">
                         ${formatStatus(c.status)}
@@ -1563,7 +1834,8 @@ async function fetchCampaigns() {
                     ${new Date(c.created_at).toLocaleDateString('pt-BR')}
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         
     } catch (error) {
         console.error('Erro ao buscar campanhas:', error);
@@ -1575,6 +1847,7 @@ function getStatusBadgeClass(status) {
         case 'completed': return 'border-transparent bg-green-100 text-green-800 hover:bg-green-200';
         case 'processing': return 'border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200 animate-pulse';
         case 'pending': return 'border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+        case 'scheduled': return 'border-transparent bg-purple-100 text-purple-800 hover:bg-purple-200';
         default: return 'border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
 }
@@ -1584,6 +1857,7 @@ function formatStatus(status) {
         'pending': 'Pendente',
         'processing': 'Enviando',
         'completed': 'Concluída',
+        'scheduled': 'Agendada',
         'paused': 'Pausada',
         'cancelled': 'Cancelada'
     };

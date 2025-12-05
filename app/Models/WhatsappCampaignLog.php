@@ -24,3 +24,9 @@ class WhatsappCampaignLog extends Model
 
 
 
+
+
+
+
+
+

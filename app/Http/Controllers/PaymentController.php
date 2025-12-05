@@ -236,6 +236,7 @@ class PaymentController extends Controller
                         session()->forget('cart_count');
                         
                         // IMPORTANTE: Usar OrderStatusService para processar a confirmação completa
+                        // Isso vai verificar as configurações de notificação de admin
                         try {
                             $orderStatusService = app(\App\Services\OrderStatusService::class);
                             $orderStatusService->changeStatus(
@@ -243,7 +244,8 @@ class PaymentController extends Controller
                                 'paid', 
                                 'Pagamento aprovado via polling (PIX)',
                                 null, // userId
-                                false // skipHistory
+                                false, // skipHistory
+                                false  // skipNotifications - NÃO pular notificações para respeitar configurações
                             );
                             \Log::info('PaymentController (polling): OrderStatusService chamado para confirmar pagamento', [
                                 'order_id' => $order->id,
@@ -253,6 +255,7 @@ class PaymentController extends Controller
                             \Log::error('PaymentController (polling): Erro ao chamar OrderStatusService', [
                                 'order_id' => $order->id,
                                 'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString()
                             ]);
                             // Continuar com processamento manual se OrderStatusService falhar
                         }
@@ -372,33 +375,9 @@ class PaymentController extends Controller
                                     }
                                 }
                                 
-                                // Enviar notificação para o número específico quando pedido for pago
-                                if ($whatsappService->isEnabled() && in_array($order->payment_status, ['paid', 'approved'])) {
-                                    try {
-                                        $notificationPhone = '71981750546'; // Número fixo para notificações
-                                        $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
-                                        $message .= "Pedido: #{$order->order_number}\n";
-                                        $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
-                                        $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
-                                        $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
-                                        $message .= "Acesse o dashboard para ver os detalhes.";
-                                        
-                                        $result = $whatsappService->sendText($notificationPhone, $message);
-                                        
-                                        if (isset($result['success']) && $result['success']) {
-                                            \Log::info('PaymentController (polling): Notificação enviada para número de administrador', [
-                                                'order_id' => $order->id,
-                                                'order_number' => $order->order_number,
-                                                'phone' => $notificationPhone
-                                            ]);
-                                        }
-                                    } catch (\Throwable $e) {
-                                        \Log::warning('PaymentController (polling): Erro ao enviar notificação para administrador', [
-                                            'order_id' => $order->id,
-                                            'error' => $e->getMessage()
-                                        ]);
-                                    }
-                                }
+                                // NOTA: Notificações de admin são enviadas pelo OrderStatusService
+                                // quando o status 'paid' tem notify_admin = 1 nas configurações
+                                // Não enviar notificação hardcoded aqui para respeitar as configurações
                             } catch (\Throwable $e) { 
                                 \Log::warning('Falha ao notificar WhatsApp no polling', ['order_id' => $order->id, 'err' => $e->getMessage()]);
                             }
@@ -509,6 +488,32 @@ class PaymentController extends Controller
             $order->payment_status = 'paid';
             $order->status = 'confirmed';
             $order->save();
+            
+            // IMPORTANTE: Usar OrderStatusService para processar a confirmação completa
+            // Isso vai verificar as configurações de notificação de admin
+            try {
+                $orderStatusService = app(\App\Services\OrderStatusService::class);
+                $orderStatusService->changeStatus(
+                    $order, 
+                    'paid', 
+                    'Pagamento confirmado',
+                    null, // userId
+                    false, // skipHistory
+                    false  // skipNotifications - NÃO pular notificações para respeitar configurações
+                );
+                \Log::info('PaymentController (success): OrderStatusService chamado para confirmar pagamento', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('PaymentController (success): Erro ao chamar OrderStatusService', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Continuar com processamento manual se OrderStatusService falhar
+            }
+            
             try {
                 app(\App\Http\Controllers\LoyaltyController::class)->addPoints($order);
             } catch (\Throwable $e) {
@@ -565,7 +570,14 @@ class PaymentController extends Controller
                     } else {
                         \Log::warning('PaymentController: Cashback ganho é zero ou nulo, não criando crédito', [
                             'order_id' => $order->id,
+                            'order_number' => $order->order_number,
                             'cashback_earned' => $order->cashback_earned,
+                            'cashback_earned_type' => gettype($order->cashback_earned),
+                            'cashback_earned_raw' => $order->getRawOriginal('cashback_earned') ?? null,
+                            'final_amount' => $order->final_amount,
+                            'subtotal' => $order->total_amount,
+                            'discount_amount' => $order->discount_amount,
+                            'cashback_used' => $order->cashback_used,
                         ]);
                     }
                 }
@@ -631,33 +643,9 @@ class PaymentController extends Controller
                     }
                 }
                 
-                // Enviar notificação para o número específico quando pedido for pago
-                if ($whatsappService->isEnabled() && $order->payment_status === 'paid') {
-                    try {
-                        $notificationPhone = '71981750546'; // Número fixo para notificações
-                        $message = "🆕 *NOVO PEDIDO PAGO!*\n\n";
-                        $message .= "Pedido: #{$order->order_number}\n";
-                        $message .= "Cliente: " . ($order->customer->name ?? 'N/A') . "\n";
-                        $message .= "Valor: R$ " . number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') . "\n";
-                        $message .= "Status: " . ($order->status ?? 'confirmed') . "\n\n";
-                        $message .= "Acesse o dashboard para ver os detalhes.";
-                        
-                        $result = $whatsappService->sendText($notificationPhone, $message);
-                        
-                        if (isset($result['success']) && $result['success']) {
-                            \Log::info('PaymentController: Notificação enviada para número de administrador', [
-                                'order_id' => $order->id,
-                                'order_number' => $order->order_number,
-                                'phone' => $notificationPhone
-                            ]);
-                        }
-                    } catch (\Throwable $e) {
-                        \Log::warning('PaymentController: Erro ao enviar notificação para administrador', [
-                            'order_id' => $order->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
+                // NOTA: Notificações de admin são enviadas pelo OrderStatusService
+                // quando o status 'paid' tem notify_admin = 1 nas configurações
+                // Não enviar notificação hardcoded aqui para respeitar as configurações
             }
         } catch (\Throwable $e) {
             \Log::warning('Falha ao notificar WhatsApp', ['order_id' => $order->id, 'err' => $e->getMessage()]);

@@ -347,6 +347,16 @@ class OrdersController extends Controller
 
             if (!isset($result['success']) || !$result['success']) {
                 $errorMsg = $result['error'] ?? 'Não foi possível enviar o recibo via WhatsApp.';
+                
+                // Mensagens mais amigáveis para erros comuns
+                if (str_contains(strtolower($errorMsg), 'número inválido') || 
+                    str_contains(strtolower($errorMsg), 'não possui conta')) {
+                    $errorMsg = 'O número de telefone do cliente não está registrado no WhatsApp ou está em formato inválido. Verifique o número cadastrado: ' . ($order->customer->phone ?? 'N/A');
+                } elseif (str_contains(strtolower($errorMsg), 'não conectado') || 
+                          str_contains(strtolower($errorMsg), 'desconectado')) {
+                    $errorMsg = 'O WhatsApp não está conectado no momento. Aguarde alguns segundos e tente novamente.';
+                }
+                
                 return redirect()
                     ->back()
                     ->with('error', $errorMsg);
@@ -900,13 +910,34 @@ class OrdersController extends Controller
                 $message .= "\n\n🔗 Link de pagamento: {$paymentLink}";
             }
 
-            // Enviar via WhatsApp
-            $result = $whatsappService->sendText($customer->phone, $message);
+            // Normalizar telefone antes de enviar
+            $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+            if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                $phoneNormalized = '55' . $phoneNormalized;
+            }
             
-            if (!$result) {
-                Log::warning("Falha ao enviar WhatsApp para {$customer->phone}");
+            Log::info('OrdersController: Enviando WhatsApp', [
+                'order_id' => $order->id,
+                'customer_phone_original' => $customer->phone,
+                'phone_normalized' => $phoneNormalized,
+            ]);
+            
+            // Enviar via WhatsApp usando número normalizado
+            $result = $whatsappService->sendText($phoneNormalized, $message);
+            
+            if (!isset($result['success']) || !$result['success']) {
+                Log::warning("Falha ao enviar WhatsApp", [
+                    'order_id' => $order->id,
+                    'customer_phone_original' => $customer->phone,
+                    'phone_normalized' => $phoneNormalized,
+                    'error' => $result['error'] ?? 'Erro desconhecido',
+                ]);
             } else {
-                Log::info("WhatsApp enviado com sucesso para {$customer->phone}");
+                Log::info("WhatsApp enviado com sucesso", [
+                    'order_id' => $order->id,
+                    'customer_phone_original' => $customer->phone,
+                    'phone_normalized' => $phoneNormalized,
+                ]);
             }
             
             return true;

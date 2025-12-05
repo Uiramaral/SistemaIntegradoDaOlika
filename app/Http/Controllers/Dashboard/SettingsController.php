@@ -488,12 +488,57 @@ class SettingsController extends Controller
 
     public function whatsappSave(Request $r)
     {
+        // Se apenas admin_notification_phone foi enviado, validar apenas ele
+        if ($r->has('admin_notification_phone') && !$r->has('instance_name')) {
+            $data = $r->validate([
+                'admin_notification_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
+            ]);
+            
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            
+            if ($row) {
+                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'updated_at');
+                $updateData = [
+                    'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
+                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
+                ];
+                if ($hasTimestamps) {
+                    $updateData['updated_at'] = now();
+                }
+                DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
+            } else {
+                // Se não existe registro, criar um básico
+                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                                 Schema::hasColumn('whatsapp_settings', 'updated_at');
+                $insertData = [
+                    'instance_name' => 'Principal',
+                    'api_url' => env('WHATSAPP_API_URL', ''),
+                    'api_key' => env('WHATSAPP_API_KEY', env('API_SECRET', '')),
+                    'sender_name' => 'Olika Bot',
+                    'whatsapp_phone' => '',
+                    'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
+                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
+                    'active' => 1
+                ];
+                if ($hasTimestamps) {
+                    $insertData['created_at'] = now();
+                    $insertData['updated_at'] = now();
+                }
+                DB::table('whatsapp_settings')->insert($insertData);
+            }
+            
+            return back()->with('success', 'Número de notificação de admin salvo com sucesso!');
+        }
+        
+        // Validação completa para o formulário antigo
         $data = $r->validate([
             'instance_name' => 'required|string|max:100',
             'api_url' => 'required|url|max:255',
             'api_key' => 'required|string|max:255',
             'sender_name' => 'nullable|string|max:100',
             'whatsapp_phone' => 'required|string|max:20|regex:/^[0-9]+$/',
+            'admin_notification_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
+            'default_payment_confirmation_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
         ]);
 
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();

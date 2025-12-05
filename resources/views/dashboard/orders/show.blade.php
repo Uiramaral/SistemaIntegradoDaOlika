@@ -1,10 +1,38 @@
 @extends('dashboard.layouts.app')
 
-@section('page_title', 'Pedido #' . $order->order_number)
-@section('page_subtitle', 'Detalhes e gestão do pedido')
+@section('page_title', '')
+@section('page_subtitle', '')
 
 @section('page_actions')
-            <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+    @php
+        $paymentColors = [
+            'pending' => 'bg-muted text-muted-foreground',
+            'paid' => 'bg-success text-success-foreground',
+            'failed' => 'bg-destructive text-destructive-foreground',
+            'refunded' => 'bg-warning text-warning-foreground',
+        ];
+        $paymentColor = $paymentColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
+    @endphp
+    <div class="flex items-center gap-2 flex-wrap">
+        <div class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold {{ $paymentColor }}">
+            {{ $order->status_label }} - {{ $order->payment_status_label }}
+        </div>
+        <div class="text-sm text-muted-foreground">
+            {{ optional($order->created_at)->format('d/m/Y H:i') }}
+        </div>
+    </div>
+@endsection
+
+@section('content')
+<div class="space-y-6 w-full min-w-0">
+    <!-- Título e Subtítulo -->
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="space-y-1">
+            <h1 class="text-2xl font-semibold tracking-tight">Pedido #{{ $order->order_number }}</h1>
+            <p class="text-sm text-muted-foreground">Detalhes e gestão do pedido</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" id="btn-print-receipt-direct" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
@@ -12,7 +40,7 @@
                 </svg>
                 Imprimir Recibo Fiscal
             </button>
-            <button type="button" id="btn-open-receipt" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+            <button type="button" id="btn-open-receipt" data-order-id="{{ $order->id }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt">
                     <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2Z"></path>
                     <path d="M14 8H8"></path>
@@ -22,35 +50,10 @@
                 </svg>
                 Ver Recibo
             </button>
-            @if(($order->payment_provider === 'mercadopago') || (!$order->payment_provider && ($order->payment_link || $order->preference_id)))
-                <form method="POST" action="{{ route('dashboard.orders.confirmMercadoPagoStatus', $order->id) }}">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw">
-                            <path d="M21 12a9 9 0 0 0-9-9"></path>
-                            <path d="M3 12a9 9 0 0 0 9 9"></path>
-                            <path d="M21 3v6h-6"></path>
-                            <path d="M3 21v-6h6"></path>
-                        </svg>
-                        Confirmar pagamento (Mercado Pago)
-                    </button>
-                </form>
-            @endif
-            @php
-                $statusColors = [
-                    'pending' => 'bg-muted text-muted-foreground',
-                    'confirmed' => 'bg-primary text-primary-foreground',
-                    'preparing' => 'bg-warning text-warning-foreground',
-                    'ready' => 'bg-primary/80 text-primary-foreground',
-                    'delivered' => 'bg-success text-success-foreground',
-                    'cancelled' => 'bg-destructive text-destructive-foreground',
-                ];
-                $statusColor = $statusColors[$order->status] ?? 'bg-muted text-muted-foreground';
-            @endphp
             @if($order->payment_status !== 'refunded' && optional($order->customer)->phone)
-                <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}">
+                <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}" class="inline">
                     @csrf
-                    <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-success text-success-foreground hover:bg-success/90 h-9 px-4">
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
                             <path d="m22 2-7 20-4-9-9-4Z"></path>
                             <path d="M22 2 11 13"></path>
@@ -59,7 +62,7 @@
                     </button>
                 </form>
             @else
-                <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-muted text-muted-foreground h-9 px-4" disabled title="@if($order->payment_status === 'refunded')Pedido estornado não pode enviar recibo.@elseif(!optional($order->customer)->phone)Cliente não possui telefone cadastrado.@elseRecibo disponível apenas para pedidos não estornados.@endif">
+                <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-input bg-muted text-muted-foreground h-9 px-3" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
                         <path d="m22 2-7 20-4-9-9-4Z"></path>
                         <path d="M22 2 11 13"></path>
@@ -67,634 +70,417 @@
                     Enviar recibo (WhatsApp)
                 </button>
             @endif
-            <div class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold {{ $statusColor }}">
-                {{ $order->status_label }}
-            </div>
         </div>
-        @if($paymentUnderReview ?? false)
-            <div class="w-full">
-                <div class="mt-3 flex gap-3 rounded-lg border border-warning bg-warning/10 p-4 text-warning-foreground">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 5c.511 0 1.022.128 1.478.384.455.255.84.62 1.118 1.062l5.196 8.531c.29.476.438 1.026.427 1.585a3.09 3.09 0 01-.46 1.547 2.933 2.933 0 01-1.16 1.073c-.467.22-.981.333-1.502.333H6.903c-.521 0-1.035-.113-1.502-.333a2.933 2.933 0 01-1.16-1.073 3.09 3.09 0 01-.46-1.547c-.012-.559.137-1.109.427-1.585l5.196-8.531a2.91 2.91 0 011.118-1.062A2.985 2.985 0 0112 5z" />
-                    </svg>
-                    <div class="space-y-1">
-                        <p class="font-semibold leading-tight">Pagamento em análise</p>
-                        <p class="text-sm leading-relaxed">{{ $paymentReviewMessage }}</p>
-                        <p class="text-xs uppercase tracking-wide text-warning-foreground/80">
-                            Status Mercado Pago:
-                            <span class="font-medium">{{ strtoupper($paymentGatewayStatus ?? 'pendente') }}</span>
-                            @if(!empty($paymentStatusDetail))
-                                — {{ str_replace('_', ' ', strtoupper($paymentStatusDetail)) }}
-                            @endif
-                        </p>
-                        @if(!empty($paymentReviewNotifiedAt))
-                            <p class="text-xs text-warning-foreground/70">
-                                Cliente notificado em {{ $paymentReviewNotifiedAt->timezone(config('app.timezone'))->format('d/m/Y H:i') }}.
-                            </p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
     </div>
 
-    <!-- Resumo do Pedido - Itens do Pedido -->
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm" id="order-items-section">
-        <div class="flex flex-col p-4 pb-2">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold leading-none tracking-tight">Resumo do Pedido</h3>
-                <button type="button" id="btn-open-add-item-modal" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 w-full min-w-0 max-w-full">
+        <!-- Coluna 1: Itens, Cliente e Status -->
+        <div class="space-y-4 min-w-0">
+            <!-- Card: Itens do Pedido -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden" id="order-items-section">
+            <div class="flex items-center justify-between p-4 pb-2">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Itens do Pedido</h3>
+                <button type="button" id="btn-open-add-item-modal" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
                         <path d="M5 12h14"></path>
                         <path d="M12 5v14"></path>
                     </svg>
                     Adicionar Item
                 </button>
             </div>
-        </div>
-        <div class="px-4 pb-4">
-            <div class="overflow-x-auto">
-                <table class="w-full caption-bottom text-sm">
-                    <thead class="[&_tr]:border-b">
-                        <tr class="border-b transition-colors hover:bg-muted/50">
-                            <th class="h-10 px-3 text-left align-middle text-xs font-medium text-muted-foreground">Produto</th>
-                            <th class="h-10 px-3 text-center align-middle text-xs font-medium text-muted-foreground">Qtd</th>
-                            <th class="h-10 px-3 text-right align-middle text-xs font-medium text-muted-foreground">Preço Unit.</th>
-                            <th class="h-10 px-3 text-right align-middle text-xs font-medium text-muted-foreground">Total</th>
-                            <th class="h-10 px-3 text-center align-middle text-xs font-medium text-muted-foreground">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="[&_tr:last-child]:border-0" id="items-tbody">
-                        @forelse($order->items as $item)
-                            <tr class="border-b transition-colors hover:bg-muted/50" data-item-id="{{ $item->id }}">
-                                <td class="py-2 px-3 align-middle">
-                                    <div>
-                                        <p class="font-medium item-name">
-                                            @if(!$item->product_id && $item->custom_name)
-                                                Item Avulso - {{ $item->custom_name }}
-                                            @elseif($item->custom_name)
-                                                {{ $item->custom_name }}
-                                            @elseif($item->product)
-                                                {{ $item->product->name }}
-                                            @else
-                                                Produto (ID: {{ $item->product_id ?? 'N/A' }})
-                                            @endif
-                                        </p>
-                                        @if($item->special_instructions)
-                                            <p class="text-xs text-muted-foreground item-instructions">Obs: {{ $item->special_instructions }}</p>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="py-2 px-3 align-middle text-center">
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        <button type="button" class="btn-decrease-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="-1" title="Reduzir quantidade">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus">
-                                                <path d="M5 12h14"></path>
-                                            </svg>
-                                        </button>
-                                        <span class="font-semibold min-w-[1.5rem] text-sm text-center item-quantity">{{ $item->quantity }}</span>
-                                        <button type="button" class="btn-increase-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="1" title="Aumentar quantidade">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
-                                                <path d="M5 12h14"></path>
-                                                <path d="M12 5v14"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </td>
-                                <td class="py-2 px-3 align-middle text-right text-sm item-unit-price">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
-                                <td class="py-2 px-3 align-middle text-right text-sm font-semibold item-total-price">R$ {{ number_format($item->total_price, 2, ',', '.') }}</td>
-                                <td class="py-2 px-3 align-middle text-center">
-                                    <button type="button" class="btn-remove-item inline-flex items-center justify-center rounded-md p-1.5 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" title="Remover item">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
-                                            <path d="M3 6h18"></path>
-                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                            <line x1="10" x2="10" y1="11" y2="17"></line>
-                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+            <div class="px-4 pb-4 min-w-0">
+                <div class="space-y-2" id="items-tbody">
+                    @forelse($order->items as $item)
+                        <div class="flex items-center justify-between py-2" data-item-id="{{ $item->id }}">
+                            <div class="flex items-center gap-3 flex-1">
+                                <div class="flex items-center gap-1">
+                                    <button type="button" class="btn-decrease-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="-1" title="Diminuir quantidade">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus">
+                                            <path d="M5 12h14"></path>
                                         </svg>
                                     </button>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="py-4 px-3 text-center text-sm text-muted-foreground">Nenhum item encontrado.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                    <tfoot id="order-totals">
-                        <tr class="border-t font-semibold">
-                            <td colspan="4" class="py-2 px-3 text-right text-sm">Subtotal:</td>
-                            <td class="py-2 px-3 text-right text-sm" id="subtotal">R$ {{ number_format($order->total_amount, 2, ',', '.') }}</td>
-                        </tr>
-                        @if($order->delivery_fee > 0)
-                        <tr>
-                            <td colspan="4" class="py-2 px-3 text-right text-xs text-muted-foreground">Taxa de Entrega:</td>
-                            <td class="py-2 px-3 text-right text-sm" id="delivery-fee">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</td>
-                        </tr>
-                        @endif
-                        @if($order->discount_amount > 0)
-                        <tr>
-                            <td colspan="4" class="py-2 px-3 text-right text-xs text-muted-foreground">
-                                <div class="flex items-center justify-end gap-2">
-                                    <span>
-                                        @if($order->coupon_code)
-                                            @php
-                                                $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
-                                                if ($coupon) {
-                                                    $couponValue = $coupon->type === 'percentage' 
-                                                        ? number_format($coupon->value, 1) . '%' 
-                                                        : 'R$ ' . number_format($coupon->value, 2, ',', '.');
-                                                } else {
-                                                    // Tentar usar discount_original_value se disponível
-                                                    $couponValue = $order->discount_original_value 
-                                                        ? number_format($order->discount_original_value, 1) . '%' 
-                                                        : '';
-                                                }
-                                            @endphp
-                                            Cupom {{ $order->coupon_code }} {{ $couponValue }}
-                                        @elseif($order->manual_discount_type)
-                                            @php
-                                                $discountValue = $order->manual_discount_type === 'percentage' 
-                                                    ? number_format($order->manual_discount_value, 1) . '%' 
-                                                    : 'R$ ' . number_format($order->manual_discount_value, 2, ',', '.');
-                                            @endphp
-                                            Desconto {{ $discountValue }}
-                                        @else
-                                            Desconto
-                                        @endif
-                                    </span>
-                                    @if($order->coupon_code)
-                                        <form action="{{ route('dashboard.orders.removeCoupon', $order->id) }}" method="POST" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" onclick="return confirm('Deseja realmente remover o cupom?');" class="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 px-2" title="Remover cupom">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x h-3 w-3">
-                                                    <path d="M18 6 6 18"></path>
-                                                    <path d="M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    @elseif($order->manual_discount_type && $order->manual_discount_value)
-                                        <form action="{{ route('dashboard.orders.removeDiscount', $order->id) }}" method="POST" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" onclick="return confirm('Deseja realmente remover o desconto manual?');" class="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 px-2" title="Remover desconto">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x h-3 w-3">
-                                                    <path d="M18 6 6 18"></path>
-                                                    <path d="M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    @endif
+                                    <span class="text-sm font-medium item-quantity min-w-[2rem] text-center">{{ $item->quantity }}</span>
+                                    <button type="button" class="btn-increase-quantity inline-flex items-center justify-center rounded-md p-1 hover:bg-accent hover:text-accent-foreground text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" data-delta="1" title="Aumentar quantidade">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                                            <path d="M5 12h14"></path>
+                                            <path d="M12 5v14"></path>
+                                        </svg>
+                                    </button>
                                 </div>
-                            </td>
-                            <td class="py-2 px-3 text-right text-sm text-success" id="discount-amount">- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</td>
-                        </tr>
-                        @endif
-                        <tr class="border-t font-bold">
-                            <td colspan="4" class="py-2 px-3 text-right text-base">Total:</td>
-                            <td class="py-2 px-3 text-right text-base" id="final-total">R$ {{ number_format($order->final_amount, 2, ',', '.') }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Grid de informações principais -->
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <!-- Informações do Cliente -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col p-4 pb-2">
-                <h3 class="text-base font-semibold leading-none tracking-tight">Cliente</h3>
-            </div>
-            <div class="px-4 pb-4 space-y-2">
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Nome</p>
-                    <p class="text-sm font-semibold">{{ $order->customer->name ?? 'Não informado' }}</p>
-                </div>
-                @if($order->customer->phone ?? null)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Telefone</p>
-                    <p class="text-sm">{{ $order->customer->phone }}</p>
-                </div>
-                @endif
-                @if($order->customer->email ?? null)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Email</p>
-                    <p class="text-sm">{{ $order->customer->email }}</p>
-                </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Informações de Entrega -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col p-4 pb-2">
-                <h3 class="text-base font-semibold leading-none tracking-tight">Entrega</h3>
-            </div>
-            <div class="px-4 pb-4 space-y-2">
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Tipo</p>
-                    <p class="text-sm font-semibold">{{ $order->delivery_type_label }}</p>
-                </div>
-                @if($order->delivery_address)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Endereço</p>
-                    <p class="text-sm">{{ $order->delivery_address }}</p>
-                </div>
-                @endif
-                @if($order->delivery_instructions)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Instruções</p>
-                    <p class="text-sm">{{ $order->delivery_instructions }}</p>
-                </div>
-                @endif
-                @if($order->estimated_time)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Tempo Estimado</p>
-                    <p class="text-sm">{{ $order->estimated_time }} minutos</p>
-                </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Informações de Pagamento -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col p-4 pb-2">
-                <h3 class="text-base font-semibold leading-none tracking-tight">Pagamento</h3>
-            </div>
-            <div class="px-4 pb-4 space-y-2">
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Método</p>
-                    <p class="text-sm font-semibold">{{ ucfirst(str_replace('_', ' ', $order->payment_method)) }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Status</p>
-                    @php
-                        $paymentColors = [
-                            'pending' => 'bg-muted text-muted-foreground',
-                            'paid' => 'bg-success text-success-foreground',
-                            'failed' => 'bg-destructive text-destructive-foreground',
-                            'refunded' => 'bg-warning text-warning-foreground',
-                        ];
-                        $paymentColor = $paymentColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
-                    @endphp
-                    <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold mt-1 {{ $paymentColor }}">
-                        {{ $order->payment_status_label }}
-                    </div>
-                </div>
-                @if($order->payment_provider)
-                <div>
-                    <p class="text-xs font-medium text-muted-foreground">Provedor</p>
-                    <p class="text-sm">{{ $order->payment_provider }}</p>
-                </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    <!-- Cards de Ações -->
-    <style>
-        .action-cards-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            align-items: start;
-        }
-        .action-cards-grid > div {
-            display: flex;
-            flex-direction: column;
-        }
-        .action-cards-grid > div > div:first-child {
-            padding: 1rem 1.25rem;
-        }
-        .action-cards-grid > div > div:last-child {
-            padding: 0 1.25rem 1rem;
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-        }
-        .action-cards-grid form {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .action-cards-grid .button-container {
-            margin-top: auto;
-            padding-top: 0.5rem;
-            display: flex;
-            align-items: flex-end;
-            box-sizing: border-box;
-        }
-        .action-cards-grid .button-container button {
-            width: 100%;
-            height: 2.25rem;
-            box-sizing: border-box;
-        }
-        .action-cards-grid h3 {
-            font-size: 0.95rem;
-            margin-bottom: 0.25rem;
-        }
-        .action-cards-grid p {
-            font-size: 0.8rem;
-            line-height: 1.3;
-        }
-        .action-cards-grid .space-y-2 {
-            gap: 0.5rem;
-        }
-        .action-cards-grid textarea {
-            min-height: 3rem;
-            font-size: 0.875rem;
-        }
-        .action-cards-grid label {
-            font-size: 0.8rem;
-        }
-        .action-cards-grid select {
-            height: 2.25rem;
-            font-size: 0.875rem;
-        }
-        @media (max-width: 768px) {
-            .action-cards-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-    <div class="action-cards-grid">
-        <!-- Alterar Status -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Alterar Status</h3>
-                <p class="text-sm text-muted-foreground">Atualize o status do pedido</p>
-            </div>
-            <div class="flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.updateStatus', $order->id) }}" method="POST" class="flex flex-col flex-grow">
-                    @csrf
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Status</label>
-                        <select name="status" id="order-status-select" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                            @foreach($availableStatuses as $status)
-                                <option value="{{ $status->code }}" @selected($order->status === $status->code)>
-                                    {{ $status->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Observação (opcional)</label>
-                        <textarea name="note" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Adicione uma observação..."></textarea>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="skip_status_notification" name="skip_notification" value="1" class="h-4 w-4 text-primary">
-                            <label for="skip_status_notification" class="text-sm font-medium">Atualizar sem enviar notificação</label>
+                                <div class="flex-1">
+                                    <p class="font-medium text-sm item-name">
+                                        @if(!$item->product_id && $item->custom_name)
+                                            Item Avulso - {{ $item->custom_name }}
+                                        @elseif($item->custom_name)
+                                            {{ $item->custom_name }}
+                                        @elseif($item->product)
+                                            {{ $item->product->name }}
+                                        @else
+                                            Produto (ID: {{ $item->product_id ?? 'N/A' }})
+                                        @endif
+                                    </p>
+                                </div>
+                                <span class="text-sm font-semibold item-total-price">R$ {{ number_format($item->total_price, 2, ',', '.') }}</span>
+                                <button type="button" class="btn-remove-item inline-flex items-center justify-center rounded-md p-1 hover:bg-destructive/10 hover:text-destructive text-muted-foreground" data-order-id="{{ $order->id }}" data-item-id="{{ $item->id }}" title="Remover item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                        <line x1="10" x2="10" y1="11" y2="17"></line>
+                                        <line x1="14" x2="14" y1="11" y2="17"></line>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
+                    @empty
+                        <div class="py-4 px-3 text-center text-sm text-muted-foreground">Nenhum item encontrado.</div>
+                    @endforelse
+                </div>
+                
+                <!-- Resumo Financeiro -->
+                <div class="mt-4 pt-4 border-t space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-muted-foreground">Subtotal:</span>
+                        <span id="subtotal" class="font-semibold">R$ {{ number_format($order->total_amount, 2, ',', '.') }}</span>
                     </div>
-                    <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
+                    @if($order->delivery_fee > 0)
+                    <div class="flex justify-between text-sm">
+                        <span class="text-muted-foreground">Taxa de Entrega:</span>
+                        <span id="delivery-fee" class="font-semibold">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    @if($order->discount_amount > 0)
+                    <div class="flex justify-between text-sm text-green-600">
+                        <span>
+                            @if($order->coupon_code)
+                                Cupom {{ $order->coupon_code }}
+                            @elseif($order->manual_discount_type)
+                                Desconto
+                            @else
+                                Desconto
+                            @endif
+                        </span>
+                        <span id="discount-amount" class="font-semibold">- R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between text-base font-bold pt-2 border-t">
+                        <span>Total:</span>
+                        <span id="final-total" class="text-primary">R$ {{ number_format($order->final_amount, 2, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- Card: Cliente -->
+            @if($order->customer)
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Cliente</h3>
+                </div>
+                <div class="px-4 pb-4 space-y-2">
+                    <div class="text-sm">
+                        <span class="text-muted-foreground">Nome:</span>
+                        <span class="font-medium ml-2">{{ $order->customer->name }}</span>
+                    </div>
+                    @if($order->customer->phone)
+                    <div class="text-sm">
+                        <span class="text-muted-foreground">Telefone:</span>
+                        <span class="font-medium ml-2">{{ $order->customer->phone }}</span>
+                    </div>
+                    @endif
+                    @if($order->address)
+                    <div class="text-sm pt-2 border-t">
+                        <span class="text-muted-foreground block mb-1">Endereço de Entrega:</span>
+                        <span class="font-medium">
+                            {{ trim(($order->address->street ?? '').', '.($order->address->number ?? '')) }}
+                            @if(!empty($order->address->complement)), {{ $order->address->complement }} @endif
+                            @if(!empty($order->address->neighborhood)), {{ $order->address->neighborhood }} @endif
+                            @if(!empty($order->address->city)), {{ $order->address->city }} @endif
+                            @if(!empty($order->address->state)), {{ $order->address->state }} @endif
+                            @if(!empty($order->address->cep ?? $order->address->zip_code)), CEP {{ $order->address->cep ?? $order->address->zip_code }} @endif
+                        </span>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            <!-- Card: Alterar Status -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Alterar Status</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Atualize o status do pedido</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <form action="{{ route('dashboard.orders.updateStatus', $order->id) }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Status</label>
+                            <select name="status" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                @foreach($availableStatuses as $status)
+                                    <option value="{{ $status->code }}" {{ $order->status === $status->code ? 'selected' : '' }}>
+                                        {{ $status->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Observação (opcional)</label>
+                            <textarea name="note" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Adicione uma observação sobre esta mudança..."></textarea>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="skip_notification" value="1" class="h-4 w-4 text-primary">
+                            <label class="text-sm font-medium">Atualizar sem enviar notificação</label>
+                        </div>
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             Atualizar Status
                         </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Lançar como Débito (Fiado) -->
-        @if($order->customer_id && $order->payment_status !== 'refunded')
-            @if($hasOpenDebt ?? false)
-                <div class="rounded-lg border border-blue-200 bg-blue-50 text-blue-900 shadow-sm flex flex-col">
-                    <div class="flex flex-col">
-                        <h3 class="text-lg font-semibold leading-none tracking-tight flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            Débito Registrado
-                        </h3>
-                        <p class="text-sm opacity-90">Este pedido já está lançado como fiado na conta do cliente.</p>
-                    </div>
-                    <div class="flex flex-col flex-grow justify-end">
-                        <button type="button" disabled class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-400 cursor-not-allowed px-4 py-2">
-                            Já Registrado
-                        </button>
-                    </div>
-                </div>
-            @else
-                <div class="rounded-lg border border-warning/50 bg-card text-card-foreground shadow-sm flex flex-col">
-                    <div class="flex flex-col">
-                        <h3 class="text-lg font-semibold leading-none tracking-tight text-warning-foreground">Lançar como Débito</h3>
-                        <p class="text-sm text-muted-foreground">
-                            @if(in_array(strtolower($order->payment_status), ['paid', 'approved']))
-                                Registrar como venda fiado mesmo com status de pagamento confirmado
-                            @else
-                                Registrar como venda fiado na conta do cliente
-                            @endif
-                        </p>
-                    </div>
-                    <div class="flex flex-col flex-grow">
-                        <form action="{{ route('dashboard.orders.registerAsDebit', $order->id) }}" method="POST" class="flex flex-col flex-grow" id="register-debit-form">
-                            @csrf
-                            <div class="button-container">
-                                <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-warning text-warning-foreground hover:bg-warning/90 px-4 py-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text">
-                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                                        <polyline points="14 2 14 8 20 8"></polyline>
-                                        <path d="M12 13v-1"></path>
-                                        <path d="M12 17h.01"></path>
-                                    </svg>
-                                    Registrar Débito
-                                </button>
-                            </div>
-                        </form>
-                        <script>
-                            document.getElementById('register-debit-form')?.addEventListener('submit', function(e) {
-                                if (!confirm('Confirmar lançamento deste pedido como débito para o cliente?')) {
-                                    e.preventDefault();
-                                }
-                            });
-                        </script>
-                    </div>
-                </div>
-            @endif
-        @endif
-
-        <!-- Estornar Pedido -->
-        @if(in_array(strtolower($order->payment_status), ['paid', 'approved']) && $order->payment_status !== 'refunded')
-        <div class="rounded-lg border border-destructive/50 bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight text-destructive">Estornar Pedido</h3>
-                <p class="text-sm text-muted-foreground">Cancelar venda e reverter todas as transações relacionadas</p>
-            </div>
-            <div class="flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.refund', $order->id) }}" method="POST" class="flex flex-col flex-grow" id="refundForm" onsubmit="return confirm('Tem certeza que deseja estornar este pedido? Esta ação irá:\n\n- Reverter cashback usado e ganho\n- Remover uso de cupom\n- Reverter pontos de fidelidade\n- Cancelar o pedido\n\nEsta ação não pode ser desfeita!');">
-                    @csrf
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Motivo do estorno (opcional)</label>
-                        <textarea name="reason" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Informe o motivo do estorno..."></textarea>
-                    </div>
-                    <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw">
-                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                                <path d="M21 3v5h-5"></path>
-                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                                <path d="M8 16H3v5"></path>
-                            </svg>
-                            Estornar Pedido
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        @endif
-
-        <!-- Aplicar Cupom -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Cupom de Desconto</h3>
-                <p class="text-sm text-muted-foreground">Aplique ou remova cupons</p>
-            </div>
-            <div class="space-y-3 flex flex-col flex-grow">
-                @if($order->coupon_code)
-                    <div class="rounded-lg border p-4 bg-muted">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="font-semibold">{{ $order->coupon_code }}</p>
-                                <p class="text-sm text-muted-foreground">Desconto: R$ {{ number_format($order->discount_amount, 2, ',', '.') }}</p>
-                            </div>
-                            <form action="{{ route('dashboard.orders.removeCoupon', $order->id) }}" method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
-                                    Remover
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                @else
-                    <form action="{{ route('dashboard.orders.applyCoupon', $order->id) }}" method="POST" class="space-y-4 flex flex-col flex-grow">
-                        @csrf
-                        @if($availableCoupons->count() > 0)
-                            <div class="space-y-2">
-                                <p class="text-sm font-medium">Cupons Disponíveis:</p>
-                                <div class="max-h-40 overflow-y-auto space-y-2">
-                                    @foreach($availableCoupons as $coupon)
-                                        <div class="rounded-md border p-2 text-sm flex items-center justify-between gap-2">
-                                            <div class="flex-1">
-                                                <p class="font-medium">{{ $coupon->code }} - {{ $coupon->name }}</p>
-                                                <p class="text-xs text-muted-foreground">{{ $coupon->formatted_value }}</p>
-                                            </div>
-                                            <form action="{{ route('dashboard.orders.applyCoupon', $order->id) }}" method="POST" class="inline">
-                                                @csrf
-                                                <input type="hidden" name="coupon_code" value="{{ $coupon->code }}">
-                                                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-2">
-                                                    Aplicar
-                                                </button>
-                                            </form>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                        <div class="space-y-2">
-                            <label class="text-sm font-medium">Código do Cupom</label>
-                            <div class="flex gap-2">
-                                <input type="text" name="coupon_code" id="coupon_code_input" class="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Digite o código do cupom">
-                                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-2">
-                                    Aplicar
-                                </button>
-                            </div>
-                        </div>
                     </form>
-                @endif
+                </div>
             </div>
         </div>
 
-        <!-- Ajustar Taxa de Entrega -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Taxa de Entrega</h3>
-                <p class="text-sm text-muted-foreground">Ajuste manual da taxa de entrega</p>
+        <!-- Coluna 2: Cupons, Descontos e Histórico -->
+        <div class="space-y-4 min-w-0">
+            <!-- Card: Cupom de Desconto -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Cupom de Desconto</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Aplique ou remova cupons</p>
+                </div>
+                <div class="px-4 pb-4 space-y-4">
+                    @if($availableCoupons->count() > 0)
+                    <div>
+                        <p class="text-sm font-medium mb-2">Cupons Disponíveis</p>
+                        <div class="space-y-2">
+                            @foreach($availableCoupons as $coupon)
+                            <div class="flex items-center justify-between p-2 border rounded-md">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">{{ $coupon->code }} - {{ $coupon->name }} {{ number_format($coupon->value, 2, ',', '.') }}{{ $coupon->type === 'percentage' ? '%' : '' }}</p>
+                                </div>
+                                <form action="{{ route('dashboard.orders.applyCoupon', $order->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="coupon_code" value="{{ $coupon->code }}">
+                                    <button type="submit" class="text-sm text-primary hover:underline">Aplicar</button>
+                                </form>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    <div>
+                        <p class="text-sm font-medium mb-2">Código do Cupom</p>
+                        <form action="{{ route('dashboard.orders.applyCoupon', $order->id) }}" method="POST" class="flex gap-2">
+                            @csrf
+                            <input type="text" name="coupon_code" placeholder="Digite o código do cupom" class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                                Aplicar
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.adjustDeliveryFee', $order->id) }}" method="POST" class="flex flex-col flex-grow">
-                    @csrf
-                    <div class="rounded-lg border p-3 bg-muted">
-                        <p class="text-xs text-muted-foreground mb-1">Taxa Atual</p>
-                        <p class="text-base font-semibold">R$ {{ number_format($order->delivery_fee, 2, ',', '.') }}</p>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Nova Taxa</label>
-                        <input type="number" name="delivery_fee" step="0.01" min="0" value="{{ $order->delivery_fee }}" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Motivo do Ajuste (opcional)</label>
-                        <input type="text" name="reason" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Desconto especial...">
-                    </div>
-                    <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
-                            Atualizar Taxa
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
 
-        <!-- Aplicar Desconto Manual -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Desconto Manual</h3>
-                <p class="text-sm text-muted-foreground">Aplique um desconto adicional</p>
-            </div>
-            <div class="flex flex-col flex-grow">
-                <form action="{{ route('dashboard.orders.applyDiscount', $order->id) }}" method="POST" class="flex flex-col flex-grow">
-                    @csrf
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Tipo de Desconto</label>
-                        <select name="discount_type" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                            <option value="percentage">Porcentagem (%)</option>
-                            <option value="fixed">Valor Fixo (R$)</option>
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Valor</label>
-                        <input type="number" name="discount_value" step="0.01" min="0" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: 10 ou 10.50" required>
-                    </div>
-                    <div class="button-container">
-                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2">
+            <!-- Card: Desconto Manual -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Desconto Manual</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Aplique um desconto adicional</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <form action="{{ route('dashboard.orders.applyDiscount', $order->id) }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Tipo de Desconto</label>
+                            <select name="discount_type" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                <option value="percentage">Porcentagem (%)</option>
+                                <option value="fixed">Valor Fixo (R$)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Valor</label>
+                            <input type="number" name="discount_value" step="0.01" min="0" placeholder="Ex: 10 ou 10.50" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        </div>
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             Aplicar Desconto
                         </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
+
+            <!-- Card: Histórico de Status -->
+            @if(isset($statusHistory) && $statusHistory->count() > 0)
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Histórico de Status</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Linha do tempo de alterações</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <div class="space-y-3">
+                        @foreach($statusHistory as $history)
+                            <div class="flex gap-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="h-8 w-8 rounded-full border-2 border-primary flex items-center justify-center bg-background">
+                                        <div class="h-3 w-3 rounded-full bg-primary"></div>
+                                    </div>
+                                    @if(!$loop->last)
+                                        <div class="w-0.5 h-full bg-border mt-2"></div>
+                                    @endif
+                                </div>
+                                <div class="flex-1 pb-3">
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-semibold">
+                                            @if($history->old_status)
+                                                {{ ucfirst(str_replace('_', ' ', $history->old_status)) }} → {{ ucfirst(str_replace('_', ' ', $history->new_status)) }}
+                                            @else
+                                                {{ ucfirst(str_replace('_', ' ', $history->new_status)) }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                    @if($history->note)
+                                        <p class="text-xs text-muted-foreground mt-0.5">{{ $history->note }}</p>
+                                    @endif
+                                    <p class="text-xs text-muted-foreground mt-0.5">{{ \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
-        <!-- Editar Informações -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm md:col-span-2">
-            <div class="flex flex-col">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Editar Informações do Pedido</h3>
-                <p class="text-sm text-muted-foreground">Atualize observações e instruções</p>
+        <!-- Coluna 3: Pagamento, Estorno, Taxa e Edição -->
+        <div class="space-y-4 min-w-0">
+            <!-- Card: Pagamento -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Pagamento</h3>
+                </div>
+                <div class="px-4 pb-4 space-y-2">
+                    <div class="text-sm">
+                        <span class="text-muted-foreground">Método:</span>
+                        <span class="font-medium ml-2">{{ ucfirst($order->payment_method ?? 'N/A') }}</span>
+                    </div>
+                    <div class="text-sm">
+                        <span class="text-muted-foreground">Status:</span>
+                        <span class="font-medium ml-2">{{ $order->payment_status_label }}</span>
+                    </div>
+                </div>
             </div>
-            <div>
-                <form action="{{ route('dashboard.orders.update', $order->id) }}" method="POST" class="space-y-3">
-            @csrf
-            @method('PUT')
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Observações Internas</label>
-                        <textarea name="notes" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações visíveis apenas para a equipe...">{{ $order->notes }}</textarea>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Observações do Cliente</label>
-                        <textarea name="observations" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações do cliente...">{{ $order->observations }}</textarea>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Instruções de Entrega</label>
-                        <textarea name="delivery_instructions" rows="2" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Instruções especiais para entrega...">{{ $order->delivery_instructions }}</textarea>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Data e Hora de Entrega Agendada</label>
-                        <input type="datetime-local" name="scheduled_delivery_at" value="{{ $order->scheduled_delivery_at ? $order->scheduled_delivery_at->format('Y-m-d\TH:i') : '' }}" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Selecione data e hora">
-                        <p class="text-xs text-muted-foreground">Deixe em branco para remover o agendamento</p>
-                    </div>
+
+            <!-- Card: Estornar Pedido -->
+            @if($order->payment_status === 'paid' && $order->status !== 'cancelled')
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Estornar Pedido</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Cancelar venda e reverter todas as transações relacionadas</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <form action="{{ route('dashboard.orders.refund', $order->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja estornar este pedido? Esta ação não pode ser desfeita.');">
+                        @csrf
+                        @method('POST')
+                        <div class="mb-4">
+                            <label class="text-sm font-medium mb-2 block">Motivo do estorno (opcional)</label>
+                            <textarea name="reason" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Informe o motivo do estorno..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                            Estornar Pedido
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
+
+            <!-- Card: Taxa de Entrega -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Taxa de Entrega</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Ajuste manual da taxa de entrega</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <form action="{{ route('dashboard.orders.adjustDeliveryFee', $order->id) }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Taxa Atual</label>
+                            <p class="text-sm font-semibold">R$ {{ number_format($order->delivery_fee ?? 0, 2, ',', '.') }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Nova Taxa</label>
+                            <input type="number" name="delivery_fee" step="0.01" min="0" value="{{ $order->delivery_fee ?? 0 }}" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Motivo do Ajuste (opcional)</label>
+                            <textarea name="reason" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Desconto especial, erro no cálculo..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            Atualizar Taxa
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card: Editar Informações do Pedido -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm min-w-0 overflow-hidden">
+                <div class="flex flex-col p-4 pb-2">
+                    <h3 class="text-base font-semibold leading-none tracking-tight">Editar Informações do Pedido</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Atualize observações e instruções</p>
+                </div>
+                <div class="px-4 pb-4">
+                    <form action="{{ route('dashboard.orders.update', $order->id) }}" method="POST" class="space-y-4">
+                        @csrf
+                        @method('PUT')
+                        
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Observações Internas</label>
+                            <textarea name="notes" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações visíveis apenas para a equipe...">{{ $order->notes ?? '' }}</textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Observações do Cliente</label>
+                            <textarea name="observations" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Observações do cliente...">{{ $order->observations ?? '' }}</textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Instruções de Entrega</label>
+                            <textarea name="delivery_instructions" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Instruções especiais para entrega...">{{ $order->delivery_instructions ?? '' }}</textarea>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Data e Hora de Entrega Agendada</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="date" id="scheduled_delivery_date" value="{{ $order->scheduled_delivery_at ? $order->scheduled_delivery_at->format('Y-m-d') : '' }}" class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                <input type="time" id="scheduled_delivery_time" value="{{ $order->scheduled_delivery_at ? $order->scheduled_delivery_at->format('H:i') : '' }}" class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            </div>
+                            <input type="hidden" name="scheduled_delivery_at" id="scheduled_delivery_at" value="{{ $order->scheduled_delivery_at ? $order->scheduled_delivery_at->format('Y-m-d H:i:s') : '' }}">
+                            <p class="text-xs text-muted-foreground">Deixe em branco para remover o agendamento</p>
+                        </div>
+                        
+                        <script>
+                            // Combinar data e hora em scheduled_delivery_at
+                            function updateScheduledDelivery() {
+                                const dateInput = document.getElementById('scheduled_delivery_date');
+                                const timeInput = document.getElementById('scheduled_delivery_time');
+                                const hiddenInput = document.getElementById('scheduled_delivery_at');
+                                
+                                if (dateInput && timeInput && hiddenInput) {
+                                    const date = dateInput.value;
+                                    const time = timeInput.value;
+                                    
+                                    if (date && time) {
+                                        hiddenInput.value = date + ' ' + time + ':00';
+                                    } else {
+                                        hiddenInput.value = '';
+                                    }
+                                }
+                            }
+                            
+                            document.getElementById('scheduled_delivery_date')?.addEventListener('change', updateScheduledDelivery);
+                            document.getElementById('scheduled_delivery_time')?.addEventListener('change', updateScheduledDelivery);
+                        </script>
+                        
                     
-                    <div class="space-y-4 pt-4 border-t">
+                    <div class="space-y-3 pt-2">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="create_payment" name="create_payment" value="1" class="h-4 w-4 text-primary">
                             <label for="create_payment" class="text-sm font-medium">Criar nova cobrança para este pedido</label>
@@ -707,7 +493,7 @@
                                     <option value="pix">PIX</option>
                                     <option value="credit_card">Cartão de Crédito</option>
                                     <option value="debit_card">Cartão de Débito</option>
-            </select>
+                                </select>
                             </div>
                         </div>
                         
@@ -721,70 +507,28 @@
                             <textarea name="whatsapp_message" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Deixe em branco para usar mensagem padrão">Olá! Seu pedido {{ $order->order_number }} foi atualizado. Valor total: R$ {{ number_format($order->final_amount ?? $order->total_amount, 2, ',', '.') }}</textarea>
                             <p class="text-xs text-muted-foreground">O link de pagamento será adicionado automaticamente se uma cobrança for criada.</p>
                         </div>
-                    </div>
-                    
-                    <div class="space-y-3 pt-4">
+                        
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="skip_notification" name="skip_notification" value="1" class="h-4 w-4 text-primary">
                             <label for="skip_notification" class="text-sm font-medium">Salvar sem enviar notificação ao cliente</label>
                         </div>
+                        
                         <button type="submit" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             Salvar Alterações
                         </button>
                     </div>
-        </form>
-            
-            <script>
-                document.getElementById('create_payment')?.addEventListener('change', function(e) {
-                    document.getElementById('payment_methods').classList.toggle('hidden', !e.target.checked);
-                });
-            </script>
+                </form>
+                
+                        <script>
+                            document.getElementById('create_payment')?.addEventListener('change', function(e) {
+                                document.getElementById('payment_methods').classList.toggle('hidden', !e.target.checked);
+                            });
+                        </script>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Histórico de Status -->
-    @if($statusHistory->count() > 0)
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col">
-            <h3 class="text-lg font-semibold leading-none tracking-tight">Histórico de Status</h3>
-            <p class="text-sm text-muted-foreground">Linha do tempo de alterações</p>
-        </div>
-        <div>
-            <div class="space-y-3">
-                @foreach($statusHistory as $history)
-                    <div class="flex gap-4">
-                        <div class="flex flex-col items-center">
-                            <div class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                </svg>
-                            </div>
-                            @if(!$loop->last)
-                                <div class="w-0.5 h-full bg-border mt-2"></div>
-                            @endif
-                        </div>
-                        <div class="flex-1 pb-3">
-                            <div class="flex items-center gap-2">
-                                <p class="text-sm font-semibold">
-                                    @if($history->old_status)
-                                        {{ ucfirst(str_replace('_', ' ', $history->old_status)) }} → {{ ucfirst(str_replace('_', ' ', $history->new_status)) }}
-                                    @else
-                                        {{ ucfirst(str_replace('_', ' ', $history->new_status)) }}
-                                    @endif
-                                </p>
-                            </div>
-                            @if($history->note)
-                                <p class="text-xs text-muted-foreground mt-0.5">{{ $history->note }}</p>
-                            @endif
-                            <p class="text-xs text-muted-foreground mt-0.5">{{ \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') }}</p>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    @endif
 </div>
     <!-- Modal para Adicionar Item -->
     <div id="add-item-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -959,11 +703,18 @@
                 return;
             }
             
-            const quantitySpan = button.parentElement.querySelector('.item-quantity');
-            const row = button.closest('tr[data-item-id]');
+            // Encontrar o container do item (div com data-item-id)
+            const itemContainer = button.closest('div[data-item-id]');
+            if (!itemContainer) {
+                console.error('Container do item não encontrado');
+                return;
+            }
             
-            if (!quantitySpan || !row) {
-                console.error('Elementos relacionados não encontrados');
+            const quantitySpan = itemContainer.querySelector('.item-quantity');
+            const totalPriceSpan = itemContainer.querySelector('.item-total-price');
+            
+            if (!quantitySpan) {
+                console.error('Elemento de quantidade não encontrado');
                 return;
             }
             
@@ -999,18 +750,20 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        if (data.removed && data.item_id) {
-                            // Remover linha da tabela
-                            row.remove();
+                        if (data.removed) {
+                            // Remover item do DOM
+                            itemContainer.remove();
                             // Verificar se não há mais itens
-                            const tbody = document.getElementById('items-tbody');
-                            if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
-                                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                            const itemsContainer = document.getElementById('items-tbody');
+                            if (itemsContainer && itemsContainer.children.length === 0) {
+                                itemsContainer.innerHTML = '<div class="py-4 px-3 text-center text-sm text-muted-foreground">Nenhum item encontrado.</div>';
                             }
                         } else if (data.item) {
                             // Atualizar quantidade e total do item
                             quantitySpan.textContent = data.item.quantity;
-                            row.querySelector('.item-total-price').textContent = 'R$ ' + data.item.total_price;
+                            if (totalPriceSpan) {
+                                totalPriceSpan.textContent = 'R$ ' + data.item.total_price;
+                            }
                         }
                         
                         // Atualizar totais
@@ -1039,8 +792,8 @@
                 return;
             }
 
-            const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
-            if (!row) return;
+            const itemContainer = document.querySelector(`div[data-item-id="${itemId}"]`);
+            if (!itemContainer) return;
 
             // Usar async/await dentro
             (async () => {
@@ -1063,12 +816,12 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // Remover linha da tabela
-                        row.remove();
+                        // Remover item do DOM
+                        itemContainer.remove();
                         // Verificar se não há mais itens
-                        const tbody = document.getElementById('items-tbody');
-                        if (tbody.children.length === 0 || (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]'))) {
-                            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-muted-foreground">Nenhum item encontrado.</td></tr>';
+                        const itemsContainer = document.getElementById('items-tbody');
+                        if (itemsContainer && itemsContainer.children.length === 0) {
+                            itemsContainer.innerHTML = '<div class="py-4 px-3 text-center text-sm text-muted-foreground">Nenhum item encontrado.</div>';
                         }
                         
                         // Atualizar totais
@@ -1374,23 +1127,21 @@
             if (subtotalEl) subtotalEl.textContent = 'R$ ' + orderData.total_amount;
             if (deliveryFeeEl) {
                 const fee = parseFloat(orderData.delivery_fee.replace(',', '.').replace('R$ ', ''));
+                const feeRow = deliveryFeeEl.closest('div');
                 if (fee > 0) {
                     deliveryFeeEl.textContent = 'R$ ' + orderData.delivery_fee;
-                    const feeRow = deliveryFeeEl.closest('tr');
                     if (feeRow) feeRow.style.display = '';
                 } else {
-                    const feeRow = deliveryFeeEl.closest('tr');
                     if (feeRow) feeRow.style.display = 'none';
                 }
             }
             if (discountAmountEl) {
                 const discount = parseFloat(orderData.discount_amount.replace(',', '.').replace('- R$ ', '').replace('R$ ', ''));
+                const discountRow = discountAmountEl.closest('div');
                 if (discount > 0) {
                     discountAmountEl.textContent = '- R$ ' + orderData.discount_amount;
-                    const discountRow = discountAmountEl.closest('tr');
                     if (discountRow) discountRow.style.display = '';
                 } else {
-                    const discountRow = discountAmountEl.closest('tr');
                     if (discountRow) discountRow.style.display = 'none';
                 }
             }

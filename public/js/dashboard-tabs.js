@@ -1,27 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const tabs = document.querySelectorAll('.tab a');
-  
-  tabs.forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      e.preventDefault();
-      
-      // Remove active class from all tabs
-      tabs.forEach(t => t.classList.remove('active'));
-      
-      // Add active class to clicked tab
-      tab.classList.add('active');
-      
-      // Here you can add logic to show/hide tab content
-      const targetId = tab.getAttribute('data-tab');
-      if (targetId) {
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabContents.forEach(content => {
-          content.classList.add('hidden');
-        });
-        const targetContent = document.getElementById(targetId);
-        if (targetContent) {
-          targetContent.classList.remove('hidden');
-        }
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-tab]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("[data-tab-content]").forEach((c) => c.classList.add("hidden"));
+      const target = document.querySelector(tab.dataset.tab);
+      if (target) {
+        target.classList.remove("hidden");
       }
     });
   });

@@ -226,6 +226,13 @@ class ProductsController extends Controller
             $validated['show_in_catalog'] = !$request->boolean('only_pdv', false);
             unset($validated['only_pdv']); // Remover do array antes de criar
             
+            // Definir valores padrão para campos booleanos se não foram enviados
+            $validated['is_active'] = $request->has('is_active') ? (bool)$validated['is_active'] : true;
+            $validated['is_available'] = $request->has('is_available') ? (bool)$validated['is_available'] : true;
+            $validated['is_featured'] = $request->has('is_featured') ? (bool)($validated['is_featured'] ?? false) : false;
+            $validated['gluten_free'] = $request->has('gluten_free') ? (bool)($validated['gluten_free'] ?? false) : false;
+            $validated['contamination_risk'] = $request->has('contamination_risk') ? (bool)($validated['contamination_risk'] ?? false) : false;
+            
             // Criar produto ANTES de fazer upload das imagens adicionais
             $product = Product::create($validated);
 

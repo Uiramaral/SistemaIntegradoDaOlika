@@ -58,13 +58,19 @@ class DebtsController extends Controller
             $totalAmount = 0;
             $sentCount = 0;
 
+            // Normalizar telefone uma vez para todos os envios
+            $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+            if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                $phoneNormalized = '55' . $phoneNormalized;
+            }
+            
             // Enviar resumo de cada pedido
             foreach ($orders as $order) {
                 if (!$order) continue;
                 
                 $message = $this->buildOrderSummaryMessage($order);
                 
-                $result = $whatsappService->sendText($customer->phone, $message);
+                $result = $whatsappService->sendText($phoneNormalized, $message);
                 
                 if (isset($result['success']) && $result['success']) {
                     $totalAmount += $order->final_amount ?? $order->total_amount ?? 0;
@@ -76,6 +82,8 @@ class DebtsController extends Controller
                     Log::warning('Erro ao enviar resumo de pedido pendente', [
                         'customer_id' => $customer->id,
                         'order_id' => $order->id,
+                        'customer_phone_original' => $customer->phone,
+                        'phone_normalized' => $phoneNormalized,
                         'error' => $result['error'] ?? 'Erro desconhecido',
                     ]);
                 }
@@ -140,11 +148,14 @@ class DebtsController extends Controller
             // Enviar mensagem final com total e PIX
             $finalMessage = $this->buildFinalSummaryMessage($orders->count(), $totalAmount, $pixData);
             
-            $result = $whatsappService->sendText($customer->phone, $finalMessage);
+            // Usar o telefone já normalizado acima
+            $result = $whatsappService->sendText($phoneNormalized, $finalMessage);
             
             if (!isset($result['success']) || !$result['success']) {
                 Log::warning('Erro ao enviar mensagem final com total', [
                     'customer_id' => $customer->id,
+                    'customer_phone_original' => $customer->phone,
+                    'phone_normalized' => $phoneNormalized,
                     'error' => $result['error'] ?? 'Erro desconhecido',
                 ]);
             }

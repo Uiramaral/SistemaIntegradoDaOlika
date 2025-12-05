@@ -64,6 +64,43 @@
         </div>
     </details>
 
+    <!-- Seleção de Cliente - PRIMEIRO (antes de tudo) -->
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm mb-6" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
+        <div class="flex flex-col space-y-1.5 p-6">
+            <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Cliente</h3>
+        </div>
+        <div class="p-6 pt-0">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2" style="color: hsl(var(--foreground));">Buscar Cliente *</label>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div class="relative flex-1">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style="color: hsl(var(--muted-foreground));"></i>
+                            <input type="text" id="customer-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" style="border-color: hsl(var(--border)); background-color: hsl(var(--background)); color: hsl(var(--foreground));" placeholder="Digite nome, telefone ou email..." autocomplete="off">
+                        </div>
+                        <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4" style="background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground));">
+                            <i data-lucide="user-plus" class="h-4 w-4"></i>
+                            Novo Cliente
+                        </button>
+                    </div>
+                    <div id="customer-results" class="mt-2 hidden max-h-60 overflow-y-auto border rounded-md bg-background" style="border-color: hsl(var(--border)); background-color: hsl(var(--background));"></div>
+                    <input type="hidden" id="customer-id" name="customer_id" required>
+                    <div id="selected-customer" class="mt-3 hidden p-3 rounded-md" style="background-color: hsl(var(--muted));">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold truncate" id="selected-customer-name" style="color: hsl(var(--foreground));"></p>
+                                <p class="text-sm truncate" id="selected-customer-info" style="color: hsl(var(--muted-foreground));"></p>
+                            </div>
+                            <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
+                                <i data-lucide="x" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="dashboard-two-panel gap-4 lg:items-start">
         <!-- Coluna Resumo -->
         <div class="dashboard-aside flex flex-col gap-4 lg:flex-shrink-0">
@@ -101,36 +138,10 @@
                             <span class="text-muted-foreground">Subtotal:</span>
                             <span id="summary-subtotal">R$ 0,00</span>
                         </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa de Entrega / Desconto Manual</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <div>
-                                    <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa">
-                                    <p class="text-xs text-muted-foreground mt-1">Taxa</p>
-                                </div>
-                                <div>
-                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
-                                    <p class="text-xs text-muted-foreground mt-1">Valor fixo</p>
-                                </div>
-                                <div>
-                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
-                                    <p class="text-xs text-muted-foreground mt-1">%</p>
-                                </div>
-                            </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Taxa de Entrega:</span>
+                            <span id="summary-delivery-fee">R$ 0,00</span>
                         </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-xs font-medium text-muted-foreground">Calcular por CEP</label>
-                            <div class="flex flex-col gap-2 sm:flex-row">
-                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
-                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                                    Calcular
-                                </button>
-                            </div>
-                            <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
-                        </div>
-
                         <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
                             <span>Desconto:</span>
                             <span id="summary-discount">- R$ 0,00</span>
@@ -199,59 +210,65 @@
             </div>
         </div>
 
-        <!-- Coluna Conteúdo (Cliente + Produtos) -->
+        <!-- Coluna Conteúdo (Frete + Produtos) -->
         <div class="dashboard-main flex flex-col space-y-6">
-            <!-- Seleção de Cliente -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <!-- Seção de Frete - PRIMEIRO (após selecionar cliente) -->
+            <div id="delivery-section" class="rounded-lg border bg-card text-card-foreground shadow-sm hidden" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
                 <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Cliente</h3>
+                    <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Frete</h3>
                 </div>
                 <div class="p-6 pt-0">
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Buscar Cliente *</label>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <input type="text" id="customer-search" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Digite nome, telefone ou email..." autocomplete="off">
-                                <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                                    Novo Cliente
-                                </button>
-                            </div>
-                            <div id="customer-results" class="mt-2 hidden max-h-60 overflow-y-auto border rounded-md bg-background"></div>
-                            <input type="hidden" id="customer-id" name="customer_id" required>
-                            <div id="selected-customer" class="mt-3 hidden p-3 bg-muted rounded-md">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="font-semibold truncate" id="selected-customer-name"></p>
-                                        <p class="text-sm text-muted-foreground truncate" id="selected-customer-info"></p>
-                                    </div>
-                                    <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                                            <path d="M18 6 6 18"></path>
-                                            <path d="M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa de Entrega / Desconto Manual</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div>
+                                    <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa">
+                                    <p class="text-xs text-muted-foreground mt-1">Taxa</p>
+                                </div>
+                                <div>
+                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">Valor fixo</p>
+                                </div>
+                                <div>
+                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">%</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-medium text-muted-foreground">Calcular por CEP</label>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
+                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+                                    Calcular
+                                </button>
+                            </div>
+                            <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Seleção de Produtos -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <!-- Seleção de Produtos - TERCEIRO (após cliente e frete) -->
+            <div id="products-section" class="rounded-lg border bg-card text-card-foreground shadow-sm hidden" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
                 <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Produtos</h3>
+                    <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Produtos</h3>
                 </div>
                 <div class="p-6 pt-0">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Buscar Produto</label>
-                            <input type="text" id="product-search" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Digite o nome do produto para buscar..." autocomplete="off">
-                            <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border rounded-md bg-background shadow-lg"></div>
+                            <label class="block text-sm font-medium mb-2" style="color: hsl(var(--foreground));">Buscar Produto</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style="color: hsl(var(--muted-foreground));"></i>
+                                <input type="text" id="product-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" style="border-color: hsl(var(--border)); background-color: hsl(var(--background)); color: hsl(var(--foreground));" placeholder="Buscar produtos..." autocomplete="off">
+                            </div>
+                            <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border rounded-md bg-background shadow-lg" style="border-color: hsl(var(--border)); background-color: hsl(var(--background));"></div>
                         </div>
 
                         <div class="mt-4">
-                            <h4 class="text-sm font-medium mb-3">Produtos Frequentes</h4>
+                            <h4 class="text-sm font-medium mb-3" style="color: hsl(var(--foreground));">Produtos Frequentes</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
                                 @foreach($products as $product)
                                     @php
@@ -266,14 +283,14 @@
                                             ];
                                         })->toArray();
                                     @endphp
-                                    <button type="button" class="product-quick-add text-left border rounded-lg hover:bg-accent hover:border-primary transition-all shadow-sm hover:shadow-md" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}">
-                                        <p class="font-semibold text-sm mb-2">{{ $product->name }}</p>
+                                    <button type="button" class="product-quick-add text-left border rounded-lg hover:bg-accent hover:border-primary transition-all shadow-sm hover:shadow-md p-4" style="border-color: hsl(var(--border)); background-color: hsl(var(--card));" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}">
+                                        <p class="font-semibold text-sm mb-2" style="color: hsl(var(--foreground));">{{ $product->name }}</p>
                                         <div class="mt-auto">
                                             @if($hasVariants)
-                                                <p class="text-base font-bold text-primary product-price-display mb-2">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
-                                                <p class="text-xs text-blue-600 font-medium">Escolher opção →</p>
+                                                <p class="text-base font-bold product-price-display mb-2" style="color: hsl(var(--primary));">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                                <p class="text-xs font-medium" style="color: hsl(var(--primary));">Escolher opção →</p>
                                             @else
-                                                <p class="text-base font-bold text-primary product-price-display">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
+                                                <p class="text-base font-bold product-price-display" style="color: hsl(var(--primary));">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
                                             @endif
                                         </div>
                                     </button>
@@ -538,6 +555,28 @@ document.addEventListener('click', function(e) {
         document.getElementById('customer-results').classList.add('hidden');
         document.getElementById('customer-search').value = '';
         
+        // Mostrar seção de frete após selecionar cliente
+        const deliverySection = document.getElementById('delivery-section');
+        if (deliverySection) {
+            deliverySection.classList.remove('hidden');
+        }
+        
+        // Mostrar seção de produtos após selecionar cliente
+        const productsSection = document.getElementById('products-section');
+        if (productsSection) {
+            productsSection.classList.remove('hidden');
+            // Garantir que os produtos sejam visíveis
+            productsSection.style.display = 'block';
+        }
+        
+        // Atualizar resumo inicial
+        updateSummary();
+        
+        // Inicializar ícones Lucide após mostrar as seções
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+        
         // Atualizar preços dos produtos frequentes se for wholesale
         if (isWholesale) {
             updateProductPricesForWholesale(customerId);
@@ -658,6 +697,8 @@ document.getElementById('btn-clear-customer')?.addEventListener('click', functio
     pdvState.customer = null;
     document.getElementById('customer-id').value = '';
     document.getElementById('selected-customer').classList.add('hidden');
+    document.getElementById('delivery-section').classList.add('hidden'); // Ocultar frete quando cliente é removido
+    document.getElementById('products-section').classList.add('hidden'); // Ocultar produtos quando cliente é removido
     resetProductPricesToNormal(); // Resetar preços quando cliente é removido
     updateFinalizeButton();
 });
@@ -919,28 +960,66 @@ document.addEventListener('click', function(e) {
 
 // Adicionar item ao pedido
 function addItem(item) {
-    // Identificar item único por produto + variante + preço
-    const existingItem = pdvState.items.find(i => 
-        i.product_id === item.product_id && 
-        i.variant_id === (item.variant_id || null) &&
-        i.price === item.price
-    );
-    
-    if (existingItem) {
-        existingItem.quantity += item.quantity || 1;
-    } else {
-        pdvState.items.push({
-            product_id: item.product_id,
-            variant_id: item.variant_id || null,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity || 1,
-        });
+    try {
+        // Validar dados do item
+        if (!item) {
+            console.error('Item inválido: item é null ou undefined');
+            alert('Erro: Item inválido. Por favor, tente novamente.');
+            return;
+        }
+        
+        if (!item.name || item.name.trim() === '') {
+            console.error('Item inválido: nome é obrigatório');
+            alert('Erro: Nome do produto é obrigatório.');
+            return;
+        }
+        
+        // Garantir que product_id seja número ou null
+        const productId = item.product_id ? parseInt(item.product_id) : null;
+        const variantId = item.variant_id ? parseInt(item.variant_id) : null;
+        const price = parseFloat(item.price);
+        const quantity = parseInt(item.quantity || 1);
+        
+        // Validar preço
+        if (isNaN(price) || price <= 0) {
+            console.error('Item inválido: preço inválido', item);
+            alert('Erro: Preço inválido. Por favor, tente novamente.');
+            return;
+        }
+        
+        // Validar quantidade
+        if (isNaN(quantity) || quantity <= 0) {
+            console.error('Item inválido: quantidade inválida', item);
+            alert('Erro: Quantidade inválida. Por favor, tente novamente.');
+            return;
+        }
+        
+        // Identificar item único por produto + variante + preço
+        const existingItem = pdvState.items.find(i => 
+            i.product_id === productId && 
+            i.variant_id === variantId &&
+            Math.abs(i.price - price) < 0.01 // Comparação de float com tolerância
+        );
+        
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            pdvState.items.push({
+                product_id: productId,
+                variant_id: variantId,
+                name: String(item.name).trim(),
+                price: price,
+                quantity: quantity,
+            });
+        }
+        
+        renderItems();
+        updateSummary();
+        updateFinalizeButtons();
+    } catch (error) {
+        console.error('Erro ao adicionar item:', error, item);
+        alert('Erro ao adicionar item ao pedido. Por favor, tente novamente.');
     }
-    
-    renderItems();
-    updateSummary();
-    updateFinalizeButtons();
 }
 
 // Remover item
@@ -1038,12 +1117,20 @@ function updateSummary() {
     if (itemsCountEl) {
         itemsCountEl.textContent = itemsCount;
     }
-    document.getElementById('summary-subtotal').textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
-    const summaryDeliveryEl = document.getElementById('summary-delivery');
+    const summarySubtotalEl = document.getElementById('summary-subtotal');
+    if (summarySubtotalEl) {
+        summarySubtotalEl.textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
+    }
+    
+    const summaryDeliveryEl = document.getElementById('summary-delivery-fee');
     if (summaryDeliveryEl) {
         summaryDeliveryEl.textContent = 'R$ ' + deliveryFee.toFixed(2).replace('.', ',');
     }
-    document.getElementById('summary-total').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+    
+    const summaryTotalEl = document.getElementById('summary-total');
+    if (summaryTotalEl) {
+        summaryTotalEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+    }
     
     if (totalDiscount > 0) {
         document.getElementById('discount-row').classList.remove('hidden');
@@ -1122,14 +1209,111 @@ document.getElementById('btn-calculate-fee')?.addEventListener('click', function
     });
 });
 
-// Formatar CEP ao digitar
-document.getElementById('destination-cep')?.addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 5) {
-        value = value.substring(0, 5) + '-' + value.substring(5, 8);
+// Formatar CEP ao digitar e buscar endereço automaticamente
+(function() {
+    const destinationCepInput = document.getElementById('destination-cep');
+    if (!destinationCepInput) return;
+    
+    let cepTimeout = null;
+    
+    // Função para buscar endereço via ViaCEP
+    async function buscarEnderecoPorCep(cep) {
+        const cepDigits = cep.replace(/\D/g, '');
+        
+        if (cepDigits.length !== 8) {
+            return;
+        }
+        
+        // Mostrar feedback visual
+        destinationCepInput.disabled = true;
+        destinationCepInput.style.opacity = '0.6';
+        
+        const infoEl = document.getElementById('delivery-fee-info');
+        if (infoEl) {
+            infoEl.innerHTML = 'Buscando endereço...';
+            infoEl.classList.remove('hidden');
+        }
+        
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+            const data = await response.json();
+            
+            if (data.erro) {
+                if (infoEl) {
+                    infoEl.innerHTML = 'CEP não encontrado';
+                    infoEl.classList.remove('hidden');
+                }
+            } else {
+                // Atualizar dados do cliente no pdvState se disponível
+                if (pdvState.customer) {
+                    if (data.logradouro && !pdvState.customer.address) {
+                        pdvState.customer.address = data.logradouro;
+                    }
+                    if (data.bairro && !pdvState.customer.neighborhood) {
+                        pdvState.customer.neighborhood = data.bairro;
+                    }
+                    if (data.localidade && !pdvState.customer.city) {
+                        pdvState.customer.city = data.localidade;
+                    }
+                    if (data.uf && !pdvState.customer.state) {
+                        pdvState.customer.state = data.uf.toUpperCase();
+                    }
+                }
+                
+                if (infoEl) {
+                    infoEl.innerHTML = `✓ Endereço encontrado: ${data.logradouro || ''}, ${data.bairro || ''}, ${data.localidade || ''}-${data.uf || ''}`;
+                    infoEl.classList.remove('hidden');
+                }
+                
+                // Feedback visual de sucesso
+                destinationCepInput.style.borderColor = '#10b981';
+                setTimeout(() => {
+                    destinationCepInput.style.borderColor = '';
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            if (infoEl) {
+                infoEl.innerHTML = 'Erro ao buscar CEP';
+                infoEl.classList.remove('hidden');
+            }
+        } finally {
+            destinationCepInput.disabled = false;
+            destinationCepInput.style.opacity = '1';
+        }
     }
-    e.target.value = value;
-});
+    
+    // Aplicar máscara e buscar automaticamente quando CEP for completo
+    destinationCepInput.addEventListener('input', function(e) {
+        // Aplicar máscara
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 5) {
+            value = value.substring(0, 5) + '-' + value.substring(5, 8);
+        }
+        e.target.value = value;
+        
+        // Limpar timeout anterior
+        if (cepTimeout) {
+            clearTimeout(cepTimeout);
+        }
+        
+        // Buscar endereço após 800ms de inatividade (quando usuário parar de digitar)
+        const cepDigits = value.replace(/\D/g, '');
+        if (cepDigits.length === 8) {
+            cepTimeout = setTimeout(() => {
+                buscarEnderecoPorCep(value);
+            }, 800);
+        }
+    });
+    
+    // Também buscar quando o campo perder o foco (blur)
+    destinationCepInput.addEventListener('blur', function() {
+        const cep = this.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            buscarEnderecoPorCep(this.value);
+        }
+    });
+})();
 
 // Aplicar cupom
 document.getElementById('btn-apply-coupon')?.addEventListener('click', function() {
@@ -1185,6 +1369,14 @@ function updateFinalizeButton() {
 // Chamar updateFinalizeButtons ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {
     updateFinalizeButtons();
+    
+    // Atualizar resumo inicial
+    updateSummary();
+    
+    // Inicializar ícones Lucide
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
 });
 
 // Atualizar estado dos botões
@@ -1268,9 +1460,19 @@ document.getElementById('btn-send-order')?.addEventListener('click', function() 
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(data.message || 'Pedido enviado ao cliente com sucesso!');
-            // Limpar estado e recarregar página
-            window.location.reload();
+            if (data.whatsapp_error) {
+                // Pedido criado mas WhatsApp falhou
+                const msg = data.message || 'Pedido criado, mas houve problema ao enviar via WhatsApp.';
+                if (confirm(msg + '\n\nDeseja ver os detalhes do pedido?')) {
+                    window.location.href = '{{ route("dashboard.orders.index") }}?search=' + data.order.order_number;
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                alert(data.message || 'Pedido enviado ao cliente com sucesso!');
+                // Limpar estado e recarregar página
+                window.location.reload();
+            }
         } else {
             alert('Erro: ' + (data.message || 'Erro ao enviar pedido'));
             this.disabled = false;

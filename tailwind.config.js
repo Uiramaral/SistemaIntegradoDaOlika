@@ -7,19 +7,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#faf8f5",
+        background: "#f8f6f2",
         sidebar: {
-          DEFAULT: "#3b2f26",
-          accent: "#e86b00",
+          DEFAULT: "#3b2b1f",
+          accent: "#e37524",
+          hover: "#f1a25a",
           border: "#4a3b31",
           foreground: "#ffffff",
         },
         card: "#ffffff",
-        border: "#e5ded8",
-        muted: "#9c938c",
-        primary: "#e86b00",
-        success: "#4caf50",
-        warning: "#d48d00",
+        border: "#eae7e2",
+        muted: "#8a837d",
+        primary: "#c45a1e",
+        "primary-hover": "#b14f17",
+        "primary-soft": "#f2e5db",
+        success: "#2b8a5b",
+        warning: "#b58a00",
         destructive: "#d9534f",
       },
       fontFamily: {
@@ -27,13 +30,12 @@ export default {
         display: ["Outfit", "sans-serif"],
       },
       borderRadius: {
-        lg: "10px",
+        lg: "12px",
       },
       boxShadow: {
-        soft: "0 2px 4px rgba(0,0,0,0.05)",
+        card: "0 2px 6px rgba(0, 0, 0, 0.05)",
       },
     },
   },
   plugins: [],
 };
-

@@ -958,15 +958,33 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
     
     // Buscar dados do formulário
     const customerEmail = document.querySelector('input[name="customer_email"]')?.value || '';
-    const customerPhone = document.querySelector('input[name="customer_phone"]')?.value || '';
+    let customerPhone = document.querySelector('input[name="customer_phone"]')?.value || '';
+    
+    // Normalizar telefone para garantir formato consistente (mesmo formato do backend)
+    if (customerPhone) {
+        let normalizedPhone = customerPhone.replace(/\D/g, '');
+        // Se não começar com 55 e tiver 10 ou 11 dígitos, adicionar código do país
+        if (normalizedPhone.length >= 10 && normalizedPhone.length <= 11 && !normalizedPhone.startsWith('55')) {
+            normalizedPhone = '55' + normalizedPhone;
+        }
+        customerPhone = normalizedPhone;
+    }
+    
     const couponCode = document.getElementById('applied_coupon_code')?.value || '';
+    
+    console.log('updateOrderSummary: Dados do cliente para cashback', {
+        customer_phone_original: document.querySelector('input[name="customer_phone"]')?.value || '',
+        customer_phone_normalized: customerPhone,
+        customer_email: customerEmail,
+        use_cashback: true
+    });
     
     try {
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const config = window.checkoutConfig || {};
         const requestBody = {
             customer_email: customerEmail,
-            customer_phone: customerPhone,
+            customer_phone: customerPhone, // Telefone normalizado
             coupon_code: couponCode,
             delivery_fee: currentDeliveryFee,
             delivery_fee_locked: window.checkoutData?.deliveryFeeLocked ?? false,
@@ -1039,9 +1057,30 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
             couponDiscount: couponDiscount,
             cashbackUsed: cashbackUsed,
             cashbackEarned: cashbackEarned,
+            cashbackBalance: data.cashback_balance || 0,
             totalFromBackend: data.total,
-            calculatedTotal: currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed
+            calculatedTotal: currentSubtotal + currentDeliveryFee - couponDiscount - cashbackUsed,
+            customer_phone_sent: customerPhone,
+            customer_email_sent: customerEmail
         });
+        
+        // Log específico para cashback
+        if (cashbackUsed > 0) {
+            console.log('✅ updateOrderSummary: Cashback será aplicado!', {
+                cashback_used: cashbackUsed,
+                cashback_balance: data.cashback_balance || 0,
+                subtotal_after_coupon: currentSubtotal - couponDiscount
+            });
+        } else {
+            console.log('⚠️ updateOrderSummary: Cashback NÃO será aplicado', {
+                cashback_used: cashbackUsed,
+                cashback_balance: data.cashback_balance || 0,
+                customer_phone: customerPhone,
+                customer_email: customerEmail,
+                reason: !customerPhone && !customerEmail ? 'Cliente não identificado' : 
+                        (data.cashback_balance <= 0 ? 'Sem saldo de cashback' : 'Outro motivo')
+            });
+        }
         
         // Calcular total apenas se o frete foi realmente calculado
         const total = currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))
@@ -1229,11 +1268,24 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         }
         
         // Cashback usado
+        const cashbackRow = document.getElementById('summaryCashbackRow');
+        const cashbackValue = document.getElementById('summaryCashback');
+        
         if (cashbackUsed > 0) {
-            document.getElementById('summaryCashback').textContent = `- R$ ${cashbackUsed.toFixed(2).replace('.', ',')}`;
-            document.getElementById('summaryCashbackRow').classList.remove('hidden');
+            if (cashbackValue) {
+                cashbackValue.textContent = `- R$ ${cashbackUsed.toFixed(2).replace('.', ',')}`;
+            }
+            if (cashbackRow) {
+                cashbackRow.classList.remove('hidden');
+                console.log('✅ updateOrderSummary: Exibindo linha de cashback usado:', cashbackUsed);
+            } else {
+                console.error('❌ updateOrderSummary: Elemento summaryCashbackRow não encontrado no DOM!');
+            }
         } else {
-            document.getElementById('summaryCashbackRow').classList.add('hidden');
+            if (cashbackRow) {
+                cashbackRow.classList.add('hidden');
+                console.log('updateOrderSummary: Ocultando linha de cashback (sem desconto)');
+            }
         }
         
         // Cashback ganho - sempre mostrar se cashbackEarned foi calculado
@@ -1604,13 +1656,33 @@ document.getElementById('customer_email')?.addEventListener('blur', async functi
 document.getElementById('customer_phone')?.addEventListener('blur', async function() {
     const email = document.getElementById('customer_email')?.value || '';
     const phone = this.value || '';
+    console.log('customer_phone blur: Carregando endereço e recalculando cashback', { phone, email });
     await loadCustomerAddress(phone, email);
-    updateOrderSummary();
+    // Aguardar um pouco para garantir que o cliente foi encontrado antes de calcular cashback
+    setTimeout(async () => {
+        console.log('customer_phone blur: Recalculando resumo para aplicar cashback');
+        await updateOrderSummary();
+    }, 500);
 });
 
 document.getElementById('customer_phone')?.addEventListener('input', function() {
     window.checkoutData.lastLookupPhone = null;
     window.checkoutData.currentCustomerId = null;
+    // Recalcular cashback quando telefone mudar (pode ter sido limpo ou alterado)
+    const phone = this.value || '';
+    if (phone.length >= 10) {
+        // Se telefone tem tamanho válido, recalcular após um delay
+        setTimeout(async () => {
+            console.log('customer_phone input: Recalculando cashback após mudança no telefone');
+            await updateOrderSummary();
+        }, 800);
+    } else {
+        // Se telefone foi limpo, ocultar cashback
+        const cashbackRow = document.getElementById('summaryCashbackRow');
+        if (cashbackRow) {
+            cashbackRow.classList.add('hidden');
+        }
+    }
 });
 
 zipCodeManualButton?.addEventListener('click', async function() {
@@ -2407,16 +2479,22 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         const customerPhone = document.getElementById('customer_phone')?.value || '';
         const customerEmail = document.getElementById('customer_email')?.value || '';
         if (customerPhone || customerEmail) {
-            console.log('DOMContentLoaded: Cliente já identificado, carregando endereço', { customerPhone, customerEmail });
+            console.log('DOMContentLoaded: Cliente já identificado, carregando endereço e calculando cashback', { customerPhone, customerEmail });
             // loadCustomerAddress irá calcular o frete automaticamente
             // NÃO preservar frete antigo - sempre recalcular para garantir valor atualizado
             loadCustomerAddress(customerPhone, customerEmail).then(() => {
-                // Após carregar endereço, dar um tempo para buscarCep executar se foi chamado
-                setTimeout(() => {
+                // Após carregar endereço, recalcular resumo para garantir que cashback seja aplicado
+                setTimeout(async () => {
+                    console.log('DOMContentLoaded: Recalculando resumo após carregar endereço do cliente para aplicar cashback');
+                    await updateOrderSummary();
                     updateFinalizeButtonState();
-                }, 1000);
+                }, 1500);
             }).catch((error) => {
                 console.error('Erro ao carregar endereço do cliente:', error);
+                // Mesmo em caso de erro, tentar calcular cashback
+                setTimeout(async () => {
+                    await updateOrderSummary();
+                }, 500);
                 updateFinalizeButtonState();
             });
         }
@@ -2475,14 +2553,17 @@ document.getElementById('number')?.addEventListener('blur', async function() {
         
         // Atualizar resumo ao carregar para mostrar cashback ganho
         // MAS: NÃO preservar frete antigo - sempre recalcular para garantir valor atualizado
-        updateOrderSummary().then(() => {
-            // Não preservar frete antigo - ele será recalculado pelas funções acima
-            // Apenas atualizar estado do botão
-            updateFinalizeButtonState();
-        }).catch((error) => {
-            console.error('Erro ao atualizar resumo do pedido:', error);
-            updateFinalizeButtonState();
-        });
+        // IMPORTANTE: Aguardar um pouco para garantir que todos os campos estejam carregados
+        setTimeout(async () => {
+            console.log('DOMContentLoaded: Atualizando resumo inicial para calcular cashback');
+            try {
+                await updateOrderSummary();
+                updateFinalizeButtonState();
+            } catch (error) {
+                console.error('Erro ao atualizar resumo do pedido:', error);
+                updateFinalizeButtonState();
+            }
+        }, 2000);
         
         // Verificação periódica no mobile para garantir que o botão seja habilitado
         // (pode ser necessário devido a problemas de sincronização no mobile)

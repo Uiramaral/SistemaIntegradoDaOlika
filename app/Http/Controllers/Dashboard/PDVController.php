@@ -26,9 +26,19 @@ class PDVController extends Controller
     public function index()
     {
         // Carregar produtos ativos com preços de revenda
+        // Ordenar por mais vendidos (últimos 90 dias)
         $products = Product::where('is_active', true)
             ->with(['variants', 'wholesalePrices'])
-            ->orderBy('name')
+            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('orders', function($join) {
+                $join->on('order_items.order_id', '=', 'orders.id')
+                     ->where('orders.payment_status', 'paid')
+                     ->where('orders.created_at', '>=', now()->subDays(90));
+            })
+            ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
+            ->groupBy('products.id')
+            ->orderBy('total_sold', 'desc')
+            ->orderBy('products.name', 'asc') // Ordenação secundária por nome
             ->get();
 
         // Carregar clientes recentes (últimos 50)
@@ -48,9 +58,13 @@ class PDVController extends Controller
         }
 
         $customers = Customer::with('addresses')
-            ->where('name', 'like', "%{$query}%")
-            ->orWhere('phone', 'like', "%{$query}%")
-            ->orWhere('email', 'like', "%{$query}%")
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->orderBy('name')
+            ->distinct('id')
             ->limit(20)
             ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
 
@@ -109,6 +123,16 @@ class PDVController extends Controller
         }
         
         $products = $productsQuery
+            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('orders', function($join) {
+                $join->on('order_items.order_id', '=', 'orders.id')
+                     ->where('orders.payment_status', 'paid')
+                     ->where('orders.created_at', '>=', now()->subDays(90));
+            })
+            ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
+            ->groupBy('products.id')
+            ->orderBy('total_sold', 'desc')
+            ->orderBy('products.name', 'asc')
             ->with(['variants' => function($q) {
                 $q->where('is_active', true)->orderBy('sort_order');
             }, 'wholesalePrices' => function($q) {
@@ -396,10 +420,16 @@ class PDVController extends Controller
                 'notes' => $request->notes,
             ]);
             
-            // Se criar como pago, marcar como já notificado para evitar notificações
+            // Se criar como pago, marcar como já notificado e solicitar impressão automática
             if ($createAsPaid) {
                 $order->notified_paid_at = now();
+                $order->print_requested_at = now(); // Solicitar impressão automática
                 $order->save();
+                
+                Log::info('PDV: Pedido criado como pago - impressão automática solicitada', [
+                    'order_id' => $order->id,
+                    'order_number' => $orderNumber,
+                ]);
             }
 
             // Criar itens

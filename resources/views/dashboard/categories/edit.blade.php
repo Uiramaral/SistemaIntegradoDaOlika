@@ -4,9 +4,19 @@
 
 @section('content')
 <div class="space-y-6">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Editar Categoria</h1>
-        <p class="text-muted-foreground">Atualize as informações da categoria</p>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('dashboard.categories.index') }}" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent hover:text-accent-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left h-5 w-5">
+                    <path d="m12 19-7-7 7-7"></path>
+                    <path d="M19 12H5"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Editar Categoria</h1>
+                <p class="text-muted-foreground">Atualize as informações da categoria</p>
+            </div>
+        </div>
     </div>
 
     @if($errors->any())

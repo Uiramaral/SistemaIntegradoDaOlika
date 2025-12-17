@@ -67,5 +67,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'cart.not.empty' => \App\Http\Middleware\CartNotEmpty::class,
         'simple.auth' => \App\Http\Middleware\SimpleAuth::class,
+        'check.plan' => \App\Http\Middleware\CheckPlan::class, // ✅ NOVO: Middleware para verificar plano do cliente
+        'api.token' => \App\Http\Middleware\ApiTokenMiddleware::class, // ✅ NOVO: Middleware para autenticação via api_tokens
     ];
 }

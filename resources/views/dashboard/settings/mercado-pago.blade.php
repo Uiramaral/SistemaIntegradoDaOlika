@@ -47,11 +47,10 @@
                                 </svg>
                             </div>
                             <div>
-                                <p class="text-sm font-semibold">Status da Conexão</p>
-                                <p class="text-xs text-muted-foreground">Configure suas credenciais</p>
+                                <p class="text-sm font-semibold">Configuração do Mercado Pago</p>
+                                <p class="text-xs text-muted-foreground">Configure suas credenciais para receber pagamentos</p>
                             </div>
                         </div>
-                        <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 border-red-300">Não Conectado</span>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="public-key">Public Key</label>

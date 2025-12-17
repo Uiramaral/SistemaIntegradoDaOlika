@@ -169,9 +169,21 @@ class WhatsappInstanceController extends Controller
 
                 Log::error("ALERTA CRÍTICO: Instância {$instancePhone} entrou em STANDBY por falha: {$reason}");
                 
+                // Traduzir mensagens de erro para português e torná-las mais amigáveis
+                $errorMessages = [
+                    'PERSISTENT_FAILURE' => 'Conexão instável / desconectada. Refaça o login do seu número de WhatsApp clicando em "Conectar".',
+                    'TIMEOUT' => 'A conexão com o WhatsApp expirou. Verifique sua conexão com a internet e tente novamente.',
+                    'CONNECTION_ERROR' => 'Erro ao conectar com o WhatsApp. Verifique se o serviço está online e tente novamente.',
+                    'AUTHENTICATION_FAILED' => 'Falha na autenticação do WhatsApp. É necessário reconectar o número.',
+                    'SESSION_EXPIRED' => 'A sessão do WhatsApp expirou. Clique em "Conectar" para criar uma nova sessão.',
+                    'QR_CODE_EXPIRED' => 'O código QR expirou. Clique em "Conectar" para gerar um novo código.',
+                ];
+                
+                $friendlyMessage = $errorMessages[$reason] ?? "Erro na conexão do WhatsApp: {$reason}. Clique em 'Conectar' para tentar reconectar.";
+                
                 $instance->update([
                     'status' => 'DISCONNECTED', // Atualiza para o estado de exibição
-                    'last_error_message' => "Falha persistente na conexão. Tente novamente ou use /restart. Motivo: {$reason}",
+                    'last_error_message' => $friendlyMessage,
                     // 'phone_number' => null // Opcional: Manter o número para facilitar reconexão
                 ]);
                 

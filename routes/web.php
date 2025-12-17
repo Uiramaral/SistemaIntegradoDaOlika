@@ -46,6 +46,8 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BotConversaController;
+use App\Models\Client;
+use Illuminate\Support\Str;
 
 // ============================================
 // API BotConversa - Sincronização de clientes (sem CSRF)
@@ -84,6 +86,252 @@ Route::post('/api/ai-status', [\App\Http\Controllers\AiStatusController::class, 
 Route::post('/api/customer-context', [\App\Http\Controllers\Api\CustomerSearchController::class, 'getContext'])
     ->name('api.customer.context');
 
+// API Cliente/Plano (para Node.js consultar informações do cliente e plano)
+// IMPORTANTE: Rota global, funciona em qualquer domínio/subdomínio
+// ✅ NOVO: Usa middleware api.token para autenticação via tabela api_tokens
+Route::middleware('api.token')->group(function () {
+    Route::get('/api/client/{id}', [\App\Http\Controllers\Api\ClientController::class, 'show'])
+        ->name('api.client.show');
+
+    Route::get('/api/client/{id}/plan', [\App\Http\Controllers\Api\ClientController::class, 'getPlan'])
+        ->name('api.client.plan');
+});
+
+// API Deploy de Instância Railway (requer autenticação de usuário)
+// Rota protegida: apenas usuários autenticados podem fazer deploy
+Route::middleware('auth')->group(function () {
+    Route::post('/api/clients/{id}/deploy', [\App\Http\Controllers\Api\ClientController::class, 'deploy'])
+        ->name('api.client.deploy');
+    
+    // ✅ NOVO: Deploy via GitHub Actions (sem GraphQL)
+    Route::post('/api/deploy-client', [\App\Http\Controllers\DeployClientController::class, 'deploy'])
+        ->name('api.deploy.client');
+});
+
+// ✅ NOVO: Webhook GitHub → Laravel (recebe callback após deploy)
+Route::post('/api/github/webhook', [\App\Http\Controllers\DeployClientController::class, 'webhook'])
+    ->name('api.github.webhook');
+
+// 🧪 ROTA DE TESTE - Gerar cliente com dados aleatórios
+// ⚠️ ATENÇÃO: Desabilitar em produção ou proteger com senha
+Route::get('/api/test/generate-client', function () {
+    try {
+        // Gerar dados aleatórios
+        $nomes = [
+            'Churrascaria do Zé', 'Pizzaria Bella Vista', 'Hamburgueria Artesanal',
+            'Restaurante Sabor Caseiro', 'Lanchonete do Bairro', 'Delivery Express',
+            'Cantina Italiana', 'Sushi Bar Premium', 'Café & Cia', 'Pastelaria Real'
+        ];
+        
+        $planos = ['basic', 'ia'];
+        
+        $nome = $nomes[array_rand($nomes)] . ' ' . rand(1, 999);
+        $slug = Str::slug($nome) . '-' . rand(1000, 9999);
+        
+        // Garantir slug único
+        while (Client::where('slug', $slug)->exists()) {
+            $slug = Str::slug($nome) . '-' . rand(1000, 9999);
+        }
+        
+        $plan = $planos[array_rand($planos)];
+        $whatsapp = '5571' . rand(900000000, 999999999);
+        
+        // Criar cliente (token será gerado automaticamente)
+        $client = Client::create([
+            'name' => $nome,
+            'slug' => $slug,
+            'plan' => $plan,
+            'instance_url' => null,
+            'whatsapp_phone' => $plan === 'ia' ? $whatsapp : null,
+            'active' => true,
+        ]);
+        
+        // Buscar token gerado automaticamente
+        $token = $client->activeApiToken;
+        
+        \Log::info('Test: Cliente gerado com sucesso', [
+            'client_id' => $client->id,
+            'slug' => $client->slug,
+            'plan' => $client->plan
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Cliente de teste criado com sucesso!',
+            'client' => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'slug' => $client->slug,
+                'plan' => $client->plan,
+                'whatsapp_phone' => $client->whatsapp_phone,
+                'active' => $client->active,
+                'instance_url' => $client->instance_url,
+            ],
+            'token' => $token ? [
+                'id' => $token->id,
+                'token' => $token->token,
+                'created_at' => $token->created_at->toDateTimeString(),
+            ] : null,
+            'info' => [
+                'has_ia' => $client->hasIaPlan(),
+                'has_basic' => $client->hasBasicPlan(),
+                'can_deploy' => $client->hasIaPlan(),
+            ],
+            'next_steps' => [
+                'test_client' => "GET /api/client/{$client->id} (Header: X-API-Token: {$token->token})",
+                'test_plan' => "GET /api/client/{$client->id}/plan (Header: X-API-Token: {$token->token})",
+                'deploy_instance' => $client->hasIaPlan() ? "POST /api/clients/{$client->id}/deploy (auth required)" : 'N/A (plano básico)',
+            ]
+        ], 201);
+        
+    } catch (\Exception $e) {
+        \Log::error('Test: Erro ao gerar cliente', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Erro ao gerar cliente de teste',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+})->name('api.test.generate-client');
+
+// 🧪 ROTA DE TESTE - Gerar cliente com plano IA e fazer deploy automático no Railway
+// ⚠️ ATENÇÃO: Desabilitar em produção ou proteger com senha
+Route::get('/api/test/generate-client-with-deploy', function () {
+    try {
+        // Gerar dados aleatórios
+        $nomes = [
+            'Churrascaria do Zé', 'Pizzaria Bella Vista', 'Hamburgueria Artesanal',
+            'Restaurante Sabor Caseiro', 'Lanchonete do Bairro', 'Delivery Express',
+            'Cantina Italiana', 'Sushi Bar Premium', 'Café & Cia', 'Pastelaria Real'
+        ];
+        
+        $nome = $nomes[array_rand($nomes)] . ' ' . rand(1, 999);
+        $slug = Str::slug($nome) . '-' . rand(1000, 9999);
+        
+        // Garantir slug único
+        while (Client::where('slug', $slug)->exists()) {
+            $slug = Str::slug($nome) . '-' . rand(1000, 9999);
+        }
+        
+        // Forçar plano IA para permitir deploy
+        $plan = 'ia';
+        $whatsapp = '5571' . rand(900000000, 999999999);
+        
+        // Criar cliente (token será gerado automaticamente)
+        $client = Client::create([
+            'name' => $nome,
+            'slug' => $slug,
+            'plan' => $plan,
+            'instance_url' => null,
+            'whatsapp_phone' => $whatsapp,
+            'active' => true,
+        ]);
+        
+        // Buscar token gerado automaticamente
+        $token = $client->activeApiToken;
+        
+        \Log::info('Test: Cliente gerado com sucesso (plano IA)', [
+            'client_id' => $client->id,
+            'slug' => $client->slug,
+            'plan' => $client->plan
+        ]);
+        
+        // Tentar fazer deploy no Railway
+        $deployResult = null;
+        $deployError = null;
+        
+        try {
+            $railwayService = new \App\Services\RailwayService();
+            
+            // Verificar se já tem instância (não deve ter, mas verifica)
+            if (!$client->instance) {
+                $instance = $railwayService->cloneServiceForClient($client);
+                
+                // Atualizar cliente para pegar a URL da instância
+                $client->refresh();
+                
+                $deployResult = [
+                    'success' => true,
+                    'instance_id' => $instance->id,
+                    'instance_url' => $instance->url,
+                    'instance_status' => $instance->status,
+                ];
+                
+                \Log::info('Test: Instância Railway criada com sucesso', [
+                    'client_id' => $client->id,
+                    'instance_id' => $instance->id,
+                    'url' => $instance->url
+                ]);
+            } else {
+                $deployResult = [
+                    'success' => false,
+                    'message' => 'Cliente já possui instância Railway',
+                    'instance_url' => $client->instance->url,
+                ];
+            }
+        } catch (\Exception $e) {
+            $deployError = [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ];
+            
+            \Log::error('Test: Erro ao fazer deploy no Railway', [
+                'client_id' => $client->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Cliente de teste criado com sucesso!',
+            'client' => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'slug' => $client->slug,
+                'plan' => $client->plan,
+                'whatsapp_phone' => $client->whatsapp_phone,
+                'active' => $client->active,
+                'instance_url' => $client->instance_url,
+            ],
+            'token' => $token ? [
+                'id' => $token->id,
+                'token' => $token->token,
+                'created_at' => $token->created_at->toDateTimeString(),
+            ] : null,
+            'info' => [
+                'has_ia' => $client->hasIaPlan(),
+                'has_basic' => $client->hasBasicPlan(),
+                'can_deploy' => $client->hasIaPlan(),
+            ],
+            'railway_deploy' => $deployResult ?? [
+                'success' => false,
+                'error' => 'Erro ao fazer deploy',
+                'details' => $deployError
+            ],
+            'next_steps' => [
+                'test_client' => "GET /api/client/{$client->id} (Header: X-API-Token: {$token->token})",
+                'test_plan' => "GET /api/client/{$client->id}/plan (Header: X-API-Token: {$token->token})",
+            ]
+        ], 201);
+        
+    } catch (\Exception $e) {
+        \Log::error('Test: Erro ao gerar cliente com deploy', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Erro ao gerar cliente de teste com deploy',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+})->name('api.test.generate-client-with-deploy');
+
 // Também manter o grupo para consistência (mas as rotas específicas acima têm prioridade)
 Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
     Route::get('/ping', function() {
@@ -111,6 +359,10 @@ Route::get('/logout', [LoginController::class, 'logout'])->name('auth.logout.get
 // Registro de novos administradores
 Route::get('/register', [RegisterController::class, 'showForm'])->name('register.form');
 Route::post('/register', [RegisterController::class, 'register'])->name('register');
+
+// Cadastro público de lojistas (SaaS)
+Route::get('/cadastro-lojista', [\App\Http\Controllers\StoreSignupController::class, 'show'])->name('store-signup.show');
+Route::post('/cadastro-lojista', [\App\Http\Controllers\StoreSignupController::class, 'store'])->name('store-signup.store');
 
 // ============================================
 // ROTA PARA SERVIR ARQUIVOS DO STORAGE
@@ -328,6 +580,18 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     ]);
     Route::post('loyalty/settings', [\App\Http\Controllers\Dashboard\LoyaltyController::class, 'saveSettings'])->name('dashboard.loyalty.settings.save');
     Route::get('/reports', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('dashboard.reports');
+    
+    // Clientes SaaS (assinantes da plataforma)
+    Route::resource('saas-clients', \App\Http\Controllers\Dashboard\SaasClientsController::class)->names([
+        'index' => 'dashboard.saas-clients.index',
+        'create' => 'dashboard.saas-clients.create',
+        'store' => 'dashboard.saas-clients.store',
+        'show' => 'dashboard.saas-clients.show',
+    ]);
+    
+    // Módulos/Planos
+    Route::get('/plans', [\App\Http\Controllers\Dashboard\PlansController::class, 'index'])->name('dashboard.plans.index');
+    Route::put('/plans', [\App\Http\Controllers\Dashboard\PlansController::class, 'update'])->name('dashboard.plans.update');
     Route::get('/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
     
     Route::get('/reports/export', [ReportsController::class, 'export'])->name('dashboard.reports.export');
@@ -341,10 +605,6 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/settings/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.settings.whatsapp.save');
     Route::post('/settings/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.settings.whatsapp.notifications.save');
     
-    // Rotas para mensagens falhadas do WhatsApp
-    Route::get('/whatsapp/failed-messages', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'index'])->name('dashboard.whatsapp.failed-messages');
-    Route::post('/whatsapp/failed-messages/{id}/retry', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'retry'])->name('dashboard.whatsapp.failed-messages.retry');
-    Route::get('/whatsapp/failed-messages/pending-count', [\App\Http\Controllers\Dashboard\WhatsAppFailedMessagesController::class, 'getPendingCount'])->name('dashboard.whatsapp.failed-messages.pending-count');
     Route::get('/settings/whatsapp/qr',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappQR'])->name('dashboard.settings.whatsapp.qr');
     Route::get('/settings/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.settings.whatsapp.status');
     Route::post('/settings/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappConnect'])->name('dashboard.settings.whatsapp.connect');

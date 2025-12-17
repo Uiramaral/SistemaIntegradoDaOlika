@@ -154,23 +154,53 @@
                     </div>
 
                     <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Código do cupom">
-                                <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                                    Aplicar
-                                </button>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
+                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Código do cupom">
+                                    <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+                                        Aplicar
+                                    </button>
+                                </div>
+                                <div id="coupon-info" class="mt-2 hidden p-2 bg-muted rounded-md text-sm"></div>
                             </div>
-                            <div id="coupon-info" class="mt-2 hidden p-2 bg-muted rounded-md text-sm"></div>
-                        </div>
 
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
-                            <select id="delivery-type" class="w-full rounded-md border border-input bg-background text-sm">
-                                <option value="delivery">Entrega</option>
-                                <option value="pickup">Retirada</option>
-                            </select>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
+                                <select id="delivery-type" class="w-full rounded-md border border-input bg-background text-sm">
+                                    <option value="delivery">Entrega</option>
+                                    <option value="pickup">Retirada</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Taxa de Entrega Manual</label>
+                                <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="R$ 0,00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Calcular por CEP</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
+                                    <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3">
+                                        Calcular
+                                    </button>
+                                </div>
+                                <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Desconto Manual (Valor Fixo)</label>
+                                <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Desconto Manual (%)</label>
+                                <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
+                            </div>
                         </div>
 
                         <div>
@@ -210,46 +240,8 @@
             </div>
         </div>
 
-        <!-- Coluna Conteúdo (Frete + Produtos) -->
+        <!-- Coluna Conteúdo (Produtos) -->
         <div class="dashboard-main flex flex-col space-y-6">
-            <!-- Seção de Frete - PRIMEIRO (após selecionar cliente) -->
-            <div id="delivery-section" class="rounded-lg border bg-card text-card-foreground shadow-sm hidden" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
-                <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Frete</h3>
-                </div>
-                <div class="p-6 pt-0">
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa de Entrega / Desconto Manual</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <div>
-                                    <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Taxa">
-                                    <p class="text-xs text-muted-foreground mt-1">Taxa</p>
-                                </div>
-                                <div>
-                                    <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
-                                    <p class="text-xs text-muted-foreground mt-1">Valor fixo</p>
-                                </div>
-                                <div>
-                                    <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
-                                    <p class="text-xs text-muted-foreground mt-1">%</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-xs font-medium text-muted-foreground">Calcular por CEP</label>
-                            <div class="flex flex-col gap-2 sm:flex-row">
-                                <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
-                                <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                                    Calcular
-                                </button>
-                            </div>
-                            <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Seleção de Produtos - TERCEIRO (após cliente e frete) -->
             <div id="products-section" class="rounded-lg border bg-card text-card-foreground shadow-sm hidden" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
@@ -556,9 +548,7 @@ document.addEventListener('click', function(e) {
         document.getElementById('customer-search').value = '';
         
         // Mostrar seção de frete após selecionar cliente
-        const deliverySection = document.getElementById('delivery-section');
-        if (deliverySection) {
-            deliverySection.classList.remove('hidden');
+        // Seção de frete agora está integrada no resumo
         }
         
         // Mostrar seção de produtos após selecionar cliente
@@ -605,6 +595,9 @@ document.addEventListener('click', function(e) {
             }
         }
         
+        // Aplicar taxa customizada ou calcular automaticamente pelo CEP do cliente
+        applyCustomerDeliveryFee();
+        
         // Buscar endereço completo do cliente (da tabela addresses) se disponível
         if (customerId) {
             fetch(`{{ route('api.pdv.customers.search') }}?q=${encodeURIComponent(customerName)}`)
@@ -637,67 +630,73 @@ document.addEventListener('click', function(e) {
                 .catch(err => console.error('Erro ao buscar endereço do cliente:', err));
         }
         
-        // Se cliente possui taxa fixa personalizada, aplicar
-        if (pdvState.customer.custom_delivery_fee !== undefined && pdvState.customer.custom_delivery_fee !== null) {
-            const fee = parseFloat(pdvState.customer.custom_delivery_fee);
-            if (!isNaN(fee)) {
-                document.getElementById('delivery-fee-input').value = fee.toFixed(2);
-                const infoEl = document.getElementById('delivery-fee-info');
-                infoEl.innerHTML = `Taxa personalizada do cliente aplicada`;
-                infoEl.classList.remove('hidden');
-                updateSummary();
-                updateFinalizeButtons();
-                return; // não calcular por CEP
-            }
-        }
-
-        // Caso tenha CEP salvo no cliente, calcular automaticamente (mesmo sem itens)
-        if (pdvState.customer.zip_code) {
-            const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const btnCalc = document.getElementById('btn-calculate-fee');
-            if (btnCalc) btnCalc.disabled = true;
-            fetch('{{ route("api.pdv.calculateDeliveryFee") }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ 
-                    cep: String(pdvState.customer.zip_code).replace(/\D/g,''), 
-                    subtotal: Math.max(0, subtotal), // Pelo menos 0
-                    customer_id: pdvState.customer.id 
-                }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const fee = parseFloat(data.delivery_fee);
-                    document.getElementById('delivery-fee-input').value = fee.toFixed(2);
-                    const infoEl = document.getElementById('delivery-fee-info');
-                    if (data.custom) {
-                        infoEl.innerHTML = `Taxa personalizada do cliente`;
-                    } else if (data.free_delivery) {
-                        infoEl.innerHTML = `✓ Entrega grátis`;
-                    } else {
-                        infoEl.innerHTML = `Distância: ${data.distance_km ?? '-'} km`;
-                    }
-                    infoEl.classList.remove('hidden');
-                    updateSummary();
-                }
-            })
-            .catch(err => {
-                console.error('Erro ao calcular frete:', err);
-            })
-            .finally(()=>{ if (btnCalc) btnCalc.disabled = false; });
-        }
-
         updateFinalizeButtons();
     }
 });
+
+function applyCustomerDeliveryFee() {
+    if (!pdvState.customer) return;
+
+    // Taxa fixa personalizada do cliente
+    if (pdvState.customer.custom_delivery_fee !== undefined && pdvState.customer.custom_delivery_fee !== null) {
+        const fee = parseFloat(pdvState.customer.custom_delivery_fee);
+        if (!isNaN(fee)) {
+            document.getElementById('delivery-fee-input').value = fee.toFixed(2);
+            const infoEl = document.getElementById('delivery-fee-info');
+            infoEl.innerHTML = `Taxa personalizada do cliente aplicada`;
+            infoEl.classList.remove('hidden');
+            updateSummary();
+            updateFinalizeButtons();
+            return;
+        }
+    }
+
+    // Caso tenha CEP salvo no cliente, calcular automaticamente
+    if (pdvState.customer.zip_code) {
+        const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const btnCalc = document.getElementById('btn-calculate-fee');
+        if (btnCalc) btnCalc.disabled = true;
+        fetch('{{ route("api.pdv.calculateDeliveryFee") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ 
+                cep: String(pdvState.customer.zip_code).replace(/\D/g,''), 
+                subtotal: Math.max(0, subtotal),
+                customer_id: pdvState.customer.id 
+            }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const fee = parseFloat(data.delivery_fee);
+                document.getElementById('delivery-fee-input').value = fee.toFixed(2);
+                const infoEl = document.getElementById('delivery-fee-info');
+                if (data.custom) {
+                    infoEl.innerHTML = `Taxa personalizada do cliente`;
+                } else if (data.free_delivery) {
+                    infoEl.innerHTML = `✓ Entrega grátis`;
+                } else {
+                    infoEl.innerHTML = `Distância: ${data.distance_km ?? '-'} km`;
+                }
+                infoEl.classList.remove('hidden');
+                updateSummary();
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao calcular frete:', err);
+        })
+        .finally(()=>{ if (btnCalc) btnCalc.disabled = false; });
+    }
+
+    updateFinalizeButtons();
+}
 
 // Limpar cliente
 document.getElementById('btn-clear-customer')?.addEventListener('click', function() {
     pdvState.customer = null;
     document.getElementById('customer-id').value = '';
     document.getElementById('selected-customer').classList.add('hidden');
-    document.getElementById('delivery-section').classList.add('hidden'); // Ocultar frete quando cliente é removido
+    // Campos de frete permanecem visíveis no resumo
     document.getElementById('products-section').classList.add('hidden'); // Ocultar produtos quando cliente é removido
     resetProductPricesToNormal(); // Resetar preços quando cliente é removido
     updateFinalizeButton();
@@ -852,6 +851,98 @@ document.getElementById('product-search')?.addEventListener('input', function(e)
     }, 300);
 });
 
+// Modal de seleção de quantidade
+function showQuantityModal(productName, productPrice, callback) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+    modal.id = 'quantity-modal';
+    
+    let quantity = 1;
+    
+    const updateTotal = () => {
+        const totalEl = modal.querySelector('#quantity-total');
+        if (totalEl) {
+            totalEl.textContent = `Total: R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}`;
+        }
+    };
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
+            <div class="p-6">
+                <h3 class="text-xl font-semibold mb-2">${productName}</h3>
+                <p class="text-sm text-muted-foreground mb-4">Preço unitário: R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
+                
+                <div class="flex items-center justify-center gap-4 mb-6">
+                    <button type="button" id="btn-decrease-qty" class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14"></path>
+                        </svg>
+                    </button>
+                    <span id="quantity-display" class="text-2xl font-bold w-16 text-center">${quantity}</span>
+                    <button type="button" id="btn-increase-qty" class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14"></path>
+                            <path d="M12 5v14"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <p id="quantity-total" class="text-lg font-semibold text-center mb-6">Total: R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}</p>
+                
+                <div class="flex gap-3">
+                    <button type="button" id="btn-cancel-quantity" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">
+                        Cancelar
+                    </button>
+                    <button type="button" id="btn-add-quantity" class="flex-1 px-4 py-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white font-medium">
+                        Adicionar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const quantityDisplay = modal.querySelector('#quantity-display');
+    const btnDecrease = modal.querySelector('#btn-decrease-qty');
+    const btnIncrease = modal.querySelector('#btn-increase-qty');
+    const btnCancel = modal.querySelector('#btn-cancel-quantity');
+    const btnAdd = modal.querySelector('#btn-add-quantity');
+    
+    btnDecrease.addEventListener('click', () => {
+        if (quantity > 1) {
+            quantity--;
+            quantityDisplay.textContent = quantity;
+            updateTotal();
+        }
+    });
+    
+    btnIncrease.addEventListener('click', () => {
+        quantity++;
+        quantityDisplay.textContent = quantity;
+        updateTotal();
+    });
+    
+    btnCancel.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    btnAdd.addEventListener('click', () => {
+        callback(quantity);
+        document.body.removeChild(modal);
+        document.getElementById('product-results')?.classList.add('hidden');
+        document.getElementById('product-search').value = '';
+    });
+    
+    // Fechar ao clicar fora
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
 // Modal de seleção de variante
 function showVariantModal(productId, productName, variants) {
     // Criar modal dinamicamente
@@ -895,12 +986,14 @@ function showVariantModal(productId, productName, variants) {
             const variantName = btn.dataset.variantName;
             const variantPrice = parseFloat(btn.dataset.variantPrice);
             
-            addItem({
-                product_id: productId,
-                variant_id: variantId,
-                name: `${productName} - ${variantName}`,
-                price: variantPrice,
-                quantity: 1,
+            showQuantityModal(productName, variantPrice, (qty) => {
+                addItem({
+                    product_id: productId,
+                    variant_id: variantId,
+                    name: `${productName} - ${variantName}`,
+                    price: variantPrice,
+                    quantity: qty,
+                });
             });
             
             document.body.removeChild(modal);
@@ -944,13 +1037,15 @@ document.addEventListener('click', function(e) {
             }
         }
         
-        // Sem variantes, adicionar diretamente
-        addItem({
-            product_id: productId,
-            variant_id: null,
-            name: productName,
-            price: productPrice,
-            quantity: 1,
+        // Sem variantes, mostrar modal de quantidade
+        showQuantityModal(productName, productPrice, (qty) => {
+            addItem({
+                product_id: productId,
+                variant_id: null,
+                name: productName,
+                price: productPrice,
+                quantity: qty,
+            });
         });
         
         document.getElementById('product-results')?.classList.add('hidden');

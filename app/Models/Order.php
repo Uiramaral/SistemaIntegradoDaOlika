@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Payment;
+use App\Models\Scopes\ClientScope;
 
 class Order extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'client_id', // ✅ NOVO: Multi-instância
         'customer_id',
         'address_id',
         'visitor_id',
@@ -70,6 +72,14 @@ class Order extends Model
     ];
 
     /**
+     * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new ClientScope());
+    }
+
+    /**
      * Mutator para normalizar valores de status para o ENUM válido da tabela orders.
      * Aceita códigos vindos de order_statuses e converte para o ENUM permitido.
      */
@@ -93,7 +103,15 @@ class Order extends Model
     }
 
     /**
-     * Relacionamento com cliente
+     * ✅ NOVO: Relacionamento com cliente (multi-instância)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Relacionamento com cliente (customer)
      */
     public function customer(): BelongsTo
     {

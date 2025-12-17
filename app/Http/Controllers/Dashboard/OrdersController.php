@@ -12,7 +12,6 @@ use App\Models\Product;
 use App\Services\MercadoPagoApi;
 use App\Services\MercadoPagoApiService;
 use App\Services\WhatsAppService;
-use App\Services\BotConversaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -2305,7 +2304,7 @@ class OrdersController extends Controller
                 ]);
             }
 
-            // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp/BotConversa)
+            // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp)
             try {
                 $orderStatusService = new \App\Services\OrderStatusService();
                 $orderStatusService->changeStatus($order, 'cancelled', $reason, auth()->check() ? auth()->id() : null, false);

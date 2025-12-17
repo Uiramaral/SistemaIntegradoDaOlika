@@ -138,7 +138,14 @@
         </form>
 
         <!-- Links Adicionais -->
-                    <div class="text-center text-sm text-muted-foreground">
+                    <div class="text-center text-sm text-muted-foreground space-y-2">
+                        @if(Route::has('store-signup.show'))
+                            <p>
+                                <a href="{{ route('store-signup.show') }}" class="text-primary hover:underline font-semibold text-base">
+                                    🚀 Cadastre sua loja e comece grátis
+                                </a>
+                            </p>
+                        @endif
                         @if(Route::has('register.form'))
                             <p>
                 Não tem uma conta? 

@@ -194,17 +194,36 @@ class OrderController extends Controller
         // Buscar cupons públicos elegíveis
         $eligibleCoupons = collect();
         try {
-            $allPublicCoupons = \App\Models\Coupon::query()
-                ->where('visibility', 'public')
+            // Buscar cupons públicos E cupons direcionados ao cliente específico
+            $couponsQuery = \App\Models\Coupon::query()
                 ->where('is_active', true)
                 ->valid()
-                ->available()
-                ->get();
+                ->available();
             
-            $eligibleCoupons = $allPublicCoupons->filter(function($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
+            // Incluir cupons públicos OU cupons direcionados ao cliente
+            $couponsQuery->where(function($q) use ($customerId) {
+                $q->where('visibility', 'public');
+                if ($customerId) {
+                    $q->orWhere(function($subQ) use ($customerId) {
+                        $subQ->where('visibility', 'targeted')
+                             ->where('target_customer_id', $customerId);
+                    });
+                }
+            });
+            
+            $allCoupons = $couponsQuery->get();
+            
+            $eligibleCoupons = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
+                }
+                
+                // Verificar se é cupom direcionado e se o cliente tem direito
+                if ($coupon->visibility === 'targeted') {
+                    if (!$customerId || $coupon->target_customer_id !== $customerId) {
+                        return false; // Cupom direcionado não é para este cliente
+                    }
                 }
                 
                 // Para cupons de primeiro pedido, verificar primeiro se é primeiro pedido
@@ -214,8 +233,10 @@ class OrderController extends Controller
                         return false; // Não é primeiro pedido, cupom não é elegível
                     }
                     // É primeiro pedido, verificar outras condições (valor mínimo, etc)
-                    // Para cupons de primeiro pedido, não precisamos verificar canBeUsedBy quando customer_id é null
-                    // pois é justamente para clientes novos
+                    // Para cupons de primeiro pedido, verificar canBeUsedBy se cliente existe
+                    if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                        return false; // Cliente já usou este cupom de primeiro pedido
+                    }
                     if (!$coupon->isValid($customerId)) {
                         return false; // Cupom não está ativo, válido ou disponível
                     }
@@ -232,9 +253,10 @@ class OrderController extends Controller
                     return false;
                 }
                 
-                // Verificar limite de uso apenas se cliente existe E cupom tem limite
-                if ($coupon->usage_limit_per_customer > 0 && $customerId) {
-                    return $coupon->canBeUsedBy($customerId);
+                // IMPORTANTE: Verificar se o cliente pode usar o cupom (inclui verificação de uso único)
+                // Se há customerId, sempre verificar canBeUsedBy para garantir que não foi usado antes
+                if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                    return false; // Cliente não pode usar este cupom (já usou, limite atingido, etc)
                 }
                 
                 return true;
@@ -673,47 +695,70 @@ class OrderController extends Controller
             
             if ($couponCode !== '') {
                 // Usar scopes do modelo Coupon para garantir que está ativo, válido e disponível
-                $coupon = \App\Models\Coupon::where('code', strtoupper($couponCode))
+                // Buscar cupom público OU direcionado ao cliente
+                $couponQuery = \App\Models\Coupon::where('code', strtoupper($couponCode))
                     ->active()
                     ->valid()
-                    ->available()
-                    ->first();
+                    ->available();
+                
+                // Incluir cupons públicos OU cupons direcionados ao cliente
+                $couponQuery->where(function($q) use ($customer) {
+                    $q->where('visibility', 'public');
+                    if ($customer->id) {
+                        $q->orWhere(function($subQ) use ($customer) {
+                            $subQ->where('visibility', 'targeted')
+                                 ->where('target_customer_id', $customer->id);
+                        });
+                    }
+                });
+                
+                $coupon = $couponQuery->first();
                 
                 if ($coupon) {
-                    // Verificar se é primeiro pedido (apenas pedidos pagos contam)
-                    $isFirstOrder = !Order::where('customer_id', $customer->id)
-                        ->whereIn('payment_status', ['approved', 'paid'])
-                        ->exists();
-                    
-                    // Validar elegibilidade
-                    if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
-                        // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
-                        if ($coupon->canBeUsedBy($customer->id)) {
-                            // Se for cupom de frete grátis, aplicar desconto no frete
-                            if ($coupon->free_shipping_only && $deliveryFee > 0) {
-                                $discountAmount = $coupon->calculateDiscount($subtotal) + $deliveryFee;
+                    // Verificar se é cupom direcionado e se o cliente tem direito
+                    if ($coupon->visibility === 'targeted' && $coupon->target_customer_id !== $customer->id) {
+                        \Log::info('OrderController: Cupom direcionado não é para este cliente', [
+                            'coupon_code' => $couponCode,
+                            'customer_id' => $customer->id,
+                            'target_customer_id' => $coupon->target_customer_id,
+                        ]);
+                        // Não aplicar desconto e continuar
+                    } else {
+                        // Verificar se é primeiro pedido (apenas pedidos pagos contam)
+                        $isFirstOrder = !Order::where('customer_id', $customer->id)
+                            ->whereIn('payment_status', ['approved', 'paid'])
+                            ->exists();
+                        
+                        // Validar elegibilidade
+                        if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
+                            // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
+                            if ($coupon->canBeUsedBy($customer->id)) {
+                                // Se for cupom de frete grátis, aplicar desconto no frete
+                                if ($coupon->free_shipping_only && $deliveryFee > 0) {
+                                    $discountAmount = $coupon->calculateDiscount($subtotal) + $deliveryFee;
+                                } else {
+                                    $discountAmount = $coupon->calculateDiscount($subtotal);
+                                }
+                                $appliedCoupon = $coupon;
                             } else {
-                                $discountAmount = $coupon->calculateDiscount($subtotal);
+                                // Cupom não pode ser usado (limite atingido ou já usado) - ignorar e continuar sem cupom
+                                \Log::info('OrderController: Cupom não pode ser usado - limite atingido ou já usado, continuando sem cupom', [
+                                    'coupon_code' => $couponCode,
+                                    'customer_id' => $customer->id,
+                                ]);
+                                // Não aplicar desconto e continuar
                             }
-                            $appliedCoupon = $coupon;
                         } else {
-                            // Cupom não pode ser usado (limite atingido) - ignorar e continuar sem cupom
-                            \Log::info('OrderController: Cupom não pode ser usado - limite atingido, continuando sem cupom', [
+                            // Cupom não é elegível - ignorar e continuar sem cupom
+                            \Log::info('OrderController: Cupom não é elegível, continuando sem cupom', [
                                 'coupon_code' => $couponCode,
                                 'customer_id' => $customer->id,
+                                'subtotal' => $subtotal,
+                                'delivery_fee' => $deliveryFee,
+                                'is_first_order' => $isFirstOrder,
                             ]);
                             // Não aplicar desconto e continuar
                         }
-                    } else {
-                        // Cupom não é elegível - ignorar e continuar sem cupom
-                        \Log::info('OrderController: Cupom não é elegível, continuando sem cupom', [
-                            'coupon_code' => $couponCode,
-                            'customer_id' => $customer->id,
-                            'subtotal' => $subtotal,
-                            'delivery_fee' => $deliveryFee,
-                            'is_first_order' => $isFirstOrder,
-                        ]);
-                        // Não aplicar desconto e continuar
                     }
                 } else {
                     // Cupom não encontrado - ignorar e continuar sem cupom
@@ -1597,17 +1642,36 @@ class OrderController extends Controller
         // Buscar cupons elegíveis para mostrar no combobox (mesma lógica do checkout)
         $eligibleCouponsForDisplay = collect();
         try {
-            $allPublicCoupons = \App\Models\Coupon::query()
-                ->where('visibility', 'public')
+            // Buscar cupons públicos E cupons direcionados ao cliente específico
+            $couponsQuery = \App\Models\Coupon::query()
                 ->where('is_active', true)
                 ->valid()
-                ->available()
-                ->get();
+                ->available();
+            
+            // Incluir cupons públicos OU cupons direcionados ao cliente
+            $couponsQuery->where(function($q) use ($customerId) {
+                $q->where('visibility', 'public');
+                if ($customerId) {
+                    $q->orWhere(function($subQ) use ($customerId) {
+                        $subQ->where('visibility', 'targeted')
+                             ->where('target_customer_id', $customerId);
+                    });
+                }
+            });
+            
+            $allCoupons = $couponsQuery->get();
 
-            $eligibleCouponsForDisplay = $allPublicCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
+            $eligibleCouponsForDisplay = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
+                }
+
+                // Verificar se é cupom direcionado e se o cliente tem direito
+                if ($coupon->visibility === 'targeted') {
+                    if (!$customerId || $coupon->target_customer_id !== $customerId) {
+                        return false; // Cupom direcionado não é para este cliente
+                    }
                 }
 
                 // Para cupons de primeiro pedido, verificar primeiro se é primeiro pedido
@@ -1617,8 +1681,10 @@ class OrderController extends Controller
                         return false; // Não é primeiro pedido, cupom não é elegível
                     }
                     // É primeiro pedido, verificar outras condições (valor mínimo, etc)
-                    // Para cupons de primeiro pedido, não precisamos verificar canBeUsedBy quando customer_id é null
-                    // pois é justamente para clientes novos
+                    // Para cupons de primeiro pedido, verificar canBeUsedBy se cliente existe
+                    if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                        return false; // Cliente já usou este cupom de primeiro pedido
+                    }
                     if (!$coupon->isValid($customerId)) {
                         return false; // Cupom não está ativo, válido ou disponível
                     }
@@ -1635,10 +1701,10 @@ class OrderController extends Controller
                     return false;
                 }
 
-                // Verificar limite de uso apenas se cliente existe E cupom tem limite
-                if ($coupon->usage_limit_per_customer > 0 && $customerId) {
-                    $canUse = $coupon->canBeUsedBy($customerId);
-                    return $canUse;
+                // IMPORTANTE: Verificar se o cliente pode usar o cupom (inclui verificação de uso único)
+                // Se há customerId, sempre verificar canBeUsedBy para garantir que não foi usado antes
+                if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                    return false; // Cliente não pode usar este cupom (já usou, limite atingido, etc)
                 }
 
                 return true;

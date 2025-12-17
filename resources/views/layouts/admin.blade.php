@@ -98,17 +98,19 @@
             [
                 'title' => 'Integrações',
                 'items' => [
-                    ['label' => 'Mensagens Falhadas', 'icon' => 'alert-circle', 'route' => 'dashboard.whatsapp.failed-messages', 'routePattern' => 'dashboard.whatsapp.failed-messages*'],
                     ['label' => 'WhatsApp', 'icon' => 'message-square', 'route' => 'dashboard.settings.whatsapp', 'routePattern' => 'dashboard.settings.whatsapp*'],
                     ['label' => 'Mercado Pago', 'icon' => 'credit-card', 'route' => 'dashboard.settings.mp', 'routePattern' => 'dashboard.settings.mp*'],
                 ],
             ],
             [
                 'title' => 'Sistema',
-                'items' => [
+                'items' => array_merge([
                     ['label' => 'Relatórios', 'icon' => 'chart-column', 'route' => 'dashboard.reports', 'routePattern' => 'dashboard.reports*'],
+                    ['label' => 'Módulos/Planos', 'icon' => 'layers', 'route' => 'dashboard.plans.index', 'routePattern' => 'dashboard.plans.*'],
                     ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings'],
-                ],
+                ], auth()->check() && auth()->user()->isMaster() ? [
+                    ['label' => 'Clientes SaaS', 'icon' => 'users-round', 'route' => 'dashboard.saas-clients.index', 'routePattern' => 'dashboard.saas-clients.*']
+                ] : []),
             ],
         ];
     @endphp
@@ -387,140 +389,6 @@
         });
     </script>
     
-    {{-- Sistema de Verificação de Mensagens WhatsApp Falhadas --}}
-    <script>
-        (function() {
-            'use strict';
-            
-            let lastCheckedCount = 0;
-            let checkInterval = null;
-            const CHECK_INTERVAL = 30000; // Verificar a cada 30 segundos
-            
-            async function checkFailedMessages() {
-                try {
-                    const response = await fetch('/dashboard/whatsapp/failed-messages/pending-count', {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    
-                    if (!response.ok) return;
-                    
-                    const data = await response.json();
-                    const currentCount = data.count || 0;
-                    
-                    // Se houver novas falhas, mostrar popup
-                    if (currentCount > 0 && currentCount > lastCheckedCount) {
-                        showFailedMessagesPopup(currentCount);
-                    }
-                    
-                    lastCheckedCount = currentCount;
-                } catch (error) {
-                    console.error('Erro ao verificar mensagens falhadas:', error);
-                }
-            }
-            
-            function showFailedMessagesPopup(count) {
-                // Verificar se já existe um popup
-                if (document.getElementById('whatsapp-failed-popup')) {
-                    return;
-                }
-                
-                const popup = document.createElement('div');
-                popup.id = 'whatsapp-failed-popup';
-                popup.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
-                popup.innerHTML = `
-                    <div class="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 border border-destructive/20">
-                        <div class="p-6">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle text-destructive">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <line x1="12" x2="12" y1="8" y2="12"></line>
-                                            <line x1="12" x2="12.01" y1="16" y2="16"></line>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold mb-2">Mensagens WhatsApp Falhadas</h3>
-                                    <p class="text-sm text-muted-foreground mb-4">
-                                        ${count === 1 ? 'Foi detectada 1 mensagem' : `Foram detectadas ${count} mensagens`} que não foram enviadas com sucesso.
-                                    </p>
-                                    <div class="flex gap-2">
-                                        <button onclick="window.location.href='/dashboard/whatsapp/failed-messages'" class="flex-1 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
-                                            Ver Mensagens
-                                        </button>
-                                        <button onclick="closeFailedMessagesPopup()" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
-                                            Fechar
-                                        </button>
-                                    </div>
-                                </div>
-                                <button onclick="closeFailedMessagesPopup()" class="text-muted-foreground hover:text-foreground">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                                        <path d="M18 6 6 18"></path>
-                                        <path d="M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(popup);
-                
-                // Fechar ao clicar fora
-                popup.addEventListener('click', function(e) {
-                    if (e.target === popup) {
-                        closeFailedMessagesPopup();
-                    }
-                });
-            }
-            
-            function closeFailedMessagesPopup() {
-                const popup = document.getElementById('whatsapp-failed-popup');
-                if (popup) {
-                    popup.style.transition = 'opacity 0.3s';
-                    popup.style.opacity = '0';
-                    setTimeout(() => popup.remove(), 300);
-                }
-            }
-            
-            // Expor função globalmente
-            window.closeFailedMessagesPopup = closeFailedMessagesPopup;
-            
-            // Iniciar verificação quando a página carregar
-            function startChecking() {
-                // Verificar imediatamente após 5 segundos
-                setTimeout(checkFailedMessages, 5000);
-                
-                // Depois verificar periodicamente
-                checkInterval = setInterval(checkFailedMessages, CHECK_INTERVAL);
-            }
-            
-            // Parar verificação quando a página perder foco
-            document.addEventListener('visibilitychange', function() {
-                if (document.hidden) {
-                    if (checkInterval) {
-                        clearInterval(checkInterval);
-                        checkInterval = null;
-                    }
-                } else {
-                    if (!checkInterval) {
-                        startChecking();
-                    }
-                }
-            });
-            
-            // Iniciar quando DOM estiver pronto
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', startChecking);
-            } else {
-                startChecking();
-            }
-        })();
-    </script>
     
     {{-- Estilos críticos movidos para olika-override-v3.1.css --}}
 </body>

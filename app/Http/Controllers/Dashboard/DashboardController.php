@@ -35,12 +35,12 @@ class DashboardController extends Controller
                 ')
                 ->first();
             
-            // Dados de HOJE - usar DATE() para ignorar timezone
-            // Usar DATE() do MySQL para comparar apenas a data, ignorando hora e timezone
-            $todayDate = now()->format('Y-m-d');
+            // Dados de HOJE - usar Carbon para garantir timezone correto
+            $todayStart = now()->startOfDay();
+            $todayEnd = now()->endOfDay();
             
             $todayStats = DB::table('orders')
-                ->whereRaw('DATE(created_at) = ?', [$todayDate])
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
                 ->selectRaw('
                     COUNT(*) as pedidos_hoje,
                     COALESCE(SUM(CASE WHEN payment_status = "paid" THEN final_amount ELSE 0 END), 0) as receita_hoje,
@@ -49,9 +49,9 @@ class DashboardController extends Controller
                 ')
                 ->first();
             
-            // Novos clientes hoje - usar DATE() também
+            // Novos clientes hoje
             $novosClientes = DB::table('customers')
-                ->whereRaw('DATE(created_at) = ?', [$todayDate])
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
                 ->count();
             
             // Calcular ticket médio
@@ -59,17 +59,18 @@ class DashboardController extends Controller
                 ? ($stats->faturamento / $stats->total_pedidos) 
                 : 0;
             
-            // Pedidos agendados - usar DATE() para comparar apenas a data
-            $next7DaysDate = now()->addDays(7)->format('Y-m-d');
+            // Pedidos agendados - usar Carbon para garantir timezone correto
+            $next7DaysEnd = now()->addDays(7)->endOfDay();
             $scheduledStats = DB::table('orders')
                 ->whereNotNull('scheduled_delivery_at')
                 ->selectRaw('
-                    COUNT(CASE WHEN DATE(scheduled_delivery_at) = ? THEN 1 END) as scheduled_today,
-                    COUNT(CASE WHEN DATE(scheduled_delivery_at) >= ? AND DATE(scheduled_delivery_at) <= ? THEN 1 END) as scheduled_next_7_days
+                    COUNT(CASE WHEN scheduled_delivery_at >= ? AND scheduled_delivery_at <= ? THEN 1 END) as scheduled_today,
+                    COUNT(CASE WHEN scheduled_delivery_at >= ? AND scheduled_delivery_at <= ? THEN 1 END) as scheduled_next_7_days
                 ', [
-                    $todayDate,
-                    $todayDate,
-                    $next7DaysDate
+                    $todayStart->toDateTimeString(),
+                    $todayEnd->toDateTimeString(),
+                    $todayStart->toDateTimeString(),
+                    $next7DaysEnd->toDateTimeString()
                 ])
                 ->first();
             
@@ -158,13 +159,15 @@ class DashboardController extends Controller
             
             // Log temporário para debug (remover depois)
             Log::info('Dashboard Stats', [
-                'today_date' => $todayDate,
+                'today_start' => $todayStart->toDateTimeString(),
+                'today_end' => $todayEnd->toDateTimeString(),
                 'pedidos_hoje' => $pedidosHoje,
                 'receita_hoje' => $receitaHoje,
                 'pagos_hoje' => $pagosHoje,
                 'pendentes_pagamento' => $pendentesPagamento,
                 'scheduled_today' => $scheduledTodayCount,
                 'total_pedidos' => $totalPedidos,
+                'today_stats_raw' => $todayStats,
             ]);
             
             // Criar collection vazia para compatibilidade (não carregar todos os pedidos)

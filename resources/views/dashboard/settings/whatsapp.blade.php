@@ -89,7 +89,11 @@
                                         @elseif($instance->last_error_message)
                                             <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 border-red-300" title="{{ $instance->last_error_message }}">
                                                 <span class="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                                                Erro Fatal
+                                                @if(str_contains(strtolower($instance->last_error_message), 'persistent_failure') || str_contains(strtolower($instance->last_error_message), 'desconectado') || str_contains(strtolower($instance->last_error_message), 'instável'))
+                                                    Desconectado
+                                                @else
+                                                    Falha de Conexão
+                                                @endif
                                             </span>
                                         @elseif($instance->status === 'CONNECTING')
                                             <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-800 border-amber-300">
@@ -799,7 +803,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     ${hasError ? '❌ Erro ao Conectar' : '🔌 WhatsApp Desconectado'}
                                 </p>
                                 <p class="text-sm ${hasError ? 'text-red-700' : 'text-gray-600'} font-medium">
-                                    ${hasError ? status.error || 'Erro ao buscar status do WhatsApp' : 'Clique no botão abaixo para iniciar a conexão'}
+                                    ${hasError ? (status.last_error_message || status.error || 'Erro ao conectar com o WhatsApp. Clique em "Conectar" para tentar novamente.') : 'Clique no botão abaixo para iniciar a conexão'}
                                 </p>
                             </div>
                         </div>

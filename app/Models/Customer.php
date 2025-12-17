@@ -4,15 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Scopes\ClientScope;
 
 class Customer extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
+        'client_id', // ✅ NOVO: Multi-instância
         'visitor_id',
         'name',
         'phone',
@@ -53,6 +56,22 @@ class Customer extends Authenticatable
         'total_debts' => 'decimal:2',
         'custom_delivery_fee' => 'decimal:2',
     ];
+
+    /**
+     * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new ClientScope());
+    }
+
+    /**
+     * ✅ NOVO: Relacionamento com cliente (multi-instância)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
 
     /**
      * Relacionamento com endereços
@@ -124,6 +143,15 @@ class Customer extends Authenticatable
     public function referredBy(): HasMany
     {
         return $this->hasMany(Referral::class, 'referred_id');
+    }
+
+    /**
+     * Relacionamento muitos-para-muitos com tags
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(CustomerTag::class, 'customer_tag_pivot', 'customer_id', 'tag_id')
+            ->withTimestamps();
     }
 
     /**

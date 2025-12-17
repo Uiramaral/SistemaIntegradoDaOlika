@@ -12,6 +12,16 @@
         </div>
     </div>
 
+    @if(!empty($missingTable) && $missingTable)
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+            <div class="font-semibold mb-1">Conexão instável / desconectada</div>
+            <p class="text-sm">
+                Não foi possível listar mensagens falhadas porque a tabela de logs ainda não existe nesta instância.
+                Refaça o login do seu número de WhatsApp clicando em <strong>Conectar</strong> na aba WhatsApp.
+            </p>
+        </div>
+    @endif
+
     @if($failedMessages->count() > 0)
         <div class="rounded-lg border bg-card">
             <div class="p-6">

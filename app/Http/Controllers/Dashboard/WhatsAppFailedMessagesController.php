@@ -7,11 +7,19 @@ use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class WhatsAppFailedMessagesController extends Controller
 {
     public function index()
     {
+        // Se a tabela não existir (instâncias antigas), não quebrar a página
+        if (!Schema::hasTable('whatsapp_failed_messages')) {
+            $failedMessages = collect(); // lista vazia
+            $missingTable = true;
+            return view('dashboard.whatsapp-failed-messages.index', compact('failedMessages', 'missingTable'));
+        }
+
         $failedMessages = DB::table('whatsapp_failed_messages')
             ->leftJoin('orders', 'whatsapp_failed_messages.order_id', '=', 'orders.id')
             ->leftJoin('customers', 'orders.customer_id', '=', 'customers.id')
@@ -25,7 +33,9 @@ class WhatsAppFailedMessagesController extends Controller
             ->orderBy('whatsapp_failed_messages.created_at', 'desc')
             ->paginate(20);
 
-        return view('dashboard.whatsapp-failed-messages.index', compact('failedMessages'));
+        $missingTable = false;
+
+        return view('dashboard.whatsapp-failed-messages.index', compact('failedMessages', 'missingTable'));
     }
 
     public function retry($id)

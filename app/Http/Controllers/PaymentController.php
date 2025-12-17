@@ -581,15 +581,31 @@ class PaymentController extends Controller
                         ]);
                     }
                 }
-            } catch (\Throwable $e) {
-                \Log::error('Falha ao registrar cashback', [
-                    'order_id' => $order->id,
-                    'err' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-            
-            // Baixar débitos relacionados ao pedido (fiado)
+                        } catch (\Throwable $e) {
+                            \Log::error('Falha ao registrar cashback', [
+                                'order_id' => $order->id,
+                                'err' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                        }
+                        
+                        // Solicitar impressão automática quando pagamento é confirmado via polling
+                        try {
+                            $order->refresh();
+                            if (empty($order->print_requested_at)) {
+                                $order->print_requested_at = now();
+                                $order->save();
+                                
+                                \Log::info('PaymentController (polling): Impressão automática solicitada para pedido pago', [
+                                    'order_id' => $order->id,
+                                    'order_number' => $order->order_number,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::warning('Falha ao solicitar impressão automática (polling)', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+                        }
+                        
+                        // Baixar débitos relacionados ao pedido (fiado)
             try {
                 $debts = \App\Models\CustomerDebt::where('order_id', $order->id)
                     ->where('type', 'debit')
@@ -628,6 +644,21 @@ class PaymentController extends Controller
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Falha ao atualizar estatísticas do cliente', ['order_id' => $order->id, 'err' => $e->getMessage()]);
+            }
+            
+            // Solicitar impressão automática quando pedido é pago
+            try {
+                if (empty($order->print_requested_at)) {
+                    $order->print_requested_at = now();
+                    $order->save();
+                    
+                    \Log::info('PaymentController: Impressão automática solicitada para pedido pago', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Falha ao solicitar impressão automática', ['order_id' => $order->id, 'err' => $e->getMessage()]);
             }
         }
 

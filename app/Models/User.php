@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -21,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'client_id', // ✅ NOVO: Multi-instância
     ];
 
     /**
@@ -42,4 +44,21 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * ✅ NOVO: Relacionamento com cliente
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Verifica se o usuário é master (gestor geral da plataforma)
+     * Master = usuário sem client_id (não vinculado a nenhum cliente lojista)
+     */
+    public function isMaster(): bool
+    {
+        return $this->client_id === null;
+    }
 }

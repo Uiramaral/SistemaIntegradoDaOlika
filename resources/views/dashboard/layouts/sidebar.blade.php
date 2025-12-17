@@ -67,6 +67,12 @@
             Relatórios
         </a>
         
+        <a href="{{ route('dashboard.plans.index') }}" 
+           class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->routeIs('dashboard.plans.*') ? 'bg-orange-50 text-orange-600' : '' }}">
+            <i class="fas fa-layer-group mr-3"></i>
+            Módulos/Planos
+        </a>
+        
         <a href="{{ route('dashboard.settings') }}" 
            class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->routeIs('dashboard.settings') ? 'bg-orange-50 text-orange-600' : '' }}">
             <i class="fas fa-cog mr-3"></i>
@@ -84,6 +90,16 @@
             <i class="fas fa-route mr-3"></i>
             Entrega: Taxas por Distância
         </a>
+        
+        @if(auth()->check() && auth()->user()->isMaster())
+            <div class="border-t my-2"></div>
+            
+            <a href="{{ route('dashboard.saas-clients.index') }}" 
+               class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition {{ request()->routeIs('dashboard.saas-clients.*') ? 'bg-blue-50 text-blue-600' : '' }}">
+                <i class="fas fa-store mr-3"></i>
+                Clientes SaaS
+            </a>
+        @endif
     </nav>
     
     <!-- Logout -->

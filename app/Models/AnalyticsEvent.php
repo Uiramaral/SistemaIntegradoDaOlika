@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AnalyticsEvent extends Model
 {
+    use BelongsToClient;
+
     protected $fillable = [
+        'client_id',
         'event_type',
         'page_path',
         'session_id',

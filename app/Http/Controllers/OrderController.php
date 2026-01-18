@@ -777,6 +777,7 @@ class OrderController extends Controller
             ]);
             
             $order = Order::create([
+                'client_id' => currentClientId() ?? 1, // Multi-tenant: salvar o client_id
                 'customer_id' => $customer->id,
                 'address_id' => $address->id,
                 'order_number' => $orderNumber,

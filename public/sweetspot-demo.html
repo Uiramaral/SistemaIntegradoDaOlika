@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SweetSpot Bakery Flow Demo</title>
+    <link rel="stylesheet" href="css/sweetspot-theme.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="sweetspot-theme">
+    <div class="sweetspot-pdv-container">
+        <!-- Header -->
+        <header class="sweetspot-pdv-header">
+            <div class="sweetspot-header-content">
+                <div class="sweetspot-brand">
+                    <div class="sweetspot-logo">BK</div>
+                    <h1 class="sweetspot-brand-text">SweetSpot Bakery</h1>
+                </div>
+                <div class="sweetspot-user-info">
+                    <span>Bem-vindo, João Silva</span>
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="sweetspot-pdv-main">
+            <!-- Products Panel -->
+            <div class="sweetspot-products-panel">
+                <!-- Search and Filters -->
+                <div class="sweetspot-search-container">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input
+                            type="text"
+                            class="sweetspot-search-input pl-10"
+                            placeholder="Buscar produtos..."
+                            value="Bolo"
+                        >
+                    </div>
+                    
+                    <div class="sweetspot-categories">
+                        <button type="button" class="sweetspot-category-btn" data-category="all">
+                            Todos
+                        </button>
+                        <button type="button" class="sweetspot-category-btn active" data-category="bolos">
+                            Bolos
+                        </button>
+                        <button type="button" class="sweetspot-category-btn" data-category="paes">
+                            Pães
+                        </button>
+                        <button type="button" class="sweetspot-category-btn" data-category="doces">
+                            Doces
+                        </button>
+                        <button type="button" class="sweetspot-category-btn" data-category="salgados">
+                            Salgados
+                        </button>
+                        <button type="button" class="sweetspot-category-btn" data-category="bebidas">
+                            Bebidas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="sweetspot-products-grid">
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="cake" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Bolo de Chocolate</div>
+                        <div class="sweetspot-product-category">Bolos</div>
+                        <div class="sweetspot-product-price">R$ 45,00</div>
+                    </div>
+                    
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="cake" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Bolo de Morango</div>
+                        <div class="sweetspot-product-category">Bolos</div>
+                        <div class="sweetspot-product-price">R$ 50,00</div>
+                    </div>
+                    
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="bread" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Pão Francês</div>
+                        <div class="sweetspot-product-category">Pães</div>
+                        <div class="sweetspot-product-price">R$ 8,00</div>
+                    </div>
+                    
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="cookie" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Brigadeiro</div>
+                        <div class="sweetspot-product-category">Doces</div>
+                        <div class="sweetspot-product-price">R$ 3,00</div>
+                    </div>
+                    
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="croissant" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Croissant</div>
+                        <div class="sweetspot-product-category">Salgados</div>
+                        <div class="sweetspot-product-price">R$ 6,00</div>
+                    </div>
+                    
+                    <div class="sweetspot-product-card sweetspot-animated">
+                        <div class="sweetspot-product-image">
+                            <i data-lucide="coffee" class="w-6 h-6"></i>
+                        </div>
+                        <div class="sweetspot-product-name">Café Expresso</div>
+                        <div class="sweetspot-product-category">Bebidas</div>
+                        <div class="sweetspot-product-price">R$ 5,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Panel -->
+            <div class="sweetspot-cart-panel">
+                <div class="sweetspot-cart-header">
+                    <div class="sweetspot-cart-title">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        Pedido
+                        <span class="sweetspot-cart-badge" id="demo-badge">3</span>
+                    </div>
+                </div>
+                
+                <div class="sweetspot-cart-body">
+                    <!-- Customer Section -->
+                    <div class="sweetspot-customer-section">
+                        <div class="sweetspot-customer-search">
+                            <div class="relative flex-1">
+                                <i data-lucide="user" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                                <input 
+                                    type="text" 
+                                    class="sweetspot-customer-input pl-10"
+                                    placeholder="Buscar cliente..."
+                                    value=""
+                                >
+                            </div>
+                            <button type="button" class="sweetspot-new-customer-btn">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="sweetspot-selected-customer">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-semibold">Maria Silva</div>
+                                    <div class="text-xs text-gray-600">(11) 99999-9999</div>
+                                </div>
+                                <button type="button" class="text-gray-400 hover:text-red-500">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="sweetspot-order-items">
+                        <div class="sweetspot-cart-item">
+                            <div class="sweetspot-item-info">
+                                <div class="sweetspot-item-name">Bolo de Chocolate</div>
+                                <div class="sweetspot-item-price">R$ 45,00 un</div>
+                            </div>
+                            <div class="sweetspot-item-controls">
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span class="sweetspot-quantity-display">1</span>
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                            <div class="sweetspot-item-total">R$ 45,00</div>
+                            <div class="sweetspot-item-actions">
+                                <button class="sweetspot-remove-btn">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="sweetspot-cart-item">
+                            <div class="sweetspot-item-info">
+                                <div class="sweetspot-item-name">Pão Francês - 6 unidades</div>
+                                <div class="sweetspot-item-price">R$ 8,00 un</div>
+                            </div>
+                            <div class="sweetspot-item-controls">
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span class="sweetspot-quantity-display">2</span>
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                            <div class="sweetspot-item-total">R$ 16,00</div>
+                            <div class="sweetspot-item-actions">
+                                <button class="sweetspot-remove-btn">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="sweetspot-cart-item">
+                            <div class="sweetspot-item-info">
+                                <div class="sweetspot-item-name">Café Expresso</div>
+                                <div class="sweetspot-item-price">R$ 5,00 un</div>
+                            </div>
+                            <div class="sweetspot-item-controls">
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span class="sweetspot-quantity-display">1</span>
+                                <button class="sweetspot-quantity-btn">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                            <div class="sweetspot-item-total">R$ 5,00</div>
+                            <div class="sweetspot-item-actions">
+                                <button class="sweetspot-remove-btn">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Section -->
+                    <div class="sweetspot-delivery-section">
+                        <div class="sweetspot-delivery-toggle">
+                            <button type="button" class="sweetspot-delivery-btn">
+                                Retirada
+                            </button>
+                            <button type="button" class="sweetspot-delivery-btn active">
+                                Entrega
+                            </button>
+                        </div>
+                        
+                        <div class="sweetspot-delivery-address">
+                            <input type="text" class="sweetspot-address-input" placeholder="CEP" value="12345-678">
+                            <input type="text" class="w-20 sweetspot-address-input" placeholder="Nº" value="123">
+                            <button type="button" class="sweetspot-calc-btn">
+                                Calc
+                            </button>
+                        </div>
+                        
+                        <div class="sweetspot-fee-display">
+                            <span class="sweetspot-fee-label">Taxa de entrega:</span>
+                            <span class="sweetspot-fee-value">R$ 8,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Coupon Section -->
+                    <div class="sweetspot-coupon-section">
+                        <div class="sweetspot-coupon-input">
+                            <input type="text" class="sweetspot-coupon-field" placeholder="Cupom de desconto" value="DESC10">
+                            <button type="button" class="sweetspot-apply-coupon-btn">
+                                Aplicar
+                            </button>
+                        </div>
+                        <div class="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                            Cupom DESC10 aplicado! Desconto de R$ 6,60
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="sweetspot-summary">
+                        <div class="sweetspot-summary-row">
+                            <span class="sweetspot-summary-label">Subtotal (4 itens)</span>
+                            <span class="sweetspot-summary-value">R$ 74,00</span>
+                        </div>
+                        <div class="sweetspot-summary-row">
+                            <span class="sweetspot-summary-label">Entrega</span>
+                            <span class="sweetspot-summary-value">R$ 8,00</span>
+                        </div>
+                        <div class="sweetspot-summary-row text-green-600">
+                            <span class="sweetspot-summary-label">Desconto</span>
+                            <span class="sweetspot-summary-value">- R$ 6,60</span>
+                        </div>
+                        <div class="sweetspot-total-row">
+                            <span class="sweetspot-total-label">Total</span>
+                            <span class="sweetspot-total-value">R$ 75,40</span>
+                        </div>
+                        
+                        <button type="button" class="sweetspot-finalize-btn">
+                            Finalizar Pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Add interactivity to demo
+        document.addEventListener('DOMContentLoaded', function() {
+            // Product card interactions
+            document.querySelectorAll('.sweetspot-product-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                });
+            });
+            
+            // Quantity buttons
+            document.querySelectorAll('.sweetspot-quantity-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const display = this.parentElement.querySelector('.sweetspot-quantity-display');
+                    let value = parseInt(display.textContent);
+                    if (this.querySelector('[data-lucide="plus"]')) {
+                        value++;
+                    } else {
+                        value = Math.max(1, value - 1);
+                    }
+                    display.textContent = value;
+                });
+            });
+            
+            // Remove buttons
+            document.querySelectorAll('.sweetspot-remove-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const item = this.closest('.sweetspot-cart-item');
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        item.remove();
+                        updateDemoBadge();
+                    }, 300);
+                });
+            });
+            
+            // Category filtering
+            document.querySelectorAll('.sweetspot-category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.sweetspot-category-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
+        });
+        
+        function updateDemoBadge() {
+            const items = document.querySelectorAll('.sweetspot-cart-item').length;
+            const badge = document.getElementById('demo-badge');
+            if (badge) {
+                badge.textContent = items;
+                badge.classList.toggle('hidden', items === 0);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Editar Produto - OLIKA Dashboard')
+@section('title', 'Editar Produto - OLIKA Painel')
 
 @section('content')
 <div class="space-y-6 animate-in fade-in duration-500">

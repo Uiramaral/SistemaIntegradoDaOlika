@@ -11,8 +11,14 @@ const {
 } = require("@whiskeysockets/baileys");
 const P = require("pino");
 const { Boom } = require("@hapi/boom");
+const NodeCache = require("node-cache");
 
 const SESSION_PATH = "./auth_info_baileys/5571987019420";
+
+// ✅ NOVO: Cache para controlar a janela de 10 minutos por cliente
+// stdTTL: 600 segundos (10 minutos).
+// checkperiod: 60 (verifica expiração a cada minuto)
+const notificationCache = new NodeCache({ stdTTL: 600, checkperiod: 60 });
 
 let globalSock = null;
 
@@ -189,4 +195,5 @@ module.exports = {
   sendMessage,
   isConnected,
   getSocket,
+  startSock,
 };

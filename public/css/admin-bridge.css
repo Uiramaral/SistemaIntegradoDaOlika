@@ -15,6 +15,11 @@
     cursor: pointer;
 }
 
+.btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
 .btn {
     background-color: hsl(var(--card));
     color: hsl(var(--foreground));
@@ -104,14 +109,39 @@ body {
     color: hsl(var(--foreground));
 }
 
+.badge-sm {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+.badge-default {
+    background-color: hsla(var(--muted-foreground), 0.14);
+    color: hsl(var(--foreground));
+}
+
 .badge-success {
     background-color: hsla(var(--success), 0.15);
     color: hsl(var(--success));
+    border: 1px solid hsla(var(--success), 0.3);
 }
 
-.badge-danger {
+.badge-danger,
+.badge-destructive {
     background-color: hsla(var(--destructive), 0.18);
     color: hsl(var(--destructive));
+    border: 1px solid hsla(var(--destructive), 0.3);
+}
+
+.badge-primary {
+    background-color: hsla(var(--primary), 0.15);
+    color: hsl(var(--primary));
+    border: 1px solid hsla(var(--primary), 0.3);
+}
+
+.badge-accent {
+    background-color: hsla(var(--accent), 0.15);
+    color: hsl(var(--accent));
+    border: 1px solid hsla(var(--accent), 0.3);
 }
 
 .table-compact {
@@ -176,22 +206,24 @@ form textarea:focus {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 1.5rem 1rem;
+    padding: 1rem 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
     overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
     .dashboard-wrapper {
         padding: 2rem 1.5rem;
+        gap: 1.5rem;
     }
 }
 
 @media (min-width: 1024px) {
     .dashboard-wrapper {
         padding: 2.5rem 2rem;
+        gap: 1.5rem;
     }
 }
 
@@ -465,6 +497,33 @@ form label {
         overflow-x: hidden;
     }
     
+    /* Header actions - ensure proper stacking */
+    header .flex.items-center.gap-3 {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    header .flex.items-center.gap-3 > div {
+        width: 100%;
+    }
+    
+    /* Page actions wrapper */
+    .flex.flex-col.sm\:flex-row {
+        width: 100%;
+    }
+    
+    /* Stat cards - ensure no overflow */
+    .grid.gap-4.sm\:grid-cols-2.lg\:grid-cols-4 {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .grid.gap-4.sm\:grid-cols-2.lg\:grid-cols-4 > div,
+    .grid.gap-4.sm\:grid-cols-2.lg\:grid-cols-4 > a {
+        min-width: 0;
+        max-width: 100%;
+    }
+    
     /* Header adjustments */
     header .flex {
         flex-wrap: wrap;
@@ -529,23 +588,18 @@ form label {
     }
     
     .p-6 {
-        padding: 1rem;
+        padding: 0.75rem;
     }
     
     .px-6 {
-        padding-left: 1rem;
-        padding-right: 1rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
     
     /* Title smaller on mobile */
     .text-3xl {
         font-size: 1.5rem;
         line-height: 2rem;
-    }
-    
-    /* Stat cards grid */
-    .grid.gap-4.sm\:grid-cols-2 {
-        grid-template-columns: 1fr;
     }
     
     /* Better touch targets */
@@ -561,6 +615,13 @@ form label {
     /* User info in header */
     header .hidden.flex-col.items-end {
         display: none !important;
+    }
+    
+    /* Truncate long text in cards */
+    .truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 

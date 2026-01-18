@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DeliveryDistancePricing extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToClient;
 
     protected $table = 'delivery_distance_pricing';
 
     protected $fillable = [
+        'client_id',
         'min_km',
         'max_km',
         'fee',

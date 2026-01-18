@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'OLIKA Dashboard - Sistema de Gestão de Restaurante')</title>
-    <meta name="description" content="Dashboard completo para gestão de restaurante com pedidos, produtos e relatórios em tempo real">
+    <title>@yield('title', 'OLIKA Painel - Sistema de Gestão de Restaurante')</title>
+    <meta name="description" content="Painel completo para gestão de restaurante com pedidos, produtos e relatórios em tempo real">
     <meta name="author" content="OLIKA">
-    <meta property="og:title" content="OLIKA Dashboard">
+    <meta property="og:title" content="OLIKA Painel">
     <meta property="og:description" content="Sistema de gestão de restaurante">
     <meta property="og:type" content="website">
     <link rel="preconnect" href="https://fonts.googleapis.com">

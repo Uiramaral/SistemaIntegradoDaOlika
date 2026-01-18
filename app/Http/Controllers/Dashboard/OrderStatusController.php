@@ -14,6 +14,8 @@ class OrderStatusController extends Controller
      */
     public function index()
     {
+        $clientId = currentClientId();
+        
         $statuses = DB::table('order_statuses')
             ->leftJoin('whatsapp_templates', 'order_statuses.whatsapp_template_id', '=', 'whatsapp_templates.id')
             ->select(
@@ -21,10 +23,18 @@ class OrderStatusController extends Controller
                 'whatsapp_templates.slug as template_slug',
                 'whatsapp_templates.content as template_content'
             )
+            ->where(function($query) use ($clientId) {
+                $query->where('order_statuses.client_id', $clientId)
+                      ->orWhereNull('order_statuses.client_id');
+            })
             ->orderBy('order_statuses.created_at')
             ->get();
 
         $templates = DB::table('whatsapp_templates')
+            ->where(function($query) use ($clientId) {
+                $query->where('client_id', $clientId)
+                      ->orWhereNull('client_id');
+            })
             ->orderBy('slug')
             ->get();
 
@@ -73,6 +83,8 @@ class OrderStatusController extends Controller
             'active' => 'nullable|boolean',
         ]);
 
+        $clientId = currentClientId();
+        
         $data = [
             'slug' => $validated['slug'],
             'content' => $validated['content'],
@@ -84,14 +96,19 @@ class OrderStatusController extends Controller
             // Atualizar
             DB::table('whatsapp_templates')
                 ->where('id', $validated['id'])
+                ->where(function($query) use ($clientId) {
+                    $query->where('client_id', $clientId)
+                          ->orWhereNull('client_id');
+                })
                 ->update($data);
         } else {
             // Criar novo
+            $data['client_id'] = $clientId;
             $data['created_at'] = now();
             DB::table('whatsapp_templates')->insert($data);
         }
 
-        return redirect()->route('dashboard.status-templates.index')
+        return redirect()->back()
             ->with('success', 'Template salvo com sucesso!');
     }
 
@@ -100,19 +117,31 @@ class OrderStatusController extends Controller
      */
     public function deleteTemplate($id)
     {
+        $clientId = currentClientId();
+        
         // Verificar se está sendo usado por algum status
         $inUse = DB::table('order_statuses')
             ->where('whatsapp_template_id', $id)
+            ->where(function($query) use ($clientId) {
+                $query->where('client_id', $clientId)
+                      ->orWhereNull('client_id');
+            })
             ->exists();
 
         if ($inUse) {
-            return redirect()->route('dashboard.status-templates.index')
+            return redirect()->back()
                 ->with('error', 'Este template está sendo usado por um ou mais status. Remova a associação antes de excluir.');
         }
 
-        DB::table('whatsapp_templates')->where('id', $id)->delete();
+        DB::table('whatsapp_templates')
+            ->where('id', $id)
+            ->where(function($query) use ($clientId) {
+                $query->where('client_id', $clientId)
+                      ->orWhereNull('client_id');
+            })
+            ->delete();
 
-        return redirect()->route('dashboard.status-templates.index')
+        return redirect()->back()
             ->with('success', 'Template excluído com sucesso!');
     }
 
@@ -121,7 +150,15 @@ class OrderStatusController extends Controller
      */
     public function getTemplate($id)
     {
-        $template = DB::table('whatsapp_templates')->where('id', $id)->first();
+        $clientId = currentClientId();
+        
+        $template = DB::table('whatsapp_templates')
+            ->where('id', $id)
+            ->where(function($query) use ($clientId) {
+                $query->where('client_id', $clientId)
+                      ->orWhereNull('client_id');
+            })
+            ->first();
         
         if (!$template) {
             return response()->json(['error' => 'Template não encontrado'], 404);

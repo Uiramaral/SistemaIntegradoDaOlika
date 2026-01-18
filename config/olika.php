@@ -10,6 +10,28 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Multi-Tenant (SaaS) Configuration
+    |--------------------------------------------------------------------------
+    */
+    
+    // ID do cliente padrão (usado quando não há subdomínio identificado)
+    // Em produção com multi-tenant ativo, deixar null para forçar identificação
+    'default_client_id' => env('OLIKA_DEFAULT_CLIENT_ID', 1),
+    
+    // Domínios base do sistema (sem subdomínio)
+    'base_domains' => [
+        'menuonline.com.br',
+        'olika.com.br',
+    ],
+    
+    // Subdomínios reservados que não são clientes
+    'reserved_subdomains' => [
+        'www', 'api', 'admin', 'app', 'dashboard', 'panel', 'painel',
+        'staging', 'dev', 'test', 'mail', 'ftp', 'cdn',
+    ],
+
     'business' => [
         'name' => env('OLIKA_BUSINESS_NAME', 'Olika'),
         'description' => env('OLIKA_BUSINESS_DESCRIPTION', 'Pães artesanais feitos com amor'),

@@ -113,6 +113,57 @@ class WhatsAppService
         ]);
     }
 
+    /** Envia mensagem com botões interativos (Evolution API) */
+    public function sendButtons(string $phone, string $title, string $description, array $buttons, ?string $footer = null)
+    {
+        if (!$this->enabled) { return false; }
+        $number = preg_replace('/\D/','',$phone);
+        
+        // Formatar botões para Evolution API
+        // Cada botão: ['type' => 'reply', 'displayText' => 'Texto', 'id' => 'id_unico']
+        $formattedButtons = array_map(function($btn, $idx) {
+            return [
+                'type' => 'reply',
+                'displayText' => $btn['text'] ?? $btn['displayText'] ?? "Opção " . ($idx + 1),
+                'id' => $btn['id'] ?? 'btn_' . ($idx + 1)
+            ];
+        }, $buttons, array_keys($buttons));
+        
+        $payload = [
+            "number" => $number,
+            "options" => [ "delay" => 0, "presence" => "composing" ],
+            "buttonMessage" => [
+                "title" => $title,
+                "description" => $description,
+                "buttons" => $formattedButtons
+            ]
+        ];
+        
+        if ($footer) {
+            $payload['buttonMessage']['footerText'] = $footer;
+        }
+        
+        return $this->post('/message/sendButtons', $payload);
+    }
+
+    /** Envia mensagem com lista interativa (Evolution API) */
+    public function sendList(string $phone, string $title, string $description, string $buttonText, array $sections)
+    {
+        if (!$this->enabled) { return false; }
+        $number = preg_replace('/\D/','',$phone);
+        
+        return $this->post('/message/sendList', [
+            "number" => $number,
+            "options" => [ "delay" => 0, "presence" => "composing" ],
+            "listMessage" => [
+                "title" => $title,
+                "description" => $description,
+                "buttonText" => $buttonText,
+                "sections" => $sections
+            ]
+        ]);
+    }
+
     /** Template com placeholders {chave} */
     public function sendTemplate(string $phone, string $template, array $vars = [])
     {

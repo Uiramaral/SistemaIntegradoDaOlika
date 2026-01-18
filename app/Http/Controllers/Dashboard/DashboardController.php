@@ -35,11 +35,12 @@ class DashboardController extends Controller
                 // Dados de HOJE - unificar em 1 query
                 $todayStats = DB::table('orders')
                     ->whereDate('created_at', $today)
+                    ->where('status', '!=', 'cancelled') // Excluir cancelados das estatísticas
                     ->selectRaw('
                         COUNT(*) as pedidos_hoje,
                         COALESCE(SUM(CASE WHEN payment_status IN ("approved", "paid") THEN final_amount ELSE 0 END), 0) as receita_hoje,
                         COUNT(CASE WHEN payment_status IN ("approved", "paid") THEN 1 END) as pagos_hoje,
-                        COUNT(CASE WHEN payment_status NOT IN ("approved", "paid") AND payment_status IS NOT NULL THEN 1 END) as pendentes_pagamento
+                        COUNT(CASE WHEN payment_status NOT IN ("approved", "paid", "cancelled") AND payment_status IS NOT NULL THEN 1 END) as pendentes_pagamento
                     ')
                     ->first();
                 
@@ -77,15 +78,17 @@ class DashboardController extends Controller
             
             // Dados que precisam ser sempre atualizados (sem cache)
             // Pedidos agendados próximos
-            $nextScheduled = Order::whereNotNull('scheduled_delivery_at')
+            $nextScheduled = Order::with(['customer:id,name'])
+                ->whereNotNull('scheduled_delivery_at')
                 ->where('scheduled_delivery_at', '>=', now())
                 ->orderBy('scheduled_delivery_at')
                 ->limit(8)
-                ->get(['id', 'order_number', 'scheduled_delivery_at', 'status', 'customer_id']);
+                ->get();
             
-            // Pedidos recentes (últimos 10) - com eager loading otimizado
+            // Pedidos recentes (últimos 10) - excluir cancelados
             $recentOrders = Order::with(['customer:id,name,phone'])
-                ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'created_at', 'customer_id')
+                ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'created_at', 'customer_id', 'delivery_type')
+                ->where('status', '!=', 'cancelled') // Excluir pedidos cancelados
                 ->latest()
                 ->limit(10)
                 ->get();
@@ -99,11 +102,11 @@ class DashboardController extends Controller
                 ->select(
                     'products.id',
                     'products.name',
-                    'products.image',
+                    'products.cover_image',
                     DB::raw('SUM(order_items.quantity) as total_quantity'),
                     DB::raw('SUM(order_items.total_price) as total_revenue')
                 )
-                ->groupBy('products.id', 'products.name', 'products.image')
+                ->groupBy('products.id', 'products.name', 'products.cover_image')
                 ->orderByDesc('total_quantity')
                 ->limit(5)
                 ->get()
@@ -112,7 +115,7 @@ class DashboardController extends Controller
                         'product' => (object)[
                             'id' => $item->id,
                             'name' => $item->name,
-                            'image' => $item->image,
+                            'cover_image' => $item->cover_image,
                         ],
                         'quantity' => $item->total_quantity,
                         'revenue' => $item->total_revenue,

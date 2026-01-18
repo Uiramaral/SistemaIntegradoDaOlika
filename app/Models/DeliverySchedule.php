@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DeliverySchedule extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToClient;
 
     protected $fillable = [
+        'client_id',
         'name',
         'day_of_week',
         'start_time',

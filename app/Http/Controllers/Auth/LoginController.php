@@ -49,6 +49,15 @@ class LoginController extends Controller
             // Regenerar session ID por segurança
             $request->session()->regenerate();
             
+            // IMPORTANTE: Setar o client_id na sessão para multi-tenant
+            // Isso garante que o usuário veja apenas dados do seu estabelecimento
+            if ($user->client_id) {
+                session(['client_id' => $user->client_id]);
+                
+                // Também setar no request para middlewares subsequentes
+                $request->attributes->set('client_id', $user->client_id);
+            }
+            
             // Redirecionar para a URL intencionada ou dashboard
             return redirect()->intended('/')->with('success', 'Login realizado com sucesso!');
         }
@@ -63,6 +72,9 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        // Limpar client_id da sessão antes de invalidar
+        session()->forget('client_id');
+        
         Auth::logout();
         
         // Invalidar a sessão

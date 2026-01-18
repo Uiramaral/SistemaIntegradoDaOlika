@@ -1,6 +1,6 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Editar Cupom - OLIKA Dashboard')
+@section('title', 'Editar Cupom - OLIKA Painel')
 
 @section('content')
 <div class="space-y-6">

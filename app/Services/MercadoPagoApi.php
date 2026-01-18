@@ -399,14 +399,31 @@ class MercadoPagoApi
         $res = Http::withHeaders($this->headers())
             ->post("{$this->base}/v1/payments", $body);
 
-        if (!$res->ok()) {
+        $j = $res->json();
+        
+        // Verificar se a resposta é válida - o MP pode retornar 200 ou 201
+        // Além disso, verificar se temos os dados do PIX mesmo com status diferente
+        $hasPixData = isset($j['point_of_interaction']['transaction_data']['qr_code']);
+        
+        if (!$res->successful() && !$hasPixData) {
+            \Log::error('MP PIX erro', [
+                'status' => $res->status(),
+                'body' => $res->body(),
+                'order_id' => $order->id ?? null,
+            ]);
             throw new \RuntimeException('MP PIX erro: '.$res->body());
         }
-        $j = $res->json();
 
         $qr = $j['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null;
         $cc = $j['point_of_interaction']['transaction_data']['qr_code'] ?? null;
         $exp= $j['date_of_expiration'] ?? null;
+        
+        \Log::info('MP PIX criado com sucesso', [
+            'order_id' => $order->id ?? null,
+            'preference_id' => $j['id'] ?? null,
+            'has_qr_code' => !empty($cc),
+            'status' => $j['status'] ?? null,
+        ]);
 
         return [
             'preference_id' => (string)($j['id'] ?? ''),

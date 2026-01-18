@@ -95,6 +95,7 @@ class CustomersController extends Controller
         $debtHistory = \App\Models\CustomerDebt::with('order')
             ->where('customer_id', $id)
             ->where('status', '!=', 'open')
+            ->where('type', 'debit') // Mostrar apenas débitos originais, não os créditos de baixa
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();

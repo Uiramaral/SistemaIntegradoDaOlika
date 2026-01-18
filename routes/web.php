@@ -72,6 +72,32 @@ Route::get('/api/botconversa', [BotConversaController::class, 'test'])->name('ap
 Route::post('/api/botconversa/sync-customer', [BotConversaController::class, 'syncCustomer'])->name('api.botconversa.sync-customer.main');
 Route::post('/api/botconversa/sync-customers', [BotConversaController::class, 'syncCustomersBatch'])->name('api.botconversa.sync-customers.main');
 
+// API para Node.js WhatsApp Gateway buscar dados do cliente
+Route::get('/api/client/{id}', [\App\Http\Controllers\Dashboard\SettingsController::class, 'getClientData'])->name('api.client.get');
+
+// ============================================
+// ROTA PARA LIMPAR CACHE (uso temporário)
+// Acesse: /clear-cache?key=olika2024
+// ============================================
+Route::get('/clear-cache', function() {
+    $key = request()->get('key');
+    if ($key !== 'olika2024') {
+        return response()->json(['error' => 'Chave inválida'], 403);
+    }
+    
+    Artisan::call('config:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Cache limpo com sucesso!',
+        'cleared' => ['config', 'cache', 'route', 'view'],
+        'timestamp' => now()->toDateTimeString(),
+    ]);
+})->name('clear-cache');
+
 // Também manter o grupo para consistência (mas as rotas específicas acima têm prioridade)
 Route::prefix('api/botconversa')->name('api.botconversa.')->group(function () {
     Route::get('/ping', function() {
@@ -325,7 +351,19 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     // Configurações
     Route::get('/settings/whatsapp',      [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsapp'])->name('dashboard.settings.whatsapp');
     Route::post('/settings/whatsapp',     [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSave'])->name('dashboard.settings.whatsapp.save');
+    Route::get('/settings/whatsapp/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappStatus'])->name('dashboard.settings.whatsapp.status');
+    Route::post('/settings/whatsapp/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappDisconnect'])->name('dashboard.settings.whatsapp.disconnect');
+    Route::post('/settings/whatsapp/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappConnect'])->name('dashboard.settings.whatsapp.connect');
     Route::post('/settings/whatsapp/notifications', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappNotificationsSave'])->name('dashboard.settings.whatsapp.notifications.save');
+    Route::post('/settings/whatsapp/admin-notification', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappAdminNotificationSave'])->name('dashboard.settings.whatsapp.admin-notification.save');
+    
+    // Gestão de instâncias WhatsApp (múltiplas instâncias)
+    Route::post('/settings/whatsapp/instances', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceStore'])->name('dashboard.settings.whatsapp.instances.store');
+    Route::delete('/settings/whatsapp/instances/{instance}', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceDestroy'])->name('dashboard.settings.whatsapp.instances.destroy');
+    Route::get('/settings/whatsapp/instances/{instance}/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceStatus'])->name('dashboard.settings.whatsapp.instances.status');
+    Route::post('/settings/whatsapp/instances/{instance}/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceConnect'])->name('dashboard.settings.whatsapp.instances.connect');
+    Route::post('/settings/whatsapp/instances/{instance}/disconnect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceDisconnect'])->name('dashboard.settings.whatsapp.instances.disconnect');
+    
     Route::get('/settings/mercadopago',   [\App\Http\Controllers\Dashboard\SettingsController::class, 'mp'])->name('dashboard.settings.mp');
     Route::post('/settings/mercadopago',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpSave'])->name('dashboard.settings.mp.save');
     Route::post('/settings/mercadopago/methods',  [\App\Http\Controllers\Dashboard\SettingsController::class, 'mpMethodsSave'])->name('dashboard.settings.mp.methods.save');
@@ -347,11 +385,51 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     // PDV
     Route::prefix('pdv')->name('dashboard.pdv.')->group(function () {
         Route::get('/',          [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('index');
+        Route::get('/sweetspot', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('sweetspot');
         Route::post('/calc',     [\App\Http\Controllers\Dashboard\PDVController::class, 'calculate'])->name('calculate');
         Route::post('/order',    [\App\Http\Controllers\Dashboard\PDVController::class, 'store'])->name('store');
         Route::post('/send',     [\App\Http\Controllers\Dashboard\PDVController::class, 'send'])->name('send');
         Route::post('/search-order', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchOrder'])->name('searchOrder');
         Route::post('/orders/{order}/confirm-payment-silent', [\App\Http\Controllers\Dashboard\PDVController::class, 'confirmPaymentSilent'])->name('confirmPaymentSilent');
+        
+        // API routes for PDV search (session-based auth)
+        Route::get('/customers/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchCustomers'])->name('customers.search');
+        Route::post('/customers', [\App\Http\Controllers\Dashboard\PDVController::class, 'storeCustomer'])->name('customers.store');
+        Route::get('/products/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('products.search');
+        Route::post('/coupons/validate', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('coupons.validate');
+        Route::post('/calculate-delivery-fee', [\App\Http\Controllers\Dashboard\PDVController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+    });
+
+    // Gerenciamento de Temas
+    Route::prefix('themes')->name('dashboard.themes.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\ThemeController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Dashboard\ThemeController::class, 'update'])->name('update');
+        Route::post('/reset', [\App\Http\Controllers\Dashboard\ThemeController::class, 'reset'])->name('reset');
+        Route::get('/custom-css', [\App\Http\Controllers\Dashboard\ThemeController::class, 'customCss'])->name('custom-css');
+        Route::post('/preview', [\App\Http\Controllers\Dashboard\ThemeController::class, 'preview'])->name('preview');
+    });
+
+    // Campanhas de Marketing (WhatsApp)
+    Route::prefix('marketing')->name('dashboard.marketing.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\MarketingController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Dashboard\MarketingController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Dashboard\MarketingController::class, 'store'])->name('store');
+        Route::get('/{campaign}', [\App\Http\Controllers\Dashboard\MarketingController::class, 'show'])->name('show');
+        Route::get('/{campaign}/edit', [\App\Http\Controllers\Dashboard\MarketingController::class, 'edit'])->name('edit');
+        Route::put('/{campaign}', [\App\Http\Controllers\Dashboard\MarketingController::class, 'update'])->name('update');
+        Route::delete('/{campaign}', [\App\Http\Controllers\Dashboard\MarketingController::class, 'destroy'])->name('destroy');
+        Route::post('/{campaign}/start', [\App\Http\Controllers\Dashboard\MarketingController::class, 'start'])->name('start');
+        Route::post('/{campaign}/pause', [\App\Http\Controllers\Dashboard\MarketingController::class, 'pause'])->name('pause');
+        Route::post('/{campaign}/cancel', [\App\Http\Controllers\Dashboard\MarketingController::class, 'cancel'])->name('cancel');
+        Route::post('/preview-audience', [\App\Http\Controllers\Dashboard\MarketingController::class, 'previewAudience'])->name('preview-audience');
+    });
+
+    // Integrações de APIs (Gemini, OpenAI, MercadoPago, etc)
+    Route::prefix('integrations')->name('dashboard.integrations.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'index'])->name('index');
+        Route::post('/{provider}', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'update'])->name('update');
+        Route::match(['get', 'post'], '/{provider}/test', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'test'])->name('test');
+        Route::post('/{provider}/toggle', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'toggle'])->name('toggle');
     });
 
     // Taxas de entrega por distância
@@ -366,6 +444,18 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::prefix('tools')->name('dashboard.tools.')->group(function(){
         Route::get('/import-ingredients', [\App\Http\Controllers\Dashboard\ToolsController::class, 'importIngredients'])->name('import-ingredients');
         Route::get('/flush', [\App\Http\Controllers\Dashboard\ToolsController::class, 'flushCaches'])->name('flush');
+    });
+
+    // ============================================
+    // PLANOS E ASSINATURAS (dashboard do cliente)
+    // ============================================
+    Route::prefix('subscription')->name('dashboard.subscription.')->group(function() {
+        Route::get('/', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'index'])->name('index');
+        Route::post('/upgrade', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'requestUpgrade'])->name('upgrade');
+        Route::post('/renew', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'renew'])->name('renew');
+        Route::get('/invoices', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'invoices'])->name('invoices');
+        Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'markNotificationRead'])->name('notifications.read');
+        Route::post('/notifications/read-all', [\App\Http\Controllers\Dashboard\SubscriptionController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
     });
 
 });
@@ -489,7 +579,8 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
 });
 
 // Fallback: Rotas do dashboard SEM subdomínio (útil quando DNS ainda não aponta)
-Route::prefix('dashboard')->middleware('auth')->group(function () {
+// NOTA: Usamos prefixo 'fb.' nos nomes para não conflitar com as rotas do subdomínio
+Route::prefix('dashboard')->middleware('auth')->name('fb.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/pdv', [\App\Http\Controllers\Dashboard\PDVController::class, 'index'])->name('dashboard.pdv.index');
     Route::get('/pedidos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders.index');
@@ -750,6 +841,60 @@ Route::get('/test-dashboard-route', function() use ($dashboardDomain, $pedidoDom
 
 Route::prefix('webhooks')->group(function () {
     Route::post('/mercadopago', [WebhookController::class, 'mercadoPago'])->name('webhooks.mercadopago');
+});
+
+// ============================================
+// DASHBOARD MASTER (apenas super admin - client_id = 1)
+// ============================================
+Route::prefix('master')->middleware(['auth', \App\Http\Middleware\EnsureSuperAdmin::class])->name('master.')->group(function () {
+    // Dashboard principal
+    Route::get('/', [\App\Http\Controllers\Master\MasterDashboardController::class, 'index'])->name('dashboard');
+    
+    // Gerenciamento de clientes/estabelecimentos
+    Route::prefix('clients')->name('clients.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Master\ClientsManagementController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Master\ClientsManagementController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Master\ClientsManagementController::class, 'store'])->name('store');
+        Route::get('/{client}', [\App\Http\Controllers\Master\ClientsManagementController::class, 'show'])->name('show');
+        Route::get('/{client}/edit', [\App\Http\Controllers\Master\ClientsManagementController::class, 'edit'])->name('edit');
+        Route::put('/{client}', [\App\Http\Controllers\Master\ClientsManagementController::class, 'update'])->name('update');
+        Route::post('/{client}/toggle-status', [\App\Http\Controllers\Master\ClientsManagementController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/{client}/change-plan', [\App\Http\Controllers\Master\ClientsManagementController::class, 'changePlan'])->name('change-plan');
+        Route::post('/{client}/renew', [\App\Http\Controllers\Master\ClientsManagementController::class, 'renewSubscription'])->name('renew');
+    });
+    
+    // Gerenciamento de planos
+    Route::prefix('plans')->name('plans.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Master\PlansController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Master\PlansController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Master\PlansController::class, 'store'])->name('store');
+        Route::get('/{plan}/edit', [\App\Http\Controllers\Master\PlansController::class, 'edit'])->name('edit');
+        Route::put('/{plan}', [\App\Http\Controllers\Master\PlansController::class, 'update'])->name('update');
+        Route::delete('/{plan}', [\App\Http\Controllers\Master\PlansController::class, 'destroy'])->name('destroy');
+        Route::post('/{plan}/toggle-status', [\App\Http\Controllers\Master\PlansController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/{plan}/toggle-featured', [\App\Http\Controllers\Master\PlansController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::post('/reorder', [\App\Http\Controllers\Master\PlansController::class, 'reorder'])->name('reorder');
+    });
+    
+    // Gerenciamento de URLs de instâncias WhatsApp
+    Route::prefix('whatsapp-urls')->name('whatsapp-urls.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'store'])->name('store');
+        Route::get('/{whatsappUrl}/edit', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'edit'])->name('edit');
+        Route::put('/{whatsappUrl}', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'update'])->name('update');
+        Route::delete('/{whatsappUrl}', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'destroy'])->name('destroy');
+        Route::post('/{whatsappUrl}/health-check', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'healthCheck'])->name('health-check');
+        Route::post('/health-check-all', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'healthCheckAll'])->name('health-check-all');
+        Route::post('/{whatsappUrl}/assign', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'assign'])->name('assign');
+        Route::post('/{whatsappUrl}/release', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'release'])->name('release');
+        Route::post('/{whatsappUrl}/maintenance', [\App\Http\Controllers\Master\WhatsappInstanceUrlsController::class, 'maintenance'])->name('maintenance');
+    });
+    
+    // Configurações do Master
+    Route::get('/settings', [\App\Http\Controllers\Master\MasterSettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [\App\Http\Controllers\Master\MasterSettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/single', [\App\Http\Controllers\Master\MasterSettingsController::class, 'updateSingle'])->name('settings.update-single');
 });
 
 // ============================================

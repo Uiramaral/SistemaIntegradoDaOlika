@@ -1,6 +1,6 @@
 @extends('dash.layouts.app')
 
-@section('title', 'WhatsApp - OLIKA Dashboard')
+@section('title', 'WhatsApp - OLIKA Painel')
 
 @section('content')
 <div class="space-y-6 animate-in fade-in duration-500">

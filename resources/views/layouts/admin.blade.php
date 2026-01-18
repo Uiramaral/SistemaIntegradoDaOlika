@@ -3,10 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Olika Admin')</title>
 
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    @php
+        // Carregar configurações de tema do estabelecimento (SaaS)
+        $clientSettings = \App\Models\Setting::getSettings();
+        $themeSettings = $clientSettings->getThemeSettings();
+        
+        // Helper para converter HEX para HSL
+        function hexToHsl($hex) {
+            $hex = str_replace('#', '', $hex);
+            if (strlen($hex) === 3) {
+                $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+            }
+            $r = hexdec(substr($hex, 0, 2)) / 255;
+            $g = hexdec(substr($hex, 2, 2)) / 255;
+            $b = hexdec(substr($hex, 4, 2)) / 255;
+            
+            $max = max($r, $g, $b);
+            $min = min($r, $g, $b);
+            $delta = $max - $min;
+            
+            $h = 0;
+            $s = 0;
+            $l = ($max + $min) / 2;
+            
+            if ($delta !== 0.0) {
+                $s = $l > 0.5 ? $delta / (2 - $max - $min) : $delta / ($max + $min);
+                
+                switch ($max) {
+                    case $r:
+                        $h = ($g - $b) / $delta + ($g < $b ? 6 : 0);
+                        break;
+                    case $g:
+                        $h = ($b - $r) / $delta + 2;
+                        break;
+                    case $b:
+                        $h = ($r - $g) / $delta + 4;
+                        break;
+                }
+                
+                $h /= 6;
+            }
+            
+            $h = round($h * 360);
+            $s = round($s * 100);
+            $l = round($l * 100);
+            
+            return "{$h} {$s}% {$l}%";
+        }
+        
+        $primaryHsl = hexToHsl($themeSettings['theme_primary_color']);
+        $secondaryHsl = hexToHsl($themeSettings['theme_secondary_color']);
+        $accentHsl = hexToHsl($themeSettings['theme_accent_color']);
+    @endphp
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(0 0% 89%)",
+                        input: "hsl(0 0% 89%)",
+                        ring: "hsl({{ $primaryHsl }})",
+                        background: "hsl(0 0% 99%)",
+                        foreground: "hsl(222 47% 11%)",
+                        primary: { 
+                            DEFAULT: "hsl({{ $primaryHsl }})",
+                            foreground: "hsl(0 0% 100%)",
+                            50: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 95%)",
+                            100: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 90%)",
+                            200: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 80%)",
+                            300: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 70%)",
+                            400: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 60%)",
+                            500: "hsl({{ $primaryHsl }})",
+                            600: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 45%)",
+                            700: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 40%)",
+                            800: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 35%)",
+                            900: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 30%)"
+                        },
+                        secondary: { 
+                            DEFAULT: "hsl({{ $secondaryHsl }})",
+                            foreground: "hsl(0 0% 100%)",
+                            50: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 95%)",
+                            100: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 90%)",
+                            200: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 80%)",
+                            300: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 70%)",
+                            400: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 65%)",
+                            500: "hsl({{ $secondaryHsl }})",
+                            600: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 55%)",
+                            700: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 50%)",
+                            800: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 45%)",
+                            900: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 40%)"
+                        },
+                        destructive: { DEFAULT: "hsl(0 84% 60%)", foreground: "hsl(0 0% 100%)" },
+                        muted: { DEFAULT: "hsl(0 0% 96%)", foreground: "hsl(215 16% 47%)" },
+                        accent: { 
+                            DEFAULT: "hsl({{ $accentHsl }})",
+                            foreground: "hsl(0 0% 100%)",
+                            50: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 95%)",
+                            100: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 90%)",
+                            200: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 80%)",
+                            300: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 70%)",
+                            400: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 60%)",
+                            500: "hsl({{ $accentHsl }})",
+                            600: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 47%)",
+                            700: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 42%)",
+                            800: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 37%)",
+                            900: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 32%)"
+                        },
+                        popover: { DEFAULT: "hsl(0 0% 100%)", foreground: "hsl(222 47% 11%)" },
+                        card: { DEFAULT: "hsl(0 0% 100%)", foreground: "hsl(222 47% 11%)" },
+                        success: { DEFAULT: "hsl(142 76% 36%)", foreground: "hsl(0 0% 100%)" },
+                        sidebar: {
+                            DEFAULT: "hsl(0 0% 100%)",
+                            foreground: "hsl(222 47% 11%)",
+                            primary: "hsl({{ $primaryHsl }})",
+                            "primary-foreground": "hsl(0 0% 100%)",
+                            accent: "hsl(0 0% 96%)",
+                            "accent-foreground": "hsl(222 47% 11%)",
+                            border: "hsl(0 0% 89%)",
+                            ring: "hsl({{ $primaryHsl }})"
+                        }
+                    },
+                    borderRadius: {
+                        lg: "0.75rem",
+                        md: "calc(0.75rem - 2px)",
+                        sm: "calc(0.75rem - 4px)"
+                    },
+                    boxShadow: {
+                        'sweetspot': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'sweetspot-md': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
+                        'sweetspot-lg': '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/sweetspot-theme.css') }}">
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
 
@@ -43,18 +180,48 @@
             [
                 'title' => 'Integrações',
                 'items' => [
-                    ['label' => 'WhatsApp', 'icon' => 'message-square', 'route' => 'dashboard.settings.whatsapp', 'routePattern' => 'dashboard.settings.whatsapp*'],
+                    ['label' => 'WhatsApp', 'icon' => 'message-square', 'route' => 'dashboard.settings.whatsapp', 'routePattern' => 'dashboard.settings.whatsapp*', 'feature' => 'whatsapp'],
                     ['label' => 'Mercado Pago', 'icon' => 'credit-card', 'route' => 'dashboard.settings.mp', 'routePattern' => 'dashboard.settings.mp*'],
                 ],
             ],
             [
                 'title' => 'Sistema',
                 'items' => [
+                    ['label' => 'Personalização', 'icon' => 'palette', 'route' => 'dashboard.themes.index', 'routePattern' => 'dashboard.themes.*'],
+                    ['label' => 'Campanhas', 'icon' => 'megaphone', 'route' => 'dashboard.marketing.index', 'routePattern' => 'dashboard.marketing.*'],
+                    ['label' => 'Integrações', 'icon' => 'plug', 'route' => 'dashboard.integrations.index', 'routePattern' => 'dashboard.integrations.*'],
+                    ['label' => 'Plano e Assinatura', 'icon' => 'crown', 'route' => 'dashboard.subscription.index', 'routePattern' => 'dashboard.subscription.*'],
                     ['label' => 'Relatórios', 'icon' => 'chart-column', 'route' => 'dashboard.reports', 'routePattern' => 'dashboard.reports*'],
                     ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings'],
                 ],
             ],
         ];
+        
+        // Add Master menu for super admins only
+        // Condições: role='super_admin' OU client_id=1 (Olika) OU client_id=NULL
+        $user = auth()->user();
+        $isSuperAdmin = false;
+        if (auth()->check() && $user) {
+            // Usar método do model se existir
+            if (method_exists($user, 'isSuperAdmin')) {
+                $isSuperAdmin = $user->isSuperAdmin();
+            } else {
+                // Fallback: client_id = 1 ou null
+                $isSuperAdmin = ($user->client_id === 1 || $user->client_id === null);
+            }
+        }
+        if ($isSuperAdmin) {
+            $navGroups[] = [
+                'title' => 'Master (Admin)',
+                'items' => [
+                    ['label' => 'Dashboard Master', 'icon' => 'shield', 'route' => 'master.dashboard', 'routePattern' => 'master.dashboard'],
+                    ['label' => 'Clientes/Estab.', 'icon' => 'building-2', 'route' => 'master.clients.index', 'routePattern' => 'master.clients.*'],
+                    ['label' => 'Planos', 'icon' => 'crown', 'route' => 'master.plans.index', 'routePattern' => 'master.plans.*'],
+                    ['label' => 'WhatsApp URLs', 'icon' => 'server', 'route' => 'master.whatsapp-urls.index', 'routePattern' => 'master.whatsapp-urls.*'],
+                    ['label' => 'Config. Master', 'icon' => 'sliders', 'route' => 'master.settings.index', 'routePattern' => 'master.settings.*'],
+                ],
+            ];
+        }
     @endphp
 
     <div class="min-h-screen w-full bg-background">
@@ -62,10 +229,17 @@
             <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/80 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
             <aside id="sidebar"
-                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] transition-transform duration-200 ease-in-out md:static md:translate-x-0">
-                <div class="flex items-center justify-between border-b border-sidebar-border px-6 py-4">
+                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sweetspot transition-transform duration-200 ease-in-out md:static md:translate-x-0">
+                <div class="flex items-center justify-between border-b border-sidebar-border px-6 py-5">
                     <div class="flex items-center gap-3">
-                        <span class="text-xl font-bold text-sidebar-primary tracking-tight">OLIKA</span>
+                        @if($themeSettings['theme_logo_url'] && $themeSettings['theme_logo_url'] !== '/images/logo-default.png')
+                            <img src="{{ $themeSettings['theme_logo_url'] }}" alt="Logo" class="h-10 w-10 object-contain rounded-full">
+                        @else
+                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white font-bold text-sm shadow-sweetspot">
+                                {{ strtoupper(substr($themeSettings['theme_brand_name'], 0, 2)) }}
+                            </div>
+                        @endif
+                        <span class="text-xl font-bold text-sidebar-primary tracking-tight">{{ $themeSettings['theme_brand_name'] }}</span>
                     </div>
                     <button id="sidebar-close"
                             class="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:hidden">
@@ -77,20 +251,24 @@
                 <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
                     @foreach ($navGroups as $group)
                         <div>
-                            <p class="flex h-8 items-center rounded-md px-2 text-xs font-medium uppercase tracking-widest text-sidebar-foreground/70">
+                            <p class="flex h-8 items-center rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {{ $group['title'] }}
                             </p>
                             <ul class="mt-2 space-y-1">
                                 @foreach ($group['items'] as $item)
                                     @php
-                                        $href = route($item['route']);
+                                        $isAvailable = !isset($item['feature']) || currentClientHasFeature($item['feature']);
+                                        $href = $isAvailable ? route($item['route']) : route('dashboard.subscription.index');
                                         $isActive = request()->routeIs($item['routePattern']);
                                     @endphp
                                     <li>
                                         <a href="{{ $href }}"
-                                           class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring {{ $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]' : 'text-sidebar-foreground' }}">
-                                            <i data-lucide="{{ $item['icon'] }}" class="h-5 w-5"></i>
+                                           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-sweetspot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring {{ $isActive ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-semibold shadow-sweetspot border-l-4 border-primary-500' : 'text-sidebar-foreground' }} {{ !$isAvailable ? 'opacity-50' : '' }}">
+                                            <i data-lucide="{{ $item['icon'] }}" class="h-5 w-5 {{ $isActive ? 'text-primary-600' : '' }}"></i>
                                             <span class="truncate">{{ $item['label'] }}</span>
+                                            @if(!$isAvailable)
+                                                <i data-lucide="lock" class="ml-auto h-4 w-4"></i>
+                                            @endif
                                         </a>
                                     </li>
                                 @endforeach
@@ -100,10 +278,14 @@
                 </nav>
 
                 <div class="border-t border-sidebar-border px-4 py-4">
+                    <div class="mb-3 px-3 py-2 rounded-lg bg-sidebar-accent/50">
+                        <p class="text-xs font-medium text-sidebar-foreground">{{ Auth::user()->name }}</p>
+                        <p class="text-[10px] text-muted-foreground truncate">{{ Auth::user()->email }}</p>
+                    </div>
                     <form method="POST" action="{{ route('auth.logout') }}">
                         @csrf
                         <button type="submit"
-                                class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/20 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                                class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive">
                             <i data-lucide="log-out" class="h-5 w-5"></i>
                             <span>Sair</span>
                         </button>
@@ -148,7 +330,7 @@
                 @endphp
 
                 <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-                    <div class="flex h-16 items-center justify-between px-4 md:px-6">
+                    <div class="flex flex-col sm:flex-row sm:h-16 sm:items-center sm:justify-between px-4 md:px-6 py-3 sm:py-0 gap-2 sm:gap-0">
                         <div class="flex items-center gap-3">
                             <button id="sidebar-open"
                                     class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
@@ -157,18 +339,18 @@
                             </button>
 
                             @if ($hasPageHeader)
-                                <div class="flex flex-col gap-1">
+                                <div class="flex flex-col gap-0.5">
                                     @yield('page_header')
                                 </div>
                             @else
-                                <div class="flex flex-col gap-1">
-                                    <h1 class="text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
+                                <div class="flex flex-col gap-0.5">
+                                    <h1 class="text-base sm:text-lg font-semibold tracking-tight text-foreground md:text-2xl">
                                         {{ $pageTitle ?? trim($__env->yieldContent('title', 'Dashboard')) }}
                                     </h1>
                                     @if ($pageSubtitle)
-                                        <p class="text-sm text-muted-foreground">{{ $pageSubtitle }}</p>
+                                        <p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">{{ $pageSubtitle }}</p>
                                     @elseif ($pageDescriptionSection)
-                                        <div class="text-sm text-muted-foreground">
+                                        <div class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                                             @yield($pageDescriptionSection)
                                         </div>
                                     @endif
@@ -176,9 +358,9 @@
                             @endif
                         </div>
 
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 sm:gap-3">
                             @if ($pageActionsSection)
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-1 sm:flex-none">
                                     @yield($pageActionsSection)
                                 </div>
                             @endif
@@ -187,7 +369,7 @@
                                 <span class="font-medium text-foreground">{{ Auth::user()->name ?? 'Admin' }}</span>
                                 <span class="text-xs text-muted-foreground">{{ Auth::user()->email ?? 'admin@olika.com' }}</span>
                             </div>
-                            <button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <button class="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                 <i data-lucide="bell" class="h-5 w-5"></i>
                                 <span class="sr-only">Notificações</span>
                             </button>

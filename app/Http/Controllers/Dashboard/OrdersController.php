@@ -25,8 +25,8 @@ class OrdersController extends Controller
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
                 'customer:id,name,phone,email',
-                'address:id,order_id,street,number,neighborhood,city',
-                'payment:id,order_id,status,status_detail'
+                'address:id,street,number,neighborhood,city',
+                'payment:id,order_id,status'
             ])
             ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
                      'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 
@@ -1894,6 +1894,9 @@ class OrdersController extends Controller
      */
     private function recalculateOrderTotals(Order $order)
     {
+        // Guardar valor anterior para ajustar débito
+        $oldFinalAmount = $order->final_amount;
+        
         // Recalcular total dos itens
         $itemsTotal = $order->items()->sum('total_price');
         
@@ -1911,6 +1914,48 @@ class OrdersController extends Controller
         }
         
         $order->save();
+        
+        // Ajustar débito se existir e o valor mudou
+        if ($oldFinalAmount != $order->final_amount) {
+            $this->adjustOrderDebt($order, $oldFinalAmount, $order->final_amount);
+        }
+    }
+    
+    /**
+     * Ajustar débito relacionado ao pedido quando valor é alterado
+     */
+    private function adjustOrderDebt(Order $order, float $oldAmount, float $newAmount)
+    {
+        try {
+            // Buscar débito aberto relacionado a este pedido
+            $debt = \App\Models\CustomerDebt::where('order_id', $order->id)
+                ->where('type', 'debit')
+                ->where('status', 'open')
+                ->first();
+            
+            if ($debt) {
+                // Calcular diferença
+                $difference = $newAmount - $oldAmount;
+                
+                // Atualizar valor do débito
+                $debt->amount = $newAmount;
+                $debt->description = "Pedido #{$order->order_number} - Fiado (Ajustado)";
+                $debt->save();
+                
+                \Log::info('Débito ajustado ao editar pedido', [
+                    'order_id' => $order->id,
+                    'debt_id' => $debt->id,
+                    'old_amount' => $oldAmount,
+                    'new_amount' => $newAmount,
+                    'difference' => $difference,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Erro ao ajustar débito do pedido', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

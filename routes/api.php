@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MenuApiController;
 use App\Http\Controllers\Api\OrderApiController;
+use App\Http\Controllers\Api\ClientController;
 
 /*
 |--------------------------------------------------------------------------
@@ -138,4 +139,32 @@ Route::prefix('botconversa')->name('api.botconversa.')->group(function () {
     // Rotas de sincronização (POST) - usado pelo BotConversa enviando JSON via POST
     Route::post('/sync-customer', [\App\Http\Controllers\BotConversaController::class, 'syncCustomer'])->name('sync-customer');
     Route::post('/sync-customers', [\App\Http\Controllers\BotConversaController::class, 'syncCustomersBatch'])->name('sync-customers');
+});
+
+// ============================================
+// API de Clientes (SaaS/Multi-tenant)
+// ============================================
+
+// Rotas públicas (onboarding)
+Route::prefix('clients')->name('api.clients.')->group(function () {
+    // Verificar disponibilidade de slug (público)
+    Route::get('/check-slug', [ClientController::class, 'checkSlug'])->name('check-slug');
+    
+    // Cadastro de novo cliente (público)
+    Route::post('/register', [ClientController::class, 'register'])->name('register');
+});
+
+// Rotas administrativas (apenas super admin - Olika)
+Route::prefix('admin/clients')->name('api.admin.clients.')->middleware(['auth', 'super.admin'])->group(function () {
+    // Estatísticas gerais
+    Route::get('/stats', [ClientController::class, 'stats'])->name('stats');
+    
+    // CRUD de clientes
+    Route::get('/', [ClientController::class, 'index'])->name('index');
+    Route::get('/{id}', [ClientController::class, 'show'])->name('show');
+    Route::put('/{id}', [ClientController::class, 'update'])->name('update');
+    
+    // Ações
+    Route::post('/{id}/suspend', [ClientController::class, 'suspend'])->name('suspend');
+    Route::post('/{id}/activate', [ClientController::class, 'activate'])->name('activate');
 });

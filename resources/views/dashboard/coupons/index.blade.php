@@ -1,55 +1,29 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Cupons - OLIKA Painel')
+@section('page_title', 'Cupons de Desconto')
+@section('page_subtitle', 'Gerencie cupons públicos e privados')
+
+@section('page_actions')
+    <a href="{{ route('dashboard.coupons.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        Novo Cupom
+    </a>
+@endsection
 
 @section('content')
 <div class="space-y-6">
-    @if(session('success'))
-        <div class="rounded-md border border-green-200 bg-green-50 text-green-700 p-4">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="rounded-md border border-red-200 bg-red-50 text-red-700 p-4">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Cupons de Desconto</h1>
-            <p class="text-muted-foreground">Gerencie cupons públicos e privados</p>
-        </div>
-        <a href="{{ route('dashboard.coupons.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="M12 5v14"></path>
-            </svg>
-            Novo Cupom
-        </a>
-    </div>
 
     <!-- Estatísticas -->
     @if(isset($stats))
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="rounded-lg border bg-card p-4">
-            <div class="text-sm text-muted-foreground">Total</div>
-            <div class="text-2xl font-bold">{{ $stats['total'] }}</div>
-        </div>
-        <div class="rounded-lg border bg-card p-4">
-            <div class="text-sm text-muted-foreground">Ativos</div>
-            <div class="text-2xl font-bold text-green-600">{{ $stats['active'] }}</div>
-        </div>
-        <div class="rounded-lg border bg-card p-4">
-            <div class="text-sm text-muted-foreground">Públicos</div>
-            <div class="text-2xl font-bold text-blue-600">{{ $stats['public'] }}</div>
-        </div>
-        <div class="rounded-lg border bg-card p-4">
-            <div class="text-sm text-muted-foreground">Privados</div>
-            <div class="text-2xl font-bold text-purple-600">{{ $stats['private'] }}</div>
-        </div>
-    </div>
+    <x-stat-grid :items="[
+        ['label' => 'Total', 'value' => ($stats['total'] ?? 0), 'icon' => 'layers'],
+        ['label' => 'Ativos', 'value' => ($stats['active'] ?? 0), 'icon' => 'check-circle'],
+        ['label' => 'Públicos', 'value' => ($stats['public'] ?? 0), 'icon' => 'users'],
+        ['label' => 'Privados', 'value' => ($stats['private'] ?? 0), 'icon' => 'lock'],
+    ]" />
     @endif
 
     <!-- Filtros -->
@@ -177,7 +151,7 @@
                 </table>
             </div>
             <div class="mt-4">
-                {{ $coupons->links() }}
+                {{ $coupons->onEachSide(1)->links('vendor.pagination.compact') }}
             </div>
         </div>
     </div>

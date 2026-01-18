@@ -1,0 +1,90 @@
+/* ============ CORREÇÕES CRÍTICAS DE LAYOUT ============ */
+/* Este arquivo força aplicação de estilos com alta especificidade */
+
+/* INPUTS - FORÇAR ALTURA ADEQUADA */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="password"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+select:not([multiple]),
+textarea {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+}
+
+textarea {
+    min-height: 5rem !important;
+    height: auto !important;
+    padding: 0.75rem 0.875rem !important;
+}
+
+/* BOTÕES - FORÇAR ALTURA PROPORCIONAL */
+button:not(.btn-sm):not(.btn-lg):not([class*="text-lg"]):not([class*="h-12"]):not([class*="h-14"]):not([class*="h-16"]),
+.btn:not(.btn-sm):not(.btn-lg),
+a[role="button"]:not([class*="text-lg"]),
+a.btn:not(.btn-sm):not(.btn-lg) {
+    min-height: 2.5rem !important;
+    height: auto !important;
+    padding: 0.625rem 1rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* MODAL WHATSAPP - FORÇAR TAMANHO REDUZIDO */
+#edit-instance-modal > div,
+#add-instance-modal > div,
+#pairing-code-modal > div,
+div#edit-instance-modal > div,
+div#add-instance-modal > div,
+div#pairing-code-modal > div,
+[id="edit-instance-modal"] > div,
+[id="add-instance-modal"] > div,
+[id="pairing-code-modal"] > div {
+    max-width: 28rem !important;
+    width: calc(100% - 2rem) !important;
+    padding: 1.25rem !important;
+    margin: 0 1rem !important;
+    box-sizing: border-box !important;
+}
+
+/* CAMPOS DE BUSCA ESPECÍFICOS */
+input[type="text"][placeholder*="Buscar"],
+input[type="text"][placeholder*="buscar"],
+input[type="search"],
+input[name="q"],
+input[name="search"],
+#customer-search,
+#product-search {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+}
+
+/* DROPDOWNS */
+select:not([multiple]) {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+}
+
+/* GARANTIR ALINHAMENTO INPUT + BOTÃO */
+.flex.gap-2 input + button,
+.flex.gap-2 input + a,
+.flex.gap-2 select + button,
+.flex.gap-2 select + a {
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+}
+

@@ -12,11 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Verificar assinaturas expirando diariamente às 8h
-        $schedule->command('subscription:notify-expiring')
-            ->dailyAt('08:00')
-            ->withoutOverlapping()
-            ->runInBackground();
+        // Processar campanhas WhatsApp agendadas a cada minuto
+        $schedule->command('campaigns:process-scheduled')->everyMinute();
     }
 
     /**

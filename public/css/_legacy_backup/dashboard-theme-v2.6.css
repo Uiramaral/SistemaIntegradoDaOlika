@@ -1,0 +1,131 @@
+/* ======================================
+   OLIKA THEME V2.6 - PALETA ESTRUTURAL
+   ====================================== */
+
+:root {
+  --color-primary: #ea580c;
+  --color-primary-light: #f97316;
+  --color-bg: #faf9f8;
+  --color-text: #1f2937;
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #e5e7eb;
+}
+
+/* Fundo e fontes */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+}
+
+/* Sidebar */
+.sidebar,
+#sidebar,
+aside#sidebar,
+aside.sidebar,
+[class*="sidebar"] {
+  background-color: var(--color-sidebar-bg) !important;
+  color: var(--color-sidebar-text) !important;
+}
+
+.sidebar a,
+#sidebar a,
+aside#sidebar a,
+.sidebar nav a,
+#sidebar nav a,
+aside#sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-sidebar-text) !important;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.sidebar a.active,
+#sidebar a.active,
+aside#sidebar a.active,
+.sidebar a[class*="bg-sidebar-accent"],
+#sidebar a[class*="bg-sidebar-accent"],
+aside#sidebar a[class*="bg-sidebar-accent"],
+.sidebar a:hover,
+#sidebar a:hover,
+aside#sidebar a:hover {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+
+/* Sidebar com classes antigas (mi) */
+.sidebar .mi,
+aside .mi {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-sidebar-text) !important;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.sidebar .mi.active,
+aside .mi.active,
+.sidebar .mi:hover,
+aside .mi:hover {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+
+/* Cabeçalho */
+header {
+  background-color: #fff;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Cards base */
+.card, 
+.stat-card,
+.card-slim,
+.rounded-lg.border.bg-card,
+[class*="card"] {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* Botões */
+.btn-primary,
+button.btn-primary,
+button[class*="bg-primary"],
+a[class*="bg-primary"],
+.bg-primary {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  transition: 0.2s;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover,
+button[class*="bg-primary"]:hover,
+a[class*="bg-primary"]:hover,
+.bg-primary:hover {
+  background-color: var(--color-primary-light) !important;
+}
+
+/* Fundo principal */
+.bg-dashboard {
+  background-color: var(--color-bg);
+}
+
+/* Links */
+a {
+  color: var(--color-primary);
+}
+

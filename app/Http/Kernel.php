@@ -36,7 +36,6 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\SetClientFromSubdomain::class,
             \App\Http\Middleware\TrackPageViews::class,
         ],
 
@@ -44,7 +43,6 @@ class Kernel extends HttpKernel
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\SetClientFromSubdomain::class,
         ],
     ];
 
@@ -69,7 +67,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'cart.not.empty' => \App\Http\Middleware\CartNotEmpty::class,
         'simple.auth' => \App\Http\Middleware\SimpleAuth::class,
-        'client' => \App\Http\Middleware\SetClientFromSubdomain::class,
-        'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+        'check.plan' => \App\Http\Middleware\CheckPlan::class, // ✅ NOVO: Middleware para verificar plano do cliente
+        'api.token' => \App\Http\Middleware\ApiTokenMiddleware::class, // ✅ NOVO: Middleware para autenticação via api_tokens
     ];
 }

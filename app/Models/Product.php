@@ -3,19 +3,19 @@
 namespace App\Models;
 
 use App\Helpers\ImageOptimizer;
-use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Scopes\ClientScope;
 
 class Product extends Model
 {
-    use HasFactory, BelongsToClient;
+    use HasFactory;
 
     protected $fillable = [
-        'client_id',
+        'client_id', // ✅ NOVO: Multi-instância
         'category_id',
         'name',
         'sku',
@@ -50,6 +50,22 @@ class Product extends Model
         'price' => 'decimal:2',
         'weight_grams' => 'integer',
     ];
+
+    /**
+     * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new ClientScope());
+    }
+
+    /**
+     * ✅ NOVO: Relacionamento com cliente (multi-instância)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
 
     /**
      * Relacionamento com categoria

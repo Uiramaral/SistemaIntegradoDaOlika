@@ -1,0 +1,76 @@
+/* ======================================
+   LAYOUT FIXES v3.1 - Correções Estruturais
+   Força aplicação de estilos com alta especificidade
+   ====================================== */
+
+/* ==================== INPUTS - ALTURA ADEQUADA ==================== */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="password"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+select:not([multiple]),
+textarea {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+  padding: 0.625rem 0.875rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  box-sizing: border-box !important;
+}
+
+textarea {
+  min-height: 5rem !important;
+  height: auto !important;
+  padding: 0.75rem 0.875rem !important;
+}
+
+/* ==================== BOTÕES - ALTURA PROPORCIONAL ==================== */
+button:not(.btn-sm):not(.btn-lg):not([class*="text-lg"]):not([class*="h-12"]):not([class*="h-14"]):not([class*="h-16"]),
+.btn:not(.btn-sm):not(.btn-lg),
+a[role="button"]:not([class*="text-lg"]),
+a.btn:not(.btn-sm):not(.btn-lg) {
+  min-height: 2.5rem !important;
+  height: auto !important;
+  padding: 0.625rem 1rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ==================== LAYOUT PRINCIPAL ==================== */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Garantir que o conteúdo principal tenha espaço */
+.flex.flex-1.flex-col {
+  min-height: 100vh;
+}
+
+main.flex-1 {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ==================== SIDEBAR FIXA ==================== */
+/* A sidebar já usa classes Tailwind corretas (fixed, md:static) */
+/* Não precisamos forçar posicionamento aqui */
+
+/* ==================== CORREÇÕES DE ESPAÇAMENTO ==================== */
+.p-6 {
+  padding: 1.5rem;
+}
+
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+

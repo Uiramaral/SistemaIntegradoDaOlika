@@ -247,38 +247,19 @@ class SettingsController extends Controller
     }
     public function whatsapp()
     {
-        $clientId = currentClientId();
-        
-        // Buscar instâncias WhatsApp do cliente (nova estrutura multi-instância)
-        $instances = DB::table('whatsapp_instances')
-            ->where('client_id', $clientId)
-            ->orderBy('name')
-            ->get();
-        
-        // Buscar URLs disponíveis para criar novas instâncias
-        $availableUrls = DB::table('whatsapp_instance_urls')
-            ->where('status', 'available')
-            ->where('health_status', '!=', 'unhealthy')
-            ->orderBy('name')
-            ->get();
-        
-        // Manter compatibilidade com código legado (whatsapp_settings)
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
         
-        // Buscar dados de notificação da tabela settings
-        $settings = DB::table('settings')
-            ->where(function($query) use ($clientId) {
-                $query->where('client_id', $clientId)
-                      ->orWhereNull('client_id');
-            })
-            ->first();
+        // Buscar múltiplas instâncias
+        try {
+            $instances = \App\Models\WhatsappInstance::orderBy('name')->get();
+        } catch (\Exception $e) {
+            // Se a tabela não existir ainda, retornar collection vazia
+            $instances = collect([]);
+            Log::warning('Tabela whatsapp_instances não encontrada. Execute o SQL de criação primeiro.');
+        }
         
         // Buscar templates
         $templates = DB::table('whatsapp_templates')
-            ->where(function($query) use ($clientId) {
-                $query->where('client_id', $clientId)
-                      ->orWhereNull('client_id');
-            })
             ->orderBy('slug')
             ->get();
         
@@ -289,10 +270,6 @@ class SettingsController extends Controller
                 'order_statuses.*',
                 'whatsapp_templates.slug as template_slug'
             )
-            ->where(function($query) use ($clientId) {
-                $query->where('order_statuses.client_id', $clientId)
-                      ->orWhereNull('order_statuses.client_id');
-            })
             ->orderBy('order_statuses.created_at')
             ->get();
         
@@ -302,153 +279,406 @@ class SettingsController extends Controller
             'active_templates' => $templates->where('active', true)->count(),
             'total_statuses' => $statuses->count(),
             'statuses_with_notifications' => $statuses->where('notify_customer', true)->count(),
-            'total_instances' => $instances->count(),
-            'connected_instances' => $instances->where('status', 'CONNECTED')->count(),
         ];
-        
-        // Verificar status de conexão de cada instância
-        foreach ($instances as $instance) {
-            try {
-                $info = $this->checkInstanceStatus($instance);
-                $instance->live_status = $info['connected'] ? 'connected' : 'disconnected';
-                $instance->live_phone = $info['phone'] ?? $instance->phone_number;
-            } catch (\Exception $e) {
-                $instance->live_status = 'unknown';
-                $instance->live_phone = $instance->phone_number;
-            }
-        }
-        
-        // Status de conexão legado (para compatibilidade)
-        $connectionStatus = 'unknown';
-        $connectionPhone = null;
-        
-        if ($row && !empty($row->api_url) && !empty($row->instance_name)) {
-            try {
-                $connectionStatus = $this->checkWhatsappConnection($row) ? 'connected' : 'disconnected';
-                $instanceInfo = $this->getWhatsappInstanceInfo($row);
-                $connectionPhone = $instanceInfo['phone'] ?? null;
-            } catch (\Exception $e) {
-                Log::warning('Erro ao verificar status WhatsApp: ' . $e->getMessage());
-                $connectionStatus = 'disconnected';
-            }
-        } else {
-            $connectionStatus = 'disconnected';
-        }
 
-        return view('dashboard.settings.whatsapp', compact(
-            'row', 'settings', 'templates', 'statuses', 'stats', 
-            'connectionStatus', 'connectionPhone', 'instances', 'availableUrls'
-        ));
+        // URL da API do Railway (do banco ou .env)
+        $whatsappApiUrl = $row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app');
+        $whatsappApiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+        
+        return view('dashboard.settings.whatsapp', compact('row', 'instances', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey'));
     }
     
     /**
-     * Verifica status de uma instância específica
+     * Proxy para obter QR Code do bot WhatsApp
      */
-    protected function checkInstanceStatus($instance): array
+    public function whatsappQR()
     {
-        if (empty($instance->api_url)) {
-            return ['connected' => false, 'phone' => null];
-        }
-        
         try {
-            $url = rtrim($instance->api_url, '/') . '/api/whatsapp/status';
-            $client = new \GuzzleHttp\Client(['timeout' => 8, 'http_errors' => false]);
-            $response = $client->get($url, [
-                'headers' => [
-                    'X-API-Token' => $instance->api_token ?? '',
-                ]
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/qr');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10
             ]);
             
-            if ($response->getStatusCode() === 200) {
-                $data = json_decode($response->getBody()->getContents(), true);
-                return [
-                    'connected' => $data['connected'] ?? $data['isConnected'] ?? false,
-                    'phone' => $data['currentPhone'] ?? null,
-                ];
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
             }
+            
+            return response()->json(['error' => 'Erro ao buscar QR Code'], $httpCode);
         } catch (\Exception $e) {
-            Log::debug('Erro ao verificar status da instância: ' . $e->getMessage());
+            Log::error('Erro ao buscar QR Code: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
         }
-        
-        return ['connected' => false, 'phone' => null];
+    }
+    
+    /**
+     * Proxy para obter status da conexão WhatsApp
+     */
+    public function whatsappStatus()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/status');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao buscar status'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar status: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para limpar credenciais corrompidas
+     */
+    public function whatsappClearAuth()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/clear-auth');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao limpar credenciais'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao limpar credenciais WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para iniciar conexão WhatsApp manualmente
+     */
+    public function whatsappConnect()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/connect');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao iniciar conexão'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao iniciar conexão WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
+    }
+    
+    /**
+     * Proxy para desconectar WhatsApp manualmente
+     */
+    public function whatsappDisconnect()
+    {
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row) {
+                return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
+            }
+            
+            $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+            $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+            
+            $ch = curl_init($apiUrl . '/api/whatsapp/disconnect');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'x-api-token: ' . $apiKey,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 15
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return response()->json(json_decode($response, true));
+            }
+            
+            return response()->json(['error' => 'Erro ao desconectar'], $httpCode);
+        } catch (\Exception $e) {
+            Log::error('Erro ao desconectar WhatsApp: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro interno'], 500);
+        }
     }
 
     public function whatsappSave(Request $r)
     {
+        // Se apenas admin_notification_phone foi enviado, validar apenas ele
+        if ($r->has('admin_notification_phone') && !$r->has('instance_name')) {
+            $data = $r->validate([
+                'admin_notification_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
+            ]);
+            
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            
+            if ($row) {
+                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'updated_at');
+                $updateData = [
+                    'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
+                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
+                ];
+                if ($hasTimestamps) {
+                    $updateData['updated_at'] = now();
+                }
+                DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
+            } else {
+                // Se não existe registro, criar um básico
+                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                                 Schema::hasColumn('whatsapp_settings', 'updated_at');
+                $insertData = [
+                    'instance_name' => 'Principal',
+                    'api_url' => env('WHATSAPP_API_URL', ''),
+                    'api_key' => env('WHATSAPP_API_KEY', env('API_SECRET', '')),
+                    'sender_name' => 'Olika Bot',
+                    'whatsapp_phone' => '',
+                    'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
+                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
+                    'active' => 1
+                ];
+                if ($hasTimestamps) {
+                    $insertData['created_at'] = now();
+                    $insertData['updated_at'] = now();
+                }
+                DB::table('whatsapp_settings')->insert($insertData);
+            }
+            
+            return back()->with('success', 'Número de notificação de admin salvo com sucesso!');
+        }
+        
+        // Validação completa para o formulário antigo
         $data = $r->validate([
             'instance_name' => 'required|string|max:100',
             'api_url' => 'required|url|max:255',
-            'api_key' => 'nullable|string|max:255', // Opcional - será gerado automaticamente
+            'api_key' => 'required|string|max:255',
             'sender_name' => 'nullable|string|max:100',
+            'whatsapp_phone' => 'required|string|max:20|regex:/^[0-9]+$/',
+            'admin_notification_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
+            'default_payment_confirmation_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
         ]);
-
-        // Gerar API Key automaticamente se não fornecida
-        if (empty($data['api_key']) || str_starts_with($data['api_key'], 'AUTO_GENERATED_')) {
-            $data['api_key'] = 'sk_' . bin2hex(random_bytes(32)); // Gera token seguro de 64 caracteres
-        }
 
         $row = DB::table('whatsapp_settings')->where('active', 1)->first();
 
+        // Verificar se a tabela tem colunas de timestamp
+        $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                         Schema::hasColumn('whatsapp_settings', 'updated_at');
+
         if ($row) {
-            // Não atualizar updated_at se a coluna não existir
             $updateData = $data;
-            try {
+            if ($hasTimestamps) {
                 $updateData['updated_at'] = now();
-                DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
-            } catch (\Exception $e) {
-                // Se falhar (coluna updated_at não existe), tentar sem ela
-                unset($updateData['updated_at']);
-                DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
             }
+            DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
         } else {
-            DB::table('whatsapp_settings')->insert($data + [
-                'active' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $insertData = $data + ['active' => 1];
+            if ($hasTimestamps) {
+                $insertData['created_at'] = now();
+                $insertData['updated_at'] = now();
+            }
+            DB::table('whatsapp_settings')->insert($insertData);
         }
 
+        // Notificar o bot Node.js sobre a mudança do número (se mudou)
+        if ($row && isset($data['whatsapp_phone']) && $row->whatsapp_phone !== $data['whatsapp_phone']) {
+            Log::info('Número do WhatsApp alterado de ' . $row->whatsapp_phone . ' para ' . $data['whatsapp_phone']);
+            
+            // Notificar o bot para reiniciar com o novo número
+            try {
+                $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
+                $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
+                
+                $ch = curl_init($apiUrl . '/api/whatsapp/restart');
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => [
+                        'x-api-token: ' . $apiKey,
+                        'Content-Type: application/json'
+                    ],
+                    CURLOPT_TIMEOUT => 10
+                ]);
+                
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('✅ Bot notificado para reiniciar com novo número');
+                } else {
+                    Log::warning('⚠️ Falha ao notificar bot sobre mudança de número. HTTP: ' . $httpCode);
+                }
+            } catch (\Exception $e) {
+                Log::error('Erro ao notificar bot sobre mudança de número: ' . $e->getMessage());
+            }
+        }
+        
         return back()->with('success', 'Configurações do WhatsApp salvas com sucesso!');
     }
     
     /**
-     * Salva configurações de notificação (número do admin)
+     * API endpoint para retornar configurações do WhatsApp (usado pelo bot Node.js)
      */
-    public function whatsappAdminNotificationSave(Request $r)
+    public function whatsappSettingsApi()
     {
-        $data = $r->validate([
-            'notificacao_whatsapp' => 'nullable|string|max:20',
-            'notificacao_whatsapp_confirmacao' => 'nullable|string|max:20',
+        // Autenticação por token (para Node.js)
+        $token = request()->header('X-API-Token');
+        $validToken = env('API_SECRET') ?? env('WEBHOOK_TOKEN');
+        
+        // Log para debug
+        Log::info('whatsappSettingsApi: Verificando autenticação', [
+            'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
+            'token_valido_existe' => !empty($validToken),
+            'token_valido_preview' => $validToken ? '***' . substr($validToken, -4) : 'não definido',
+            'tokens_iguais' => $token === $validToken,
+            'token_recebido_length' => $token ? strlen($token) : 0,
+            'token_valido_length' => $validToken ? strlen($validToken) : 0,
+            'ip' => request()->ip()
         ]);
         
-        // Limpar máscara do telefone e garantir formato internacional
-        $notificacao = preg_replace('/\D/', '', $data['notificacao_whatsapp'] ?? '');
-        $confirmacao = preg_replace('/\D/', '', $data['notificacao_whatsapp_confirmacao'] ?? '');
-        
-        // Adicionar 55 se não tiver código do país
-        if (!empty($notificacao) && strlen($notificacao) <= 11) {
-            $notificacao = '55' . $notificacao;
-        }
-        if (!empty($confirmacao) && strlen($confirmacao) <= 11) {
-            $confirmacao = '55' . $confirmacao;
+        if (empty($validToken)) {
+            Log::error('whatsappSettingsApi: Token de validação não configurado no .env (API_SECRET ou WEBHOOK_TOKEN)');
+            return response()->json([
+                'error' => 'Server configuration error',
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+            ], 500);
         }
         
-        $clientId = currentClientId();
-
-        // Salvar na tabela settings com filtro de client
-        DB::table('settings')
-            ->where(function($query) use ($clientId) {
-                $query->where('client_id', $clientId)
-                      ->orWhereNull('client_id');
-            })
-            ->limit(1)
-            ->update([
-                'notificacao_whatsapp' => !empty($notificacao) ? $notificacao : null,
-                'notificacao_whatsapp_confirmacao' => !empty($confirmacao) ? $confirmacao : null,
-                'updated_at' => now(),
+        if ($token !== $validToken) {
+            Log::warning('whatsappSettingsApi: Tentativa de acesso não autorizado', [
+                'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
+                'token_esperado' => '***' . substr($validToken, -4),
+                'tokens_iguais' => $token === $validToken,
+                'ip' => request()->ip()
             ]);
-
-        return back()->with('success', 'Número de notificação salvo com sucesso!');
+            return response()->json([
+                'error' => 'Unauthorized',
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420') // Fallback mesmo em erro
+            ], 403);
+        }
+        
+        try {
+            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            
+            if (!$row) {
+                Log::warning('whatsappSettingsApi: Nenhuma configuração ativa encontrada');
+                return response()->json([
+                    'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+                ]);
+            }
+            
+            // Log para debug
+            Log::info('whatsappSettingsApi: Configuração encontrada', [
+                'whatsapp_phone' => $row->whatsapp_phone,
+                'whatsapp_phone_raw' => $row->whatsapp_phone ?? 'NULL',
+                'env_whatsapp_phone' => env('WHATSAPP_PHONE'),
+                'has_whatsapp_phone' => isset($row->whatsapp_phone) && !empty($row->whatsapp_phone),
+                'row_id' => $row->id ?? null
+            ]);
+            
+            // ✅ PRIORIDADE: Banco de dados primeiro, depois .env
+            // Garantir que sempre retornamos uma string, nunca NULL
+            $phone = !empty($row->whatsapp_phone) ? (string) trim($row->whatsapp_phone) : env('WHATSAPP_PHONE', '5571987019420');
+            
+            Log::info('whatsappSettingsApi: Retornando número', [
+                'phone' => $phone,
+                'fonte' => !empty($row->whatsapp_phone) ? 'banco_de_dados' : 'env'
+            ]);
+            
+            return response()->json([
+                'whatsapp_phone' => $phone
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar configurações WhatsApp: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
+            ]);
+        }
     }
     
     /**
@@ -456,29 +686,11 @@ class SettingsController extends Controller
      */
     public function whatsappNotificationsSave(Request $r)
     {
-        $clientId = currentClientId();
         $notifications = $r->input('notifications', []);
         
-        // Primeiro, zerar todas as notificações para os status do cliente
-        DB::table('order_statuses')
-            ->where(function($query) use ($clientId) {
-                $query->where('client_id', $clientId)
-                      ->orWhereNull('client_id');
-            })
-            ->update([
-                'notify_customer' => 0,
-                'notify_admin' => 0,
-                'updated_at' => now(),
-            ]);
-        
-        // Depois, marcar apenas os que foram selecionados
         foreach ($notifications as $statusId => $settings) {
             DB::table('order_statuses')
                 ->where('id', $statusId)
-                ->where(function($query) use ($clientId) {
-                    $query->where('client_id', $clientId)
-                          ->orWhereNull('client_id');
-                })
                 ->update([
                     'notify_customer' => isset($settings['customer']) ? 1 : 0,
                     'notify_admin' => isset($settings['admin']) ? 1 : 0,
@@ -673,602 +885,6 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('ok', 'Métodos de pagamento atualizados.');
-    }
-    
-    /**
-     * API: Retorna dados do cliente para o Node.js WhatsApp Gateway
-     * Usado pelo sistema de notificações
-     */
-    public function getClientData($id)
-    {
-        // Buscar cliente da tabela clients
-        $client = DB::table('clients')->find($id);
-        
-        if (!$client) {
-            return response()->json([
-                'error' => 'Client not found',
-                'message' => 'Cliente não encontrado'
-            ], 404);
-        }
-        
-        // Buscar configurações da tabela settings
-        $settings = DB::table('settings')->first();
-        
-        // Verificar se o cliente tem assinatura ativa com WhatsApp
-        $subscription = null;
-        $hasWhatsapp = false;
-        $hasIA = false;
-        
-        if ($client->subscription_id) {
-            $subscription = DB::table('subscriptions')
-                ->where('id', $client->subscription_id)
-                ->where('status', 'active')
-                ->first();
-                
-            if ($subscription) {
-                // Verificar features do plano
-                $plan = DB::table('plans')->find($subscription->plan_id);
-                if ($plan) {
-                    $features = json_decode($plan->features ?? '[]', true);
-                    $hasWhatsapp = in_array('whatsapp', $features) || in_array('whatsapp_notifications', $features);
-                    $hasIA = in_array('ia', $features) || in_array('ai_assistant', $features);
-                }
-            }
-        }
-        
-        // Retornar dados formatados para o Node.js
-        return response()->json([
-            'id' => (int) $id,
-            'name' => $client->name ?? ($settings->business_name ?? 'Olika'),
-            'slug' => $client->slug ?? null,
-            'plan' => $client->plan ?? 'basic',
-            'active' => (bool) ($client->active ?? true),
-            'is_active' => (bool) ($client->active ?? true),
-            'has_whatsapp' => $hasWhatsapp || !empty($client->whatsapp_phone),
-            'has_ia' => $hasIA,
-            'notificacao_whatsapp' => $client->notificacao_whatsapp ?? ($settings->notificacao_whatsapp ?? null),
-            'notificacao_whatsapp_confirmacao' => $settings->notificacao_whatsapp_confirmacao ?? null,
-            'whatsapp_phone' => $client->whatsapp_phone ?? null,
-            'api_url' => $settings->whatsapp_api_url ?? null,
-            'sender_name' => 'Olika Bot',
-        ]);
-    }
-    
-    /**
-     * API: Verifica status da conexão WhatsApp (AJAX)
-     */
-    public function whatsappStatus()
-    {
-        $row = DB::table('whatsapp_settings')->where('active', 1)->first();
-        
-        if (!$row || empty($row->api_url) || empty($row->instance_name)) {
-            return response()->json([
-                'connected' => false,
-                'message' => 'Instância não configurada'
-            ]);
-        }
-        
-        try {
-            $connected = $this->checkWhatsappConnection($row);
-            $info = $connected ? $this->getWhatsappInstanceInfo($row) : [];
-            
-            return response()->json([
-                'connected' => $connected,
-                'phone' => $info['phone'] ?? null,
-                'name' => $info['name'] ?? null,
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('Erro ao verificar status WhatsApp: ' . $e->getMessage());
-            return response()->json([
-                'connected' => false,
-                'message' => 'Erro ao verificar status'
-            ]);
-        }
-    }
-    
-    /**
-     * Desconecta instância WhatsApp
-     */
-    public function whatsappDisconnect()
-    {
-        $row = DB::table('whatsapp_settings')->where('active', 1)->first();
-        
-        if (!$row) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Instância não encontrada'
-            ]);
-        }
-        
-        try {
-            // Usar endpoint do projeto Node.js customizado
-            $url = rtrim($row->api_url, '/') . "/api/whatsapp/restart";
-            
-            $client = new \GuzzleHttp\Client(['timeout' => 15, 'http_errors' => false]);
-            $response = $client->post($url, [
-                'headers' => [
-                    'X-API-Token' => $row->api_key ?? '',
-                    'Content-Type' => 'application/json'
-                ]
-            ]);
-            
-            $statusCode = $response->getStatusCode();
-            $body = json_decode($response->getBody()->getContents(), true);
-            
-            if ($statusCode >= 200 && $statusCode < 300) {
-                Log::info('WhatsApp instância reiniciada: ' . $row->instance_name);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => $body['message'] ?? 'Instância reiniciada com sucesso'
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => $body['error'] ?? 'Erro ao reiniciar instância'
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Erro ao desconectar WhatsApp: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao desconectar: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    /**
-     * Conecta/reconecta instância WhatsApp - gera código de pareamento
-     */
-    public function whatsappConnect()
-    {
-        $row = DB::table('whatsapp_settings')->where('active', 1)->first();
-        
-        if (!$row) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Configure as credenciais do WhatsApp primeiro'
-            ]);
-        }
-        
-        if (empty($row->api_url)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'URL da API é obrigatória'
-            ]);
-        }
-        
-        // Buscar número do WhatsApp configurado
-        $settings = DB::table('settings')->first();
-        $whatsappPhone = $settings->notificacao_whatsapp ?? $row->whatsapp_phone ?? null;
-        
-        if (empty($whatsappPhone)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Número do WhatsApp não configurado. Configure em Configurações da Loja.'
-            ]);
-        }
-        
-        try {
-            // Usar endpoint do projeto Node.js customizado
-            $url = rtrim($row->api_url, '/') . "/api/whatsapp/connect";
-            
-            $client = new \GuzzleHttp\Client(['timeout' => 30, 'http_errors' => false]);
-            
-            $response = $client->post($url, [
-                'headers' => [
-                    'X-API-Token' => $row->api_key ?? '',
-                    'Content-Type' => 'application/json'
-                ],
-                'json' => [
-                    'phone' => preg_replace('/\D/', '', $whatsappPhone) // Apenas números
-                ]
-            ]);
-            
-            $statusCode = $response->getStatusCode();
-            $body = json_decode($response->getBody()->getContents(), true);
-            
-            if ($statusCode >= 200 && $statusCode < 300) {
-                Log::info('WhatsApp connect iniciado', $body ?? []);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => $body['message'] ?? 'Conexão iniciada. Verifique os logs do Railway para o código de pareamento.',
-                    'raw' => $body
-                ]);
-            } else {
-                Log::warning('WhatsApp connect falhou: HTTP ' . $statusCode, $body ?? []);
-                return response()->json([
-                    'success' => false,
-                    'message' => $body['error'] ?? $body['message'] ?? 'Erro ao conectar instância'
-                ]);
-            }
-            
-        } catch (\GuzzleHttp\Exception\ConnectException $e) {
-            Log::error('WhatsApp connect timeout: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Timeout ao conectar. Verifique se a URL da API está correta e o serviço está online.'
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Erro ao conectar WhatsApp: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao conectar: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    /**
-     * Verifica conexão com instância WhatsApp
-     */
-    protected function checkWhatsappConnection($row): bool
-    {
-        if (!$row || empty($row->api_url)) {
-            return false;
-        }
-        
-        try {
-            // Usar endpoint do projeto Node.js customizado
-            $url = rtrim($row->api_url, '/') . "/api/whatsapp/status";
-            
-            $client = new \GuzzleHttp\Client(['timeout' => 10, 'http_errors' => false]);
-            $response = $client->get($url, [
-                'headers' => [
-                    'X-API-Token' => $row->api_key ?? '',
-                ]
-            ]);
-            
-            if ($response->getStatusCode() === 200) {
-                $data = json_decode($response->getBody()->getContents(), true);
-                // Verifica se está conectado
-                return ($data['connected'] ?? $data['isConnected'] ?? false) === true;
-            }
-        } catch (\Exception $e) {
-            Log::debug('Erro ao verificar conexão WhatsApp: ' . $e->getMessage());
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Busca informações da instância WhatsApp
-     */
-    protected function getWhatsappInstanceInfo($row): array
-    {
-        if (!$row || empty($row->api_url)) {
-            return [];
-        }
-        
-        try {
-            // Usar endpoint do projeto Node.js customizado
-            $url = rtrim($row->api_url, '/') . "/api/whatsapp/status";
-            
-            $client = new \GuzzleHttp\Client(['timeout' => 10, 'http_errors' => false]);
-            $response = $client->get($url, [
-                'headers' => [
-                    'X-API-Token' => $row->api_key ?? '',
-                ]
-            ]);
-            
-            if ($response->getStatusCode() === 200) {
-                $data = json_decode($response->getBody()->getContents(), true);
-                
-                return [
-                    'phone' => $data['currentPhone'] ?? null,
-                    'name' => $data['profileName'] ?? $row->instance_name ?? null,
-                    'connected' => $data['connected'] ?? $data['isConnected'] ?? false,
-                    'pairingCode' => $data['pairingCode'] ?? null,
-                    'message' => $data['message'] ?? null,
-                ];
-            }
-        } catch (\Exception $e) {
-            Log::debug('Erro ao buscar info WhatsApp: ' . $e->getMessage());
-        }
-        
-        return [];
-    }
-    
-    /**
-     * Cria nova instância WhatsApp para o cliente
-     */
-    public function whatsappInstanceStore(Request $request)
-    {
-        $clientId = currentClientId();
-        
-        $data = $request->validate([
-            'name' => 'required|string|max:100',
-            'phone_number' => 'required|string|max:20',
-        ]);
-        
-        // Buscar automaticamente a primeira URL disponível
-        $url = DB::table('whatsapp_instance_urls')
-            ->where('status', 'available')
-            ->where('health_status', '!=', 'unhealthy')
-            ->orderBy('id')
-            ->first();
-        
-        if (!$url) {
-            return back()->with('error', 'Nenhuma instância disponível no momento. Entre em contato com o suporte.');
-        }
-        
-        // Buscar API Token global
-        $apiToken = $this->getGlobalApiToken();
-        
-        // Limpar telefone e garantir formato internacional
-        $phone = preg_replace('/\D/', '', $data['phone_number'] ?? '');
-        if (!empty($phone) && strlen($phone) <= 11) {
-            $phone = '55' . $phone;
-        }
-        
-        // Criar instância
-        $instanceId = DB::table('whatsapp_instances')->insertGetId([
-            'client_id' => $clientId,
-            'name' => $data['name'],
-            'phone_number' => $phone ?: null,
-            'api_url' => $url->url,
-            'instance_url_id' => $url->id,
-            'api_token' => $apiToken,
-            'status' => 'DISCONNECTED',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        
-        // Marcar URL como atribuída
-        DB::table('whatsapp_instance_urls')
-            ->where('id', $url->id)
-            ->update([
-                'status' => 'assigned',
-                'client_id' => $clientId,
-                'whatsapp_instance_id' => $instanceId,
-                'current_connections' => DB::raw('current_connections + 1'),
-                'updated_at' => now(),
-            ]);
-        
-        return back()->with('success', 'Instância WhatsApp criada com sucesso! Clique em "Conectar" para vincular seu número.');
-    }
-    
-    /**
-     * Remove instância WhatsApp do cliente
-     */
-    public function whatsappInstanceDestroy($instanceId)
-    {
-        $clientId = currentClientId();
-        
-        $instance = DB::table('whatsapp_instances')
-            ->where('id', $instanceId)
-            ->where('client_id', $clientId)
-            ->first();
-        
-        if (!$instance) {
-            return response()->json(['success' => false, 'message' => 'Instância não encontrada']);
-        }
-        
-        // Liberar URL
-        if ($instance->instance_url_id) {
-            DB::table('whatsapp_instance_urls')
-                ->where('id', $instance->instance_url_id)
-                ->update([
-                    'status' => 'available',
-                    'client_id' => null,
-                    'whatsapp_instance_id' => null,
-                    'current_connections' => DB::raw('GREATEST(current_connections - 1, 0)'),
-                    'updated_at' => now(),
-                ]);
-        }
-        
-        // Remover instância
-        DB::table('whatsapp_instances')->where('id', $instanceId)->delete();
-        
-        return response()->json(['success' => true, 'message' => 'Instância removida com sucesso']);
-    }
-    
-    /**
-     * Verifica status de uma instância específica (AJAX)
-     */
-    public function whatsappInstanceStatus($instanceId)
-    {
-        $clientId = currentClientId();
-        
-        $instance = DB::table('whatsapp_instances')
-            ->where('id', $instanceId)
-            ->where('client_id', $clientId)
-            ->first();
-        
-        if (!$instance) {
-            return response()->json(['connected' => false, 'message' => 'Instância não encontrada']);
-        }
-        
-        $status = $this->checkInstanceStatus($instance);
-        
-        return response()->json([
-            'connected' => $status['connected'],
-            'phone' => $status['phone'] ?? $instance->phone_number,
-            'status' => $status['connected'] ? 'CONNECTED' : 'DISCONNECTED',
-        ]);
-    }
-    
-    /**
-     * Conecta instância WhatsApp (gera código de pareamento)
-     */
-    public function whatsappInstanceConnect(Request $request, $instanceId)
-    {
-        $clientId = currentClientId();
-        
-        $instance = DB::table('whatsapp_instances')
-            ->where('id', $instanceId)
-            ->where('client_id', $clientId)
-            ->first();
-        
-        if (!$instance) {
-            return response()->json(['success' => false, 'message' => 'Instância não encontrada']);
-        }
-        
-        if (empty($instance->api_url)) {
-            return response()->json(['success' => false, 'message' => 'URL da API não configurada']);
-        }
-        
-        // Buscar telefone (sempre usar o do request, se fornecido)
-        $phone = $request->input('phone');
-        if (empty($phone)) {
-            $phone = $instance->phone_number;
-        }
-        $phone = preg_replace('/\D/', '', $phone ?? '');
-        
-        if (empty($phone)) {
-            return response()->json(['success' => false, 'message' => 'Número de telefone é obrigatório']);
-        }
-        
-        // Garantir formato internacional
-        if (!str_starts_with($phone, '55') && strlen($phone) <= 11) {
-            $phone = '55' . $phone;
-        }
-        
-        try {
-            $baseUrl = rtrim($instance->api_url, '/');
-            $client = new \GuzzleHttp\Client(['timeout' => 10, 'connect_timeout' => 5, 'http_errors' => false]);
-            
-            // 1. Chamar /connect para iniciar
-            $connectResponse = $client->post($baseUrl . '/api/whatsapp/connect', [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'X-API-Token' => $instance->api_token ?? '',
-                ],
-                'json' => ['phone' => $phone]
-            ]);
-            
-            $connectBody = json_decode($connectResponse->getBody()->getContents(), true);
-            Log::info('WhatsApp Connect Initial Response', ['body' => $connectBody]);
-            
-            if ($connectResponse->getStatusCode() !== 200 || !($connectBody['success'] ?? false)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $connectBody['error'] ?? $connectBody['message'] ?? 'Erro ao iniciar conexão'
-                ]);
-            }
-            
-            // 2. Atualizar telefone no banco
-            DB::table('whatsapp_instances')
-                ->where('id', $instanceId)
-                ->update([
-                    'phone_number' => $phone,
-                    'status' => 'CONNECTING',
-                    'updated_at' => now(),
-                ]);
-            
-            // 3. Aguardar e fazer polling do código (até 3 tentativas com 3s de intervalo)
-            $pairingCode = null;
-            for ($i = 0; $i < 4; $i++) {
-                sleep(3); // Esperar 3 segundos
-                
-                try {
-                    $statusResponse = $client->get($baseUrl . '/api/whatsapp/status', [
-                        'headers' => [
-                            'X-API-Token' => $instance->api_token ?? '',
-                        ]
-                    ]);
-                    
-                    $statusBody = json_decode($statusResponse->getBody()->getContents(), true);
-                    Log::info('WhatsApp Status Polling #' . ($i + 1), ['body' => $statusBody]);
-                    
-                    if (!empty($statusBody['pairingCode'])) {
-                        $pairingCode = $statusBody['pairingCode'];
-                        break;
-                    }
-                    
-                    // Se já conectou, não precisa de código
-                    if ($statusBody['connected'] ?? $statusBody['isConnected'] ?? false) {
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'WhatsApp já conectado!',
-                            'pairing_code' => null,
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Polling attempt #' . ($i + 1) . ' failed: ' . $e->getMessage());
-                }
-            }
-            
-            if ($pairingCode) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Código gerado com sucesso!',
-                    'pairing_code' => $pairingCode,
-                ]);
-            } else {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Conexão iniciada! Verifique o status em alguns segundos.',
-                    'pairing_code' => null,
-                ]);
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Erro ao conectar instância WhatsApp: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Erro de conexão. Tente novamente.']);
-        }
-    }
-    
-    /**
-     * Desconecta instância WhatsApp
-     */
-    public function whatsappInstanceDisconnect($instanceId)
-    {
-        $clientId = currentClientId();
-        
-        $instance = DB::table('whatsapp_instances')
-            ->where('id', $instanceId)
-            ->where('client_id', $clientId)
-            ->first();
-        
-        if (!$instance) {
-            return response()->json(['success' => false, 'message' => 'Instância não encontrada']);
-        }
-        
-        try {
-            $url = rtrim($instance->api_url, '/') . '/api/whatsapp/restart';
-            $client = new \GuzzleHttp\Client(['timeout' => 15, 'http_errors' => false]);
-            $response = $client->post($url, [
-                'headers' => [
-                    'X-API-Token' => $instance->api_token ?? '',
-                ]
-            ]);
-            
-            // Atualizar status local
-            DB::table('whatsapp_instances')
-                ->where('id', $instanceId)
-                ->update([
-                    'status' => 'DISCONNECTED',
-                    'updated_at' => now(),
-                ]);
-            
-            return response()->json(['success' => true, 'message' => 'Instância desconectada']);
-        } catch (\Exception $e) {
-            Log::error('Erro ao desconectar instância: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
-        }
-    }
-    
-    /**
-     * Busca API Token global do sistema
-     */
-    protected function getGlobalApiToken(): ?string
-    {
-        // Tentar buscar de whatsapp_settings
-        $wsToken = DB::table('whatsapp_settings')
-            ->where('active', 1)
-            ->value('api_key');
-        
-        if (!empty($wsToken)) {
-            return $wsToken;
-        }
-        
-        // Fallback: payment_settings.webhook_token
-        $token = DB::table('payment_settings')
-            ->where('key', 'webhook_token')
-            ->value('value');
-        
-        return $token ?: null;
     }
 }
 

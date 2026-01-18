@@ -1,13 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Configurações - OLIKA Painel')
+@section('page_title', 'Configurações')
+@section('page_subtitle', 'Ajuste integrações e chaves de API do sistema')
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p class="text-muted-foreground">Ajuste integrações e chaves de API do sistema</p>
-    </div>
+<div class="space-y-6">
 
     @if(session('success'))
         <div class="rounded-lg border bg-green-50 text-green-900 px-4 py-3">{{ session('success') }}</div>
@@ -109,6 +106,25 @@
 
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6">
+                <h3 class="text-2xl font-semibold leading-none tracking-tight">Clientes SaaS</h3>
+                <p class="text-sm text-muted-foreground">Gerenciar assinantes da plataforma</p>
+            </div>
+            <div class="p-6 pt-0">
+                <a href="{{ route('dashboard.saas-clients.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Gerenciar Clientes SaaS
+                </a>
+                <p class="text-xs text-muted-foreground mt-2">Cadastre e gerencie novos assinantes da plataforma</p>
+            </div>
+        </div>
+
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6">
                 <h3 class="text-2xl font-semibold leading-none tracking-tight">Agendamento de Entrega</h3>
                 <p class="text-sm text-muted-foreground">Capacidade e prazos</p>
             </div>
@@ -135,56 +151,6 @@
             </form>
         </div>
 
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6">
-                <h3 class="text-2xl font-semibold leading-none tracking-tight">BotConversa</h3>
-                <p class="text-sm text-muted-foreground">Webhook para envio de notificações</p>
-            </div>
-            <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 pt-0 space-y-4">
-                @csrf
-                <div class="space-y-2">
-                    <label class="text-sm font-medium" for="botconversa_webhook_url">URL do Webhook</label>
-                    @php
-                        $webhookUrl = $apiSettings['botconversa_webhook_url'] ?? '';
-                        // Se for um email, limpar e usar .env
-                        if (!empty($webhookUrl) && strpos($webhookUrl, '@') !== false && !filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
-                            $webhookUrl = config('services.botconversa.webhook_url') ?: '';
-                        }
-                    @endphp
-                    <input name="botconversa_webhook_url" id="botconversa_webhook_url" type="text" value="{{ $webhookUrl }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/...">
-                    <p class="text-xs text-muted-foreground">URL para envio de notificações de pedidos pagos.</p>
-                    @if(config('services.botconversa.webhook_url'))
-                        <p class="text-xs text-blue-600">Valor atual do .env: {{ config('services.botconversa.webhook_url') }}</p>
-                    @endif
-                </div>
-                <div class="space-y-2">
-                    <label class="text-sm font-medium" for="botconversa_paid_webhook_url">URL do Webhook (Pedidos Pagos)</label>
-                    @php
-                        $paidWebhookUrl = $apiSettings['botconversa_paid_webhook_url'] ?? '';
-                        // Se for um email (contém @ mas não é URL), limpar e usar .env
-                        if (!empty($paidWebhookUrl) && strpos($paidWebhookUrl, '@') !== false && !filter_var($paidWebhookUrl, FILTER_VALIDATE_URL)) {
-                            $paidWebhookUrl = config('services.botconversa.paid_webhook') ?: '';
-                        }
-                    @endphp
-                    <input name="botconversa_paid_webhook_url" id="botconversa_paid_webhook_url" type="text" value="{{ $paidWebhookUrl }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/...">
-                    <p class="text-xs text-muted-foreground">Opcional: URL específica para pedidos pagos. Se vazio, usa a URL padrão.</p>
-                    @if(config('services.botconversa.paid_webhook'))
-                        <p class="text-xs text-blue-600">Valor atual do .env: {{ config('services.botconversa.paid_webhook') }}</p>
-                    @endif
-                    @error('botconversa_paid_webhook_url')
-                        <p class="text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="space-y-2">
-                    <label class="text-sm font-medium" for="botconversa_token">Token (opcional)</label>
-                    <input name="botconversa_token" id="botconversa_token" type="password" value="{{ $apiSettings['botconversa_token'] ?? '' }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="Token de autenticação (se necessário)">
-                    <p class="text-xs text-muted-foreground">Token para autenticação no webhook (Bearer token).</p>
-                </div>
-                <div>
-                    <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Salvar</button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 

@@ -50,6 +50,10 @@
             <i class="fa fa-chart-line mi-ico"></i> Relatórios
         </a>
         
+        <a href="{{ route('dashboard.plans.index') }}" class="mi {{ request()->routeIs('dashboard.plans.*') ? 'active' : '' }}">
+            <i class="fa fa-layer-group mi-ico"></i> Módulos/Planos
+        </a>
+        
         <a href="{{ route('dashboard.settings') }}" class="mi {{ request()->routeIs('dashboard.settings') ? 'active' : '' }}">
             <i class="fa fa-cog mi-ico"></i> Configurações
         </a>

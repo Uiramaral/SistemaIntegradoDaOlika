@@ -6,7 +6,7 @@ use App\Models\PaymentSetting;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Services\OrderStatusService;
-use App\Services\BotConversaService;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -893,22 +893,23 @@ class MercadoPagoApiService
 
         if ($customer && $customer->phone) {
             try {
-                /** @var BotConversaService $bot */
-                $bot = app(BotConversaService::class);
+                /** @var WhatsAppService $whatsapp */
+                $whatsapp = app(WhatsAppService::class);
 
                 $customerName = trim($customer->name ?? '');
                 $firstName = $customerName !== '' ? explode(' ', $customerName)[0] : 'cliente';
                 $message = "Olá, {$firstName}! Recebemos o pagamento do pedido #{$order->order_number}, mas o Mercado Pago colocou a transação em análise de segurança. Esse processo é normal e pode levar alguns minutos. Vamos acompanhar e avisaremos você assim que houver novidades. Qualquer dúvida, estamos à disposição!";
 
-                if ($bot->isConfigured()) {
-                    $sent = $bot->sendTextMessage($customer->phone, $message);
+                if ($whatsapp->isEnabled()) {
+                    $result = $whatsapp->sendText($customer->phone, $message);
+                    $sent = isset($result['success']) && $result['success'];
                 } else {
-                    Log::warning('MercadoPagoApiService: BotConversa não configurado para notificar análise', [
+                    Log::warning('MercadoPagoApiService: WhatsApp não configurado para notificar análise', [
                         'order_id' => $order->id,
                     ]);
                 }
             } catch (\Throwable $e) {
-                Log::error('MercadoPagoApiService: Erro ao enviar mensagem de análise via BotConversa', [
+                Log::error('MercadoPagoApiService: Erro ao enviar mensagem de análise via WhatsApp', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                 ]);

@@ -1,0 +1,482 @@
+/* OLIKA Dashboard - Photo-Zen Pixel Perfect Implementation */
+/* Baseado exatamente no design do Photo-Zen Dashboard */
+
+/* Reset e Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Layout Principal */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+/* Sidebar - Photo-Zen Dark Theme */
+#sidebar {
+  background: hsl(222, 47%, 11%);
+  color: hsl(0, 0%, 98%);
+  width: 16rem;
+  border-right: 1px solid hsl(222, 47%, 15%);
+}
+
+#sidebar .text-xl {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(24, 95%, 53%);
+  letter-spacing: -0.025em;
+}
+
+#sidebar nav {
+  padding: 1rem 0.75rem;
+}
+
+#sidebar .space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+#sidebar p {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(0, 0%, 98% / 0.7);
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+}
+
+#sidebar ul {
+  list-style: none;
+  margin-top: 0.5rem;
+}
+
+#sidebar ul li {
+  margin-bottom: 0.25rem;
+}
+
+#sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(0, 0%, 98%);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+#sidebar a:hover {
+  background: hsl(24, 95%, 53%);
+  color: hsl(0, 0%, 100%);
+}
+
+#sidebar a.bg-sidebar-accent,
+#sidebar a[class*="bg-sidebar-accent"] {
+  background: hsl(24, 95%, 53%);
+  color: hsl(0, 0%, 100%);
+  box-shadow: 0 0 0 1px hsl(24, 95%, 53%);
+}
+
+#sidebar i[data-lucide] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Header - Photo-Zen Style */
+header.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid hsl(220, 13%, 91%);
+  background: hsl(0, 0%, 100% / 0.95);
+  backdrop-filter: blur(8px);
+}
+
+header h1 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(222, 47%, 11%);
+  letter-spacing: -0.025em;
+}
+
+/* Main Content - Photo-Zen Style */
+main {
+  background: hsl(0, 0%, 98%);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.max-w-screen-2xl {
+  max-width: 1536px;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+/* Page Title - Photo-Zen Style */
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+h1.text-2xl {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: hsl(222, 47%, 11%);
+  letter-spacing: -0.025em;
+  margin: 0;
+  margin-bottom: 0.25rem;
+}
+
+p.text-sm.text-muted-foreground {
+  font-size: 0.875rem;
+  color: hsl(220, 9%, 46%);
+  margin: 0;
+  margin-top: 0.25rem;
+}
+
+/* Stat Cards - Photo-Zen Style */
+.grid {
+  display: grid;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.rounded-lg {
+  border-radius: 0.75rem;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-border {
+  border-color: hsl(220, 13%, 91%);
+}
+
+.bg-card {
+  background: hsl(0, 0%, 100%);
+}
+
+.p-3 {
+  padding: 0.75rem;
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.transition {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+.hover\:-translate-y-\[2px\]:hover {
+  transform: translateY(-2px);
+}
+
+.hover\:shadow-lg:hover {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Stat Card Content */
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.pb-2 {
+  padding-bottom: 0.5rem;
+}
+
+.space-y-0\.5 > * + * {
+  margin-top: 0.125rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.tracking-widest {
+  letter-spacing: 0.1em;
+}
+
+.text-muted-foreground {
+  color: hsl(220, 9%, 46%);
+}
+
+.text-xl {
+  font-size: 1.25rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.text-foreground {
+  color: hsl(222, 47%, 11%);
+}
+
+.flex {
+  display: flex;
+}
+
+.h-9 {
+  height: 2.25rem;
+}
+
+.w-9 {
+  width: 2.25rem;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.bg-primary\/10 {
+  background: hsl(24, 95%, 53% / 0.1);
+}
+
+.text-primary {
+  color: hsl(24, 95%, 53%);
+}
+
+.h-4 {
+  height: 1rem;
+}
+
+.w-4 {
+  width: 1rem;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+/* Content Cards - Photo-Zen Style */
+.rounded-lg {
+  border-radius: 0.75rem;
+}
+
+.border-border\/70 {
+  border-color: hsl(220, 13%, 91% / 0.7);
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.text-base {
+  font-size: 1rem;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* Buttons - Photo-Zen Style */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid hsl(220, 13%, 91%);
+  background: hsl(220, 14%, 96%);
+  color: hsl(222, 47%, 11%);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: hsl(220, 14%, 96%);
+  border-color: hsl(220, 13%, 91%);
+}
+
+.btn-primary {
+  background: hsl(24, 95%, 53%);
+  color: hsl(0, 0%, 100%);
+  border: none;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+/* Empty States - Photo-Zen Style */
+.flex-col {
+  flex-direction: column;
+}
+
+.gap-3 {
+  gap: 0.75rem;
+}
+
+.py-8 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.h-12 {
+  height: 3rem;
+}
+
+.w-12 {
+  width: 3rem;
+}
+
+.bg-muted {
+  background: hsl(220, 14%, 96%);
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.h-5 {
+  height: 1.25rem;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+/* Grid Layout - Photo-Zen Style */
+.lg\:grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  #sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    z-index: 40;
+    transition: transform 200ms ease-in-out;
+  }
+  
+  #sidebar:not(.-translate-x-full) {
+    transform: translateX(0);
+  }
+  
+  #sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms;
+  }
+  
+  #sidebar-backdrop:not(.opacity-0) {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+}

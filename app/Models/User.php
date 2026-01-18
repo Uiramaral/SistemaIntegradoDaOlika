@@ -3,15 +3,15 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, BelongsToClient;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -19,11 +19,10 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'client_id',
         'name',
         'email',
         'password',
-        'role',
+        'client_id', // ✅ NOVO: Multi-instância
     ];
 
     /**
@@ -47,26 +46,19 @@ class User extends Authenticatable
     ];
 
     /**
-     * Verifica se o usuário é super admin (acesso a todos os clients)
+     * ✅ NOVO: Relacionamento com cliente
      */
-    public function isSuperAdmin(): bool
+    public function client(): BelongsTo
     {
-        return $this->role === 'super_admin' || $this->client_id === null;
+        return $this->belongsTo(Client::class);
     }
 
     /**
-     * Verifica se o usuário é admin do client
+     * Verifica se o usuário é master (gestor geral da plataforma)
+     * Master = usuário sem client_id (não vinculado a nenhum cliente lojista)
      */
-    public function isAdmin(): bool
+    public function isMaster(): bool
     {
-        return in_array($this->role, ['admin', 'super_admin']);
-    }
-
-    /**
-     * Scope para super admins (sem client_id)
-     */
-    public function scopeSuperAdmins($query)
-    {
-        return $query->whereNull('client_id');
+        return $this->client_id === null;
     }
 }

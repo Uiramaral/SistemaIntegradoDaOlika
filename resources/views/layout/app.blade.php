@@ -136,6 +136,9 @@
                 <a href='{{ route("dashboard.reports") }}' class='mi {{ request()->routeIs("dashboard.reports*") ? "active" : "" }}'>
                     <i class="fa fa-chart-line"></i> Relatórios
                 </a>
+                <a href='{{ route("dashboard.plans.index") }}' class='mi {{ request()->routeIs("dashboard.plans.*") ? "active" : "" }}'>
+                    <i class="fa fa-layer-group"></i> Módulos/Planos
+                </a>
                 <a href='{{ route("dashboard.settings") }}' class='mi {{ request()->routeIs("dashboard.settings") ? "active" : "" }}'>
                     <i class="fa fa-cog"></i> Configurações
                 </a>

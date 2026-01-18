@@ -19,9 +19,9 @@ class ReportsController extends Controller
         $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date')) : now()->startOfMonth();
         $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date')) : now()->endOfMonth();
 
-        // Pedidos pagos no período
+        // Pedidos pagos no período (usar apenas 'paid' conforme estrutura do banco)
         $orders = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->whereIn('payment_status', ['approved', 'paid'])
+            ->where('payment_status', 'paid')
             ->get();
         
         $totalOrders = $orders->count();
@@ -34,7 +34,7 @@ class ReportsController extends Controller
         $previousEndDate = $startDate->copy()->subDay();
         
         $previousOrders = Order::whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->whereIn('payment_status', ['approved', 'paid'])
+            ->where('payment_status', 'paid')
             ->get();
         
         $previousTotalAmount = $previousOrders->sum('final_amount') ?? 0;
@@ -59,13 +59,13 @@ class ReportsController extends Controller
         // Produtos vendidos (quantidade de itens)
         $productsSold = OrderItem::whereHas('order', function($q) use ($startDate, $endDate) {
                 $q->whereBetween('created_at', [$startDate, $endDate])
-                  ->whereIn('payment_status', ['approved', 'paid']);
+                  ->where('payment_status', 'paid');
             })
             ->sum('quantity') ?? 0;
         
         $previousProductsSold = OrderItem::whereHas('order', function($q) use ($previousStartDate, $previousEndDate) {
                 $q->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-                  ->whereIn('payment_status', ['approved', 'paid']);
+                  ->where('payment_status', 'paid');
             })
             ->sum('quantity') ?? 0;
         
@@ -162,20 +162,25 @@ class ReportsController extends Controller
             : ($purchases > 0 ? 100 : 0);
         
         // Taxa de conversão (baseada em visitas únicas)
-        $conversionRate = $pageViews > 0 ? ($purchases / $pageViews) * 100 : 0;
-        $previousConversionRate = $previousPageViews > 0 ? ($previousPurchases / $previousPageViews) * 100 : 0;
+        // Limitar entre 0 e 100% para evitar valores impossíveis
+        $conversionRate = $pageViews > 0 ? min(100, max(0, ($purchases / $pageViews) * 100)) : 0;
+        $previousConversionRate = $previousPageViews > 0 ? min(100, max(0, ($previousPurchases / $previousPageViews) * 100)) : 0;
         $conversionRateChange = $previousConversionRate > 0 
             ? (($conversionRate - $previousConversionRate) / $previousConversionRate) * 100 
             : ($conversionRate > 0 ? 100 : 0);
         
         // Taxa de abandono de carrinho (adicionou ao carrinho mas não iniciou checkout)
+        // Garantir que não seja negativo: se checkoutStarted > addToCartEvents, pode ser que alguns pedidos foram criados diretamente (PDV)
+        // Nesse caso, considerar abandono como 0% (todos que adicionaram ao carrinho iniciaram checkout ou mais)
         $cartAbandonment = $addToCartEvents > 0 
-            ? (($addToCartEvents - $checkoutStarted) / $addToCartEvents) * 100 
+            ? min(100, max(0, (($addToCartEvents - $checkoutStarted) / $addToCartEvents) * 100))
             : 0;
         
         // Taxa de conclusão de checkout (iniciou checkout e comprou)
+        // Limitar a 100%: se purchases > checkoutStarted, pode ser que alguns pedidos foram criados diretamente (PDV)
+        // Nesse caso, considerar como 100% (todos que iniciaram checkout compraram ou mais)
         $checkoutCompletionRate = $checkoutStarted > 0 
-            ? ($purchases / $checkoutStarted) * 100 
+            ? min(100, max(0, ($purchases / $checkoutStarted) * 100))
             : 0;
         
         $chartData = $this->getChartData($startDate, $endDate);
@@ -218,7 +223,7 @@ class ReportsController extends Controller
     private function getChartData($startDate, $endDate)
     {
         $orders = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->whereIn('payment_status', ['approved', 'paid'])
+            ->where('payment_status', 'paid')
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
             ->orderBy('date')

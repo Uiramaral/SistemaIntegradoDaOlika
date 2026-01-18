@@ -239,13 +239,20 @@ class OrdersController extends Controller
         try {
             $whatsApp = new WhatsAppService();
             if ($whatsApp->isEnabled()) {
+                // Normalizar telefone antes de enviar
+                $phoneNormalized = preg_replace('/\D/', '', $phone);
+                if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                    $phoneNormalized = '55' . $phoneNormalized;
+                }
+                
                 $message = "Seu código para acessar os pedidos na Olika é {$code}. Ele expira em "
                     . self::OTP_TTL_MINUTES . " minutos.";
-                $whatsApp->sendText($phone, $message);
+                $whatsApp->sendText($phoneNormalized, $message);
                 $channel = 'whatsapp';
                 
                 Log::info('OTP enviado com sucesso', [
-                    'phone' => $phone,
+                    'phone_original' => $phone,
+                    'phone_normalized' => $phoneNormalized,
                     'ip' => $ip,
                     'user_agent' => $userAgent,
                     'channel' => $channel,

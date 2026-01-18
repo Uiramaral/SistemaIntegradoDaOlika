@@ -1,0 +1,26 @@
+/* OLIKA Header Fix - Photo-Zen Pixel Perfect */
+
+/* Garantir que o header tenha exatamente o estilo do Photo-Zen */
+header.sticky {
+  height: 3.5rem !important;
+}
+
+header.sticky .flex {
+  height: 100% !important;
+}
+
+/* Botão Baixar Design - Photo-Zen Style */
+button[data-lucide="download"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Garantir cores corretas dos stat cards */
+.text-green-600 {
+  color: hsl(142, 71%, 45%) !important;
+}
+
+.bg-green-50 {
+  background: hsl(142, 71%, 45% / 0.1) !important;
+}

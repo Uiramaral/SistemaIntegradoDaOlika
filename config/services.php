@@ -43,4 +43,9 @@ return [
         'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
     ],
 
+    'whatsapp' => [
+        'url' => env('WHATSAPP_WEBHOOK_URL', env('WHATSAPP_API_URL', '')),
+        'token' => env('WHATSAPP_WEBHOOK_TOKEN', env('API_SECRET', '')),
+    ],
+
 ];

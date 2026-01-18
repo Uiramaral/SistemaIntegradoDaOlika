@@ -12,7 +12,6 @@ use App\Models\Product;
 use App\Services\MercadoPagoApi;
 use App\Services\MercadoPagoApiService;
 use App\Services\WhatsAppService;
-use App\Services\BotConversaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -25,8 +24,8 @@ class OrdersController extends Controller
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
                 'customer:id,name,phone,email',
-                'address:id,street,number,neighborhood,city',
-                'payment:id,order_id,status'
+                'address:id,street,number,neighborhood,city,state,cep,complement',
+                'payment:id,order_id,status,provider,provider_id'
             ])
             ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
                      'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 
@@ -314,15 +313,17 @@ class OrdersController extends Controller
     }
 
     /**
-     * Envia o recibo do pedido pago via WhatsApp Business (BotConversa)
+     * Envia o recibo do pedido pago via WhatsApp
      */
     public function sendReceipt(Request $request, Order $order)
     {
         try {
-            if ($order->payment_status !== 'paid') {
+            // Permite enviar recibo para qualquer status exceto estornado
+            // O controller valida se há instância WhatsApp conectada
+            if ($order->payment_status === 'refunded') {
                 return redirect()
                     ->back()
-                    ->with('error', 'O pedido precisa estar com pagamento confirmado para enviar o recibo.');
+                    ->with('error', 'Não é possível enviar recibo para pedidos estornados.');
             }
 
             $order->loadMissing('customer', 'items.product', 'items.variant', 'address');
@@ -333,28 +334,38 @@ class OrdersController extends Controller
                     ->with('error', 'O cliente não possui telefone cadastrado para enviar o recibo via WhatsApp.');
             }
 
-            /** @var BotConversaService $bot */
-            $bot = app(BotConversaService::class);
+            $whatsappService = new WhatsAppService();
 
-            if (!$bot->isConfigured()) {
+            if (!$whatsappService->isEnabled()) {
                 return redirect()
                     ->back()
-                    ->with('error', 'Integração com WhatsApp (BotConversa) não está configurada.');
+                    ->with('error', 'Nenhuma instância WhatsApp conectada. Verifique as configurações de WhatsApp.');
             }
 
-            $sent = $bot->sendPaidOrderJson($order);
+            $result = $whatsappService->sendReceipt($order);
 
-            if (!$sent) {
+            if (!isset($result['success']) || !$result['success']) {
+                $errorMsg = $result['error'] ?? 'Não foi possível enviar o recibo via WhatsApp.';
+                
+                // Mensagens mais amigáveis para erros comuns
+                if (str_contains(strtolower($errorMsg), 'número inválido') || 
+                    str_contains(strtolower($errorMsg), 'não possui conta')) {
+                    $errorMsg = 'O número de telefone do cliente não está registrado no WhatsApp ou está em formato inválido. Verifique o número cadastrado: ' . ($order->customer->phone ?? 'N/A');
+                } elseif (str_contains(strtolower($errorMsg), 'não conectado') || 
+                          str_contains(strtolower($errorMsg), 'desconectado')) {
+                    $errorMsg = 'O WhatsApp não está conectado no momento. Aguarde alguns segundos e tente novamente.';
+                }
+                
                 return redirect()
                     ->back()
-                    ->with('error', 'Não foi possível enviar o recibo via WhatsApp. Verifique os logs para mais detalhes.');
+                    ->with('error', $errorMsg);
             }
 
             if (empty($order->notified_paid_at)) {
                 $order->forceFill(['notified_paid_at' => now()])->save();
             }
 
-            Log::info('OrdersController: Recibo enviado pelo WhatsApp Business', [
+            Log::info('OrdersController: Recibo enviado via WhatsApp', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'customer_id' => $order->customer->id ?? null,
@@ -362,9 +373,9 @@ class OrdersController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Recibo enviado com sucesso via WhatsApp Business.');
+                ->with('success', 'Recibo enviado com sucesso via WhatsApp!');
         } catch (\Throwable $e) {
-            Log::error('OrdersController: Erro ao enviar recibo via WhatsApp Business', [
+            Log::error('OrdersController: Erro ao enviar recibo via WhatsApp', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -385,6 +396,12 @@ class OrdersController extends Controller
             'payment',
             'orderDeliveryFee'
         ]);
+
+        // Verificar se tem débito aberto
+        $hasOpenDebt = \App\Models\CustomerDebt::where('order_id', $order->id)
+            ->where('type', 'debit')
+            ->where('status', 'open')
+            ->exists();
 
         // Histórico de status
         $statusHistory = DB::table('order_status_history')
@@ -448,7 +465,59 @@ class OrdersController extends Controller
             'paymentGatewayStatus' => $mpInfo['status'],
             'paymentStatusDetail' => $mpInfo['status_detail'],
             'paymentReviewNotifiedAt' => $mpInfo['notified_at'],
+            'hasOpenDebt' => $hasOpenDebt,
         ]));
+    }
+
+    /**
+     * Registrar pedido como débito (fiado)
+     */
+    public function registerAsDebit(Request $request, Order $order)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Verificar se já existe um débito para este pedido
+            $existingDebt = \App\Models\CustomerDebt::where('order_id', $order->id)
+                ->where('type', 'debit')
+                ->where('status', 'open')
+                ->first();
+
+            if ($existingDebt) {
+                return redirect()->back()->with('error', 'Este pedido já está registrado como débito.');
+            }
+
+            if (!$order->customer_id) {
+                return redirect()->back()->with('error', 'O pedido deve ter um cliente associado para lançar como débito.');
+            }
+
+            // Criar registro de débito
+            \App\Models\CustomerDebt::create([
+                'customer_id' => $order->customer_id,
+                'order_id' => $order->id,
+                'amount' => $order->final_amount ?? $order->total_amount,
+                'type' => 'debit',
+                'status' => 'open',
+                'description' => "Pedido #{$order->order_number} - Lançado manualmente como débito",
+            ]);
+
+            // Se quiser marcar como "Aguardando Pagamento" explicitamente
+            if ($order->payment_status !== 'pending') {
+                $order->payment_status = 'pending';
+                $order->save();
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Pedido lançado como débito com sucesso!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erro ao lançar pedido como débito', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->with('error', 'Erro ao lançar como débito: ' . $e->getMessage());
+        }
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -840,13 +909,34 @@ class OrdersController extends Controller
                 $message .= "\n\n🔗 Link de pagamento: {$paymentLink}";
             }
 
-            // Enviar via WhatsApp
-            $result = $whatsappService->sendText($customer->phone, $message);
+            // Normalizar telefone antes de enviar
+            $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+            if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                $phoneNormalized = '55' . $phoneNormalized;
+            }
             
-            if (!$result) {
-                Log::warning("Falha ao enviar WhatsApp para {$customer->phone}");
+            Log::info('OrdersController: Enviando WhatsApp', [
+                'order_id' => $order->id,
+                'customer_phone_original' => $customer->phone,
+                'phone_normalized' => $phoneNormalized,
+            ]);
+            
+            // Enviar via WhatsApp usando número normalizado
+            $result = $whatsappService->sendText($phoneNormalized, $message);
+            
+            if (!isset($result['success']) || !$result['success']) {
+                Log::warning("Falha ao enviar WhatsApp", [
+                    'order_id' => $order->id,
+                    'customer_phone_original' => $customer->phone,
+                    'phone_normalized' => $phoneNormalized,
+                    'error' => $result['error'] ?? 'Erro desconhecido',
+                ]);
             } else {
-                Log::info("WhatsApp enviado com sucesso para {$customer->phone}");
+                Log::info("WhatsApp enviado com sucesso", [
+                    'order_id' => $order->id,
+                    'customer_phone_original' => $customer->phone,
+                    'phone_normalized' => $phoneNormalized,
+                ]);
             }
             
             return true;
@@ -1894,9 +1984,6 @@ class OrdersController extends Controller
      */
     private function recalculateOrderTotals(Order $order)
     {
-        // Guardar valor anterior para ajustar débito
-        $oldFinalAmount = $order->final_amount;
-        
         // Recalcular total dos itens
         $itemsTotal = $order->items()->sum('total_price');
         
@@ -1915,43 +2002,43 @@ class OrdersController extends Controller
         
         $order->save();
         
-        // Ajustar débito se existir e o valor mudou
-        if ($oldFinalAmount != $order->final_amount) {
-            $this->adjustOrderDebt($order, $oldFinalAmount, $order->final_amount);
-        }
+        // Atualizar débitos abertos relacionados a este pedido
+        $this->updateOrderDebts($order);
     }
     
     /**
-     * Ajustar débito relacionado ao pedido quando valor é alterado
+     * Atualiza os débitos abertos relacionados a um pedido quando o total muda
      */
-    private function adjustOrderDebt(Order $order, float $oldAmount, float $newAmount)
+    private function updateOrderDebts(Order $order)
     {
         try {
-            // Buscar débito aberto relacionado a este pedido
-            $debt = \App\Models\CustomerDebt::where('order_id', $order->id)
+            // Buscar débitos abertos relacionados a este pedido
+            $debts = \App\Models\CustomerDebt::where('order_id', $order->id)
                 ->where('type', 'debit')
                 ->where('status', 'open')
-                ->first();
+                ->get();
             
-            if ($debt) {
-                // Calcular diferença
-                $difference = $newAmount - $oldAmount;
-                
-                // Atualizar valor do débito
+            if ($debts->isEmpty()) {
+                return; // Não há débitos para atualizar
+            }
+            
+            $newAmount = $order->final_amount ?? $order->total_amount ?? 0;
+            
+            foreach ($debts as $debt) {
+                // Atualizar o valor do débito para o novo total do pedido
                 $debt->amount = $newAmount;
-                $debt->description = "Pedido #{$order->order_number} - Fiado (Ajustado)";
+                $debt->description = "Pedido #{$order->order_number} - Lançado manualmente como débito";
                 $debt->save();
                 
-                \Log::info('Débito ajustado ao editar pedido', [
+                Log::info('Débito atualizado após alteração no pedido', [
                     'order_id' => $order->id,
                     'debt_id' => $debt->id,
-                    'old_amount' => $oldAmount,
                     'new_amount' => $newAmount,
-                    'difference' => $difference,
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error('Erro ao ajustar débito do pedido', [
+            // Log do erro mas não interrompe o fluxo
+            Log::warning('Erro ao atualizar débitos do pedido', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
@@ -2217,7 +2304,7 @@ class OrdersController extends Controller
                 ]);
             }
 
-            // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp/BotConversa)
+            // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp)
             try {
                 $orderStatusService = new \App\Services\OrderStatusService();
                 $orderStatusService->changeStatus($order, 'cancelled', $reason, auth()->check() ? auth()->id() : null, false);

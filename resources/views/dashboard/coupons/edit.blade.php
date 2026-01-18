@@ -84,7 +84,7 @@
                             <option value="targeted" {{ old('visibility', $coupon->visibility) == 'targeted' ? 'selected' : '' }}>Direcionado (cliente específico)</option>
                         </select>
                     </div>
-                    <div id="targetCustomerField" style="display: {{ old('visibility', $coupon->visibility) == 'targeted' ? 'block' : 'none' }}">
+                    <div id="targetCustomerField" class="{{ old('visibility', $coupon->visibility) == 'targeted' ? '' : 'hidden' }}">
                         <label class="block text-sm font-medium mb-2">Cliente Alvo</label>
                         <select name="target_customer_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                             <option value="">Selecione um cliente</option>

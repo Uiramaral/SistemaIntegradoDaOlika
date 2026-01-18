@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\CustomerCashback;
 
 class CustomersController extends Controller
@@ -100,7 +101,18 @@ class CustomersController extends Controller
             ->limit(50)
             ->get();
 
-        return view('dashboard.customers.show', compact('customer', 'orders', 'openDebts', 'debtHistory'));
+        // Calcular estatísticas de pedidos
+        $totalOrders = DB::table('orders')
+            ->where('customer_id', $id)
+            ->count();
+        
+        $totalOrdersValue = DB::table('orders')
+            ->where('customer_id', $id)
+            ->sum('final_amount');
+        
+        $averageOrderValue = $totalOrders > 0 ? ($totalOrdersValue / $totalOrders) : 0;
+
+        return view('dashboard.customers.show', compact('customer', 'orders', 'openDebts', 'debtHistory', 'totalOrders', 'totalOrdersValue', 'averageOrderValue'));
     }
 
     public function edit($id)
@@ -336,6 +348,93 @@ class CustomersController extends Controller
 
         return redirect()->route('dashboard.customers.show', $id)
             ->with('success', 'Saldo de cashback atualizado com sucesso!');
+    }
+
+    /**
+     * Ajustar saldo devedor do cliente
+     */
+    public function adjustDebtBalance(Request $request, $id)
+    {
+        $customer = \App\Models\Customer::find($id);
+        if (!$customer) {
+            return redirect()->route('dashboard.customers.show', $id)
+                ->with('error', 'Cliente não encontrado');
+        }
+
+        $request->validate([
+            'new_balance' => 'required|numeric|min:0',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Calcular saldo atual
+            $oldBalance = \App\Models\CustomerDebt::getBalance($id);
+            $newBalance = (float)$request->input('new_balance', 0);
+            $adjustmentAmount = $newBalance - $oldBalance;
+
+            // Se não houver diferença significativa, não fazer nada
+            if (abs($adjustmentAmount) < 0.01) {
+                return redirect()->route('dashboard.customers.show', $id)
+                    ->with('info', 'O saldo informado é igual ao saldo atual. Nenhum ajuste foi necessário.');
+            }
+
+            // Criar registro de ajuste no histórico
+            \App\Models\CustomerDebtAdjustment::create([
+                'customer_id' => $id,
+                'old_balance' => $oldBalance,
+                'new_balance' => $newBalance,
+                'adjustment_amount' => $adjustmentAmount,
+                'reason' => $request->input('reason', 'Ajuste manual de saldo devedor'),
+                'created_by' => auth()->id(),
+            ]);
+
+            // Criar débito ou crédito para ajustar o saldo
+            if ($adjustmentAmount > 0) {
+                // Aumentar saldo (criar débito)
+                \App\Models\CustomerDebt::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => $adjustmentAmount,
+                    'type' => 'debit',
+                    'status' => 'open',
+                    'description' => $request->input('reason', 'Ajuste manual de saldo devedor') . ' (Ajuste: +R$ ' . number_format($adjustmentAmount, 2, ',', '.') . ')',
+                ]);
+            } else {
+                // Diminuir saldo (criar crédito)
+                \App\Models\CustomerDebt::create([
+                    'customer_id' => $id,
+                    'order_id' => null,
+                    'amount' => abs($adjustmentAmount),
+                    'type' => 'credit',
+                    'status' => 'open',
+                    'description' => $request->input('reason', 'Ajuste manual de saldo devedor') . ' (Ajuste: -R$ ' . number_format(abs($adjustmentAmount), 2, ',', '.') . ')',
+                ]);
+            }
+
+            DB::commit();
+
+            \Log::info('Saldo devedor ajustado', [
+                'customer_id' => $id,
+                'old_balance' => $oldBalance,
+                'new_balance' => $newBalance,
+                'adjustment_amount' => $adjustmentAmount,
+                'user_id' => auth()->id(),
+            ]);
+
+            return redirect()->route('dashboard.customers.show', $id)
+                ->with('success', 'Saldo devedor ajustado com sucesso! De R$ ' . number_format($oldBalance, 2, ',', '.') . ' para R$ ' . number_format($newBalance, 2, ',', '.') . '.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erro ao ajustar saldo devedor', [
+                'customer_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('dashboard.customers.show', $id)
+                ->with('error', 'Erro ao ajustar saldo devedor: ' . $e->getMessage());
+        }
     }
 }
 

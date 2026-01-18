@@ -1,15 +1,10 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Entregas - OLIKA Painel')
+@section('page_title', 'Painel de Entregas')
+@section('page_subtitle', 'Visão simplificada dos pedidos com entrega agendada, pronta para o time de rua')
 
 @section('content')
 <div class="space-y-6">
-    <div>
-        <h1 class="text-3xl font-bold tracking-tight">Painel de Entregas</h1>
-        <p class="text-muted-foreground">
-            Visão simplificada dos pedidos com entrega agendada, pronta para o time de rua.
-        </p>
-    </div>
 
     @if(session('success'))
         <div class="rounded-md border border-green-200 bg-green-50 text-green-700 p-4">
@@ -33,12 +28,12 @@
                     $address  = $order->address;
                     $phoneDigits = preg_replace('/\D/', '', optional($customer)->phone ?? '');
                     $mapQuery = rawurlencode(collect([
-                        optional($address)->street,
-                        optional($address)->number,
-                        optional($address)->neighborhood,
-                        optional($address)->city,
-                        optional($address)->state,
-                        optional($address)->cep,
+                        optional($address)->street ?? null,
+                        optional($address)->number ?? null,
+                        optional($address)->neighborhood ?? null,
+                        optional($address)->city ?? null,
+                        optional($address)->state ?? null,
+                        optional($address)->cep ?? null,
                     ])->filter()->implode(', '));
                     $deliveryTime = optional($order->scheduled_delivery_at)->format('d/m H:i');
                     $statusBadges = [
@@ -77,25 +72,33 @@
 
                         <div class="space-y-2">
                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</p>
-                            <div class="text-sm leading-relaxed">
-                                {{ optional($address)->street ?? 'Rua não informada' }}{{ optional($address)->number ? ', '.optional($address)->number : '' }}<br>
-                                {{ optional($address)->neighborhood ?? '' }} {{ optional($address)->neighborhood ? '-' : '' }} {{ optional($address)->city ?? '' }}/{{ optional($address)->state ?? '' }}<br>
-                                {{ optional($address)->cep ?? '' }}
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ $mapQuery }}" target="_blank"
-                                   class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                                    <i data-lucide="map-pin" class="h-4 w-4"></i>
-                                    Google Maps
-                                </a>
-                                @if(!empty(optional($address)->latitude) && !empty(optional($address)->longitude))
-                                    <a href="waze://?ll={{ optional($address)->latitude }},{{ optional($address)->longitude }}&navigate=yes"
-                                       class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                                        <i data-lucide="navigation" class="h-4 w-4"></i>
-                                        Abrir no Waze
-                                    </a>
-                                @endif
-                            </div>
+                            @if($address)
+                                <div class="text-sm leading-relaxed">
+                                    {{ $address->street ?? 'Rua não informada' }}{{ $address->number ? ', '.$address->number : '' }}<br>
+                                    {{ $address->neighborhood ?? '' }}{{ $address->neighborhood && ($address->city || $address->state) ? ' - ' : '' }}{{ $address->city ?? '' }}{{ ($address->city && $address->state) ? '/' : '' }}{{ $address->state ?? '' }}<br>
+                                    {{ $address->cep ?? '' }}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    @if($mapQuery)
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ $mapQuery }}" target="_blank"
+                                           class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
+                                            <i data-lucide="map-pin" class="h-4 w-4"></i>
+                                            Google Maps
+                                        </a>
+                                    @endif
+                                    @if(!empty($address->latitude) && !empty($address->longitude))
+                                        <a href="waze://?ll={{ $address->latitude }},{{ $address->longitude }}&navigate=yes"
+                                           class="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
+                                            <i data-lucide="navigation" class="h-4 w-4"></i>
+                                            Abrir no Waze
+                                        </a>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="text-sm text-muted-foreground italic">
+                                    Endereço não cadastrado
+                                </div>
+                            @endif
                         </div>
 
                         @if($order->items->count())

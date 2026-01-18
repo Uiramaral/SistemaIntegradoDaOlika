@@ -1,0 +1,201 @@
+/* ============ CORREÇÕES ESPECÍFICAS PDV - FORÇA MÁXIMA ============ */
+
+/* TODOS OS INPUTS DO PDV - FORÇAR ALTURA */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="tel"],
+select,
+textarea {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+}
+
+textarea {
+    min-height: 5rem !important;
+    height: auto !important;
+    padding: 0.75rem 0.875rem !important;
+}
+
+/* TODOS OS BOTÕES DO PDV - FORÇAR ALTURA */
+button:not(.btn-sm):not(.btn-lg),
+.btn:not(.btn-sm):not(.btn-lg) {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 1rem !important;
+    font-size: 0.875rem !important;
+    box-sizing: border-box !important;
+}
+
+/* Campo de busca de cliente - garantir espaço */
+#customer-search {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+/* Botão Novo Cliente - não expandir */
+#btn-new-customer {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* Campo de cupom - input deve ter mais espaço */
+#coupon-code {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+/* Botão Aplicar cupom - não expandir */
+#btn-apply-coupon {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* Grid de 3 colunas para Taxa/Desconto */
+.grid.grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+}
+
+/* Produtos - Grid melhorado */
+.grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
+    display: grid !important;
+    gap: 1rem !important;
+    row-gap: 1rem !important;
+    column-gap: 1rem !important;
+}
+
+@media (min-width: 640px) {
+    .grid.sm\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid.lg\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+/* Cards de produtos - melhor apresentação */
+.product-quick-add {
+    min-height: 8rem !important;
+    padding: 1.25rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    background: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+.product-quick-add:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-color: hsl(var(--primary)) !important;
+}
+
+.product-quick-add p {
+    margin-bottom: 0.5rem !important;
+    line-height: 1.5 !important;
+}
+
+.product-quick-add p:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Texto do produto - 2 linhas máximo */
+.product-quick-add p.font-semibold {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
+    min-height: 3rem !important;
+}
+
+/* Preço destacado */
+.product-quick-add .product-price-display {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: hsl(var(--primary)) !important;
+}
+
+/* Scrollbar melhorada */
+.max-h-\[600px\] {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground)) transparent;
+}
+
+.max-h-\[600px\]::-webkit-scrollbar {
+    width: 8px;
+}
+
+.max-h-\[600px\]::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.max-h-\[600px\]::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground));
+    border-radius: 4px;
+}
+
+.max-h-\[600px\]::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--foreground));
+}
+
+/* Garantir que flex items fiquem alinhados */
+.flex.flex-col.sm\:flex-row.sm\:items-center {
+    align-items: stretch !important;
+}
+
+@media (min-width: 640px) {
+    .flex.flex-col.sm\:flex-row.sm\:items-center {
+        align-items: center !important;
+    }
+}
+
+/* Campos pequenos (taxa, desconto) */
+input#delivery-fee-input,
+input#manual-discount-fixed,
+input#manual-discount-percent {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.75rem !important;
+    font-size: 0.875rem !important;
+}
+
+/* Botão Calcular CEP */
+#btn-calculate-fee {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 1rem !important;
+}
+
+/* Campo CEP */
+#destination-cep {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+}
+
+/* Sobrescrever qualquer CSS antigo do PDV */
+.pdv-page input,
+.pdv-page select,
+.pdv-page textarea {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+}
+
+.pdv-page button:not(.btn-sm):not(.btn-lg) {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+}

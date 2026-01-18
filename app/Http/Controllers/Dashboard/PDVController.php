@@ -16,19 +16,29 @@ use App\Models\Coupon;
 use App\Models\Setting;
 use App\Models\OrderDeliveryFee;
 use App\Services\MercadoPagoApi;
-use App\Services\DistanceCalculatorService;
 use App\Services\WhatsAppService;
+use App\Services\DistanceCalculatorService;
 use App\Models\DeliveryFee;
 use Carbon\Carbon;
 
 class PDVController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         // Carregar produtos ativos com preços de revenda
+        // Ordenar por mais vendidos (últimos 90 dias)
         $products = Product::where('is_active', true)
             ->with(['variants', 'wholesalePrices'])
-            ->orderBy('name')
+            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('orders', function($join) {
+                $join->on('order_items.order_id', '=', 'orders.id')
+                     ->where('orders.payment_status', 'paid')
+                     ->where('orders.created_at', '>=', now()->subDays(90));
+            })
+            ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
+            ->groupBy('products.id')
+            ->orderBy('total_sold', 'desc')
+            ->orderBy('products.name', 'asc') // Ordenação secundária por nome
             ->get();
 
         // Carregar clientes recentes (últimos 50)
@@ -36,15 +46,6 @@ class PDVController extends Controller
             ->limit(50)
             ->get(['id', 'name', 'phone', 'email', 'is_wholesale']);
 
-        // Determinar qual template usar
-        $routeName = $request->route()->getName();
-        $theme = $request->get('theme', 'default');
-        
-        // Forçar SweetSpot theme para a rota específica
-        if ($routeName === 'dashboard.pdv.sweetspot' || $theme === 'sweetspot') {
-            return view('dashboard.pdv.sweetspot', compact('products', 'recentCustomers'));
-        }
-        
         return view('dashboard.pdv.index', compact('products', 'recentCustomers'));
     }
 
@@ -57,9 +58,13 @@ class PDVController extends Controller
         }
 
         $customers = Customer::with('addresses')
-            ->where('name', 'like', "%{$query}%")
-            ->orWhere('phone', 'like', "%{$query}%")
-            ->orWhere('email', 'like', "%{$query}%")
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->orderBy('name')
+            ->distinct('id')
             ->limit(20)
             ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
 
@@ -118,6 +123,16 @@ class PDVController extends Controller
         }
         
         $products = $productsQuery
+            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('orders', function($join) {
+                $join->on('order_items.order_id', '=', 'orders.id')
+                     ->where('orders.payment_status', 'paid')
+                     ->where('orders.created_at', '>=', now()->subDays(90));
+            })
+            ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
+            ->groupBy('products.id')
+            ->orderBy('total_sold', 'desc')
+            ->orderBy('products.name', 'asc')
             ->with(['variants' => function($q) {
                 $q->where('is_active', true)->orderBy('sort_order');
             }, 'wholesalePrices' => function($q) {
@@ -329,10 +344,9 @@ class PDVController extends Controller
             'manual_discount_percent' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string|max:1000',
             'send_payment_link' => 'nullable|boolean', // Se deve enviar link de pagamento ao cliente
-            'payment_method' => 'nullable|in:pix,link', // PIX ou Link de pagamento (cartão)
+            'payment_method' => 'nullable|in:pix,credit_card,debit_card', // Método se enviar link
             'create_as_paid' => 'nullable|boolean', // Criar pedido já como pago
             'skip_notification' => 'nullable|boolean', // Pular notificações
-            'scheduled_delivery_at' => 'nullable|date', // Agendamento de entrega
         ]);
 
         try {
@@ -391,7 +405,6 @@ class PDVController extends Controller
 
             // Criar pedido
             $order = Order::create([
-                'client_id' => currentClientId() ?? 1, // Multi-tenant: salvar o client_id
                 'customer_id' => $customer->id,
                 'address_id' => $request->address_id,
                 'order_number' => $orderNumber,
@@ -401,17 +414,22 @@ class PDVController extends Controller
                 'discount_amount' => $totalDiscount,
                 'coupon_code' => $couponCode,
                 'final_amount' => $finalAmount,
-                'payment_method' => $request->payment_method === 'link' ? 'card' : ($request->payment_method ?? 'pix'),
+                'payment_method' => $request->payment_method ?? 'pix',
                 'payment_status' => $initialPaymentStatus,
                 'delivery_type' => $request->delivery_type,
                 'notes' => $request->notes,
-                'scheduled_delivery_at' => $request->scheduled_delivery_at ? Carbon::parse($request->scheduled_delivery_at) : null,
             ]);
             
-            // Se criar como pago, marcar como já notificado para evitar notificações
+            // Se criar como pago, marcar como já notificado e solicitar impressão automática
             if ($createAsPaid) {
                 $order->notified_paid_at = now();
+                $order->print_requested_at = now(); // Solicitar impressão automática
                 $order->save();
+                
+                Log::info('PDV: Pedido criado como pago - impressão automática solicitada', [
+                    'order_id' => $order->id,
+                    'order_number' => $orderNumber,
+                ]);
             }
 
             // Criar itens
@@ -477,107 +495,66 @@ class PDVController extends Controller
                         ];
                     })->toArray();
 
-                    // Se o método for PIX, criar cobrança PIX direta para ter o código copia e cola
-                    // Caso contrário, criar link de checkout que permite vários métodos
-                    if ($request->payment_method === 'pix') {
-                        // Criar cobrança PIX direta (com código copia e cola)
-                        $pref = $mpApi->createPixPreference($order, $customer, $mpItems);
-                        
-                        $order->update([
-                            'payment_provider' => 'mercadopago',
-                            'preference_id' => $pref['preference_id'] ?? null,
-                            'payment_link' => $pref['checkout_url'] ?? null,
-                            'pix_qr_base64' => $pref['qr_base64'] ?? null,
-                            'pix_copia_cola' => $pref['copia_cola'] ?? null,
-                            'pix_expires_at' => !empty($pref['expires_at']) ? Carbon::parse($pref['expires_at']) : null,
-                            'payment_status' => 'pending',
-                        ]);
-                    } else {
-                        // Criar link de checkout (permite cartão e outros métodos)
-                        $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
+                    // Sempre usar createPaymentLinkFromOrder que permite cartão E PIX
+                    // Isso permite que o cliente escolha no link do Mercado Pago
+                    $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
 
-                        $order->update([
-                            'payment_provider' => 'mercadopago',
-                            'preference_id' => $pref['preference_id'] ?? null,
-                            'payment_link' => $pref['checkout_url'] ?? null,
-                            'payment_status' => 'pending',
-                        ]);
-                    }
+                    $order->update([
+                        'payment_provider' => 'mercadopago',
+                        'preference_id' => $pref['preference_id'] ?? null,
+                        'payment_link' => $pref['checkout_url'] ?? null,
+                        'pix_qr_base64' => $pref['qr_base64'] ?? null,
+                        'pix_copia_cola' => $pref['copia_cola'] ?? null,
+                        'pix_expires_at' => !empty($pref['expires_at']) ? Carbon::parse($pref['expires_at']) : null,
+                        'payment_status' => 'pending',
+                    ]);
 
                     // Enviar mensagem ao cliente via WhatsApp (se configurado)
                     if ($customer->phone) {
                         try {
-                            $whatsApp = new WhatsAppService();
-                            
-                            if ($whatsApp->isEnabled()) {
+                            $whatsappService = new WhatsAppService();
+                            if ($whatsappService->isEnabled()) {
                                 $message = "Olá, {$customer->name}! 🛒\n\n";
-                                $message .= "Seu pedido *#{$orderNumber}* foi criado!\n\n";
-                                $message .= "*Total: R$ " . number_format($finalAmount, 2, ',', '.') . "*\n\n";
+                                $message .= "Seu pedido #{$orderNumber} foi criado!\n\n";
+                                $message .= "Total: R$ " . number_format($finalAmount, 2, ',', '.') . "\n\n";
                                 
-                                // Se for PIX e tiver código copia e cola
-                                if ($request->payment_method === 'pix' && !empty($order->pix_copia_cola)) {
-                                    $message .= "💳 *Pagamento via PIX*\n\n";
-                                    $message .= "Copie o código abaixo e cole no app do seu banco:\n\n";
-                                    $message .= "_O código será enviado na próxima mensagem para facilitar a cópia._\n\n";
-                                    
-                                    // Incluir link da página PIX com QR code e botão copiar
-                                    $pixPageUrl = route('pedido.payment.pix', ['order' => $order->id]);
-                                    $message .= "📱 Ou acesse a página com QR Code:\n";
-                                    $message .= $pixPageUrl . "\n\n";
-                                    
-                                    $message .= "Qualquer dúvida, estamos à disposição! 😊";
-                                    
-                                    // Enviar mensagem principal
-                                    $whatsApp->sendText($customer->phone, $message);
-                                    
-                                    // Enviar código PIX em mensagem separada (facilita copiar)
-                                    $pixMessage = $order->pix_copia_cola;
-                                    $whatsApp->sendText($customer->phone, $pixMessage);
-                                    
-                                    Log::info('PDV: PIX copia e cola enviado via WhatsApp', [
+                                if ($request->payment_method === 'pix') {
+                                    $message .= "Para pagar via PIX, acesse:\n";
+                                } else {
+                                    $message .= "Para finalizar o pagamento, acesse:\n";
+                                }
+                                
+                                $phoneParam = urlencode(preg_replace('/\D/', '', $customer->phone));
+                                $paymentUrl = route('customer.orders.show', [
+                                    'order' => $orderNumber,
+                                    'phone' => $phoneParam
+                                ]);
+                                
+                                $message .= $paymentUrl . "\n\n";
+                                $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
+
+                                // Normalizar telefone antes de enviar
+                                $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+                                if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                                    $phoneNormalized = '55' . $phoneNormalized;
+                                }
+                                
+                                // Enviar mensagem via WhatsApp
+                                $result = $whatsappService->sendText($phoneNormalized, $message);
+                                
+                                if (isset($result['success']) && $result['success']) {
+                                    Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
                                         'order_id' => $order->id,
-                                        'order_number' => $orderNumber,
-                                        'customer_phone' => $customer->phone,
-                                        'pix_page_url' => $pixPageUrl,
+                                        'customer_phone_original' => $customer->phone,
+                                        'phone_normalized' => $phoneNormalized,
                                     ]);
                                 } else {
-                                    // Cartão ou sem código PIX - enviar link
-                                    if ($request->payment_method === 'pix') {
-                                        $message .= "Para pagar via PIX, acesse:\n";
-                                        
-                                        // Usar link da página PIX (que tem QR code e botão copiar)
-                                        $pixPageUrl = route('pedido.payment.pix', ['order' => $order->id]);
-                                        $message .= $pixPageUrl . "\n\n";
-                                    } else {
-                                        $message .= "Para finalizar o pagamento, acesse:\n";
-                                        
-                                        // Usar link de pagamento do Mercado Pago diretamente
-                                        if ($order->payment_link) {
-                                            $message .= $order->payment_link . "\n\n";
-                                        } else {
-                                            // Fallback para página de pagamento
-                                            $pixPageUrl = route('pedido.payment.checkout', ['order' => $order->id]);
-                                            $message .= $pixPageUrl . "\n\n";
-                                        }
-                                    }
-                                    
-                                    $message .= "Qualquer dúvida, estamos à disposição! 😊";
-
-                                    // Enviar mensagem via WhatsApp
-                                    $result = $whatsApp->sendText($customer->phone, $message);
-                                    
-                                    if ($result) {
-                                        Log::info('PDV: Link de pagamento enviado via WhatsApp', [
-                                            'order_id' => $order->id,
-                                            'order_number' => $orderNumber,
-                                            'customer_phone' => $customer->phone,
-                                        ]);
-                                    } else {
-                                        Log::warning('PDV: Falha ao enviar link de pagamento via WhatsApp', [
-                                            'order_id' => $order->id,
-                                            'customer_phone' => $customer->phone,
-                                        ]);
-                                    }
+                                    Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
+                                        'order_id' => $order->id,
+                                        'customer_phone_original' => $customer->phone,
+                                        'phone_normalized' => $phoneNormalized,
+                                        'error' => $result['error'] ?? 'Erro desconhecido',
+                                    ]);
                                 }
                             } else {
                                 Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
@@ -596,7 +573,6 @@ class PDVController extends Controller
                         'order_id' => $order->id,
                         'order_number' => $orderNumber,
                         'payment_link' => $order->payment_link,
-                        'has_pix_copia_cola' => !empty($order->pix_copia_cola),
                     ]);
                 } catch (\Exception $e) {
                     Log::error('PDV: Erro ao criar link de pagamento', [
@@ -658,7 +634,6 @@ class PDVController extends Controller
             'notes' => 'nullable|string|max:1000',
             'zip_code' => 'nullable|string|max:10', // CEP do destino
             'address' => 'nullable|array', // Dados de endereço completos
-            'scheduled_delivery_at' => 'nullable|date', // Agendamento de entrega
         ]);
 
         try {
@@ -760,7 +735,6 @@ class PDVController extends Controller
 
             // Criar pedido (sem link de pagamento ainda - cliente vai escolher depois)
             $order = Order::create([
-                'client_id' => currentClientId() ?? 1, // Multi-tenant: salvar o client_id
                 'customer_id' => $customer->id,
                 'address_id' => $addressId,
                 'order_number' => $orderNumber,
@@ -774,7 +748,6 @@ class PDVController extends Controller
                 'delivery_type' => $request->delivery_type,
                 'notes' => $request->notes,
                 'payment_status' => 'pending', // Status inicial - aguardando cliente finalizar
-                'scheduled_delivery_at' => $request->scheduled_delivery_at ? Carbon::parse($request->scheduled_delivery_at) : null,
             ]);
 
             // Criar itens
@@ -817,8 +790,18 @@ class PDVController extends Controller
 
             // Enviar mensagem via WhatsApp
             try {
-                $whatsApp = new WhatsAppService();
-                if ($whatsApp->isEnabled()) {
+                $whatsappService = new WhatsAppService();
+                
+                // Verificar se há instâncias configuradas
+                $instancesCount = \App\Models\WhatsappInstance::whereNotNull('api_url')->count();
+                Log::info('PDV: Verificando WhatsApp antes de enviar', [
+                    'order_id' => $order->id,
+                    'customer_phone' => $customer->phone,
+                    'instances_count' => $instancesCount,
+                    'is_enabled' => $whatsappService->isEnabled(),
+                ]);
+                
+                if ($whatsappService->isEnabled()) {
                     // Construir resumo do pedido
                     $message = "Olá, {$customer->name}! 🛒\n\n";
                     $message .= "Seu pedido foi criado!\n\n";
@@ -844,34 +827,140 @@ class PDVController extends Controller
                     $message .= $completeUrl . "\n\n";
                     $message .= "Após finalizar, você será direcionado para o pagamento.";
 
-                    // Enviar mensagem via WhatsApp
-                    $result = $whatsApp->sendText($customer->phone, $message);
+                    // VALIDAÇÃO CRÍTICA: Verificar se o cliente tem telefone válido
+                    if (empty($customer->phone) || trim($customer->phone) === '') {
+                        Log::error('PDV: Cliente não possui telefone cadastrado', [
+                            'order_id' => $order->id,
+                            'customer_id' => $customer->id,
+                            'customer_name' => $customer->name,
+                        ]);
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas o cliente não possui telefone cadastrado para receber via WhatsApp.',
+                            'whatsapp_error' => true,
+                        ]);
+                    }
                     
-                    if ($result) {
+                    // Log do telefone original do cliente - VALIDAR que é o correto
+                    Log::info('PDV: Preparando envio WhatsApp', [
+                        'order_id' => $order->id,
+                        'customer_id' => $customer->id,
+                        'customer_name' => $customer->name,
+                        'customer_phone_original' => $customer->phone,
+                        'customer_phone_length' => strlen($customer->phone),
+                    ]);
+                    
+                    // Normalizar telefone (adicionar código do país se necessário)
+                    // IMPORTANTE: Usar o telefone do cliente do banco, não alterar
+                    $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+                    if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                        $phoneNormalized = '55' . $phoneNormalized;
+                    }
+                    
+                    // VALIDAÇÃO: Garantir que o número normalizado não está vazio
+                    if (empty($phoneNormalized) || strlen($phoneNormalized) < 10) {
+                        Log::error('PDV: Telefone normalizado inválido', [
+                            'order_id' => $order->id,
+                            'customer_id' => $customer->id,
+                            'customer_phone_original' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
+                        ]);
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas o telefone do cliente está em formato inválido.',
+                            'whatsapp_error' => true,
+                        ]);
+                    }
+                    
+                    // Log do telefone normalizado - VALIDAR antes de enviar
+                    Log::info('PDV: Telefone normalizado para envio', [
+                        'order_id' => $order->id,
+                        'customer_id' => $customer->id,
+                        'customer_phone_original' => $customer->phone,
+                        'phone_normalized' => $phoneNormalized,
+                        'phone_will_be_sent' => $phoneNormalized, // Este é o número que SERÁ enviado
+                    ]);
+
+                    // Enviar mensagem via WhatsApp - GARANTIR que usa o número correto do cliente
+                    // IMPORTANTE: $phoneNormalized deve ser o número do cliente, não outro
+                    $result = $whatsappService->sendText($phoneNormalized, $message);
+                    
+                    if (isset($result['success']) && $result['success']) {
                         Log::info('PDV: Pedido enviado ao cliente via WhatsApp', [
                             'order_id' => $order->id,
                             'order_number' => $orderNumber,
                             'customer_phone' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
                             'complete_url' => $completeUrl,
                         ]);
                     } else {
-                        Log::warning('PDV: Falha ao enviar pedido via WhatsApp', [
+                        $errorMsg = $result['error'] ?? 'Erro desconhecido';
+                        Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
                             'order_id' => $order->id,
+                            'order_number' => $orderNumber,
                             'customer_phone' => $customer->phone,
+                            'phone_normalized' => $phoneNormalized,
+                            'error' => $errorMsg,
+                            'result' => $result,
+                        ]);
+                        // Retornar erro para o frontend saber que falhou
+                        return response()->json([
+                            'success' => true,
+                            'order' => [
+                                'id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'total' => $finalAmount,
+                            ],
+                            'message' => 'Pedido criado com sucesso, mas houve um problema ao enviar a mensagem via WhatsApp: ' . $errorMsg,
+                            'whatsapp_error' => true,
                         ]);
                     }
                 } else {
-                    Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
+                    Log::warning('PDV: WhatsApp não configurado ou sem instâncias conectadas', [
                         'order_id' => $order->id,
                         'order_number' => $orderNumber,
+                        'instances_count' => $instancesCount,
+                    ]);
+                    // Retornar aviso mas não falhar o pedido
+                    return response()->json([
+                        'success' => true,
+                        'order' => [
+                            'id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'total' => $finalAmount,
+                        ],
+                        'message' => 'Pedido criado com sucesso, mas não foi possível enviar via WhatsApp. Verifique se há instâncias de WhatsApp configuradas e conectadas.',
+                        'whatsapp_error' => true,
                     ]);
                 }
             } catch (\Exception $e) {
                 Log::error('PDV: Erro ao enviar mensagem ao cliente', [
                     'order_id' => $order->id,
+                    'order_number' => $orderNumber,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                // Não falhar o processo se o envio de mensagem falhar
+                // Não falhar o processo se o envio de mensagem falhar, mas avisar
+                return response()->json([
+                    'success' => true,
+                    'order' => [
+                        'id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'total' => $finalAmount,
+                    ],
+                    'message' => 'Pedido criado com sucesso, mas houve um erro ao enviar via WhatsApp: ' . $e->getMessage(),
+                    'whatsapp_error' => true,
+                ]);
             }
 
             DB::commit();

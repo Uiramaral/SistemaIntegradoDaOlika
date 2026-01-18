@@ -1,0 +1,79 @@
+/* ======================================
+   ADMIN BRIDGE v3.1 - Compatibilidade
+   Adapta layout antigo às novas classes Tailwind
+   ====================================== */
+
+/* ==================== HIERARQUIA DE BOTÕES ==================== */
+.bg-primary,
+button.bg-primary,
+a.bg-primary,
+[class*="bg-primary"][class*="text-primary-foreground"] {
+  box-shadow: 0 4px 12px -2px hsla(var(--color-primary), 0.35);
+  transition: all 0.2s ease;
+}
+
+.bg-primary:hover,
+button.bg-primary:hover,
+a.bg-primary:hover {
+  box-shadow: 0 6px 16px -2px hsla(var(--color-primary), 0.45);
+  transform: translateY(-1px);
+}
+
+.bg-primary:active,
+button.bg-primary:active,
+a.bg-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px -2px hsla(var(--color-primary), 0.3);
+}
+
+/* Botões secundários */
+.border-input.bg-background,
+button.border-input,
+a.border-input {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.border-input.bg-background:hover,
+button.border-input:hover,
+a.border-input:hover {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* ==================== COMPONENTES COMUNS ==================== */
+.card,
+[class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ==================== TIPOGRAFIA ==================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* ==================== ESPAÇAMENTO E PADDING ==================== */
+/* Garantir padding adequado em páginas antigas */
+main > div,
+.main-content,
+[class*="page-content"] {
+  padding: 1.5rem;
+}
+
+/* ==================== COMPATIBILIDADE COM CLASSES ANTIGAS ==================== */
+.sidebar {
+  background: hsl(var(--color-sidebar-bg));
+  color: hsl(var(--color-sidebar-text));
+}
+
+.main-content {
+  background: hsl(var(--color-bg));
+  min-height: 100vh;
+}

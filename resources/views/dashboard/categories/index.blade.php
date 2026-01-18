@@ -1,34 +1,20 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Categorias - OLIKA Painel')
+@section('page_title', 'Categorias')
+@section('page_subtitle', 'Organize seus produtos por categoria')
+
+@section('page_actions')
+    <a href="{{ route('dashboard.categories.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        Nova Categoria
+    </a>
+@endsection
 
 @section('content')
 <div class="space-y-6">
-    @if(session('success'))
-        <div class="rounded-md border border-green-200 bg-green-50 text-green-700 p-4">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="rounded-md border border-red-200 bg-red-50 text-red-700 p-4">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Categorias</h1>
-            <p class="text-muted-foreground">Organize seus produtos por categoria</p>
-        </div>
-        <a href="{{ route('dashboard.categories.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                <path d="M5 12h14"></path>
-                <path d="M12 5v14"></path>
-            </svg>
-            Nova Categoria
-        </a>
-    </div>
 
     @if($categories->count() > 0)
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -47,26 +33,26 @@
                     <tbody>
                         @foreach($categories as $category)
                         <tr class="border-b hover:bg-muted/50">
-                            <td class="p-3">
+                            <td class="p-3" data-label="Nome">
                                 <div class="font-medium">{{ $category->name }}</div>
                                 @if($category->description)
                                 <div class="text-sm text-muted-foreground mt-1">{{ \Illuminate\Support\Str::limit($category->description, 60) }}</div>
                                 @endif
                             </td>
-                            <td class="p-3">
+                            <td class="p-3" data-label="Produtos">
                                 <button onclick="toggleProducts({{ $category->id }})" class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 cursor-pointer">
                                     {{ $category->products_count }} produto(s)
                                 </button>
                             </td>
-                            <td class="p-3 text-sm text-muted-foreground">{{ $category->sort_order }}</td>
-                            <td class="p-3">
+                            <td class="p-3 text-sm text-muted-foreground" data-label="Ordem">{{ $category->sort_order }}</td>
+                            <td class="p-3" data-label="Status">
                                 @if($category->is_active)
                                 <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Ativa</span>
                                 @else
                                 <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Inativa</span>
                                 @endif
                             </td>
-                            <td class="p-3 actions-cell">
+                            <td class="p-3 actions-cell" data-label="Ações">
                                 <div class="flex items-center justify-end gap-2 mobile-actions">
                                     <button onclick="toggleProducts({{ $category->id }})" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3" title="Gerenciar produtos">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

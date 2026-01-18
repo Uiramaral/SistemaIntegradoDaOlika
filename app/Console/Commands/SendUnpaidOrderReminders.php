@@ -15,9 +15,8 @@ class SendUnpaidOrderReminders extends Command
     public function handle()
     {
         $minutes = (int) $this->option('minutes');
-        $whatsApp = new WhatsAppService();
-        
-        if (!$whatsApp->isEnabled()) {
+        $whatsappService = new WhatsAppService();
+        if (!$whatsappService->isEnabled()) {
             $this->warn('WhatsApp não configurado.');
             return Command::SUCCESS;
         }
@@ -27,41 +26,28 @@ class SendUnpaidOrderReminders extends Command
             ->where(function($q){ $q->whereNull('payment_status')->orWhere('payment_status','!=','paid'); })
             ->whereNull('notified_unpaid_at')
             ->where('created_at','<=',$cutoff)
+            ->with(['customer', 'items.product'])
             ->limit(100)
             ->get();
 
         foreach ($orders as $order) {
             try {
-                $order->loadMissing('items.product', 'customer');
-                
-                // Verificar se o cliente tem telefone
                 if (!$order->customer || !$order->customer->phone) {
                     continue;
                 }
                 
-                // Construir mensagem de lembrete
-                $customerName = $order->customer->name ?? 'Cliente';
-                $orderNumber = $order->order_number;
-                $total = number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.');
+                $text = $this->buildUnpaidReminder($order);
+                $result = $whatsappService->sendText($order->customer->phone, $text);
                 
-                $text = "⏰ *Lembrete de Pagamento*\n\n";
-                $text .= "Olá, {$customerName}!\n\n";
-                $text .= "Notamos que o pedido *#{$orderNumber}* ainda não foi pago.\n\n";
-                $text .= "*Total: R$ {$total}*\n\n";
-                
-                if ($order->payment_link) {
-                    $text .= "Para finalizar o pagamento, acesse:\n";
-                    $text .= $order->payment_link . "\n\n";
-                }
-                
-                $text .= "Qualquer dúvida, estamos à disposição! 😊";
-                
-                $result = $whatsApp->sendText($order->customer->phone, $text);
-                
-                if ($result) {
+                if (isset($result['success']) && $result['success']) {
                     $order->notified_unpaid_at = now();
                     $order->save();
                     $this->info("Lembrete enviado para pedido #{$order->order_number}");
+                } else {
+                    Log::warning('Falha ao enviar lembrete de não pagamento', [
+                        'order_id' => $order->id,
+                        'error' => $result['error'] ?? 'Erro desconhecido'
+                    ]);
                 }
             } catch (\Throwable $e) {
                 Log::warning('Falha ao enviar lembrete de não pagamento', ['order_id'=>$order->id,'err'=>$e->getMessage()]);
@@ -69,5 +55,21 @@ class SendUnpaidOrderReminders extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Construir mensagem de lembrete de pedido não pago
+     */
+    private function buildUnpaidReminder(Order $order): string
+    {
+        $lines = [];
+        $lines[] = '👋 Olá! Seu pedido #'.$order->order_number.' ainda aguarda pagamento.';
+        $final = (float)($order->final_amount ?? $order->total_amount ?? 0);
+        $lines[] = 'Total: R$ '.number_format($final,2,',','.');
+        $lines[] = '';
+        $lines[] = 'Pague agora:';
+        $lines[] = url(route('pedido.payment.checkout', $order, false));
+        $lines[] = 'PIX: '.url(route('pedido.payment.pix', $order, false));
+        return implode("\n", $lines);
     }
 }

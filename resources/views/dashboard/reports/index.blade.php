@@ -1,25 +1,22 @@
 @extends('dashboard.layouts.app')
 
-@section('title', 'Relatórios - OLIKA Painel')
+@section('page_title', 'Relatórios')
+@section('page_subtitle', 'Analise o desempenho do seu negócio')
+
+@section('page_actions')
+    <form method="GET" action="{{ route('dashboard.reports') }}" class="flex items-center gap-2">
+        <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <span class="text-muted-foreground">até</span>
+        <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar h-4 w-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+            Filtrar
+        </button>
+    </form>
+@endsection
 
 @section('content')
-<div class="space-y-6 animate-in fade-in duration-500">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">Relatórios</h1>
-      <p class="text-muted-foreground">Analise o desempenho do seu negócio</p>
-    </div>
-    <form method="GET" action="{{ route('dashboard.reports') }}" class="flex items-center gap-2">
-      <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <span class="text-muted-foreground">até</span>
-      <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar h-4 w-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-        Filtrar
-      </button>
-    </form>
-  </div>
-
+<div class="space-y-6">
   <!-- Métricas de Analytics -->
   <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
     <div class="flex flex-col space-y-1.5 p-6">
@@ -27,63 +24,12 @@
       <p class="text-sm text-muted-foreground">Análise de comportamento dos visitantes</p>
     </div>
     <div class="p-6 pt-0">
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-lg border bg-muted/50 p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-muted-foreground">Visitas Únicas</h4>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye h-4 w-4 text-muted-foreground"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </div>
-          <div class="text-2xl font-bold">{{ number_format($pageViews ?? 0, 0, ',', '.') }}</div>
-          <p class="text-xs text-muted-foreground mb-1">1 sessão por dia = 1 visita</p>
-          @if(isset($pageViewsChange))
-            <p class="text-xs {{ $pageViewsChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
-              {{ $pageViewsChange >= 0 ? '+' : '' }}{{ number_format($pageViewsChange, 1, ',', '.') }}%
-            </p>
-          @endif
-        </div>
-
-        <div class="rounded-lg border bg-muted/50 p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-muted-foreground">Sessões com Carrinho</h4>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shopping-cart h-4 w-4 text-muted-foreground"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-          </div>
-          <div class="text-2xl font-bold">{{ number_format($addToCartEvents ?? 0, 0, ',', '.') }}</div>
-          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que adicionaram</p>
-          @if(isset($addToCartChange))
-            <p class="text-xs {{ $addToCartChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
-              {{ $addToCartChange >= 0 ? '+' : '' }}{{ number_format($addToCartChange, 1, ',', '.') }}%
-            </p>
-          @endif
-        </div>
-
-        <div class="rounded-lg border bg-muted/50 p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-muted-foreground">Checkouts Iniciados</h4>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right h-4 w-4 text-muted-foreground"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </div>
-          <div class="text-2xl font-bold">{{ number_format($checkoutStarted ?? 0, 0, ',', '.') }}</div>
-          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que iniciaram</p>
-          @if(isset($checkoutStartedChange))
-            <p class="text-xs {{ $checkoutStartedChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
-              {{ $checkoutStartedChange >= 0 ? '+' : '' }}{{ number_format($checkoutStartedChange, 1, ',', '.') }}%
-            </p>
-          @endif
-        </div>
-
-        <div class="rounded-lg border bg-muted/50 p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-muted-foreground">Compras Realizadas</h4>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-4 w-4 text-muted-foreground"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <div class="text-2xl font-bold">{{ number_format($purchases ?? 0, 0, ',', '.') }}</div>
-          <p class="text-xs text-muted-foreground mb-1">Sessões únicas que compraram</p>
-          @if(isset($purchasesChange))
-            <p class="text-xs {{ $purchasesChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
-              {{ $purchasesChange >= 0 ? '+' : '' }}{{ number_format($purchasesChange, 1, ',', '.') }}%
-            </p>
-          @endif
-        </div>
-      </div>
+      <x-stat-grid :items="[
+        ['label' => 'Visitas Únicas', 'value' => number_format($pageViews ?? 0, 0, ',', '.'), 'icon' => 'eye'],
+        ['label' => 'Sessões com Carrinho', 'value' => number_format($addToCartEvents ?? 0, 0, ',', '.'), 'icon' => 'shopping-cart'],
+        ['label' => 'Checkouts Iniciados', 'value' => number_format($checkoutStarted ?? 0, 0, ',', '.'), 'icon' => 'arrow-right'],
+        ['label' => 'Compras Realizadas', 'value' => number_format($purchases ?? 0, 0, ',', '.'), 'icon' => 'check'],
+      ]" />
 
       <div class="grid gap-4 md:grid-cols-3 mt-4">
         <div class="rounded-lg border bg-muted/50 p-4">

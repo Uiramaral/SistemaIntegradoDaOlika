@@ -194,17 +194,36 @@ class OrderController extends Controller
         // Buscar cupons públicos elegíveis
         $eligibleCoupons = collect();
         try {
-            $allPublicCoupons = \App\Models\Coupon::query()
-                ->where('visibility', 'public')
+            // Buscar cupons públicos E cupons direcionados ao cliente específico
+            $couponsQuery = \App\Models\Coupon::query()
                 ->where('is_active', true)
                 ->valid()
-                ->available()
-                ->get();
+                ->available();
             
-            $eligibleCoupons = $allPublicCoupons->filter(function($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
+            // Incluir cupons públicos OU cupons direcionados ao cliente
+            $couponsQuery->where(function($q) use ($customerId) {
+                $q->where('visibility', 'public');
+                if ($customerId) {
+                    $q->orWhere(function($subQ) use ($customerId) {
+                        $subQ->where('visibility', 'targeted')
+                             ->where('target_customer_id', $customerId);
+                    });
+                }
+            });
+            
+            $allCoupons = $couponsQuery->get();
+            
+            $eligibleCoupons = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
+                }
+                
+                // Verificar se é cupom direcionado e se o cliente tem direito
+                if ($coupon->visibility === 'targeted') {
+                    if (!$customerId || $coupon->target_customer_id !== $customerId) {
+                        return false; // Cupom direcionado não é para este cliente
+                    }
                 }
                 
                 // Para cupons de primeiro pedido, verificar primeiro se é primeiro pedido
@@ -214,8 +233,10 @@ class OrderController extends Controller
                         return false; // Não é primeiro pedido, cupom não é elegível
                     }
                     // É primeiro pedido, verificar outras condições (valor mínimo, etc)
-                    // Para cupons de primeiro pedido, não precisamos verificar canBeUsedBy quando customer_id é null
-                    // pois é justamente para clientes novos
+                    // Para cupons de primeiro pedido, verificar canBeUsedBy se cliente existe
+                    if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                        return false; // Cliente já usou este cupom de primeiro pedido
+                    }
                     if (!$coupon->isValid($customerId)) {
                         return false; // Cupom não está ativo, válido ou disponível
                     }
@@ -232,9 +253,10 @@ class OrderController extends Controller
                     return false;
                 }
                 
-                // Verificar limite de uso apenas se cliente existe E cupom tem limite
-                if ($coupon->usage_limit_per_customer > 0 && $customerId) {
-                    return $coupon->canBeUsedBy($customerId);
+                // IMPORTANTE: Verificar se o cliente pode usar o cupom (inclui verificação de uso único)
+                // Se há customerId, sempre verificar canBeUsedBy para garantir que não foi usado antes
+                if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                    return false; // Cliente não pode usar este cupom (já usou, limite atingido, etc)
                 }
                 
                 return true;
@@ -461,6 +483,14 @@ class OrderController extends Controller
             // Usar updateOrCreate para atomicidade e evitar duplicatas
             $phoneNormalized = trim($validated['customer_phone']);
             
+            // Normalizar telefone: remover caracteres não numéricos e garantir formato consistente
+            $phoneDigits = preg_replace('/\D/', '', $phoneNormalized);
+            // Se não começar com 55 (código do país), adicionar se tiver 10 ou 11 dígitos (formato brasileiro)
+            if (strlen($phoneDigits) >= 10 && strlen($phoneDigits) <= 11 && !str_starts_with($phoneDigits, '55')) {
+                $phoneDigits = '55' . $phoneDigits;
+            }
+            $phoneNormalized = $phoneDigits;
+            
             // Filtrar apenas números do campo number
             $number = preg_replace('/\D/', '', $validated['number']);
             
@@ -470,33 +500,90 @@ class OrderController extends Controller
                 $fullAddress .= ' - ' . $validated['complement'];
             }
             
-            // updateOrCreate: busca pelo primeiro array, atualiza/cria com o segundo
-            $customer = Customer::updateOrCreate(
-                ['phone' => $phoneNormalized], // Chave de busca (única na tabela)
-                [
-                    'name' => $validated['customer_name'],
-                    'email' => $validated['customer_email'] ?? null,
-                    // Salvar endereço completo no cliente para agilizar próximos pedidos
-                    'address' => $fullAddress,
-                    'neighborhood' => $validated['neighborhood'],
-                    'city' => $validated['city'],
-                    'state' => $validated['state'],
-                    'zip_code' => preg_replace('/\D/', '', $validated['zip_code']), // Apenas números
-                ]
-            );
+            // Tentar encontrar cliente por telefone (com variações)
+            $customer = Customer::where('phone', $phoneNormalized)->first();
             
-            // Garantir que os dados estão atualizados (incluindo endereço)
-            $customer->name = $validated['customer_name'];
-            if (!empty($validated['customer_email'])) {
-                $customer->email = $validated['customer_email'];
+            // Se não encontrou, tentar sem código do país
+            if (!$customer && strlen($phoneNormalized) > 2 && str_starts_with($phoneNormalized, '55')) {
+                $phoneWithoutCountry = substr($phoneNormalized, 2);
+                $customer = Customer::where('phone', $phoneWithoutCountry)->first();
+                if ($customer) {
+                    // Atualizar telefone para incluir código do país
+                    $customer->phone = $phoneNormalized;
+                }
             }
-            // Sempre atualizar endereço (pode mudar)
-            $customer->address = $fullAddress;
-            $customer->neighborhood = $validated['neighborhood'];
-            $customer->city = $validated['city'];
-            $customer->state = $validated['state'];
-            $customer->zip_code = preg_replace('/\D/', '', $validated['zip_code']);
-            $customer->save();
+            
+            // Se ainda não encontrou, tentar com código do país
+            if (!$customer && !str_starts_with($phoneNormalized, '55') && strlen($phoneNormalized) >= 10) {
+                $phoneWithCountry = '55' . $phoneNormalized;
+                $customer = Customer::where('phone', $phoneWithCountry)->first();
+                if ($customer) {
+                    // Cliente encontrado, manter telefone como está
+                }
+            }
+            
+            // Se não encontrou cliente existente, criar novo
+            if (!$customer) {
+                \Log::warning('OrderController:store - Cliente não encontrado, criando novo', [
+                    'phone_normalized' => $phoneNormalized,
+                    'phone_original' => $validated['customer_phone'],
+                    'customer_name' => $validated['customer_name'],
+                ]);
+                
+                // Verificar uma última vez se não existe cliente com telefone similar (busca mais ampla)
+                $similarCustomer = Customer::whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [preg_replace('/\D/', '', $phoneNormalized)])
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [preg_replace('/\D/', '', substr($phoneNormalized, 2))])
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", ['55' . preg_replace('/\D/', '', $phoneNormalized)])
+                    ->first();
+                
+                if ($similarCustomer) {
+                    \Log::info('OrderController:store - Cliente similar encontrado, usando existente', [
+                        'similar_customer_id' => $similarCustomer->id,
+                        'similar_customer_phone' => $similarCustomer->phone,
+                        'phone_searched' => $phoneNormalized,
+                    ]);
+                    $customer = $similarCustomer;
+                    // Atualizar telefone para formato normalizado
+                    $customer->phone = $phoneNormalized;
+                } else {
+                    $customer = Customer::create([
+                        'name' => $validated['customer_name'],
+                        'email' => $validated['customer_email'] ?? null,
+                        'phone' => $phoneNormalized,
+                        'address' => $fullAddress,
+                        'neighborhood' => $validated['neighborhood'],
+                        'city' => $validated['city'],
+                        'state' => $validated['state'],
+                        'zip_code' => preg_replace('/\D/', '', $validated['zip_code']),
+                    ]);
+                    \Log::info('OrderController:store - Novo cliente criado', [
+                        'customer_id' => $customer->id,
+                        'customer_phone' => $customer->phone,
+                    ]);
+                }
+            } else {
+                // Atualizar dados do cliente existente
+                $customer->name = $validated['customer_name'];
+                if (!empty($validated['customer_email'])) {
+                    $customer->email = $validated['customer_email'];
+                }
+                $customer->address = $fullAddress;
+                $customer->neighborhood = $validated['neighborhood'];
+                $customer->city = $validated['city'];
+                $customer->state = $validated['state'];
+                $customer->zip_code = preg_replace('/\D/', '', $validated['zip_code']);
+                $customer->save();
+            }
+            
+            // Recarregar cliente do banco para garantir que temos todos os dados atualizados
+            $customer->refresh();
+            
+            \Log::info('OrderController:store - Cliente processado', [
+                'customer_id' => $customer->id,
+                'customer_phone' => $customer->phone,
+                'phone_normalized' => $phoneNormalized,
+                'customer_created_at' => $customer->created_at,
+            ]);
 
             // 2. Buscar ou criar endereço
             $address = Address::where('customer_id', $customer->id)
@@ -608,47 +695,70 @@ class OrderController extends Controller
             
             if ($couponCode !== '') {
                 // Usar scopes do modelo Coupon para garantir que está ativo, válido e disponível
-                $coupon = \App\Models\Coupon::where('code', strtoupper($couponCode))
+                // Buscar cupom público OU direcionado ao cliente
+                $couponQuery = \App\Models\Coupon::where('code', strtoupper($couponCode))
                     ->active()
                     ->valid()
-                    ->available()
-                    ->first();
+                    ->available();
+                
+                // Incluir cupons públicos OU cupons direcionados ao cliente
+                $couponQuery->where(function($q) use ($customer) {
+                    $q->where('visibility', 'public');
+                    if ($customer->id) {
+                        $q->orWhere(function($subQ) use ($customer) {
+                            $subQ->where('visibility', 'targeted')
+                                 ->where('target_customer_id', $customer->id);
+                        });
+                    }
+                });
+                
+                $coupon = $couponQuery->first();
                 
                 if ($coupon) {
-                    // Verificar se é primeiro pedido (apenas pedidos pagos contam)
-                    $isFirstOrder = !Order::where('customer_id', $customer->id)
-                        ->whereIn('payment_status', ['approved', 'paid'])
-                        ->exists();
-                    
-                    // Validar elegibilidade
-                    if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
-                        // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
-                        if ($coupon->canBeUsedBy($customer->id)) {
-                            // Se for cupom de frete grátis, aplicar desconto no frete
-                            if ($coupon->free_shipping_only && $deliveryFee > 0) {
-                                $discountAmount = $coupon->calculateDiscount($subtotal) + $deliveryFee;
+                    // Verificar se é cupom direcionado e se o cliente tem direito
+                    if ($coupon->visibility === 'targeted' && $coupon->target_customer_id !== $customer->id) {
+                        \Log::info('OrderController: Cupom direcionado não é para este cliente', [
+                            'coupon_code' => $couponCode,
+                            'customer_id' => $customer->id,
+                            'target_customer_id' => $coupon->target_customer_id,
+                        ]);
+                        // Não aplicar desconto e continuar
+                    } else {
+                        // Verificar se é primeiro pedido (apenas pedidos pagos contam)
+                        $isFirstOrder = !Order::where('customer_id', $customer->id)
+                            ->whereIn('payment_status', ['approved', 'paid'])
+                            ->exists();
+                        
+                        // Validar elegibilidade
+                        if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
+                            // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
+                            if ($coupon->canBeUsedBy($customer->id)) {
+                                // Se for cupom de frete grátis, aplicar desconto no frete
+                                if ($coupon->free_shipping_only && $deliveryFee > 0) {
+                                    $discountAmount = $coupon->calculateDiscount($subtotal) + $deliveryFee;
+                                } else {
+                                    $discountAmount = $coupon->calculateDiscount($subtotal);
+                                }
+                                $appliedCoupon = $coupon;
                             } else {
-                                $discountAmount = $coupon->calculateDiscount($subtotal);
+                                // Cupom não pode ser usado (limite atingido ou já usado) - ignorar e continuar sem cupom
+                                \Log::info('OrderController: Cupom não pode ser usado - limite atingido ou já usado, continuando sem cupom', [
+                                    'coupon_code' => $couponCode,
+                                    'customer_id' => $customer->id,
+                                ]);
+                                // Não aplicar desconto e continuar
                             }
-                            $appliedCoupon = $coupon;
                         } else {
-                            // Cupom não pode ser usado (limite atingido) - ignorar e continuar sem cupom
-                            \Log::info('OrderController: Cupom não pode ser usado - limite atingido, continuando sem cupom', [
+                            // Cupom não é elegível - ignorar e continuar sem cupom
+                            \Log::info('OrderController: Cupom não é elegível, continuando sem cupom', [
                                 'coupon_code' => $couponCode,
                                 'customer_id' => $customer->id,
+                                'subtotal' => $subtotal,
+                                'delivery_fee' => $deliveryFee,
+                                'is_first_order' => $isFirstOrder,
                             ]);
                             // Não aplicar desconto e continuar
                         }
-                    } else {
-                        // Cupom não é elegível - ignorar e continuar sem cupom
-                        \Log::info('OrderController: Cupom não é elegível, continuando sem cupom', [
-                            'coupon_code' => $couponCode,
-                            'customer_id' => $customer->id,
-                            'subtotal' => $subtotal,
-                            'delivery_fee' => $deliveryFee,
-                            'is_first_order' => $isFirstOrder,
-                        ]);
-                        // Não aplicar desconto e continuar
                     }
                 } else {
                     // Cupom não encontrado - ignorar e continuar sem cupom
@@ -663,11 +773,32 @@ class OrderController extends Controller
             $subtotalAfterCoupon = max(0, $subtotal - $discountAmount);
             
             // Aplicar cashback automaticamente se cliente tiver saldo disponível
+            // IMPORTANTE: Recarregar o cliente do banco para garantir que temos o ID correto
+            $customer->refresh();
             $cashbackBalance = CustomerCashback::getBalance($customer->id);
             $cashbackUsed = 0;
-            if ($cashbackBalance > 0) {
+            
+            \Log::info('OrderController:store - Verificando cashback do cliente', [
+                'customer_id' => $customer->id,
+                'customer_phone' => $customer->phone,
+                'cashback_balance' => $cashbackBalance,
+                'subtotal_after_coupon' => $subtotalAfterCoupon,
+            ]);
+            
+            if ($cashbackBalance > 0 && $subtotalAfterCoupon > 0) {
                 // Usar cashback disponível, limitado ao valor restante do pedido
                 $cashbackUsed = min($cashbackBalance, $subtotalAfterCoupon);
+                \Log::info('OrderController:store - Cashback será aplicado', [
+                    'cashback_used' => $cashbackUsed,
+                    'cashback_balance' => $cashbackBalance,
+                    'subtotal_after_coupon' => $subtotalAfterCoupon,
+                ]);
+            } else {
+                \Log::info('OrderController:store - Cashback não será aplicado', [
+                    'reason' => $cashbackBalance <= 0 ? 'Sem saldo de cashback' : 'Subtotal após cupom é zero',
+                    'cashback_balance' => $cashbackBalance,
+                    'subtotal_after_coupon' => $subtotalAfterCoupon,
+                ]);
             }
             
             // Calcular cashback gerado (sobre o valor final após abatimento do cashback usado)
@@ -688,6 +819,15 @@ class OrderController extends Controller
             // Exemplo: subtotal R$30, cashback usado R$1,25 → cashback ganho sobre R$28,75
             $finalSubtotalForCashback = max(0, $subtotalAfterCoupon - $cashbackUsed);
             $cashbackEarned = round($finalSubtotalForCashback * max(0, $cashbackPercent) / 100, 2);
+            
+            \Log::info('OrderController:store - Cálculo de cashback ganho', [
+                'subtotal' => $subtotal,
+                'subtotal_after_coupon' => $subtotalAfterCoupon,
+                'cashback_used' => $cashbackUsed,
+                'final_subtotal_for_cashback' => $finalSubtotalForCashback,
+                'cashback_percent' => $cashbackPercent,
+                'cashback_earned' => $cashbackEarned,
+            ]);
 
             $finalAmount = max(0, $subtotal + $deliveryFee - $discountAmount - $cashbackUsed);
 
@@ -1318,26 +1458,55 @@ class OrderController extends Controller
         $customerId = null;
         $cashbackBalance = 0;
         $isFirstOrder = true; // Por padrão, assumir que é primeiro pedido (será redefinido se cliente identificado)
-        $customerPhone = preg_replace('/\D/', '', (string)$request->input('customer_phone', ''));
+        $customerPhoneRaw = (string)$request->input('customer_phone', '');
+        $customerPhone = preg_replace('/\D/', '', $customerPhoneRaw);
         $customerEmail = trim((string)$request->input('customer_email', ''));
         
+        // Normalizar telefone: adicionar código do país se necessário
+        if ($customerPhone && strlen($customerPhone) >= 10 && strlen($customerPhone) <= 11 && !str_starts_with($customerPhone, '55')) {
+            $customerPhone = '55' . $customerPhone;
+        }
+        
+        \Log::info('calculateDiscounts: Buscando cliente', [
+            'customer_phone_raw' => $customerPhoneRaw,
+            'customer_phone_normalized' => $customerPhone,
+            'customer_email' => $customerEmail,
+        ]);
+        
         if ($customerPhone || $customerEmail) {
-            $customerQuery = Customer::query();
-            if ($customerEmail) {
-                $customerQuery->where('email', $customerEmail);
-            }
+            $customer = null;
+            
+            // Tentar encontrar cliente por telefone normalizado primeiro
             if ($customerPhone && strlen($customerPhone) >= 10) {
-                if ($customerEmail) {
-                    $customerQuery->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [$customerPhone]);
-                } else {
-                    $customerQuery->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [$customerPhone]);
+                $customer = Customer::where('phone', $customerPhone)->first();
+                
+                // Se não encontrou, tentar sem código do país
+                if (!$customer && strlen($customerPhone) > 2 && str_starts_with($customerPhone, '55')) {
+                    $phoneWithoutCountry = substr($customerPhone, 2);
+                    $customer = Customer::where('phone', $phoneWithoutCountry)->first();
+                }
+                
+                // Se ainda não encontrou, tentar com código do país
+                if (!$customer && !str_starts_with($customerPhone, '55') && strlen($customerPhone) >= 10) {
+                    $phoneWithCountry = '55' . $customerPhone;
+                    $customer = Customer::where('phone', $phoneWithCountry)->first();
                 }
             }
             
-            $customer = $customerQuery->first();
+            // Se não encontrou por telefone, tentar por email
+            if (!$customer && $customerEmail) {
+                $customer = Customer::where('email', $customerEmail)->first();
+            }
+            
             if ($customer) {
                 $customerId = $customer->id;
                 $cashbackBalance = CustomerCashback::getBalance($customer->id);
+                
+                \Log::info('calculateDiscounts: Cliente encontrado', [
+                    'customer_id' => $customerId,
+                    'customer_phone_db' => $customer->phone,
+                    'cashback_balance' => $cashbackBalance,
+                ]);
 
                 // Verificar se é primeiro pedido (cliente existente com pedidos pagos)
                 $hasPaidOrders = Order::where('customer_id', $customerId)
@@ -1474,17 +1643,36 @@ class OrderController extends Controller
         // Buscar cupons elegíveis para mostrar no combobox (mesma lógica do checkout)
         $eligibleCouponsForDisplay = collect();
         try {
-            $allPublicCoupons = \App\Models\Coupon::query()
-                ->where('visibility', 'public')
+            // Buscar cupons públicos E cupons direcionados ao cliente específico
+            $couponsQuery = \App\Models\Coupon::query()
                 ->where('is_active', true)
                 ->valid()
-                ->available()
-                ->get();
+                ->available();
+            
+            // Incluir cupons públicos OU cupons direcionados ao cliente
+            $couponsQuery->where(function($q) use ($customerId) {
+                $q->where('visibility', 'public');
+                if ($customerId) {
+                    $q->orWhere(function($subQ) use ($customerId) {
+                        $subQ->where('visibility', 'targeted')
+                             ->where('target_customer_id', $customerId);
+                    });
+                }
+            });
+            
+            $allCoupons = $couponsQuery->get();
 
-            $eligibleCouponsForDisplay = $allPublicCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
+            $eligibleCouponsForDisplay = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
+                }
+
+                // Verificar se é cupom direcionado e se o cliente tem direito
+                if ($coupon->visibility === 'targeted') {
+                    if (!$customerId || $coupon->target_customer_id !== $customerId) {
+                        return false; // Cupom direcionado não é para este cliente
+                    }
                 }
 
                 // Para cupons de primeiro pedido, verificar primeiro se é primeiro pedido
@@ -1494,8 +1682,10 @@ class OrderController extends Controller
                         return false; // Não é primeiro pedido, cupom não é elegível
                     }
                     // É primeiro pedido, verificar outras condições (valor mínimo, etc)
-                    // Para cupons de primeiro pedido, não precisamos verificar canBeUsedBy quando customer_id é null
-                    // pois é justamente para clientes novos
+                    // Para cupons de primeiro pedido, verificar canBeUsedBy se cliente existe
+                    if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                        return false; // Cliente já usou este cupom de primeiro pedido
+                    }
                     if (!$coupon->isValid($customerId)) {
                         return false; // Cupom não está ativo, válido ou disponível
                     }
@@ -1512,10 +1702,10 @@ class OrderController extends Controller
                     return false;
                 }
 
-                // Verificar limite de uso apenas se cliente existe E cupom tem limite
-                if ($coupon->usage_limit_per_customer > 0 && $customerId) {
-                    $canUse = $coupon->canBeUsedBy($customerId);
-                    return $canUse;
+                // IMPORTANTE: Verificar se o cliente pode usar o cupom (inclui verificação de uso único)
+                // Se há customerId, sempre verificar canBeUsedBy para garantir que não foi usado antes
+                if ($customerId && !$coupon->canBeUsedBy($customerId)) {
+                    return false; // Cliente não pode usar este cupom (já usou, limite atingido, etc)
                 }
 
                 return true;
@@ -1527,10 +1717,35 @@ class OrderController extends Controller
             $eligibleCouponsForDisplay = collect();
         }
         
+        // Buscar saldo de cashback do cliente (se não foi buscado antes)
+        if (!isset($cashbackBalance)) {
+            $cashbackBalance = 0;
+            if ($customerId) {
+                $cashbackBalance = CustomerCashback::getBalance($customerId);
+                \Log::info('calculateDiscounts: Cashback balance buscado', [
+                    'customer_id' => $customerId,
+                    'cashback_balance' => $cashbackBalance,
+                ]);
+            }
+        }
+        
         // Aplicar cashback automaticamente se houver saldo disponível
         $cashbackUsed = 0;
-        if ($cashbackBalance > 0 && $customerId) {
+        if ($cashbackBalance > 0 && $customerId && $subtotalAfterCoupon > 0) {
             $cashbackUsed = min($cashbackBalance, $subtotalAfterCoupon);
+            \Log::info('calculateDiscounts: Cashback será aplicado', [
+                'customer_id' => $customerId,
+                'cashback_balance' => $cashbackBalance,
+                'subtotal_after_coupon' => $subtotalAfterCoupon,
+                'cashback_used' => $cashbackUsed,
+            ]);
+        } else {
+            \Log::info('calculateDiscounts: Cashback não será aplicado', [
+                'customer_id' => $customerId,
+                'cashback_balance' => $cashbackBalance,
+                'subtotal_after_coupon' => $subtotalAfterCoupon,
+                'reason' => !$customerId ? 'Sem cliente identificado' : ($cashbackBalance <= 0 ? 'Sem saldo' : 'Subtotal zero'),
+            ]);
         }
 
         // Calcular cashback ganho

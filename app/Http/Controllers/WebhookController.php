@@ -129,6 +129,7 @@ class WebhookController extends Controller
 
     /**
      * Webhook do WhatsApp
+     * Suporta tanto o formato antigo quanto o novo formato multi-instâncias
      */
     public function whatsApp(Request $request)
     {
@@ -137,7 +138,13 @@ class WebhookController extends Controller
 
             $data = $request->all();
             
-            // Processa mensagem recebida
+            // Se tiver instance_phone, usa o novo sistema multi-instâncias
+            if (isset($data['instance_phone'])) {
+                $instanceController = new \App\Http\Controllers\WhatsappInstanceController();
+                return $instanceController->handleWebhook($request);
+            }
+            
+            // Processa mensagem recebida (formato antigo)
             $this->processWhatsAppMessage($data);
 
             return response()->json(['status' => 'success']);

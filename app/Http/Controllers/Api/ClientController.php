@@ -3,271 +3,171 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreClientRequest;
 use App\Models\Client;
-use App\Models\Setting;
-use App\Models\User;
-use Illuminate\Http\JsonResponse;
+use App\Services\RailwayService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
-/**
- * ClientController - Gerenciamento de Clientes/Tenants
- * 
- * Endpoints para:
- * - Verificar disponibilidade de slug
- * - Criar novo cliente (cadastro)
- * - Listar clientes (admin)
- * - Atualizar dados do cliente
- */
 class ClientController extends Controller
 {
     /**
-     * Verificar disponibilidade de slug
+     * Retorna informações do cliente e plano para Node.js
      * 
-     * GET /api/clients/check-slug?slug=minha-loja
+     * Endpoint: GET /api/client/{id}
+     * Headers: X-API-Token: {token}
      * 
+     * @param int $id
      * @param Request $request
-     * @return JsonResponse
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function checkSlug(Request $request): JsonResponse
+    public function show($id, Request $request)
     {
-        $request->validate([
-            'slug' => 'required|string|min:3|max:30',
-        ]);
+        try {
+            // Obter client_id autenticado pelo middleware
+            $authenticatedClientId = $request->get('authenticated_client_id');
+            
+            // Verificar se o token autenticado pertence ao cliente solicitado
+            if ($authenticatedClientId && (int)$authenticatedClientId !== (int)$id) {
+                Log::warning('ClientController: Tentativa de acessar cliente diferente do token', [
+                    'token_client_id' => $authenticatedClientId,
+                    'requested_client_id' => $id,
+                    'ip' => $request->ip()
+                ]);
+                return response()->json(['error' => 'Token não autorizado para este cliente'], 403);
+            }
 
-        $result = Client::checkSlugAvailability($request->slug);
+            $client = Client::with('activeApiToken')
+                ->findOrFail($id);
 
-        return response()->json($result);
+            return response()->json([
+                'id' => $client->id,
+                'name' => $client->name,
+                'slug' => $client->slug,
+                'plan' => $client->plan,
+                'instance_url' => $client->instance_url,
+                'whatsapp_phone' => $client->whatsapp_phone,
+                'active' => $client->active,
+                'has_ia' => $client->hasIaPlan(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('ClientController: Erro ao buscar cliente', [
+                'error' => $e->getMessage(),
+                'client_id' => $id
+            ]);
+            
+            return response()->json([
+                'error' => 'Client not found',
+                'message' => $e->getMessage()
+            ], 404);
+        }
     }
 
     /**
-     * Cadastrar novo cliente (público - para onboarding)
+     * Retorna informações do plano do cliente
      * 
-     * POST /api/clients/register
+     * Endpoint: GET /api/client/{id}/plan
+     * Headers: X-API-Token: {token}
+     * 
+     * @param int $id
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function register(StoreClientRequest $request): JsonResponse
+    public function getPlan($id, Request $request)
     {
         try {
-            DB::beginTransaction();
+            // Obter client_id autenticado pelo middleware
+            $authenticatedClientId = $request->get('authenticated_client_id');
+            
+            // Verificar se o token autenticado pertence ao cliente solicitado
+            if ($authenticatedClientId && (int)$authenticatedClientId !== (int)$id) {
+                return response()->json(['error' => 'Token não autorizado para este cliente'], 403);
+            }
 
-            // Criar o cliente
-            $client = Client::create([
-                'name' => $request->name,
-                'slug' => $request->slug, // Será normalizado no model
-                'plan' => $request->plan ?? 'basic',
-                'active' => true,
-                'is_trial' => true,
-                'trial_started_at' => now(),
-                'trial_ends_at' => now()->addDays(14),
+            $client = Client::findOrFail($id);
+
+            return response()->json([
+                'plan' => $client->plan,
+                'has_ia' => $client->hasIaPlan(),
+                'active' => $client->active,
             ]);
 
-            // Criar usuário admin do cliente
-            $user = User::create([
-                'name' => $request->admin_name ?? $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+    }
+
+    /**
+     * Deploy de instância Railway para o cliente
+     * 
+     * Endpoint: POST /api/clients/{id}/deploy
+     * Headers: Authorization (usuário autenticado)
+     * 
+     * @param int $id
+     * @param Request $request
+     * @param RailwayService $railwayService
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deploy($id, Request $request, RailwayService $railwayService)
+    {
+        try {
+            $client = Client::findOrFail($id);
+
+            // Verificar se o cliente tem plano IA
+            if (!$client->hasIaPlan()) {
+                return response()->json([
+                    'error' => 'Plano básico não permite instância IA',
+                    'message' => 'Apenas clientes com plano IA podem ter instância Railway'
+                ], 403);
+            }
+
+            // Verificar se já tem instância
+            if ($client->instance) {
+                return response()->json([
+                    'message' => 'Cliente já possui instância Railway',
+                    'instance' => [
+                        'url' => $client->instance->url,
+                        'status' => $client->instance->status,
+                    ]
+                ], 200);
+            }
+
+            // Clonar serviço Railway
+            $instance = $railwayService->cloneServiceForClient($client);
+
+            Log::info('ClientController::deploy - Instância criada', [
                 'client_id' => $client->id,
-                'role' => 'admin',
+                'instance_id' => $instance->id,
+                'url' => $instance->url
             ]);
-
-            // Criar configurações padrão
-            Setting::create([
-                'client_id' => $client->id,
-                'store_name' => $request->name,
-                'store_phone' => $request->phone ?? null,
-                // Configurações padrão serão aplicadas no model
-            ]);
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cadastro realizado com sucesso!',
+                'message' => 'Instância Railway criada com sucesso!',
+                'instance' => [
+                    'id' => $instance->id,
+                    'url' => $instance->url,
+                    'status' => $instance->status,
+                ],
                 'client' => [
                     'id' => $client->id,
                     'name' => $client->name,
                     'slug' => $client->slug,
-                    'menu_url' => $client->menu_url,
-                    'trial_ends_at' => $client->trial_ends_at->format('d/m/Y'),
-                ],
-                'user' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                ],
+                ]
             ], 201);
 
-        } catch (\InvalidArgumentException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('ClientController@register: ' . $e->getMessage(), [
+            Log::error('ClientController::deploy - Erro ao criar instância', [
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'client_id' => $id
             ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Erro ao processar cadastro. Tente novamente.',
+                'error' => 'Erro ao criar instância Railway',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
-
-    /**
-     * Listar todos os clientes (apenas super admin)
-     * 
-     * GET /api/admin/clients
-     */
-    public function index(Request $request): JsonResponse
-    {
-        $query = Client::query();
-
-        // Filtros
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('plan')) {
-            $query->where('plan', $request->plan);
-        }
-
-        if ($request->filled('active')) {
-            $query->where('active', $request->boolean('active'));
-        }
-
-        if ($request->filled('is_trial')) {
-            $query->where('is_trial', $request->boolean('is_trial'));
-        }
-
-        // Ordenação
-        $orderBy = $request->get('order_by', 'created_at');
-        $orderDir = $request->get('order_dir', 'desc');
-        $query->orderBy($orderBy, $orderDir);
-
-        // Paginação
-        $clients = $query->paginate($request->get('per_page', 20));
-
-        return response()->json($clients);
-    }
-
-    /**
-     * Detalhes de um cliente (apenas super admin)
-     * 
-     * GET /api/admin/clients/{id}
-     */
-    public function show(int $id): JsonResponse
-    {
-        $client = Client::with(['customers', 'orders', 'products'])
-            ->withCount(['customers', 'orders', 'products'])
-            ->findOrFail($id);
-
-        return response()->json([
-            'client' => $client,
-            'stats' => [
-                'customers_count' => $client->customers_count,
-                'orders_count' => $client->orders_count,
-                'products_count' => $client->products_count,
-            ],
-        ]);
-    }
-
-    /**
-     * Atualizar cliente (apenas super admin)
-     * 
-     * PUT /api/admin/clients/{id}
-     */
-    public function update(Request $request, int $id): JsonResponse
-    {
-        $client = Client::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'plan' => 'sometimes|in:basic,ia',
-            'active' => 'sometimes|boolean',
-            'is_trial' => 'sometimes|boolean',
-            'trial_ends_at' => 'sometimes|date',
-            'whatsapp_phone' => 'sometimes|nullable|string|max:20',
-            // Nota: slug NÃO pode ser alterado
-        ]);
-
-        $client->update($validated);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cliente atualizado com sucesso.',
-            'client' => $client->fresh(),
-        ]);
-    }
-
-    /**
-     * Suspender cliente (apenas super admin)
-     * 
-     * POST /api/admin/clients/{id}/suspend
-     */
-    public function suspend(int $id): JsonResponse
-    {
-        $client = Client::findOrFail($id);
-        
-        // Não permitir suspender a Olika
-        if ($id === 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Não é possível suspender a Olika Tecnologia.',
-            ], 403);
-        }
-
-        $client->update(['active' => false]);
-
-        \Log::info("Cliente suspenso: {$client->name} (ID: {$id})");
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cliente suspenso com sucesso.',
-        ]);
-    }
-
-    /**
-     * Reativar cliente (apenas super admin)
-     * 
-     * POST /api/admin/clients/{id}/activate
-     */
-    public function activate(int $id): JsonResponse
-    {
-        $client = Client::findOrFail($id);
-
-        $client->update(['active' => true]);
-
-        \Log::info("Cliente reativado: {$client->name} (ID: {$id})");
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cliente reativado com sucesso.',
-        ]);
-    }
-
-    /**
-     * Estatísticas gerais (apenas super admin)
-     * 
-     * GET /api/admin/clients/stats
-     */
-    public function stats(): JsonResponse
-    {
-        return response()->json([
-            'total_clients' => Client::count(),
-            'active_clients' => Client::where('active', true)->count(),
-            'trial_clients' => Client::where('is_trial', true)->count(),
-            'trial_expired' => Client::trialExpired()->count(),
-            'by_plan' => [
-                'basic' => Client::where('plan', 'basic')->count(),
-                'ia' => Client::where('plan', 'ia')->count(),
-            ],
-        ]);
-    }
 }
+

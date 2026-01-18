@@ -485,6 +485,29 @@ document.getElementById('images_input')?.addEventListener('change', function(e) 
         e.preventDefault();
         e.stopPropagation();
         const form = e.target;
+        
+        // Validação básica de campos obrigatórios
+        const name = form.querySelector('input[name="name"]')?.value?.trim();
+        const categoryId = form.querySelector('select[name="category_id"]')?.value;
+        const price = form.querySelector('input[name="price"]')?.value;
+        
+        if (!name) {
+            alert('Por favor, preencha o nome do produto.');
+            form.querySelector('input[name="name"]')?.focus();
+            return;
+        }
+        
+        if (!categoryId) {
+            alert('Por favor, selecione uma categoria.');
+            form.querySelector('select[name="category_id"]')?.focus();
+            return;
+        }
+        
+        if (!price || parseFloat(price) < 0) {
+            alert('Por favor, preencha um preço válido.');
+            form.querySelector('input[name="price"]')?.focus();
+            return;
+        }
     
     // Criar FormData manualmente para ter controle total
     const formData = new FormData();
@@ -494,9 +517,12 @@ document.getElementById('images_input')?.addEventListener('change', function(e) 
     for (let element of formElements) {
         if (element.name && element.type !== 'file' && !element.name.includes('_cropped')) {
             if (element.type === 'checkbox') {
+                // Para checkboxes, enviar apenas se estiverem marcados
+                // Campos booleanos do Laravel tratam ausência como false
                 if (element.checked) {
                     formData.append(element.name, element.value || '1');
                 }
+                // Se não estiver marcado, não enviar (Laravel tratará como false)
             } else if (element.type === 'radio') {
                 if (element.checked) {
                     formData.append(element.name, element.value);
@@ -505,7 +531,23 @@ document.getElementById('images_input')?.addEventListener('change', function(e) 
                 Array.from(element.selectedOptions).forEach(opt => {
                     formData.append(element.name + '[]', opt.value);
                 });
-            } else if (element.value !== '') {
+            } else if (element.tagName === 'SELECT') {
+                // Select simples (não múltiplo)
+                if (element.value !== '') {
+                    formData.append(element.name, element.value);
+                }
+            } else if (element.name && element.name.includes('variant_')) {
+                // Campos de variantes - sempre incluir, mesmo se vazios
+                if (element.type === 'checkbox') {
+                    // Para checkboxes de variantes, enviar apenas se marcado
+                    if (element.checked) {
+                        formData.append(element.name, element.value || '1');
+                    }
+                } else {
+                    formData.append(element.name, element.value || '');
+                }
+            } else if (element.value !== '' || element.tagName === 'TEXTAREA') {
+                // Incluir textareas mesmo se vazios (podem ser nullable)
                 formData.append(element.name, element.value);
             }
         }
@@ -596,20 +638,39 @@ document.getElementById('images_input')?.addEventListener('change', function(e) 
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         }
     })
-    .then(response => {
+    .then(async response => {
         if (response.redirected) {
             window.location.href = response.url;
+            return;
+        }
+        
+        // Verificar se a resposta é HTML (erro de validação) ou JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.errors) {
+                // Erros de validação
+                let errorMsg = 'Erro ao salvar produto:\n\n';
+                Object.keys(data.errors).forEach(key => {
+                    errorMsg += `${key}: ${data.errors[key].join(', ')}\n`;
+                });
+                alert(errorMsg);
+            } else if (data.message) {
+                alert('Erro: ' + data.message);
+            } else {
+                alert('Erro desconhecido ao salvar produto.');
+            }
         } else {
-            return response.text().then(html => {
-                document.open();
-                document.write(html);
-                document.close();
-            });
+            // Resposta HTML (pode conter erros de validação)
+            const html = await response.text();
+            document.open();
+            document.write(html);
+            document.close();
         }
     })
     .catch(error => {
         console.error('Erro:', error);
-        alert('Erro ao salvar produto: ' + error.message);
+        alert('Erro ao salvar produto: ' + (error.message || 'Erro de conexão. Verifique sua internet e tente novamente.'));
     });
     }
 })();

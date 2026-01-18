@@ -1,0 +1,316 @@
+/* ======================================
+   OLIKA COMPONENTS v3.1
+   Componentes Reutilizáveis
+   ====================================== */
+
+/* ==================== CARDS ==================== */
+.card {
+  background: hsl(var(--color-card));
+  border: 1px solid hsl(var(--color-border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid hsl(var(--color-border));
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--color-foreground));
+  margin: 0;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card-body {
+  color: hsl(var(--color-foreground));
+}
+
+.card-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--color-border));
+}
+
+/* ==================== METRICS GRID ==================== */
+.metrics,
+.metrics-grid,
+.grid.gap-4[class*="grid-cols"],
+.grid[class*="grid-cols-4"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .metrics,
+  .metrics-grid,
+  .grid.gap-4[class*="grid-cols"],
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .metrics,
+  .metrics-grid,
+  .grid.gap-4[class*="grid-cols"],
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ==================== STAT CARDS ==================== */
+.stat-card,
+.rounded-lg.border.bg-card[class*="stat"],
+.grid > div[class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: hsl(var(--color-card));
+  border: 1px solid hsl(var(--color-border));
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 80px;
+}
+
+.stat-card:hover,
+.rounded-lg.border.bg-card[class*="stat"]:hover,
+.grid > div[class*="rounded-lg"][class*="border"][class*="bg-card"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card-content {
+  flex: 1;
+}
+
+.stat-card h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: hsl(var(--color-muted));
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-card .value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: hsl(var(--color-foreground));
+  margin: 0;
+  line-height: 1.2;
+}
+
+.stat-card .description {
+  font-size: 0.75rem;
+  color: hsl(var(--color-muted));
+  margin-top: 0.25rem;
+}
+
+.stat-card-icon {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--color-primary) / 0.1);
+  border-radius: var(--radius);
+  color: hsl(var(--color-primary));
+  flex-shrink: 0;
+}
+
+.stat-card-icon i,
+.stat-card-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* ==================== BUTTONS ==================== */
+.btn-primary {
+  background: hsl(var(--color-primary));
+  color: hsl(var(--color-primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  min-height: 2.5rem;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transform: scale(1.5);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.btn-primary:hover::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: hsl(var(--color-foreground));
+  border: 1px solid hsl(var(--color-border));
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  min-height: 2.5rem;
+}
+
+.btn-secondary:hover {
+  background: hsl(var(--color-border));
+  border-color: hsl(var(--color-primary));
+  color: hsl(var(--color-primary));
+}
+
+/* ==================== TABLES ==================== */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid hsl(var(--color-border));
+  padding: 0.75rem;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.table thead th {
+  background: hsl(var(--color-bg));
+  font-weight: 600;
+  color: hsl(var(--color-muted));
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem;
+}
+
+.table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==================== BADGES ==================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: hsl(var(--color-primary));
+  color: white;
+}
+
+.badge-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.badge-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.badge-info {
+  background: #3b82f6;
+  color: white;
+}
+
+.badge-muted {
+  background: hsl(var(--color-border));
+  color: hsl(var(--color-muted));
+}
+
+/* ==================== EMPTY STATES ==================== */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: hsl(var(--color-muted));
+}
+
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
+  color: hsl(var(--color-border));
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--color-foreground));
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: hsl(var(--color-muted));
+}
+

@@ -8,105 +8,116 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
     public function home()
     {
         try {
-            $today = today();
-            $cacheKey = 'dashboard_home_' . $today->format('Y-m-d');
-            $cacheTime = 60; // Cache por 60 segundos
+            // Desabilitar cache temporariamente para debug
+            // $today = today();
+            // $cacheKey = 'dashboard_home_' . $today->format('Y-m-d');
+            // $cacheTime = 60; // Cache por 60 segundos
             
-            // Usar cache para dados que não mudam frequentemente
-            $data = Cache::remember($cacheKey, $cacheTime, function () use ($today) {
-                // Unificar queries de estatísticas gerais (1 query ao invés de múltiplas)
-                $stats = DB::table('orders')
-                    ->selectRaw('
-                        COUNT(*) as total_pedidos,
-                        COALESCE(SUM(final_amount), 0) as faturamento,
-                        COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count,
-                        COUNT(CASE WHEN status = "confirmed" THEN 1 END) as confirmed_count,
-                        COUNT(CASE WHEN status = "preparing" THEN 1 END) as preparing_count,
-                        COUNT(CASE WHEN status = "delivered" THEN 1 END) as delivered_count
-                    ')
-                    ->first();
-                
-                // Dados de HOJE - unificar em 1 query
-                $todayStats = DB::table('orders')
-                    ->whereDate('created_at', $today)
-                    ->where('status', '!=', 'cancelled') // Excluir cancelados das estatísticas
-                    ->selectRaw('
-                        COUNT(*) as pedidos_hoje,
-                        COALESCE(SUM(CASE WHEN payment_status IN ("approved", "paid") THEN final_amount ELSE 0 END), 0) as receita_hoje,
-                        COUNT(CASE WHEN payment_status IN ("approved", "paid") THEN 1 END) as pagos_hoje,
-                        COUNT(CASE WHEN payment_status NOT IN ("approved", "paid", "cancelled") AND payment_status IS NOT NULL THEN 1 END) as pendentes_pagamento
-                    ')
-                    ->first();
-                
-                // Novos clientes hoje
-                $novosClientes = DB::table('customers')
-                    ->whereDate('created_at', $today)
-                    ->count();
-                
-                // Calcular ticket médio
-                $ticketMedio = $stats->total_pedidos > 0 
-                    ? ($stats->faturamento / $stats->total_pedidos) 
-                    : 0;
-                
-                // Pedidos agendados - otimizado
-                $scheduledStats = DB::table('orders')
-                    ->whereNotNull('scheduled_delivery_at')
-                    ->selectRaw('
-                        COUNT(CASE WHEN DATE(scheduled_delivery_at) = ? THEN 1 END) as scheduled_today,
-                        COUNT(CASE WHEN scheduled_delivery_at BETWEEN ? AND ? THEN 1 END) as scheduled_next_7_days
-                    ', [
-                        $today->format('Y-m-d'),
-                        now()->startOfDay(),
-                        now()->copy()->addDays(7)->endOfDay()
-                    ])
-                    ->first();
-                
-                return [
-                    'stats' => $stats,
-                    'todayStats' => $todayStats,
-                    'novosClientes' => $novosClientes,
-                    'ticketMedio' => $ticketMedio,
-                    'scheduledStats' => $scheduledStats,
-                ];
-            });
+            // Buscar dados diretamente sem cache para garantir dados atualizados
+            // Unificar queries de estatísticas gerais (1 query ao invés de múltiplas)
+            // Contar todos os pedidos (não cancelados) para estatísticas gerais
+            $stats = DB::table('orders')
+                ->where('status', '!=', 'cancelled')
+                ->selectRaw('
+                    COUNT(*) as total_pedidos,
+                    COALESCE(SUM(final_amount), 0) as faturamento,
+                    COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count,
+                    COUNT(CASE WHEN status = "confirmed" THEN 1 END) as confirmed_count,
+                    COUNT(CASE WHEN status = "preparing" THEN 1 END) as preparing_count,
+                    COUNT(CASE WHEN status = "delivered" THEN 1 END) as delivered_count
+                ')
+                ->first();
+            
+            // Dados de HOJE - usar Carbon para garantir timezone correto
+            $todayStart = now()->startOfDay();
+            $todayEnd = now()->endOfDay();
+            
+            $todayStats = DB::table('orders')
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->selectRaw('
+                    COUNT(*) as pedidos_hoje,
+                    COALESCE(SUM(CASE WHEN payment_status = "paid" THEN final_amount ELSE 0 END), 0) as receita_hoje,
+                    COUNT(CASE WHEN payment_status = "paid" THEN 1 END) as pagos_hoje,
+                    COUNT(CASE WHEN payment_status != "paid" AND payment_status IS NOT NULL AND payment_status != "refunded" THEN 1 END) as pendentes_pagamento
+                ')
+                ->first();
+            
+            // Novos clientes hoje
+            $novosClientes = DB::table('customers')
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->count();
+            
+            // Calcular ticket médio
+            $ticketMedio = $stats->total_pedidos > 0 
+                ? ($stats->faturamento / $stats->total_pedidos) 
+                : 0;
+            
+            // Pedidos agendados - usar Carbon para garantir timezone correto
+            $next7DaysEnd = now()->addDays(7)->endOfDay();
+            $scheduledStats = DB::table('orders')
+                ->whereNotNull('scheduled_delivery_at')
+                ->selectRaw('
+                    COUNT(CASE WHEN scheduled_delivery_at >= ? AND scheduled_delivery_at <= ? THEN 1 END) as scheduled_today,
+                    COUNT(CASE WHEN scheduled_delivery_at >= ? AND scheduled_delivery_at <= ? THEN 1 END) as scheduled_next_7_days
+                ', [
+                    $todayStart->toDateTimeString(),
+                    $todayEnd->toDateTimeString(),
+                    $todayStart->toDateTimeString(),
+                    $next7DaysEnd->toDateTimeString()
+                ])
+                ->first();
+            
+            $data = [
+                'stats' => $stats,
+                'todayStats' => $todayStats,
+                'novosClientes' => $novosClientes,
+                'ticketMedio' => $ticketMedio,
+                'scheduledStats' => $scheduledStats,
+            ];
             
             // Dados que precisam ser sempre atualizados (sem cache)
             // Pedidos agendados próximos
-            $nextScheduled = Order::with(['customer:id,name'])
-                ->whereNotNull('scheduled_delivery_at')
+            $nextScheduled = Order::whereNotNull('scheduled_delivery_at')
                 ->where('scheduled_delivery_at', '>=', now())
                 ->orderBy('scheduled_delivery_at')
                 ->limit(8)
-                ->get();
+                ->get(['id', 'order_number', 'scheduled_delivery_at', 'status', 'customer_id']);
             
-            // Pedidos recentes (últimos 10) - excluir cancelados
+            // Pedidos recentes (últimos 10) - com eager loading otimizado
             $recentOrders = Order::with(['customer:id,name,phone'])
-                ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'created_at', 'customer_id', 'delivery_type')
-                ->where('status', '!=', 'cancelled') // Excluir pedidos cancelados
+                ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'created_at', 'customer_id')
                 ->latest()
                 ->limit(10)
                 ->get();
             
             // Top produtos (últimos 7 dias) - otimizado com join
+            // Verificar se a coluna image existe antes de selecionar
+            $hasImageColumn = Schema::hasColumn('products', 'image');
+            $selectFields = [
+                'products.id',
+                'products.name',
+                DB::raw('SUM(order_items.quantity) as total_quantity'),
+                DB::raw('SUM(order_items.total_price) as total_revenue')
+            ];
+            
+            if ($hasImageColumn) {
+                $selectFields[] = 'products.image';
+            }
+            
             $topProducts = DB::table('order_items')
                 ->join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->join('products', 'order_items.product_id', '=', 'products.id')
                 ->where('orders.created_at', '>=', now()->subDays(7))
-                ->whereIn('orders.payment_status', ['approved', 'paid'])
-                ->select(
-                    'products.id',
-                    'products.name',
-                    'products.cover_image',
-                    DB::raw('SUM(order_items.quantity) as total_quantity'),
-                    DB::raw('SUM(order_items.total_price) as total_revenue')
-                )
-                ->groupBy('products.id', 'products.name', 'products.cover_image')
+                ->where('orders.payment_status', 'paid')
+                ->select($selectFields)
+                ->groupBy('products.id', 'products.name' . ($hasImageColumn ? ', products.image' : ''))
                 ->orderByDesc('total_quantity')
                 ->limit(5)
                 ->get()
@@ -115,36 +126,49 @@ class DashboardController extends Controller
                         'product' => (object)[
                             'id' => $item->id,
                             'name' => $item->name,
-                            'cover_image' => $item->cover_image,
+                            'image' => $item->image ?? null,
                         ],
                         'quantity' => $item->total_quantity,
                         'revenue' => $item->total_revenue,
                     ];
                 });
             
-            // Pedidos de hoje (apenas contagem, não carregar todos)
-            $todayOrdersCount = $data['todayStats']->pedidos_hoje;
-            
-            // Extrair dados do cache
-            $totalPedidos = $data['stats']->total_pedidos;
-            $faturamento = $data['stats']->faturamento;
-            $novosClientes = $data['novosClientes'];
-            $ticketMedio = $data['ticketMedio'];
+            // Extrair dados com proteção contra null
+            $totalPedidos = (int)($data['stats']->total_pedidos ?? 0);
+            $faturamento = (float)($data['stats']->faturamento ?? 0);
+            $novosClientes = (int)($data['novosClientes'] ?? 0);
+            $ticketMedio = (float)($data['ticketMedio'] ?? 0);
             
             $statusCount = [
-                'pending' => $data['stats']->pending_count,
-                'confirmed' => $data['stats']->confirmed_count,
-                'preparing' => $data['stats']->preparing_count,
-                'delivered' => $data['stats']->delivered_count,
+                'pending' => (int)($data['stats']->pending_count ?? 0),
+                'confirmed' => (int)($data['stats']->confirmed_count ?? 0),
+                'preparing' => (int)($data['stats']->preparing_count ?? 0),
+                'delivered' => (int)($data['stats']->delivered_count ?? 0),
             ];
             
-            $scheduledTodayCount = $data['scheduledStats']->scheduled_today;
-            $scheduledNext7Days = $data['scheduledStats']->scheduled_next_7_days;
+            $scheduledTodayCount = (int)($data['scheduledStats']->scheduled_today ?? 0);
+            $scheduledNext7Days = (int)($data['scheduledStats']->scheduled_next_7_days ?? 0);
             
-            $receitaHoje = $data['todayStats']->receita_hoje;
-            $pedidosHoje = $data['todayStats']->pedidos_hoje;
-            $pagosHoje = $data['todayStats']->pagos_hoje;
-            $pendentesPagamento = $data['todayStats']->pendentes_pagamento;
+            $receitaHoje = (float)($data['todayStats']->receita_hoje ?? 0);
+            $pedidosHoje = (int)($data['todayStats']->pedidos_hoje ?? 0);
+            $pagosHoje = (int)($data['todayStats']->pagos_hoje ?? 0);
+            $pendentesPagamento = (int)($data['todayStats']->pendentes_pagamento ?? 0);
+            
+            // Pedidos de hoje (apenas contagem, não carregar todos)
+            $todayOrdersCount = $pedidosHoje;
+            
+            // Log temporário para debug (remover depois)
+            Log::info('Dashboard Stats', [
+                'today_start' => $todayStart->toDateTimeString(),
+                'today_end' => $todayEnd->toDateTimeString(),
+                'pedidos_hoje' => $pedidosHoje,
+                'receita_hoje' => $receitaHoje,
+                'pagos_hoje' => $pagosHoje,
+                'pendentes_pagamento' => $pendentesPagamento,
+                'scheduled_today' => $scheduledTodayCount,
+                'total_pedidos' => $totalPedidos,
+                'today_stats_raw' => $todayStats,
+            ]);
             
             // Criar collection vazia para compatibilidade (não carregar todos os pedidos)
             $todayOrders = collect();

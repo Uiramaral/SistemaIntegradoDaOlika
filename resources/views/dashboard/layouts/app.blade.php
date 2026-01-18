@@ -1,4 +1,4 @@
-@extends('layouts.dashboard')
+@extends('layouts.admin')
 
 @section('page_title')
     @if (View::hasSection('page_title'))

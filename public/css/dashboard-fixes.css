@@ -1,0 +1,633 @@
+/* ============ DASHBOARD FIXES - ARQUIVO UNIFICADO ============ */
+/* Consolida: admin-bridge.css + layout-fixes.css + pdv-fixes.css */
+/* Versão: 1.2.0 */
+
+/* ============ SEÇÃO 1: LAYOUT ============ */
+
+/* Sidebar - Largura reduzida */
+#sidebar {
+    transition: transform 0.2s ease-in-out;
+    will-change: transform;
+    width: 16rem;
+}
+
+@media (max-width: 767.98px) {
+    #sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(18rem, 85vw);
+        max-width: 85vw;
+        overflow-y: auto;
+    }
+
+    #sidebar-backdrop {
+        display: block;
+    }
+}
+
+@media (min-width: 768px) {
+    #sidebar {
+        position: static;
+        width: 16rem;
+    }
+
+    .md\:translate-x-0 {
+        transform: translateX(0);
+    }
+
+    #sidebar-backdrop {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+}
+
+/* Header - Padding reduzido */
+header {
+    padding: 0.75rem 1rem !important;
+}
+
+/* Espaçamento vertical padronizado */
+.section-spacing {
+    margin-bottom: 1.5rem !important;
+}
+
+.section-title {
+    margin-bottom: 1rem !important;
+    font-weight: 600;
+}
+
+/* Container principal - sem duplicidade */
+main {
+    overflow-y: auto;
+}
+
+/* Remover wrapper redundante */
+.dashboard-wrapper {
+    display: none; /* Removido - usando container direto no main */
+}
+
+/* ============ SEÇÃO 2: PROPORÇÃO E HIERARQUIA VISUAL ============ */
+
+/* Padronização de Inputs - Altura 40px (2.5rem) */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="password"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+select:not([multiple]),
+textarea {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+    border-radius: 8px;
+}
+
+textarea {
+    min-height: 5rem !important;
+    height: auto !important;
+    padding: 0.75rem 0.875rem !important;
+}
+
+/* Padronização de Botões - Altura 40px (2.5rem) */
+button:not(.btn-sm):not(.btn-lg):not([class*="text-lg"]):not([class*="h-12"]):not([class*="h-14"]):not([class*="h-16"]),
+.btn:not(.btn-sm):not(.btn-lg),
+a[role="button"]:not([class*="text-lg"]),
+a.btn:not(.btn-sm):not(.btn-lg) {
+    min-height: 2.5rem !important;
+    height: auto !important;
+    padding: 0.625rem 1rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px;
+}
+
+/* Botões pequenos (sm) */
+button[class*="text-sm"],
+.btn-sm,
+[class*="btn-sm"] {
+    min-height: 2rem !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Botões grandes (lg) - apenas para ações globais */
+button[class*="text-lg"],
+.btn-lg,
+[class*="btn-lg"] {
+    min-height: 3rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-size: 1rem !important;
+}
+
+/* Garantir alinhamento input + botão */
+.flex.gap-2 input + button,
+.flex.gap-2 input + a,
+.flex.gap-2 select + button,
+.flex.gap-2 select + a {
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+}
+
+/* Hierarquia de Títulos */
+h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Cards de Produto - Padrão .card-slim */
+.card-slim {
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 10rem;
+}
+
+.card-slim img {
+    height: 5rem;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    aspect-ratio: 4/3;
+}
+
+.card-slim .actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+/* Hierarquia de Botões - Melhorias visuais */
+.bg-primary.hover\:bg-primary\/90,
+a.bg-primary,
+button.bg-primary {
+    box-shadow: 0 4px 12px -2px hsla(var(--primary), 0.35);
+    transition: all 0.2s ease;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.bg-primary.hover\:bg-primary\/90:hover,
+a.bg-primary:hover,
+button.bg-primary:hover {
+    box-shadow: 0 6px 16px -2px hsla(var(--primary), 0.45);
+    transform: translateY(-1px);
+}
+
+.bg-primary.hover\:bg-primary\/90:active,
+a.bg-primary:active,
+button.bg-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px -2px hsla(var(--primary), 0.3);
+}
+
+.border-input.bg-background,
+button.border-input,
+a.border-input {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.border-input.bg-background:hover,
+button.border-input:hover,
+a.border-input:hover {
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.bg-destructive,
+button.bg-destructive {
+    box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.35);
+    transition: all 0.2s ease;
+}
+
+.bg-destructive:hover,
+button.bg-destructive:hover {
+    box-shadow: 0 6px 16px -2px rgba(239, 68, 68, 0.45);
+    transform: translateY(-1px);
+}
+
+/* Botões desabilitados */
+button:disabled,
+a:disabled,
+[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+}
+
+/* Foco acessível */
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* ============ SEÇÃO 3: RESPONSIVIDADE ============ */
+
+/* Grids Progressivas - Substituir grid-cols-3 fixas */
+.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3.xl\:grid-cols-4 {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3.xl\:grid-cols-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3.xl\:grid-cols-4 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3.xl\:grid-cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* Tabelas Responsivas */
+.table-responsive,
+table[data-mobile-card="true"],
+table.w-full {
+    width: 100%;
+}
+
+@media (max-width: 767.98px) {
+    table,
+    table[data-mobile-card="true"] {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    table thead,
+    table[data-mobile-card="true"] thead {
+        display: none;
+    }
+
+    table tbody,
+    table[data-mobile-card="true"] tbody {
+        display: grid;
+        gap: 1rem;
+    }
+
+    table tbody tr,
+    table[data-mobile-card="true"] tbody tr {
+        display: grid;
+        gap: 0.75rem;
+        border: 1px solid hsla(var(--border), 0.8);
+        border-radius: calc(var(--radius) + 0.25rem);
+        padding: 1rem;
+        background-color: hsl(var(--card));
+        box-shadow: 0 10px 20px -15px rgba(15, 23, 42, 0.45);
+    }
+
+    table tbody tr td,
+    table[data-mobile-card="true"] tbody tr td {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+        text-align: left !important;
+    }
+
+    table tbody tr td[data-label]::before,
+    table[data-mobile-card="true"] tbody tr td[data-label]::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: hsl(var(--muted-foreground));
+        margin-bottom: 0.25rem;
+    }
+
+    table tbody tr td:not([data-label])::before,
+    table[data-mobile-card="true"] tbody tr td:not([data-label])::before {
+        display: none;
+        content: '';
+    }
+}
+
+/* Mobile - Correções gerais */
+@media (max-width: 767.98px) {
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+    }
+    
+    main, .flex-1 {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    header .flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .flex.flex-col.sm\:flex-row {
+        flex-direction: column !important;
+        width: 100%;
+    }
+    
+    .flex.flex-col.sm\:flex-row > * {
+        width: 100%;
+    }
+    
+    select {
+        width: 100% !important;
+    }
+    
+    button, a, select, input {
+        min-height: 44px;
+    }
+}
+
+/* ============ SEÇÃO 4: COMPONENTES ESPECÍFICOS ============ */
+
+/* Paginação Compacta */
+.pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+}
+
+.pagination a,
+.pagination span {
+    min-width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.5rem;
+}
+
+.pagination a {
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    transition: all 0.2s;
+}
+
+.pagination a:hover {
+    background-color: hsl(var(--muted));
+}
+
+.pagination .active span,
+.pagination span.active {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+/* Cards Estatísticos */
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
+}
+
+/* Modais - Tamanho reduzido */
+[id*="-modal"] > div:first-child {
+    max-width: 28rem !important;
+}
+
+#edit-instance-modal > div,
+#add-instance-modal > div,
+#pairing-code-modal > div {
+    max-width: 28rem !important;
+    width: calc(100% - 2rem) !important;
+    padding: 1.25rem !important;
+    margin: 0 1rem !important;
+    box-sizing: border-box !important;
+}
+
+/* Campos de busca específicos */
+input[type="text"][placeholder*="Buscar"],
+input[type="text"][placeholder*="buscar"],
+input[type="search"],
+input[name="q"],
+input[name="search"],
+#customer-search,
+#product-search {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+}
+
+/* Fix para labels flutuantes */
+.relative label,
+form .relative label,
+.flex-1 > label {
+    position: static !important;
+    transform: none !important;
+}
+
+.field label,
+form label {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    background: transparent !important;
+}
+
+/* ============ SEÇÃO 5: PDV ESPECÍFICO ============ */
+
+/* PDV - Campos de busca */
+#customer-search {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+#btn-new-customer {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+#coupon-code {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+#btn-apply-coupon {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* PDV - Grid de produtos */
+.grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
+    display: grid !important;
+    gap: 1rem !important;
+}
+
+@media (min-width: 640px) {
+    .grid.sm\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid.lg\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+/* PDV - Cards de produtos */
+.product-quick-add {
+    min-height: 8rem !important;
+    padding: 1.25rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    background: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+.product-quick-add:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-color: hsl(var(--primary)) !important;
+}
+
+.product-quick-add p.font-semibold {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
+    min-height: 3rem !important;
+}
+
+.product-quick-add .product-price-display {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: hsl(var(--primary)) !important;
+}
+
+/* ============ SEÇÃO 6: UTILITÁRIOS ============ */
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 9999px;
+    background-color: hsla(var(--muted-foreground), 0.08);
+    color: hsl(var(--foreground));
+    border: 1px solid hsla(var(--border), 0.8);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+}
+
+.card {
+    background-color: hsl(var(--card));
+    border: 1px solid hsla(var(--border), 0.9);
+    border-radius: calc(var(--radius) + 0.25rem);
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid hsla(var(--border), 0.8);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    background-color: hsla(var(--muted-foreground), 0.14);
+    color: hsl(var(--foreground));
+}
+
+.badge-success {
+    background-color: hsla(var(--success), 0.15);
+    color: hsl(var(--success));
+}
+
+.badge-danger {
+    background-color: hsla(var(--destructive), 0.18);
+    color: hsl(var(--destructive));
+}
+
+.table-compact {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.table-compact th,
+.table-compact td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid hsla(var(--border), 0.8);
+    text-align: left;
+}
+
+.table-compact thead th {
+    background-color: hsla(var(--muted-foreground), 0.08);
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+}
+
+.table-compact tbody tr:hover {
+    background-color: hsla(var(--muted-foreground), 0.06);
+}
+

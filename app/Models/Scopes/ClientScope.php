@@ -16,7 +16,9 @@ class ClientScope implements Scope
     {
         // Só filtra se houver usuário autenticado com client_id
         if (auth()->check() && auth()->user()->client_id) {
-            $builder->where('client_id', auth()->user()->client_id);
+            // Qualificar com o nome da tabela para evitar ambiguidade em JOINs
+            $table = $model->getTable();
+            $builder->where("{$table}.client_id", auth()->user()->client_id);
         }
     }
 }

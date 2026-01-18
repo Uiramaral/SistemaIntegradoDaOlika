@@ -27,7 +27,7 @@ class PDVController extends Controller
     {
         // Carregar produtos ativos com preços de revenda
         // Ordenar por mais vendidos (últimos 90 dias)
-        $products = Product::where('is_active', true)
+        $products = Product::where('products.is_active', true)
             ->with(['variants', 'wholesalePrices'])
             ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
             ->leftJoin('orders', function($join) {
@@ -109,7 +109,7 @@ class PDVController extends Controller
             $isWholesale = $customer && $customer->is_wholesale;
         }
         
-        $productsQuery = Product::where('is_active', true);
+        $productsQuery = Product::where('products.is_active', true);
         
         // Se foi passado product_id, buscar produto específico
         if ($productId) {

@@ -157,6 +157,22 @@ class Client extends Model
     }
 
     /**
+     * Relacionamento com assinatura ativa
+     */
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)->latest();
+    }
+
+    /**
+     * Relacionamento com URLs de instâncias WhatsApp
+     */
+    public function whatsappInstanceUrls(): HasMany
+    {
+        return $this->hasMany(WhatsappInstanceUrl::class);
+    }
+
+    /**
      * Scope para clientes ativos
      */
     public function scopeActive($query)

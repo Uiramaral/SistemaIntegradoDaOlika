@@ -33,7 +33,11 @@ class MarketingController extends Controller
         // Estatísticas rápidas para ajudar nos filtros
         $stats = [
             'total_customers' => Customer::count(),
-            'with_cashback' => Customer::where('cashback_balance', '>', 0)->count(),
+            'with_cashback' => DB::table('customer_cashback')
+                ->whereIn('customer_id', Customer::pluck('id'))
+                ->where('amount', '>', 0)
+                ->distinct('customer_id')
+                ->count('customer_id'),
             'with_orders' => Customer::has('orders')->count(),
         ];
 

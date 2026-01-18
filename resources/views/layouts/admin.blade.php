@@ -377,7 +377,7 @@
                     </div>
                 </header>
 
-                <main class="flex-1">
+                <main class="flex-1" id="main-content">
                     <div class="dashboard-wrapper">
                         @if(session('success'))
                             <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
@@ -517,6 +517,7 @@
             }
         });
     </script>
+    
     @stack('scripts')
 </body>
 </html>

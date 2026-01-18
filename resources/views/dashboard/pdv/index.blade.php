@@ -549,7 +549,6 @@ document.addEventListener('click', function(e) {
         
         // Mostrar seção de frete após selecionar cliente
         // Seção de frete agora está integrada no resumo
-        }
         
         // Mostrar seção de produtos após selecionar cliente
         const productsSection = document.getElementById('products-section');

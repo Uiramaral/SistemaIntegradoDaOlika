@@ -359,6 +359,8 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     
     // Gestão de instâncias WhatsApp (múltiplas instâncias)
     Route::post('/settings/whatsapp/instances', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceStore'])->name('dashboard.settings.whatsapp.instances.store');
+    Route::get('/settings/whatsapp/instances/{instance}', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceShow'])->name('dashboard.settings.whatsapp.instances.show');
+    Route::put('/settings/whatsapp/instances/{instance}', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceUpdate'])->name('dashboard.settings.whatsapp.instances.update');
     Route::delete('/settings/whatsapp/instances/{instance}', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceDestroy'])->name('dashboard.settings.whatsapp.instances.destroy');
     Route::get('/settings/whatsapp/instances/{instance}/status', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceStatus'])->name('dashboard.settings.whatsapp.instances.status');
     Route::post('/settings/whatsapp/instances/{instance}/connect', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappInstanceConnect'])->name('dashboard.settings.whatsapp.instances.connect');
@@ -430,6 +432,14 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::post('/{provider}', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'update'])->name('update');
         Route::match(['get', 'post'], '/{provider}/test', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'test'])->name('test');
         Route::post('/{provider}/toggle', [\App\Http\Controllers\Dashboard\IntegrationsController::class, 'toggle'])->name('toggle');
+    });
+
+    // SaaS Clients Management (Master only)
+    Route::prefix('saas-clients')->name('dashboard.saas-clients.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\SaasClientsController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Dashboard\SaasClientsController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Dashboard\SaasClientsController::class, 'store'])->name('store');
+        Route::get('/{saasClient}', [\App\Http\Controllers\Dashboard\SaasClientsController::class, 'show'])->name('show');
     });
 
     // Taxas de entrega por distância

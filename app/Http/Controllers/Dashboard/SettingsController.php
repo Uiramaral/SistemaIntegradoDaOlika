@@ -886,5 +886,231 @@ class SettingsController extends Controller
 
         return back()->with('ok', 'Métodos de pagamento atualizados.');
     }
+
+    // ============================================
+    // GESTÃO DE MÚLTIPLAS INSTÂNCIAS WHATSAPP
+    // ============================================
+
+    /**
+     * Criar nova instância WhatsApp
+     */
+    public function whatsappInstanceStore(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'api_url' => 'required|url|max:255',
+            'api_key' => 'required|string|max:255',
+        ]);
+
+        try {
+            $instance = \App\Models\WhatsappInstance::create([
+                'name' => $request->name,
+                'api_url' => rtrim($request->api_url, '/'),
+                'api_key' => $request->api_key,
+                'status' => 'DISCONNECTED',
+            ]);
+
+            Log::info('WhatsappInstance criada', ['id' => $instance->id, 'name' => $instance->name]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'instance' => $instance]);
+            }
+
+            return back()->with('success', 'Instância criada com sucesso!');
+        } catch (\Exception $e) {
+            Log::error('Erro ao criar instância WhatsApp', ['error' => $e->getMessage()]);
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Erro ao criar instância: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exibir dados de uma instância específica (JSON)
+     */
+    public function whatsappInstanceShow($instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            
+            // Tentar buscar status atualizado do Node.js
+            $statusInfo = null;
+            try {
+                $statusInfo = $inst->getStatus();
+            } catch (\Exception $e) {
+                Log::warning('Não foi possível obter status da instância', ['id' => $instance, 'error' => $e->getMessage()]);
+            }
+            
+            $data = $inst->toArray();
+            $data['status_info'] = $statusInfo;
+            
+            return response()->json($data);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Instância não encontrada'], 404);
+        }
+    }
+
+    /**
+     * Atualizar instância WhatsApp
+     */
+    public function whatsappInstanceUpdate(Request $request, $instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            
+            $data = $request->validate([
+                'name' => 'sometimes|string|max:100',
+                'api_url' => 'sometimes|url|max:255',
+                'api_key' => 'sometimes|string|max:255',
+                'status' => 'sometimes|string|max:50',
+                'phone_number' => 'sometimes|nullable|string|max:20',
+            ]);
+            
+            if (isset($data['api_url'])) {
+                $data['api_url'] = rtrim($data['api_url'], '/');
+            }
+            
+            $inst->update($data);
+            
+            Log::info('WhatsappInstance atualizada', ['id' => $inst->id, 'changes' => $data]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'instance' => $inst->fresh()]);
+            }
+
+            return back()->with('success', 'Instância atualizada com sucesso!');
+        } catch (\Exception $e) {
+            Log::error('Erro ao atualizar instância WhatsApp', ['error' => $e->getMessage()]);
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Erro ao atualizar instância: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Deletar instância WhatsApp
+     */
+    public function whatsappInstanceDestroy($instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            $inst->delete();
+
+            Log::info('WhatsappInstance deletada', ['id' => $instance]);
+
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return back()->with('success', 'Instância removida com sucesso!');
+        } catch (\Exception $e) {
+            Log::error('Erro ao deletar instância WhatsApp', ['error' => $e->getMessage()]);
+            
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Erro ao remover instância: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Status de uma instância específica
+     */
+    public function whatsappInstanceStatus($instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            $status = $inst->getStatus();
+            
+            return response()->json($status);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Conectar instância WhatsApp
+     */
+    public function whatsappInstanceConnect(Request $request, $instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            $result = $inst->connect();
+            
+            if (isset($result['success']) && $result['success']) {
+                Log::info('WhatsappInstance conectando', ['id' => $instance]);
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'pairingCode' => $result['pairingCode'] ?? null,
+                        'qrCode' => $result['qrCode'] ?? null,
+                    ]);
+                }
+                
+                return back()->with('success', 'Conectando instância...');
+            }
+            
+            $error = $result['error'] ?? 'Erro desconhecido';
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $error], 400);
+            }
+            
+            return back()->with('error', 'Erro: ' . $error);
+        } catch (\Exception $e) {
+            Log::error('Erro ao conectar instância WhatsApp', ['error' => $e->getMessage()]);
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Erro ao conectar: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Desconectar instância WhatsApp
+     */
+    public function whatsappInstanceDisconnect(Request $request, $instance)
+    {
+        try {
+            $inst = \App\Models\WhatsappInstance::findOrFail($instance);
+            $result = $inst->disconnect();
+            
+            if (isset($result['success']) && $result['success']) {
+                Log::info('WhatsappInstance desconectada', ['id' => $instance]);
+                
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => true]);
+                }
+                
+                return back()->with('success', 'Instância desconectada!');
+            }
+            
+            $error = $result['error'] ?? 'Erro desconhecido';
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $error], 400);
+            }
+            
+            return back()->with('error', 'Erro: ' . $error);
+        } catch (\Exception $e) {
+            Log::error('Erro ao desconectar instância WhatsApp', ['error' => $e->getMessage()]);
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Erro ao desconectar: ' . $e->getMessage());
+        }
+    }
 }
 

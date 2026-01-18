@@ -1144,7 +1144,7 @@ async function connectInstance(instanceId) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        const response = await fetch(`{{ route("dashboard.whatsapp.instances.connect", ":id") }}`.replace(':id', instanceId), {
+        const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.connect", ":id") }}`.replace(':id', instanceId), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1159,7 +1159,7 @@ async function connectInstance(instanceId) {
             // Se tiver código de pareamento, exibir automaticamente
             if (result.pairingCode) {
                 // Buscar nome da instância
-                const instanceResponse = await fetch(`{{ route("dashboard.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
+                const instanceResponse = await fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
                 const instanceData = await instanceResponse.json();
                 showPairingCodeModal(instanceId, instanceData.name || 'Instância');
             } else {
@@ -1197,7 +1197,7 @@ async function disconnectInstance(instanceId) {
                          document.querySelector('input[name="_token"]')?.value;
         
         // Atualizar status no banco
-        const response = await fetch(`{{ route("dashboard.whatsapp.instances.update", ":id") }}`.replace(':id', instanceId), {
+        const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.update", ":id") }}`.replace(':id', instanceId), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1225,7 +1225,7 @@ async function disconnectInstance(instanceId) {
 // Buscar status de uma instância específica
 async function fetchInstanceStatus(instanceId) {
     try {
-        const response = await fetch(`{{ route("dashboard.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
+        const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
         if (!response.ok) return null;
         
         const instance = await response.json();
@@ -1298,7 +1298,7 @@ async function updateInstanceStatus(instanceId) {
             const modal = document.getElementById('pairing-code-modal');
             if (modal && modal.classList.contains('hidden')) {
                 // Buscar nome da instância
-                fetch(`{{ route("dashboard.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId))
+                fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId))
                     .then(res => res.json())
                     .then(instanceData => {
                         showPairingCodeModal(instanceId, instanceData.name || 'Instância');
@@ -1434,7 +1434,7 @@ function startPairingCodePolling(instanceId) {
     }
     
     // Buscar nome da instância primeiro
-    fetch(`{{ route("dashboard.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId))
+    fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId))
         .then(res => res.json())
         .then(instanceData => {
             const instanceName = instanceData.name || 'Instância';
@@ -1500,7 +1500,7 @@ async function saveInstance(event) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        const response = await fetch('{{ route("dashboard.whatsapp.instances.store") }}', {
+        const response = await fetch('{{ route("dashboard.settings.whatsapp.instances.store") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1526,7 +1526,7 @@ async function saveInstance(event) {
 // Mostrar modal de edição
 async function openEditInstanceModal(instanceId) {
     try {
-        const response = await fetch(`{{ route("dashboard.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
+        const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
         if (!response.ok) throw new Error('Erro ao buscar dados da instância');
         
         const instance = await response.json();
@@ -1563,7 +1563,7 @@ async function updateInstance(event) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        const response = await fetch(`{{ route("dashboard.whatsapp.instances.update", ":id") }}`.replace(':id', instanceId), {
+        const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.update", ":id") }}`.replace(':id', instanceId), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1620,7 +1620,7 @@ async function createCampaign(event) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        const response = await fetch('{{ route("dashboard.whatsapp.campaigns.store") }}', {
+        const response = await fetch('{{ route("dashboard.marketing.store") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1785,7 +1785,7 @@ document.addEventListener('click', function(e) {
 // Buscar Campanhas (executado ao carregar ou trocar de aba)
 async function fetchCampaigns() {
     try {
-        const response = await fetch('{{ route("dashboard.whatsapp.campaigns.index") }}');
+        const response = await fetch('{{ route("dashboard.marketing.index") }}');
         if (!response.ok) return;
         
         const campaigns = await response.json();

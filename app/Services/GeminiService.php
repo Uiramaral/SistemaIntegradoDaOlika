@@ -11,7 +11,7 @@ class GeminiService
     private ?ApiIntegration $integration = null;
     private bool $enabled = false;
     private string $apiKey = '';
-    private string $model = 'gemini-pro';
+    private string $model = 'gemini-1.5-flash';
     private float $temperature = 0.7;
     private int $maxTokens = 500;
 
@@ -22,7 +22,7 @@ class GeminiService
             
             if ($this->integration && $this->integration->isActive()) {
                 $this->apiKey = $this->integration->getCredential('api_key', '');
-                $this->model = $this->integration->getSetting('model', 'gemini-pro');
+                $this->model = $this->integration->getSetting('model', 'gemini-1.5-flash');
                 $this->temperature = (float) $this->integration->getSetting('temperature', 0.7);
                 $this->maxTokens = (int) $this->integration->getSetting('max_tokens', 500);
                 

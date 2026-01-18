@@ -40,7 +40,7 @@ class ApiIntegration extends Model
                 'api_key' => ['label' => 'API Key', 'type' => 'password', 'required' => true],
             ],
             'settings_fields' => [
-                'model' => ['label' => 'Modelo', 'type' => 'select', 'options' => ['gemini-pro', 'gemini-pro-vision'], 'default' => 'gemini-pro'],
+                'model' => ['label' => 'Modelo', 'type' => 'select', 'options' => ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'], 'default' => 'gemini-1.5-flash'],
                 'temperature' => ['label' => 'Temperature', 'type' => 'number', 'min' => 0, 'max' => 1, 'step' => 0.1, 'default' => 0.7],
                 'max_tokens' => ['label' => 'Max Tokens', 'type' => 'number', 'default' => 500],
             ],

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApiIntegration;
+use App\Models\Client;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -262,6 +263,150 @@ PROMPT;
         } catch (\Exception $e) {
             Log::error('GeminiService: Erro ao gerar variações', ['error' => $e->getMessage()]);
             return [$baseMessage];
+        }
+    }
+
+    /**
+     * ✅ NOVO: Responder cliente com contexto específico do estabelecimento
+     * Arquitetura Multi-Tenant SaaS com System Instructions isoladas
+     * 
+     * @param int $clientId ID do estabelecimento (tenant)
+     * @param string $customerMessage Mensagem do cliente no WhatsApp
+     * @param array $additionalContext Contexto adicional (nome do cliente, histórico, etc)
+     * @return string|null Resposta gerada ou null se falhar
+     */
+    public function replyToCustomer(int $clientId, string $customerMessage, array $additionalContext = []): ?string
+    {
+        if (!$this->enabled) {
+            Log::warning('GeminiService: Tentativa de usar IA desabilitada', ['client_id' => $clientId]);
+            return null;
+        }
+
+        try {
+            // 1. Buscar dados do estabelecimento (tenant isolation)
+            $client = Client::find($clientId);
+            
+            if (!$client) {
+                Log::error('GeminiService: Cliente não encontrado', ['client_id' => $clientId]);
+                return null;
+            }
+
+            // 2. Verificar se o cliente tem IA habilitada
+            if (!$client->hasAiEnabled()) {
+                Log::info('GeminiService: IA não habilitada para este cliente', [
+                    'client_id' => $clientId,
+                    'client_name' => $client->name,
+                ]);
+                return null;
+            }
+
+            // 3. Obter System Instructions específicas do estabelecimento
+            $systemInstructions = $client->getAiSystemInstructions();
+
+            // 4. Adicionar contexto do cliente se fornecido
+            $contextInfo = '';
+            if (!empty($additionalContext['customer_name'])) {
+                $contextInfo .= "\nCliente: {$additionalContext['customer_name']}";
+            }
+            if (!empty($additionalContext['order_history'])) {
+                $contextInfo .= "\nHistórico: {$additionalContext['order_history']}";
+            }
+            if (!empty($additionalContext['cashback'])) {
+                $contextInfo .= "\nCashback disponível: R$ " . number_format($additionalContext['cashback'], 2, ',', '.');
+            }
+
+            // 5. Construir prompt com system instructions + mensagem do cliente
+            $fullPrompt = $systemInstructions . $contextInfo . "\n\nMENSAGEM DO CLIENTE:\n" . $customerMessage;
+
+            // 6. Gerar resposta com safety settings do cliente
+            $response = $this->generateContentWithSystemInstructions($fullPrompt, $client->getGeminiSafetySettings());
+
+            if ($response) {
+                Log::info('GeminiService: Resposta gerada com sucesso', [
+                    'client_id' => $clientId,
+                    'client_name' => $client->name,
+                    'message_length' => strlen($customerMessage),
+                    'response_length' => strlen($response),
+                ]);
+                return $response;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('GeminiService: Erro ao responder cliente', [
+                'error' => $e->getMessage(),
+                'client_id' => $clientId,
+                'message' => $customerMessage,
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * ✅ NOVO: Gerar conteúdo com System Instructions e Safety Settings
+     */
+    private function generateContentWithSystemInstructions(string $prompt, array $safetySettings = []): ?string
+    {
+        if (!$this->enabled) {
+            return null;
+        }
+
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+
+            $payload = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => $this->temperature,
+                    'maxOutputTokens' => $this->maxTokens,
+                    'topP' => 0.8,
+                    'topK' => 10,
+                ],
+            ];
+
+            // Adicionar safety settings se fornecidos
+            if (!empty($safetySettings)) {
+                $payload['safetySettings'] = array_map(function($category, $threshold) {
+                    return [
+                        'category' => $category,
+                        'threshold' => $threshold,
+                    ];
+                }, array_keys($safetySettings), $safetySettings);
+            }
+
+            $response = Http::timeout(30)->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Extrair texto da resposta
+                $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                
+                if ($text) {
+                    return trim($text);
+                }
+                
+                Log::warning('GeminiService: Resposta sem texto', ['response' => $data]);
+                return null;
+            }
+
+            Log::error('GeminiService: Erro na API com system instructions', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            
+            return null;
+        } catch (\Exception $e) {
+            Log::error('GeminiService: Exception ao gerar conteúdo com system instructions', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
         }
     }
 }

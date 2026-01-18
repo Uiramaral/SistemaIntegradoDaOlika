@@ -205,7 +205,7 @@ function testIntegration(provider) {
     button.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Testando...';
     lucide.createIcons();
     
-    fetch(`/dashboard/integrations/${provider}/test`, {
+    fetch(`/integrations/${provider}/test`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',

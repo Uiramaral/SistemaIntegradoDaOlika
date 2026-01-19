@@ -46,7 +46,7 @@ INSERT IGNORE INTO `api_integrations`
 VALUES
 (NULL, 'gemini', 0, 
   '{"api_key": ""}', 
-  '{"model": "gemini-pro", "temperature": 0.7, "max_tokens": 500}'
+  '{"model": "gemini-2.5-flash", "temperature": 0.7, "max_tokens": 500}'
 ),
 (NULL, 'openai', 0, 
   '{"api_key": ""}', 

@@ -197,18 +197,23 @@ class SettingsController extends Controller
                 // Manter valor como está (não converter string vazia para null)
                 $value = $v;
                 
-                // Salvar em payment_settings
-                $result = DB::table('payment_settings')->updateOrInsert(
-                    ['key' => $k],
+                // Salvar em payment_settings usando Model (filtra por client_id automaticamente)
+                $clientId = currentClientId();
+                $result = \App\Models\PaymentSetting::updateOrCreate(
                     [
-                        'value' => $value, 
+                        'client_id' => $clientId,
+                        'key' => $k
+                    ],
+                    [
+                        'value' => $value,
+                        'is_active' => true,
                         'updated_at' => now(), 
                         'created_at' => DB::raw('COALESCE(created_at, NOW())')
                     ]
                 );
                 
                 // Verificar se foi salvo corretamente
-                $saved = DB::table('payment_settings')->where('key', $k)->first();
+                $saved = \App\Models\PaymentSetting::where('client_id', $clientId)->where('key', $k)->first();
                 $savedValue = $saved ? ($saved->value ?? 'NULL') : 'NOT_FOUND';
                 
                 Log::info('SettingsController: Salvo em payment_settings', [
@@ -247,15 +252,124 @@ class SettingsController extends Controller
     }
     public function whatsapp()
     {
-        $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+        $clientId = currentClientId();
         
-        // Buscar múltiplas instâncias
+        // Buscar configurações do WhatsApp do cliente atual (filtrar por client_id)
+        $row = DB::table('whatsapp_settings')
+            ->where('active', 1)
+            ->when($clientId, function($q) use ($clientId) {
+                $q->where('client_id', $clientId);
+            })
+            ->first();
+        
+        // Buscar múltiplas instâncias do cliente atual PRIMEIRO (antes de usar $connectedPhone)
         try {
-            $instances = \App\Models\WhatsappInstance::orderBy('name')->get();
+            $instancesQuery = \App\Models\WhatsappInstance::query();
+            if ($clientId && method_exists(\App\Models\WhatsappInstance::class, 'where')) {
+                // Se a tabela tiver client_id, filtrar
+                $instancesQuery->where('client_id', $clientId);
+            }
+            $instances = $instancesQuery->orderBy('name')->get();
         } catch (\Exception $e) {
             // Se a tabela não existir ainda, retornar collection vazia
             $instances = collect([]);
             Log::warning('Tabela whatsapp_instances não encontrada. Execute o SQL de criação primeiro.');
+        }
+        
+        // Buscar plano do cliente para verificar limite de instâncias
+        $maxInstances = 1; // Padrão: 1 instância
+        $client = \App\Models\Client::find($clientId);
+        if ($client && $client->subscription && $client->subscription->plan) {
+            $plan = $client->subscription->plan;
+            $maxInstances = $plan->max_whatsapp_instances ?? 1;
+        }
+        
+        // Buscar instância conectada para número padrão de confirmação de pagamento
+        $connectedInstance = $instances->firstWhere('status', 'CONNECTED');
+        $connectedPhone = $connectedInstance ? $connectedInstance->phone_number : null;
+        
+        // Se não tem instância conectada, usar primeira disponível
+        if (!$connectedPhone && $instances->isNotEmpty()) {
+            $connectedPhone = $instances->first()->phone_number;
+        }
+        
+        // Se não tem configuração, criar um registro básico para evitar erros na view
+        if (!$row) {
+            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                             Schema::hasColumn('whatsapp_settings', 'updated_at');
+            $hasClientId = Schema::hasColumn('whatsapp_settings', 'client_id');
+            
+            $insertData = [
+                'instance_name' => 'Principal',
+                'api_url' => env('WHATSAPP_API_URL', ''),
+                'api_key' => env('WHATSAPP_API_KEY', env('API_SECRET', '')),
+                'sender_name' => 'Olika Bot',
+                'whatsapp_phone' => '',
+                'admin_notification_phone' => null,
+                'default_payment_confirmation_phone' => $connectedPhone, // Usar número conectado se disponível
+                'active' => 1
+            ];
+            
+            if ($hasClientId && $clientId) {
+                $insertData['client_id'] = $clientId;
+            }
+            
+            if ($hasTimestamps) {
+                $insertData['created_at'] = now();
+                $insertData['updated_at'] = now();
+            }
+            
+            DB::table('whatsapp_settings')->insert($insertData);
+            $row = DB::table('whatsapp_settings')
+                ->where('active', 1)
+                ->when($clientId, function($q) use ($clientId) {
+                    $q->where('client_id', $clientId);
+                })
+                ->first();
+        } else {
+            // Se já tem registro, atualizar número padrão de confirmação de pagamento se houver instância conectada
+            if ($connectedPhone && (!$row->default_payment_confirmation_phone || $row->default_payment_confirmation_phone != $connectedPhone)) {
+                DB::table('whatsapp_settings')
+                    ->where('id', $row->id)
+                    ->update(['default_payment_confirmation_phone' => $connectedPhone]);
+                // Recarregar para ter o valor atualizado
+                $row = DB::table('whatsapp_settings')
+                    ->where('id', $row->id)
+                    ->first();
+            }
+        }
+        
+        // Se não tem configuração, criar um registro básico para evitar erros na view
+        if (!$row) {
+            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
+                             Schema::hasColumn('whatsapp_settings', 'updated_at');
+            $hasClientId = Schema::hasColumn('whatsapp_settings', 'client_id');
+            
+            $insertData = [
+                'instance_name' => 'Principal',
+                'api_url' => env('WHATSAPP_API_URL', ''),
+                'api_key' => env('WHATSAPP_API_KEY', env('API_SECRET', '')),
+                'sender_name' => 'Olika Bot',
+                'whatsapp_phone' => '',
+                'active' => 1
+            ];
+            
+            if ($hasClientId && $clientId) {
+                $insertData['client_id'] = $clientId;
+            }
+            
+            if ($hasTimestamps) {
+                $insertData['created_at'] = now();
+                $insertData['updated_at'] = now();
+            }
+            
+            DB::table('whatsapp_settings')->insert($insertData);
+            $row = DB::table('whatsapp_settings')
+                ->where('active', 1)
+                ->when($clientId, function($q) use ($clientId) {
+                    $q->where('client_id', $clientId);
+                })
+                ->first();
         }
         
         // Buscar templates
@@ -285,7 +399,7 @@ class SettingsController extends Controller
         $whatsappApiUrl = $row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app');
         $whatsappApiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
         
-        return view('dashboard.settings.whatsapp', compact('row', 'instances', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey'));
+        return view('dashboard.settings.whatsapp', compact('row', 'instances', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey', 'maxInstances', 'connectedPhone'));
     }
     
     /**
@@ -490,18 +604,44 @@ class SettingsController extends Controller
     {
         // Se apenas admin_notification_phone foi enviado, validar apenas ele
         if ($r->has('admin_notification_phone') && !$r->has('instance_name')) {
-            $data = $r->validate([
-                'admin_notification_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
-            ]);
+            $clientId = currentClientId();
             
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            // Normalizar número de telefone antes de validar
+            $phone = $r->input('admin_notification_phone');
+            if ($phone) {
+                $phone = $this->normalizePhoneNumber($phone);
+            }
+            
+            $data = [
+                'admin_notification_phone' => $phone ?: null,
+            ];
+            
+            // Buscar configuração do cliente atual (filtrar por client_id)
+            $row = DB::table('whatsapp_settings')
+                ->where('active', 1)
+                ->when($clientId, function($q) use ($clientId) {
+                    $q->where('client_id', $clientId);
+                })
+                ->first();
             
             if ($row) {
                 $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'updated_at');
+                
+                // Buscar instância conectada para definir número padrão de confirmação de pagamento
+                $connectedInstance = \App\Models\WhatsappInstance::withoutGlobalScopes()
+                    ->where('client_id', $clientId)
+                    ->where('status', 'CONNECTED')
+                    ->first();
+                
                 $updateData = [
                     'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
-                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
                 ];
+                
+                // Se tem instância conectada, atualizar número padrão de confirmação automaticamente
+                if ($connectedInstance && $connectedInstance->phone_number) {
+                    $updateData['default_payment_confirmation_phone'] = $connectedInstance->phone_number;
+                }
+                
                 if ($hasTimestamps) {
                     $updateData['updated_at'] = now();
                 }
@@ -517,7 +657,7 @@ class SettingsController extends Controller
                     'sender_name' => 'Olika Bot',
                     'whatsapp_phone' => '',
                     'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
-                    'default_payment_confirmation_phone' => $data['default_payment_confirmation_phone'] ?? null,
+                    'default_payment_confirmation_phone' => null, // Será preenchido quando houver instância conectada
                     'active' => 1
                 ];
                 if ($hasTimestamps) {
@@ -758,10 +898,19 @@ class SettingsController extends Controller
 
     public function mp()
     {
-        // Usar array simples para evitar problemas de acesso na view
-        $keys = DB::table('payment_settings')->pluck('value', 'key')->toArray();
+        $clientId = currentClientId();
+        
+        // Usar Model PaymentSetting que já filtra por client_id automaticamente
+        $keys = \App\Models\PaymentSetting::whereIn('key', [
+                'mercadopago_access_token',
+                'mercadopago_public_key',
+                'mercadopago_environment',
+                'mercadopago_webhook_url'
+            ])
+            ->pluck('value', 'key')
+            ->toArray();
 
-        // Buscar dados reais de pedidos pagos
+        // Buscar dados reais de pedidos pagos (Order já filtra por client_id via Global Scope)
         // Pedidos pagos através do Mercado Pago (status approved ou paid)
         $paidOrders = \App\Models\Order::with('customer')
             ->whereIn('payment_status', ['approved', 'paid'])
@@ -840,11 +989,25 @@ class SettingsController extends Controller
             'mercadopago_webhook_url' => 'nullable|url',
         ]);
 
-        // Persistir de forma idempotente
+        $clientId = currentClientId();
+        
+        if (!$clientId) {
+            return back()->with('error', 'Erro: client_id não encontrado.');
+        }
+
+        // Persistir de forma idempotente usando o Model PaymentSetting
         foreach ($data as $k => $v) {
-            DB::table('payment_settings')->updateOrInsert(
-                ['key' => $k],
-                ['value' => $v, 'updated_at' => now(), 'created_at' => DB::raw('COALESCE(created_at, NOW())')]
+            \App\Models\PaymentSetting::updateOrCreate(
+                [
+                    'client_id' => $clientId,
+                    'key' => $k
+                ],
+                [
+                    'value' => $v,
+                    'is_active' => true,
+                    'updated_at' => now(),
+                    'created_at' => DB::raw('COALESCE(created_at, NOW())')
+                ]
             );
         }
 
@@ -873,10 +1036,19 @@ class SettingsController extends Controller
             $toSave[$k] = $r->has($k) ? '1' : '0';
         }
 
+        $clientId = currentClientId();
         foreach ($toSave as $k => $v) {
-            DB::table('payment_settings')->updateOrInsert(
-                ['key' => $k],
-                ['value' => $v, 'updated_at' => now(), 'created_at' => DB::raw('COALESCE(created_at, NOW())')]
+            \App\Models\PaymentSetting::updateOrCreate(
+                [
+                    'client_id' => $clientId,
+                    'key' => $k
+                ],
+                [
+                    'value' => $v,
+                    'is_active' => true,
+                    'updated_at' => now(),
+                    'created_at' => DB::raw('COALESCE(created_at, NOW())')
+                ]
             );
         }
 
@@ -898,19 +1070,134 @@ class SettingsController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100',
-            'api_url' => 'required|url|max:255',
-            'api_key' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20|regex:/^[0-9]+$/',
         ]);
 
         try {
-            $instance = \App\Models\WhatsappInstance::create([
+            // Obter client_id de múltiplas fontes para debug
+            $requestClientId = currentClientId();
+            $sessionClientId = session('client_id');
+            $userClientId = auth()->check() ? auth()->user()->client_id : null;
+            
+            // LOG DETALHADO para identificar a origem do problema
+            Log::info('WhatsappInstance::whatsappInstanceStore - DEBUG client_id', [
+                'request_client_id' => $requestClientId,
+                'session_client_id' => $sessionClientId,
+                'user_client_id' => $userClientId,
+                'request_attributes' => $request->attributes->has('client_id') ? $request->attributes->get('client_id') : 'not_set',
+                'user_email' => auth()->check() ? auth()->user()->email : 'not_authenticated',
+                'user_id' => auth()->check() ? auth()->user()->id : null,
+            ]);
+            
+            // OBRIGATÓRIO: Usar client_id do usuário autenticado
+            // Isso previne que usuários regulares criem instâncias para o master
+            if (!auth()->check()) {
+                throw new \Exception('Usuário não autenticado. Faça login novamente.');
+            }
+            
+            $user = auth()->user();
+            if (!$user->client_id) {
+                throw new \Exception('Usuário não possui estabelecimento associado. Entre em contato com o suporte.');
+            }
+            
+            // FORÇAR: Sempre usar o client_id do usuário autenticado (ignorar sessão/request)
+            $clientId = $user->client_id;
+            
+            Log::info('WhatsappInstance::whatsappInstanceStore - Usando client_id do usuário autenticado (FORÇADO)', [
+                'client_id_escolhido' => $clientId,
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'request_client_id' => $requestClientId,
+                'session_client_id' => $sessionClientId,
+                'correcao_aplicada' => ($requestClientId != $clientId) || ($sessionClientId != $clientId),
+            ]);
+            
+            // PROTEÇÃO: Se for master (client_id = 1), verificar se o usuário é realmente master
+            if ($clientId == 1) {
+                // Verificar se o usuário é realmente master/admin
+                $isMaster = $user->is_master ?? false;
+                if (!$isMaster) {
+                    Log::error('WhatsappInstance::whatsappInstanceStore - TENTATIVA BLOQUEADA: Usuário não-master tentou criar instância para master', [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                        'user_client_id' => $user->client_id,
+                    ]);
+                    throw new \Exception('Acesso negado: você não tem permissão para criar instâncias para este estabelecimento.');
+                }
+            }
+            
+            $client = \App\Models\Client::find($clientId);
+            
+            if (!$client) {
+                throw new \Exception('Cliente não encontrado.');
+            }
+            
+            Log::info('WhatsappInstance::whatsappInstanceStore - Cliente confirmado', [
+                'client_id' => $client->id,
+                'client_name' => $client->name,
+            ]);
+            
+            // Buscar URL disponível do master (WhatsappInstanceUrl)
+            $instanceUrl = \App\Models\WhatsappInstanceUrl::getNextAvailable();
+            
+            if (!$instanceUrl) {
+                throw new \Exception('Nenhuma instância WhatsApp disponível no momento. Entre em contato com o suporte.');
+            }
+            
+            // Usar telefone do cadastro do cliente (whatsapp_phone)
+            $phoneNumber = $client->whatsapp_phone ?? $client->phone ?? null;
+            
+            // Atribuir URL ao cliente
+            $instanceUrl->assignToClient($client);
+            
+            // Usar telefone da requisição ou do cadastro
+            $phoneNumber = $request->phone_number ?? $phoneNumber;
+            
+            // Normalizar número: garantir que tenha código do país (55 para Brasil)
+            $phoneNumber = $this->normalizePhoneNumber($phoneNumber);
+            
+            // Criar instância WhatsApp usando create() mas desabilitando temporariamente o Global Scope
+            // para garantir que o client_id seja salvo corretamente
+            $instance = \App\Models\WhatsappInstance::withoutGlobalScopes()->create([
+                'client_id' => $clientId, // Garantir que o client_id correto seja salvo
                 'name' => $request->name,
-                'api_url' => rtrim($request->api_url, '/'),
-                'api_key' => $request->api_key,
+                'phone_number' => $phoneNumber,
+                'api_url' => rtrim($instanceUrl->url, '/'),
+                'api_token' => $instanceUrl->api_key,
                 'status' => 'DISCONNECTED',
             ]);
-
-            Log::info('WhatsappInstance criada', ['id' => $instance->id, 'name' => $instance->name]);
+            
+            // Verificar se foi salvo corretamente consultando o banco diretamente
+            $verificacao = \DB::table('whatsapp_instances')
+                ->where('id', $instance->id)
+                ->first(['id', 'client_id', 'name']);
+            
+            Log::info('WhatsappInstance criada', [
+                'id' => $instance->id,
+                'name' => $instance->name,
+                'client_id_esperado' => $clientId,
+                'client_id_no_modelo' => $instance->client_id,
+                'client_id_no_banco' => $verificacao->client_id ?? 'ERROR',
+                'verificacao_ok' => ($verificacao->client_id ?? null) == $clientId,
+            ]);
+            
+            // Se o client_id foi salvo incorretamente, corrigir
+            if (($verificacao->client_id ?? null) != $clientId) {
+                Log::error('WhatsappInstance::whatsappInstanceStore - CORREÇÃO: client_id incorreto salvo! Corrigindo...', [
+                    'instance_id' => $instance->id,
+                    'client_id_esperado' => $clientId,
+                    'client_id_salvo' => $verificacao->client_id ?? null,
+                ]);
+                
+                \DB::table('whatsapp_instances')
+                    ->where('id', $instance->id)
+                    ->update(['client_id' => $clientId]);
+                
+                $instance->refresh();
+            }
+            
+            // Vincular instância à URL
+            $instanceUrl->update(['whatsapp_instance_id' => $instance->id]);
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => true, 'instance' => $instance]);
@@ -961,16 +1248,20 @@ class SettingsController extends Controller
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
             
+            // Validar apenas campos editáveis (nome e telefone)
+            // URL e token são gerenciados pelo master e não podem ser alterados
             $data = $request->validate([
                 'name' => 'sometimes|string|max:100',
-                'api_url' => 'sometimes|url|max:255',
-                'api_key' => 'sometimes|string|max:255',
+                'phone_number' => 'sometimes|nullable|string|max:20|regex:/^[0-9]+$/',
                 'status' => 'sometimes|string|max:50',
-                'phone_number' => 'sometimes|nullable|string|max:20',
             ]);
             
-            if (isset($data['api_url'])) {
-                $data['api_url'] = rtrim($data['api_url'], '/');
+            // Não permitir alterar api_url e api_token (são gerenciados pelo master)
+            unset($data['api_url'], $data['api_key']);
+            
+            // Normalizar número de telefone se foi alterado
+            if (isset($data['phone_number'])) {
+                $data['phone_number'] = $this->normalizePhoneNumber($data['phone_number']);
             }
             
             $inst->update($data);
@@ -1111,6 +1402,40 @@ class SettingsController extends Controller
 
             return back()->with('error', 'Erro ao desconectar: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Normaliza número de telefone para formato internacional (Brasil: 55)
+     * 
+     * @param string|null $phone Número de telefone (apenas dígitos)
+     * @return string Número normalizado com código do país
+     */
+    private function normalizePhoneNumber(?string $phone): string
+    {
+        if (!$phone) {
+            return '';
+        }
+
+        // Remover caracteres não numéricos
+        $phone = preg_replace('/\D/', '', $phone);
+
+        // Se já começa com 55 (código do Brasil), retornar como está
+        if (str_starts_with($phone, '55')) {
+            return $phone;
+        }
+
+        // Se tem 10 ou 11 dígitos (DDD + número), adicionar código do país
+        if (strlen($phone) >= 10 && strlen($phone) <= 11) {
+            return '55' . $phone;
+        }
+
+        // Se tem menos de 10 dígitos, assumir que está incompleto e adicionar 55
+        if (strlen($phone) < 10) {
+            return '55' . $phone;
+        }
+
+        // Caso tenha mais de 13 dígitos (55 + 11), já está normalizado
+        return $phone;
     }
 }
 

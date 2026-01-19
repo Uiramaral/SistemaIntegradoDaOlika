@@ -87,40 +87,150 @@ class WhatsappInstanceUrlsController extends Controller
     }
 
     /**
-     * Salva nova URL de instância
+     * Salva nova(s) URL(s) de instância(s)
+     * Aceita uma URL ou múltiplas URLs separadas por quebra de linha
      */
     public function store(Request $request)
     {
+        // Aceitar tanto 'url' (edição) quanto 'urls' (criação múltipla)
         $validated = $request->validate([
-            'url' => 'required|url|unique:whatsapp_instance_urls,url',
+            'url' => 'nullable|url',
+            'urls' => 'nullable|string',
             'railway_service_id' => 'nullable|string|max:255',
             'railway_project_id' => 'nullable|string|max:255',
-            'max_connections' => 'integer|min:1|max:100',
+            'max_connections' => 'nullable|integer|min:1|max:100',
             'notes' => 'nullable|string',
         ]);
 
-        // Extrair nome da URL automaticamente
-        $name = $this->extractNameFromUrl($validated['url']);
+        // Se veio 'url' (edição), converter para array
+        if (!empty($validated['url'])) {
+            $urlsText = $validated['url'];
+        } elseif (!empty($validated['urls'])) {
+            $urlsText = $validated['urls'];
+        } else {
+            return back()->withErrors(['urls' => 'É necessário informar pelo menos uma URL.'])->withInput();
+        }
+
+        // Processar múltiplas URLs (separadas por quebra de linha, vírgula ou espaço)
+        $urlsText = trim($urlsText);
         
+        // Separar por quebra de linha, vírgula ou espaço
+        $urls = preg_split('/[\r\n,]+/', $urlsText);
+        $urls = array_map('trim', $urls);
+        $urls = array_filter($urls, function($url) {
+            return !empty($url);
+        });
+
+        // Corrigir e validar URLs
+        $validUrls = [];
+        $invalidUrls = [];
+        
+        foreach ($urls as $url) {
+            $url = trim($url);
+            if (empty($url)) {
+                continue;
+            }
+            
+            // Remover espaços e caracteres especiais no início/fim
+            $url = trim($url, " \t\n\r\0\x0B/");
+            
+            // Se não tem protocolo, adicionar https://
+            if (!preg_match('/^https?:\/\//i', $url)) {
+                $url = 'https://' . $url;
+            }
+            
+            // Garantir que termina sem barra
+            $url = rtrim($url, '/');
+            
+            // Validar URL
+            if (filter_var($url, FILTER_VALIDATE_URL)) {
+                $validUrls[] = $url;
+            } else {
+                $invalidUrls[] = $url;
+            }
+        }
+
+        if (empty($validUrls)) {
+            $errorMessage = 'Nenhuma URL válida encontrada.';
+            if (!empty($invalidUrls)) {
+                $errorMessage .= ' URLs inválidas: ' . implode(', ', array_slice($invalidUrls, 0, 3));
+            }
+            return back()->withErrors(['urls' => $errorMessage])->withInput();
+        }
+        
+        // Usar URLs válidas
+        $urls = $validUrls;
+
         // Buscar API Key do sistema
         $apiKey = $this->getSystemApiToken();
 
-        $instanceUrl = WhatsappInstanceUrl::create([
-            'name' => $name,
-            'url' => rtrim($validated['url'], '/'),
-            'api_key' => $apiKey,
-            'railway_service_id' => $validated['railway_service_id'] ?? null,
-            'railway_project_id' => $validated['railway_project_id'] ?? null,
-            'max_connections' => $validated['max_connections'] ?? 5,
-            'status' => 'available',
-            'health_status' => 'unknown',
-        ]);
+        $created = [];
+        $errors = [];
+        $skipped = [];
 
-        // Verificar saúde da instância
-        $this->checkHealth($instanceUrl);
+        foreach ($urls as $url) {
+            $url = rtrim($url, '/');
+            
+            // Verificar se já existe
+            if (WhatsappInstanceUrl::where('url', $url)->exists()) {
+                $skipped[] = $url;
+                continue;
+            }
 
+            try {
+                // Extrair nome da URL automaticamente
+                $name = $this->extractNameFromUrl($url);
+
+                $instanceUrl = WhatsappInstanceUrl::create([
+                    'name' => $name,
+                    'url' => $url,
+                    'api_key' => $apiKey,
+                    'railway_service_id' => $validated['railway_service_id'] ?? null,
+                    'railway_project_id' => $validated['railway_project_id'] ?? null,
+                    'max_connections' => $validated['max_connections'] ?? 5,
+                    'status' => 'available',
+                    'health_status' => 'unknown',
+                ]);
+
+                // Verificar saúde da instância (em background, não bloquear)
+                try {
+                    $this->checkHealth($instanceUrl);
+                } catch (\Exception $e) {
+                    // Log mas não falhar
+                    \Log::warning("Erro ao verificar saúde da instância {$instanceUrl->id}: " . $e->getMessage());
+                }
+
+                $created[] = $instanceUrl->name;
+            } catch (\Exception $e) {
+                $errors[] = "Erro ao criar {$url}: " . $e->getMessage();
+                \Log::error("Erro ao criar instância WhatsApp", [
+                    'url' => $url,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // Montar mensagem de retorno
+        $messages = [];
+        
+        if (!empty($created)) {
+            $count = count($created);
+            $messages[] = "{$count} instância(s) criada(s) com sucesso: " . implode(', ', $created);
+        }
+        
+        if (!empty($skipped)) {
+            $count = count($skipped);
+            $messages[] = "{$count} URL(s) ignorada(s) (já existem): " . implode(', ', array_slice($skipped, 0, 3)) . (count($skipped) > 3 ? '...' : '');
+        }
+        
+        if (!empty($errors)) {
+            $messages[] = "Erros: " . implode('; ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? '...' : '');
+        }
+
+        $messageType = !empty($errors) ? 'warning' : 'success';
+        
         return redirect()->route('master.whatsapp-urls.index')
-            ->with('success', "URL de instância {$instanceUrl->name} cadastrada com sucesso!");
+            ->with($messageType, implode(' | ', $messages));
     }
 
     /**

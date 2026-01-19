@@ -122,9 +122,32 @@ Route::post('/login', [LoginController::class, 'login'])->name('auth.login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('auth.logout');
 Route::get('/logout', [LoginController::class, 'logout'])->name('auth.logout.get');
 
-// Registro de novos administradores
-Route::get('/register', [RegisterController::class, 'showForm'])->name('register.form');
-Route::post('/register', [RegisterController::class, 'register'])->name('register');
+// ============================================
+// CADASTRO PÚBLICO DE ESTABELECIMENTOS
+// URL OFICIAL: /cadastro
+// ============================================
+// Esta é a ÚNICA rota pública para novos estabelecimentos se cadastrarem
+// Exemplos: Lanchonetes, Restaurantes, Pizzarias, etc.
+Route::get('/cadastro', [\App\Http\Controllers\StoreSignupController::class, 'show'])->name('store-signup.show');
+Route::post('/cadastro', [\App\Http\Controllers\StoreSignupController::class, 'store'])->name('store-signup.store');
+
+// ============================================
+// ROTA /register DESABILITADA
+// ============================================
+// IMPORTANTE: /register NÃO deve ser usada para cadastrar estabelecimentos!
+// Ela foi criada por engano e está sendo mantida apenas para compatibilidade
+// de links antigos. Redireciona para /cadastro (landing page oficial).
+Route::get('/register', function() {
+    return redirect()->route('store-signup.show')
+        ->with('info', 'Use a página de cadastro oficial para criar seu estabelecimento.');
+})->name('register.form');
+
+// POST mantido apenas para compatibilidade com formulários antigos
+// TODO: Remover completamente após migração de todos os links
+Route::post('/register', function() {
+    return redirect()->route('store-signup.show')
+        ->with('error', 'Esta rota está desabilitada. Use /cadastro para criar seu estabelecimento.');
+})->name('register');
 
 // ============================================
 // ROTA PARA SERVIR ARQUIVOS DO STORAGE

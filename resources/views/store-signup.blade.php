@@ -45,23 +45,25 @@
         <!-- Planos -->
         <div class="grid md:grid-cols-2 gap-8 mb-12">
             @foreach($plans as $planKey => $plan)
-                <div class="bg-white rounded-xl shadow-lg p-8 border-2 border-gray-200 hover:border-orange-400 transition-all">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-2xl font-bold text-gray-900">{{ $plan['name'] }}</h3>
-                        @if($planKey === 'ia')
-                            <span class="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold">Mais Popular</span>
-                        @endif
-                    </div>
+                <div class="bg-white rounded-xl shadow-lg p-8 border-2 {{ isset($plan['featured']) && $plan['featured'] ? 'border-orange-400 ring-4 ring-orange-100' : 'border-gray-200' }} hover:border-orange-400 transition-all relative">
+                    @if(isset($plan['featured']) && $plan['featured'])
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                            <span class="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">🌟 Mais Popular</span>
+                        </div>
+                    @endif
                     
-                    <p class="text-gray-600 mb-6">{{ $plan['description'] }}</p>
+                    <div class="mb-4">
+                        <h3 class="text-2xl font-bold text-gray-900">{{ $plan['name'] }}</h3>
+                        <p class="text-gray-600 text-sm mt-1">{{ $plan['description'] }}</p>
+                    </div>
                     
                     <div class="mb-6">
                         <span class="text-4xl font-bold text-gray-900">{{ $plan['price'] }}</span>
-                        <span class="text-gray-500 ml-2">/mês</span>
+                        <span class="text-gray-500 text-lg">{{ $plan['price_label'] }}</span>
                     </div>
 
                     <div class="mb-6">
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
                             <p class="text-sm text-green-800 font-semibold">
                                 <i class="fas fa-gift mr-2"></i>
                                 {{ $plan['trial_days'] }} dias de teste grátis
@@ -69,20 +71,27 @@
                         </div>
                     </div>
 
-                    <ul class="space-y-3 mb-8">
+                    <ul class="space-y-3 mb-8 min-h-[300px]">
                         @foreach($plan['features'] as $feature)
                             <li class="flex items-start gap-3">
-                                <i class="fas fa-check-circle text-green-500 mt-1 flex-shrink-0"></i>
-                                <span class="text-gray-700">{{ $feature }}</span>
+                                @if(str_starts_with($feature, '✨'))
+                                    {{-- Feature especial (inclui tudo do anterior) --}}
+                                    <i class="fas fa-crown text-orange-500 mt-1 flex-shrink-0"></i>
+                                    <span class="text-gray-900 font-semibold">{{ str_replace('✨ ', '', $feature) }}</span>
+                                @else
+                                    <i class="fas fa-check-circle text-green-500 mt-1 flex-shrink-0"></i>
+                                    <span class="text-gray-700">{{ $feature }}</span>
+                                @endif
                             </li>
                         @endforeach
                     </ul>
 
                     <button 
                         onclick="selectPlan('{{ $planKey }}')" 
-                        class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                        class="w-full {{ isset($plan['featured']) && $plan['featured'] ? 'bg-orange-500 hover:bg-orange-600 ring-2 ring-orange-300' : 'bg-gray-700 hover:bg-gray-800' }} text-white font-semibold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
                         data-plan="{{ $planKey }}"
                     >
+                        <i class="fas fa-rocket mr-2"></i>
                         Escolher {{ $plan['name'] }}
                     </button>
                 </div>

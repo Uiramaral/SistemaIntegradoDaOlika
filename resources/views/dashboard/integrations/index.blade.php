@@ -128,10 +128,16 @@
                                         @if($setting['type'] === 'select')
                                             <select name="settings[{{ $settingKey }}]" 
                                                     class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                @foreach($setting['options'] as $option)
-                                                    <option value="{{ $option }}" 
-                                                            {{ (($integration?->getSetting($settingKey, $setting['default'] ?? null) ?? '') === $option) ? 'selected' : '' }}>
-                                                        {{ $option }}
+                                                @foreach($setting['options'] as $optionValue => $optionLabel)
+                                                    @php
+                                                        // Suporta tanto array simples quanto associativo
+                                                        $value = is_numeric($optionValue) ? $optionLabel : $optionValue;
+                                                        $label = is_numeric($optionValue) ? $optionLabel : $optionLabel;
+                                                        $currentValue = $integration?->getSetting($settingKey, $setting['default'] ?? null) ?? '';
+                                                    @endphp
+                                                    <option value="{{ $value }}" 
+                                                            {{ $currentValue === $value ? 'selected' : '' }}>
+                                                        {{ $label }}
                                                     </option>
                                                 @endforeach
                                             </select>

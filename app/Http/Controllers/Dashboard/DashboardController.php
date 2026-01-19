@@ -111,11 +111,21 @@ class DashboardController extends Controller
                 $selectFields[] = 'products.image';
             }
             
-            $topProducts = DB::table('order_items')
+            // Filtrar por client_id do estabelecimento atual
+            $clientId = currentClientId();
+            
+            $topProductsQuery = DB::table('order_items')
                 ->join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->join('products', 'order_items.product_id', '=', 'products.id')
                 ->where('orders.created_at', '>=', now()->subDays(7))
-                ->where('orders.payment_status', 'paid')
+                ->where('orders.payment_status', 'paid');
+            
+            // Filtrar por client_id
+            if ($clientId) {
+                $topProductsQuery->where('products.client_id', $clientId);
+            }
+            
+            $topProducts = $topProductsQuery
                 ->select($selectFields)
                 ->groupBy('products.id', 'products.name' . ($hasImageColumn ? ', products.image' : ''))
                 ->orderByDesc('total_quantity')

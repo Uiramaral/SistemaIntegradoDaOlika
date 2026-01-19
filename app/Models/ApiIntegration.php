@@ -40,7 +40,16 @@ class ApiIntegration extends Model
                 'api_key' => ['label' => 'API Key', 'type' => 'password', 'required' => true],
             ],
             'settings_fields' => [
-                'model' => ['label' => 'Modelo', 'type' => 'select', 'options' => ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'], 'default' => 'gemini-1.5-flash'],
+                'model' => [
+                    'label' => 'Modelo', 
+                    'type' => 'select', 
+                    'options' => [
+                        'gemini-2.5-flash' => 'Gemini 2.5 Flash (Recomendado - Chat rápido)',
+                        'gemini-2.5-flash-lite' => 'Gemini 2.5 Flash Lite (Econômico - Notificações)',
+                        'gemini-3-pro' => 'Gemini 3 Pro (Avançado - Análises)',
+                    ], 
+                    'default' => 'gemini-2.5-flash'
+                ],
                 'temperature' => ['label' => 'Temperature', 'type' => 'number', 'min' => 0, 'max' => 1, 'step' => 0.1, 'default' => 0.7],
                 'max_tokens' => ['label' => 'Max Tokens', 'type' => 'number', 'default' => 500],
             ],
@@ -103,7 +112,11 @@ class ApiIntegration extends Model
      */
     public static function getByProvider(string $provider): ?self
     {
-        $clientId = session('client_id');
+        $clientId = currentClientId();
+        
+        if (!$clientId) {
+            return null;
+        }
         
         return self::where('client_id', $clientId)
             ->where('provider', $provider)
@@ -115,16 +128,44 @@ class ApiIntegration extends Model
      */
     public static function getOrCreateByProvider(string $provider): self
     {
-        $clientId = session('client_id');
+        $clientId = currentClientId();
         
-        return self::firstOrCreate(
-            ['client_id' => $clientId, 'provider' => $provider],
-            [
+        if (!$clientId) {
+            throw new \Exception('client_id não encontrado no contexto atual. Certifique-se de que o usuário está autenticado e tem um estabelecimento associado.');
+        }
+        
+        // Primeiro tentar buscar existente
+        $integration = self::where('client_id', $clientId)
+            ->where('provider', $provider)
+            ->first();
+        
+        if ($integration) {
+            return $integration;
+        }
+        
+        // Se não existe, tentar criar (com tratamento de race condition)
+        try {
+            return self::create([
+                'client_id' => $clientId,
+                'provider' => $provider,
                 'is_enabled' => false,
-                'credentials' => [],  // Array vazio para valores reais
+                'credentials' => [],
                 'settings' => [],
-            ]
-        );
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Se deu erro de duplicate (race condition), buscar novamente
+            if ($e->getCode() == 23000) { // Integrity constraint violation
+                $integration = self::where('client_id', $clientId)
+                    ->where('provider', $provider)
+                    ->first();
+                
+                if ($integration) {
+                    return $integration;
+                }
+            }
+            
+            throw $e;
+        }
     }
 
     /**

@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToClient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WhatsappInstance extends Model
 {
+    use BelongsToClient;
+    
     protected $fillable = [
+        'client_id',
         'name',
         'phone_number',
         'api_url',
@@ -30,10 +34,14 @@ class WhatsappInstance extends Model
         // Garantir URL limpa (sem espaços e sem barra no final)
         $url = rtrim(trim($this->api_url), '/');
         
+        // Normalizar número de telefone antes de enviar
+        $normalizedPhone = $this->normalizePhoneNumber($this->phone_number);
+        
         Log::info("WhatsappInstance::connect - Iniciando conexão", [
             'instance_id' => $this->id,
             'target_url' => "{$url}/api/whatsapp/connect",
-            'phone' => $this->phone_number
+            'phone_original' => $this->phone_number,
+            'phone_normalized' => $normalizedPhone,
         ]);
 
         try {
@@ -42,7 +50,7 @@ class WhatsappInstance extends Model
                 ->withOptions(['allow_redirects' => false]) 
                 ->timeout(30)
                 ->post("{$url}/api/whatsapp/connect", [
-                    'phone' => $this->phone_number
+                    'phone' => $normalizedPhone
                 ]);
 
             // Se for redirecionamento (3xx), logar aviso
@@ -231,6 +239,40 @@ class WhatsappInstance extends Model
     public function scopeByName($query, $name)
     {
         return $query->where('name', $name);
+    }
+
+    /**
+     * Normaliza número de telefone para formato internacional (Brasil: 55)
+     * 
+     * @param string|null $phone Número de telefone (apenas dígitos)
+     * @return string Número normalizado com código do país
+     */
+    private function normalizePhoneNumber(?string $phone): string
+    {
+        if (!$phone) {
+            return '';
+        }
+
+        // Remover caracteres não numéricos
+        $phone = preg_replace('/\D/', '', $phone);
+
+        // Se já começa com 55 (código do Brasil), retornar como está
+        if (str_starts_with($phone, '55')) {
+            return $phone;
+        }
+
+        // Se tem 10 ou 11 dígitos (DDD + número), adicionar código do país
+        if (strlen($phone) >= 10 && strlen($phone) <= 11) {
+            return '55' . $phone;
+        }
+
+        // Se tem menos de 10 dígitos, assumir que está incompleto e adicionar 55
+        if (strlen($phone) < 10) {
+            return '55' . $phone;
+        }
+
+        // Caso tenha mais de 13 dígitos (55 + 11), já está normalizado
+        return $phone;
     }
 }
 

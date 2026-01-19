@@ -30,9 +30,15 @@ trait BelongsToClient
         static::addGlobalScope(new ClientScope);
 
         // Ao criar um novo registro, definir client_id automaticamente
+        // IMPORTANTE: Só define se não foi passado explicitamente (respeita valores passados)
         static::creating(function ($model) {
-            if (empty($model->client_id)) {
-                $model->client_id = static::getCurrentClientId();
+            // Se client_id não foi definido ou está null/0/vazio, definir automaticamente
+            // Mas respeitar se foi passado explicitamente um valor válido (> 0)
+            if (empty($model->client_id) || $model->client_id === 0) {
+                $autoClientId = static::getCurrentClientId();
+                if ($autoClientId) {
+                    $model->client_id = $autoClientId;
+                }
             }
         });
     }

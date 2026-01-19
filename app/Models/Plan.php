@@ -21,21 +21,57 @@ class Plan extends Model
         'billing_cycle',
         'features',
         'limits',
-        'is_active',
+        'active', // Corrigir: usar 'active' ao invés de 'is_active'
         'is_featured',
         'sort_order',
         'trial_days',
+        'has_whatsapp',
+        'has_ai',
+        'max_products',
+        'max_orders_per_month',
+        'max_users',
+        'max_whatsapp_instances',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'features' => 'array',
         'limits' => 'array',
-        'is_active' => 'boolean',
+        'active' => 'boolean', // Corrigir
         'is_featured' => 'boolean',
         'trial_days' => 'integer',
         'sort_order' => 'integer',
+        'has_whatsapp' => 'boolean',
+        'has_ai' => 'boolean',
+        'max_products' => 'integer',
+        'max_orders_per_month' => 'integer',
+        'max_users' => 'integer',
+        'max_whatsapp_instances' => 'integer',
     ];
+
+    /**
+     * Valores padrão para novos planos
+     */
+    protected $attributes = [
+        'billing_cycle' => 'monthly',
+    ];
+
+    /**
+     * Boot do modelo - garantir billing_cycle sempre como 'monthly'
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Antes de criar ou atualizar, garantir billing_cycle = 'monthly'
+        static::saving(function ($plan) {
+            if (empty($plan->billing_cycle)) {
+                $plan->billing_cycle = 'monthly';
+            }
+            // Forçar sempre como monthly (não há planos anuais ainda)
+            $plan->billing_cycle = 'monthly';
+        });
+    }
 
     // =========================================================================
     // RELATIONSHIPS
@@ -66,7 +102,7 @@ class Plan extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('active', true); // Corrigido: usar 'active' ao invés de 'is_active'
     }
 
     /**

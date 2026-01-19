@@ -20,6 +20,8 @@ class Client extends Model
         'instance_url',
         'deploy_status',
         'whatsapp_phone',
+        'email',
+        'phone',
         'ai_context',
         'ai_enabled',
         'ai_safety_level',
@@ -27,14 +29,26 @@ class Client extends Model
         'is_trial',
         'trial_started_at',
         'trial_ends_at',
+        'is_master',
+        'mercadopago_commission_enabled',
+        'mercadopago_commission_amount',
+        'is_lifetime_free',
+        'lifetime_plan',
+        'lifetime_reason',
+        'lifetime_granted_at',
     ];
 
     protected $casts = [
         'active' => 'boolean',
         'is_trial' => 'boolean',
         'ai_enabled' => 'boolean',
+        'is_master' => 'boolean',
+        'mercadopago_commission_enabled' => 'boolean',
+        'mercadopago_commission_amount' => 'decimal:2',
         'trial_started_at' => 'datetime',
         'trial_ends_at' => 'datetime',
+        'is_lifetime_free' => 'boolean',
+        'lifetime_granted_at' => 'datetime',
     ];
 
     /**
@@ -230,6 +244,101 @@ class Client extends Model
         }
 
         return max(0, now()->diffInDays($this->trial_ends_at, false));
+    }
+
+    /**
+     * ✅ NOVO: Verifica se o cliente é master
+     */
+    public function isMaster(): bool
+    {
+        return $this->is_master === true;
+    }
+    
+    /**
+     * ✅ NOVO: Verifica se tem acesso vitalício gratuito
+     */
+    public function isLifetimeFree(): bool
+    {
+        return $this->is_lifetime_free === true;
+    }
+    
+    /**
+     * ✅ NOVO: Obtém o plano efetivo (lifetime ou regular)
+     */
+    public function getEffectivePlan(): string
+    {
+        if ($this->isLifetimeFree() && !empty($this->lifetime_plan)) {
+            return $this->lifetime_plan;
+        }
+        
+        return $this->plan ?? 'basic';
+    }
+    
+    /**
+     * ✅ NOVO: Verifica se precisa renovar (lifetime não precisa)
+     */
+    public function needsRenewal(): bool
+    {
+        // Master e lifetime não precisam renovar
+        if ($this->isMaster() || $this->isLifetimeFree()) {
+            return false;
+        }
+        
+        // Se não tem assinatura ativa, precisa renovar
+        if (!$this->subscription) {
+            return true;
+        }
+        
+        // Verificar se assinatura está expirada
+        return $this->subscription->isExpired();
+    }
+    
+    /**
+     * ✅ NOVO: Verifica se o acesso está ativo (inclui lifetime)
+     */
+    public function hasActiveAccess(): bool
+    {
+        // Master sempre tem acesso
+        if ($this->isMaster()) {
+            return true;
+        }
+        
+        // Lifetime sempre tem acesso
+        if ($this->isLifetimeFree()) {
+            return true;
+        }
+        
+        // Trial ativo
+        if ($this->isInTrial()) {
+            return true;
+        }
+        
+        // Assinatura ativa
+        if ($this->subscription && $this->subscription->isActive()) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * ✅ NOVO: Verifica se tem comissão Mercado Pago habilitada
+     */
+    public function hasMercadoPagoCommission(): bool
+    {
+        return $this->mercadopago_commission_enabled && !$this->is_master;
+    }
+
+    /**
+     * ✅ NOVO: Obtém o valor da comissão Mercado Pago
+     */
+    public function getMercadoPagoCommissionAmount(): float
+    {
+        if (!$this->hasMercadoPagoCommission()) {
+            return 0.00;
+        }
+
+        return (float) ($this->mercadopago_commission_amount ?? 0.49);
     }
 
     /**

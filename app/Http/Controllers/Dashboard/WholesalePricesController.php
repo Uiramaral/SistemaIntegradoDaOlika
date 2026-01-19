@@ -13,7 +13,11 @@ class WholesalePricesController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ProductWholesalePrice::with(['product', 'variant'])
+        // Filtrar preços de revenda pelos produtos do estabelecimento atual
+        // ProductWholesalePrice está relacionado com Product, que tem client_id
+        $query = ProductWholesalePrice::whereHas('product', function($q) {
+            // Product já filtra por client_id automaticamente via Global Scope
+        })->with(['product', 'variant'])
             ->orderBy('product_id')
             ->orderBy('variant_id')
             ->orderBy('min_quantity');
@@ -33,6 +37,7 @@ class WholesalePricesController extends Controller
         }
 
         $prices = $query->paginate(20)->withQueryString();
+        // Product já filtra por client_id automaticamente
         $products = Product::where('is_active', true)->orderBy('name')->get();
 
         return view('dashboard.wholesale-prices.index', compact('prices', 'products'));

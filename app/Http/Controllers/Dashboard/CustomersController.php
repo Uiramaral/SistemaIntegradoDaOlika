@@ -14,7 +14,8 @@ class CustomersController extends Controller
     {
         $search = $request->get('q', '');
         
-        $query = DB::table('customers');
+        // Usar Model Customer que já tem o global scope de client_id
+        $query = \App\Models\Customer::query();
         
         if ($search) {
             $query->where(function($q) use ($search) {

@@ -23,7 +23,7 @@ class PaymentSetting extends Model
     ];
 
     /**
-     * Obtém valor de uma configuração
+     * Obtém valor de uma configuração (filtra por client_id automaticamente via Global Scope)
      */
     public static function getValue(string $key, $default = null)
     {
@@ -32,12 +32,17 @@ class PaymentSetting extends Model
     }
 
     /**
-     * Define valor de uma configuração
+     * Define valor de uma configuração (usa client_id do contexto atual)
      */
     public static function setValue(string $key, $value, string $description = null): void
     {
+        $clientId = currentClientId();
+        
         static::updateOrCreate(
-            ['key' => $key],
+            [
+                'client_id' => $clientId,
+                'key' => $key
+            ],
             [
                 'value' => $value,
                 'description' => $description,

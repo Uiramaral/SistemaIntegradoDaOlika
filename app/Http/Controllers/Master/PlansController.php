@@ -74,7 +74,13 @@ class PlansController extends Controller
         $validated['active'] = $request->boolean('active');
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['features'] = $features;
+        
+        // Forçar billing_cycle como 'monthly' (não há planos anuais)
+        // Sempre definir antes do create para evitar erro de campo obrigatório
+        $validated['billing_cycle'] = 'monthly';
 
+        // Criar o plano
+        // O Model já garante billing_cycle = 'monthly' no boot method, mas definimos aqui também
         $plan = Plan::create($validated);
 
         return redirect()->route('master.plans.index')
@@ -103,6 +109,7 @@ class PlansController extends Controller
             'max_orders_per_month' => 'nullable|integer|min:0',
             'max_users' => 'nullable|integer|min:1',
             'max_whatsapp_instances' => 'nullable|integer|min:0',
+            // billing_cycle removido - sempre será 'monthly'
             'features_text' => 'nullable|string',
         ]);
 
@@ -119,8 +126,16 @@ class PlansController extends Controller
         $validated['active'] = $request->boolean('active');
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['features'] = $features;
+        
+        // Forçar billing_cycle como 'monthly' (não há planos anuais)
+        // Sempre definir antes do update para evitar erro de campo obrigatório
+        $validated['billing_cycle'] = 'monthly';
 
-        $plan->update($validated);
+        // Atualizar o plano
+        // O Model já garante billing_cycle = 'monthly' no boot, mas definimos aqui também
+        $plan->fill($validated);
+        $plan->billing_cycle = 'monthly'; // Garantia extra
+        $plan->save();
 
         return redirect()->route('master.plans.index')
             ->with('success', "Plano {$plan->name} atualizado com sucesso!");
@@ -131,9 +146,10 @@ class PlansController extends Controller
      */
     public function toggleStatus(Plan $plan)
     {
-        $plan->update(['is_active' => !$plan->is_active]);
+        // Corrigir: usar 'active' ao invés de 'is_active'
+        $plan->update(['active' => !$plan->active]);
 
-        $status = $plan->is_active ? 'ativado' : 'desativado';
+        $status = $plan->active ? 'ativado' : 'desativado';
         return back()->with('success', "Plano {$status} com sucesso!");
     }
 

@@ -14,8 +14,15 @@ class OpenAIService
 
     public function __construct()
     {
-        $this->apiKey = $this->flexSetting('openai_api_key')
-            ?: config('services.openai.key', env('OPENAI_API_KEY'));
+        // Buscar token do Master (compartilhado)
+        $this->apiKey = \App\Models\MasterSetting::get('openai_api_key', '');
+        
+        // Fallback para estabelecimento/configuração antiga
+        if (empty($this->apiKey)) {
+            $this->apiKey = $this->flexSetting('openai_api_key')
+                ?: config('services.openai.key', env('OPENAI_API_KEY'));
+        }
+        
         $this->model  = $this->flexSetting('openai_model')
             ?: (config('services.openai.model', env('OPENAI_MODEL')) ?: 'gpt-4o-mini');
 

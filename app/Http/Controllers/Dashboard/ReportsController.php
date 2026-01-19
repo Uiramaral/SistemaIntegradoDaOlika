@@ -78,19 +78,30 @@ class ReportsController extends Controller
         // Métricas de Analytics
         // Contar visitas únicas: 1 sessão por dia (mesma sessão no mesmo dia = 1 visita)
         // Usar groupBy para contar combinações únicas de data + session_id
-        $pageViews = DB::table('analytics_events')
-            ->where('event_type', 'page_view')
+        // Filtrar por client_id do estabelecimento atual
+        $clientId = currentClientId();
+        
+        $pageViewsQuery = AnalyticsEvent::where('event_type', 'page_view')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $pageViewsQuery->where('client_id', $clientId);
+        }
+        
+        $pageViews = $pageViewsQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousPageViews = DB::table('analytics_events')
-            ->where('event_type', 'page_view')
+        $previousPageViewsQuery = AnalyticsEvent::where('event_type', 'page_view')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $previousPageViewsQuery->where('client_id', $clientId);
+        }
+        
+        $previousPageViews = $previousPageViewsQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
@@ -99,19 +110,27 @@ class ReportsController extends Controller
             : ($pageViews > 0 ? 100 : 0);
         
         // Contar sessões únicas que adicionaram ao carrinho (não quantidade de produtos)
-        $addToCartEvents = DB::table('analytics_events')
-            ->where('event_type', 'add_to_cart')
+        $addToCartQuery = AnalyticsEvent::where('event_type', 'add_to_cart')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $addToCartQuery->where('client_id', $clientId);
+        }
+        
+        $addToCartEvents = $addToCartQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousAddToCart = DB::table('analytics_events')
-            ->where('event_type', 'add_to_cart')
+        $previousAddToCartQuery = AnalyticsEvent::where('event_type', 'add_to_cart')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $previousAddToCartQuery->where('client_id', $clientId);
+        }
+        
+        $previousAddToCart = $previousAddToCartQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
@@ -120,19 +139,27 @@ class ReportsController extends Controller
             : ($addToCartEvents > 0 ? 100 : 0);
         
         // Contar sessões únicas que iniciaram checkout
-        $checkoutStarted = DB::table('analytics_events')
-            ->where('event_type', 'checkout_started')
+        $checkoutStartedQuery = AnalyticsEvent::where('event_type', 'checkout_started')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $checkoutStartedQuery->where('client_id', $clientId);
+        }
+        
+        $checkoutStarted = $checkoutStartedQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousCheckoutStarted = DB::table('analytics_events')
-            ->where('event_type', 'checkout_started')
+        $previousCheckoutStartedQuery = AnalyticsEvent::where('event_type', 'checkout_started')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $previousCheckoutStartedQuery->where('client_id', $clientId);
+        }
+        
+        $previousCheckoutStarted = $previousCheckoutStartedQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
@@ -141,19 +168,27 @@ class ReportsController extends Controller
             : ($checkoutStarted > 0 ? 100 : 0);
         
         // Contar sessões únicas que realizaram compra
-        $purchases = DB::table('analytics_events')
-            ->where('event_type', 'purchase')
+        $purchasesQuery = AnalyticsEvent::where('event_type', 'purchase')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $purchasesQuery->where('client_id', $clientId);
+        }
+        
+        $purchases = $purchasesQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         
-        $previousPurchases = DB::table('analytics_events')
-            ->where('event_type', 'purchase')
+        $previousPurchasesQuery = AnalyticsEvent::where('event_type', 'purchase')
             ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->whereNotNull('session_id')
-            ->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
+            ->whereNotNull('session_id');
+        
+        if ($clientId) {
+            $previousPurchasesQuery->where('client_id', $clientId);
+        }
+        
+        $previousPurchases = $previousPurchasesQuery->select(DB::raw('DATE(created_at) as visit_date'), 'session_id')
             ->groupBy(DB::raw('DATE(created_at)'), 'session_id')
             ->count();
         

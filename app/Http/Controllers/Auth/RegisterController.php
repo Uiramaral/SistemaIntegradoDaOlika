@@ -46,6 +46,7 @@ class RegisterController extends Controller
             'admin_name' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
+            'plan' => 'nullable|in:basic,ia,custom', // ⚡ NOVO: aceitar plano
             'terms' => 'required|accepted',
         ], [
             'business_name.required' => 'O nome do estabelecimento é obrigatório.',
@@ -60,6 +61,7 @@ class RegisterController extends Controller
             'password.required' => 'A senha é obrigatória.',
             'password.min' => 'A senha deve ter pelo menos 6 caracteres.',
             'password.confirmed' => 'A confirmação da senha não confere.',
+            'plan.in' => 'Plano inválido. Escolha basic, ia ou custom.',
             'terms.required' => 'Você precisa aceitar os termos de uso.',
             'terms.accepted' => 'Você precisa aceitar os termos de uso.',
         ]);
@@ -73,41 +75,54 @@ class RegisterController extends Controller
         try {
             DB::beginTransaction();
 
+            // ⚡ Obter configurações do painel master
+            $trialDays = \App\Models\MasterSetting::getRegistrationTrialDays();
+            $defaultCommission = \App\Models\MasterSetting::getRegistrationDefaultCommission();
+            $commissionEnabled = \App\Models\MasterSetting::isRegistrationCommissionEnabled();
+            $requireApproval = \App\Models\MasterSetting::isRegistrationApprovalRequired();
+            
+            $selectedPlan = $request->input('plan') 
+                ?? \App\Models\MasterSetting::getRegistrationDefaultPlan();
+
             // 1. Criar o cliente (estabelecimento)
             $client = Client::create([
                 'name' => $request->business_name,
                 'slug' => strtolower($request->slug),
                 'phone' => $request->phone,
-                'active' => true,
+                'plan' => $selectedPlan,
+                'active' => !$requireApproval, // ⚡ Se exige aprovação, começa inativo
                 'is_trial' => true,
                 'trial_started_at' => now(),
-                'trial_ends_at' => now()->addDays(7),
+                'trial_ends_at' => now()->addDays($trialDays),
+                // 💳 COMISSÃO MERCADO PAGO (configurada no master)
+                'mercadopago_commission_enabled' => $commissionEnabled,
+                'mercadopago_commission_amount' => $defaultCommission,
             ]);
 
-            // 2. Buscar o plano selecionado
-            $plan = null;
-            if ($request->filled('plan_id')) {
-                $plan = Plan::find($request->plan_id);
-            } elseif ($request->filled('plan_slug')) {
-                $plan = Plan::where('slug', $request->plan_slug)->first();
-            }
-            
-            // Plano padrão se não encontrou
-            if (!$plan) {
-                $plan = Plan::where('slug', 'basico')->first();
+            // 2. Buscar o plano na tabela plans (se existir)
+            $planModel = null;
+            if (\Schema::hasTable('plans')) {
+                $planModel = Plan::where('slug', $selectedPlan)
+                    ->orWhere('name', 'LIKE', '%' . ucfirst($selectedPlan) . '%')
+                    ->first();
+                
+                // Se não encontrou, buscar o básico como fallback
+                if (!$planModel) {
+                    $planModel = Plan::where('is_active', true)->orderBy('sort_order')->first();
+                }
             }
 
             // 3. Criar assinatura (se tiver plano)
-            if ($plan) {
+            if ($planModel) {
                 $subscription = Subscription::create([
                     'client_id' => $client->id,
-                    'plan_id' => $plan->id,
+                    'plan_id' => $planModel->id,
                     'status' => 'active',
-                    'price' => $plan->price,
+                    'price' => $planModel->price,
                     'started_at' => now(),
                     'current_period_start' => now(),
-                    'current_period_end' => now()->addDays(7), // Período trial
-                    'trial_ends_at' => now()->addDays(7),
+                    'current_period_end' => now()->addDays($trialDays), // Período trial
+                    'trial_ends_at' => now()->addDays($trialDays),
                 ]);
 
                 $client->update(['subscription_id' => $subscription->id]);
@@ -132,6 +147,14 @@ class RegisterController extends Controller
 
             DB::commit();
 
+            \Log::info('Novo estabelecimento cadastrado via /register', [
+                'client_id' => $client->id,
+                'client_name' => $client->name,
+                'plan' => $selectedPlan,
+                'trial_days' => $trialDays,
+                'commission_enabled' => true,
+            ]);
+
             // Logar o usuário automaticamente
             auth()->login($user);
             
@@ -146,7 +169,7 @@ class RegisterController extends Controller
             }
 
             return redirect()->route('dashboard.index')
-                ->with('success', 'Bem-vindo ao ' . $client->name . '! Seu estabelecimento foi criado com sucesso. Você tem 7 dias de teste grátis!');
+                ->with('success', "Bem-vindo ao {$client->name}! Seu estabelecimento foi criado com sucesso. Você tem {$trialDays} dias de teste grátis!");
 
         } catch (\Exception $e) {
             DB::rollBack();

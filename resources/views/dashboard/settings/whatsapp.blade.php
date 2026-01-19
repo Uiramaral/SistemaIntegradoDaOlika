@@ -48,13 +48,15 @@
                             <h3 class="text-lg font-semibold leading-none tracking-tight">Instâncias WhatsApp</h3>
                             <p class="text-sm text-muted-foreground">Gerencie múltiplas conexões WhatsApp</p>
                         </div>
-                        <button onclick="showAddInstanceModal()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
-                                <path d="M5 12h14"></path>
-                                <path d="M12 5v14"></path>
-                            </svg>
-                            + Nova Instância
-                        </button>
+                        @if($instances->count() < $maxInstances)
+                            <button onclick="showAddInstanceModal()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                                    <path d="M5 12h14"></path>
+                                    <path d="M12 5v14"></path>
+                                </svg>
+                                + Nova Instância
+                            </button>
+                        @endif
                     </div>
                 </div>
                 <div class="p-6 pt-0 space-y-4">
@@ -62,7 +64,7 @@
                         <div class="instance-card border rounded-lg p-4 hover:bg-muted/50 transition-colors" data-instance-id="{{ $instance->id }}">
                             <div class="flex items-center justify-between gap-4">
                                 <!-- Informações da Instância -->
-                                <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <p class="text-xs text-muted-foreground mb-1">Atendimento</p>
                                         <p class="font-semibold">{{ $instance->name }}</p>
@@ -70,10 +72,6 @@
                                     <div>
                                         <p class="text-xs text-muted-foreground mb-1">Telefone</p>
                                         <p class="font-mono text-sm">{{ $instance->phone_number ?? 'Não configurado' }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-muted-foreground mb-1">URL da API</p>
-                                        <p class="text-sm truncate" title="{{ $instance->api_url }}">{{ $instance->api_url }}</p>
                                     </div>
                                 </div>
                                 
@@ -176,15 +174,15 @@
                             <input 
                                 type="text" 
                                 name="admin_notification_phone" 
-                                value="{{ $row->admin_notification_phone ?? '' }}" 
-                                placeholder="5571999999999" 
+                                id="admin_notification_phone"
+                                value="{{ ($row && $row->admin_notification_phone) ? preg_replace('/^55/', '', $row->admin_notification_phone) : ($connectedPhone ? preg_replace('/^55/', '', $connectedPhone) : '') }}" 
+                                placeholder="71999999999" 
                                 pattern="[0-9]+"
-                                maxlength="20"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                maxlength="15"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm phone-input"
                             >
                             <p class="text-xs text-muted-foreground mt-1">
-                                Número no formato internacional sem espaços ou caracteres especiais. 
-                                Exemplo: 5571999999999 (55 = código do país Brasil, 71 = DDD, 999999999 = número)
+                                Digite apenas o DDD e o número (ex: 71999999999). O sistema adiciona automaticamente o código do país (55).
                             </p>
                             <p class="text-xs text-amber-600 mt-1">
                                 ⚠️ Este número receberá notificações quando "Notificar Admin" estiver ativado nos status dos pedidos.
@@ -196,18 +194,18 @@
                             <input 
                                 type="text" 
                                 name="default_payment_confirmation_phone" 
-                                value="{{ $row->default_payment_confirmation_phone ?? $row->whatsapp_phone ?? '' }}" 
+                                id="default_payment_confirmation_phone"
+                                value="{{ $connectedPhone ?? '' }}" 
                                 placeholder="5571999999999" 
-                                pattern="[0-9]+"
-                                maxlength="20"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                readonly
+                                disabled
+                                class="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm cursor-not-allowed"
                             >
                             <p class="text-xs text-muted-foreground mt-1">
-                                Número do WhatsApp que será usado para enviar confirmações de pagamento aos clientes.
-                                Deixe em branco para usar o número padrão do WhatsApp configurado acima.
+                                Este número é automaticamente definido como o número da sua instância WhatsApp conectada e não pode ser alterado.
                             </p>
                             <p class="text-xs text-blue-600 mt-1">
-                                ℹ️ Este número será sempre usado para confirmações de pagamento, ignorando o roteamento automático.
+                                ℹ️ Este número será sempre usado para confirmações de pagamento.
                             </p>
                         </div>
                         <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
@@ -487,18 +485,12 @@
                 <input type="text" name="name" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Principal (Vendas)">
             </div>
             <div>
-                <label class="text-sm font-medium mb-1 block">URL da API</label>
-                <input type="url" name="api_url" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="https://whatsapp-01.up.railway.app">
+                <label class="text-sm font-medium mb-1 block">Número do WhatsApp *</label>
+                <input type="text" name="phone_number" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="5571999999999" value="{{ auth()->user()->client->whatsapp_phone ?? auth()->user()->client->phone ?? '' }}">
+                <p class="text-xs text-muted-foreground mt-1">Número do WhatsApp cadastrado no seu estabelecimento (pode ser alterado depois)</p>
             </div>
-            <div>
-                <label class="text-sm font-medium mb-1 block">Token da API (opcional)</label>
-                <input type="text" name="api_token" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Token de segurança">
-            </div>
-            <div>
-                <label class="text-sm font-medium mb-1 block">Número do WhatsApp</label>
-                <input type="text" name="phone_number" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="5571999999999">
-                <p class="text-xs text-muted-foreground mt-1">Será preenchido automaticamente após pareamento</p>
-            </div>
+            <input type="hidden" name="api_url" value="">
+            <input type="hidden" name="api_key" value="">
             <div class="flex gap-3 pt-4">
                 <button type="button" onclick="closeAddInstanceModal()" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent h-10 px-4">
                     Cancelar
@@ -531,18 +523,12 @@
                 <label class="text-sm font-medium mb-1 block">Nome da Instância</label>
                 <input type="text" name="name" id="edit-instance-name" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Principal (Vendas)">
             </div>
-            <div>
-                <label class="text-sm font-medium mb-1 block">URL da API</label>
-                <input type="url" name="api_url" id="edit-instance-api-url" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="https://whatsapp-01.up.railway.app">
-            </div>
-            <div>
-                <label class="text-sm font-medium mb-1 block">Token da API (opcional)</label>
-                <input type="text" name="api_token" id="edit-instance-api-token" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Token de segurança">
-            </div>
+            <input type="hidden" name="api_url" id="edit-instance-api-url">
+            <input type="hidden" name="api_token" id="edit-instance-api-token">
             <div>
                 <label class="text-sm font-medium mb-1 block">Número do WhatsApp</label>
-                <input type="text" name="phone_number" id="edit-instance-phone" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="5571999999999">
-                <p class="text-xs text-muted-foreground mt-1">Será preenchido automaticamente após pareamento</p>
+                <input type="text" name="phone_number" id="edit-instance-phone" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm phone-input" placeholder="71999999999">
+                <p class="text-xs text-muted-foreground mt-1">Digite apenas o DDD e o número (ex: 71999999999). O sistema adiciona automaticamente o código do país (55).</p>
             </div>
             <div class="flex gap-3 pt-4">
                 <button type="button" onclick="closeEditInstanceModal()" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent h-10 px-4">
@@ -1534,6 +1520,7 @@ async function openEditInstanceModal(instanceId) {
         document.getElementById('edit-instance-id').value = instance.id;
         document.getElementById('edit-instance-name').value = instance.name;
         document.getElementById('edit-instance-api-url').value = instance.api_url;
+        document.getElementById('edit-instance-api-url-display').textContent = instance.api_url || 'Gerenciada automaticamente pelo sistema';
         document.getElementById('edit-instance-api-token').value = instance.api_token || '';
         document.getElementById('edit-instance-phone').value = instance.phone_number || '';
         
@@ -1898,6 +1885,95 @@ document.addEventListener('DOMContentLoaded', function() {
         editModal.classList.add('hidden');
         editModal.addEventListener('click', function(e) {
             if (e.target === this) closeEditInstanceModal();
+        });
+    }
+    
+    // Normalização automática de números de telefone
+    function normalizePhoneInput(input) {
+        if (!input) return;
+        
+        let value = input.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+        
+        // Se começa com 55, remove (usuário não precisa digitar)
+        if (value.startsWith('55')) {
+            value = value.substring(2);
+        }
+        
+        input.value = value;
+        
+        // Validação visual
+        if (value.length >= 10 && value.length <= 11) {
+            input.classList.remove('border-red-500');
+            input.classList.add('border-green-300');
+        } else if (value.length > 0) {
+            input.classList.remove('border-green-300');
+            input.classList.add('border-red-300');
+        } else {
+            input.classList.remove('border-red-300', 'border-green-300');
+        }
+    }
+    
+    // Aplicar normalização em todos os inputs de telefone
+    document.querySelectorAll('.phone-input').forEach(input => {
+        input.addEventListener('input', function() {
+            normalizePhoneInput(this);
+        });
+        
+        input.addEventListener('blur', function() {
+            normalizePhoneInput(this);
+        });
+        
+        // Normalizar valor inicial
+        normalizePhoneInput(input);
+    });
+    
+    // Normalizar antes de enviar formulário de notificações
+    const adminPhoneForm = document.querySelector('form[action*="whatsapp"]');
+    if (adminPhoneForm) {
+        adminPhoneForm.addEventListener('submit', function(e) {
+            const phoneInput = document.getElementById('admin_notification_phone');
+            if (phoneInput && phoneInput.value) {
+                let value = phoneInput.value.replace(/\D/g, '');
+                if (!value.startsWith('55') && value.length >= 10) {
+                    value = '55' + value;
+                }
+                // Criar input hidden com valor normalizado
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'admin_notification_phone';
+                hiddenInput.value = value;
+                this.appendChild(hiddenInput);
+                phoneInput.name = ''; // Remover name do input original para não enviar valor não normalizado
+            }
+        });
+    }
+    
+    // Normalizar números em modais de instância
+    const addInstanceForm = document.getElementById('add-instance-form');
+    if (addInstanceForm) {
+        addInstanceForm.addEventListener('submit', function(e) {
+            const phoneInput = document.getElementById('add-instance-phone');
+            if (phoneInput && phoneInput.value) {
+                let value = phoneInput.value.replace(/\D/g, '');
+                if (!value.startsWith('55') && value.length >= 10) {
+                    value = '55' + value;
+                }
+                phoneInput.value = value;
+            }
+        });
+    }
+    
+    const editInstanceForm = document.getElementById('edit-instance-form');
+    if (editInstanceForm) {
+        editInstanceForm.addEventListener('submit', function(e) {
+            const phoneInput = document.getElementById('edit-instance-phone');
+            if (phoneInput && phoneInput.value) {
+                let value = phoneInput.value.replace(/\D/g, '');
+                if (!value.startsWith('55') && value.length >= 10) {
+                    value = '55' + value;
+                }
+                phoneInput.value = value;
+            }
         });
     }
 });

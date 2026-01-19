@@ -114,7 +114,7 @@ class ClientsManagementController extends Controller
             'subscription.plan',
             'subscription.addons',
             'subscription.invoices' => fn($q) => $q->orderByDesc('created_at')->take(10),
-            'whatsappInstances',
+            'whatsappInstanceUrls',
         ]);
 
         $users = User::where('client_id', $client->id)->get();
@@ -154,10 +154,45 @@ class ClientsManagementController extends Controller
             'whatsapp_phone' => 'nullable|string|max:20',
             'plan_id' => 'nullable|exists:plans,id',
             'active' => 'boolean',
+            'is_master' => 'boolean',
+            'mercadopago_commission_enabled' => 'boolean',
+            'mercadopago_commission_amount' => 'nullable|numeric|min:0',
+            'is_lifetime_free' => 'boolean',
+            'lifetime_plan' => 'nullable|in:basic,ia,custom',
+            'lifetime_reason' => 'nullable|string|max:255',
         ]);
         
-        // Tratar checkbox active
+        // Tratar checkboxes
         $validated['active'] = $request->has('active');
+        $validated['is_master'] = $request->has('is_master');
+        $validated['is_lifetime_free'] = $request->has('is_lifetime_free');
+        
+        // Comissão é SEMPRE habilitada (não é opcional)
+        $validated['mercadopago_commission_enabled'] = true;
+        
+        // Garantir que master nunca tenha comissão habilitada
+        if ($validated['is_master']) {
+            $validated['mercadopago_commission_enabled'] = false;
+        }
+        
+        // Lifetime também pode ser isento de comissão (opcional)
+        // if ($validated['is_lifetime_free']) {
+        //     $validated['mercadopago_commission_enabled'] = false;
+        // }
+        
+        // Se lifetime está sendo ativado agora, registrar data
+        $lifetimeGrantedAt = null;
+        if ($validated['is_lifetime_free'] && !$client->is_lifetime_free) {
+            $lifetimeGrantedAt = now();
+        } elseif (!$validated['is_lifetime_free']) {
+            // Se desativado, limpar dados lifetime
+            $validated['lifetime_plan'] = null;
+            $validated['lifetime_reason'] = null;
+            $lifetimeGrantedAt = null;
+        } else {
+            // Manter data existente
+            $lifetimeGrantedAt = $client->lifetime_granted_at;
+        }
         
         // Atualizar cliente
         $client->update([
@@ -166,6 +201,13 @@ class ClientsManagementController extends Controller
             'phone' => $validated['phone'] ?? null,
             'whatsapp_phone' => $validated['whatsapp_phone'] ?? null,
             'active' => $validated['active'],
+            'is_master' => $validated['is_master'],
+            'mercadopago_commission_enabled' => $validated['mercadopago_commission_enabled'],
+            'mercadopago_commission_amount' => $validated['mercadopago_commission_amount'] ?? 0.49,
+            'is_lifetime_free' => $validated['is_lifetime_free'],
+            'lifetime_plan' => $validated['lifetime_plan'] ?? null,
+            'lifetime_reason' => $validated['lifetime_reason'] ?? null,
+            'lifetime_granted_at' => $lifetimeGrantedAt,
         ]);
         
         // Atualizar plano se fornecido
@@ -264,5 +306,55 @@ class ClientsManagementController extends Controller
         $subscription->renew();
 
         return back()->with('success', 'Assinatura renovada por mais 30 dias!');
+    }
+
+    /**
+     * Exclui cliente (CUIDADO: Ação irreversível)
+     */
+    public function destroy(Client $client)
+    {
+        // Verificar se é master (não pode excluir master)
+        if ($client->is_master) {
+            return back()->with('error', 'Não é possível excluir o cliente master!');
+        }
+
+        $clientName = $client->name;
+        
+        try {
+            \DB::beginTransaction();
+            
+            // Excluir relacionamentos primeiro
+            // 1. Usuários do cliente
+            User::where('client_id', $client->id)->delete();
+            
+            // 2. Assinatura
+            if ($client->subscription) {
+                $client->subscription->delete();
+            }
+            
+            // 3. Pedidos (opcional - comentar se quiser manter histórico)
+            // Order::where('client_id', $client->id)->delete();
+            
+            // 4. WhatsApp instâncias
+            $client->whatsappInstanceUrls()->delete();
+            
+            // 5. Cliente
+            $client->delete();
+            
+            \DB::commit();
+            
+            return redirect()->route('master.clients.index')
+                ->with('success', "Cliente {$clientName} excluído com sucesso!");
+                
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            
+            \Log::error('Erro ao excluir cliente', [
+                'client_id' => $client->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return back()->with('error', 'Erro ao excluir cliente. Verifique se não há dependências.');
+        }
     }
 }

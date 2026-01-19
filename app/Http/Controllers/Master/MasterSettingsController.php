@@ -25,6 +25,9 @@ class MasterSettingsController extends Controller
             'support_email' => MasterSetting::get('support_email', ''),
             'billing_email' => MasterSetting::get('billing_email', ''),
             'support_whatsapp' => MasterSetting::get('support_whatsapp', ''),
+            // Tokens de IA (compartilhados entre todos os estabelecimentos)
+            'gemini_api_key' => MasterSetting::get('gemini_api_key', ''),
+            'openai_api_key' => MasterSetting::get('openai_api_key', ''),
         ];
 
         return view('master.settings.index', compact('settings'));
@@ -48,11 +51,29 @@ class MasterSettingsController extends Controller
             'support_email',
             'billing_email',
             'support_whatsapp',
+            // ⚡ NOVO: Configurações de Cadastro
+            'registration_trial_days',
+            'registration_default_commission',
+            'registration_commission_enabled',
+            'registration_default_plan',
+            'registration_require_approval',
+            'registration_notify_master',
+            'registration_master_email',
+            // Tokens de IA
+            'gemini_api_key',
+            'openai_api_key',
         ];
         
         foreach ($settingsKeys as $key) {
             if ($request->has($key)) {
-                MasterSetting::set($key, $request->input($key));
+                $value = $request->input($key);
+                
+                // Tratar checkboxes (se não vier no request, é false)
+                if (in_array($key, ['registration_commission_enabled', 'registration_require_approval', 'registration_notify_master'])) {
+                    $value = $request->has($key) ? 1 : 0;
+                }
+                
+                MasterSetting::set($key, $value);
             }
         }
 

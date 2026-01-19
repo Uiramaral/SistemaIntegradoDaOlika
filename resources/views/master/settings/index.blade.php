@@ -187,6 +187,107 @@
         </form>
     </div>
 
+    {{-- ⚡ NOVO: Configurações de Cadastro de Estabelecimentos --}}
+    <div class="rounded-lg border border-border bg-card shadow-sm">
+        <div class="p-6 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">🏪 Cadastro de Estabelecimentos</h3>
+            <p class="text-sm text-muted-foreground">Configure parâmetros para novos cadastros via /register e /cadastro</p>
+        </div>
+        <form action="{{ route('master.settings.update') }}" method="POST" class="p-6 space-y-6">
+            @csrf
+            
+            {{-- Trial e Comissão --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="registration_trial_days" class="block text-sm font-medium text-foreground mb-1">
+                        Período de Trial (dias)
+                    </label>
+                    <input type="number" name="registration_trial_days" id="registration_trial_days" 
+                           value="{{ old('registration_trial_days', \App\Models\MasterSetting::get('registration_trial_days', 14)) }}"
+                           min="1" max="90"
+                           class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="14">
+                    <p class="text-xs text-muted-foreground mt-1">Quantos dias de teste gratuito para novos estabelecimentos</p>
+                </div>
+
+                <div>
+                    <label for="registration_default_commission" class="block text-sm font-medium text-foreground mb-1">
+                        Comissão Padrão Mercado Pago (R$)
+                    </label>
+                    <input type="number" name="registration_default_commission" id="registration_default_commission" 
+                           value="{{ old('registration_default_commission', \App\Models\MasterSetting::get('registration_default_commission', 0.49)) }}"
+                           step="0.01" min="0"
+                           class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="0.49">
+                    <p class="text-xs text-muted-foreground mt-1">Taxa por venda via Mercado Pago (Application Fee)</p>
+                </div>
+            </div>
+
+            {{-- Plano Padrão --}}
+            <div>
+                <label for="registration_default_plan" class="block text-sm font-medium text-foreground mb-1">
+                    Plano Padrão
+                </label>
+                <select name="registration_default_plan" id="registration_default_plan"
+                        class="w-full max-w-xs px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="basic" {{ (old('registration_default_plan', \App\Models\MasterSetting::get('registration_default_plan', 'basic')) === 'basic') ? 'selected' : '' }}>Básico</option>
+                    <option value="ia" {{ (old('registration_default_plan', \App\Models\MasterSetting::get('registration_default_plan', 'basic')) === 'ia') ? 'selected' : '' }}>IA (Completo)</option>
+                    <option value="custom" {{ (old('registration_default_plan', \App\Models\MasterSetting::get('registration_default_plan', 'basic')) === 'custom') ? 'selected' : '' }}>Customizado</option>
+                </select>
+                <p class="text-xs text-muted-foreground mt-1">Plano atribuído quando não especificado no cadastro</p>
+            </div>
+
+            {{-- Toggles --}}
+            <div class="space-y-3">
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/50 transition">
+                    <input type="checkbox" name="registration_commission_enabled" value="1" 
+                           {{ old('registration_commission_enabled', \App\Models\MasterSetting::get('registration_commission_enabled', true)) ? 'checked' : '' }}
+                           class="h-4 w-4 rounded border-border text-primary focus:ring-primary">
+                    <div>
+                        <span class="font-medium text-foreground">Comissão Habilitada por Padrão</span>
+                        <p class="text-xs text-muted-foreground">Novos estabelecimentos terão comissão Mercado Pago ativa</p>
+                    </div>
+                </label>
+
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 cursor-pointer hover:bg-yellow-500/10 transition">
+                    <input type="checkbox" name="registration_require_approval" value="1" 
+                           {{ old('registration_require_approval', \App\Models\MasterSetting::get('registration_require_approval', false)) ? 'checked' : '' }}
+                           class="h-4 w-4 rounded border-border text-yellow-600 focus:ring-yellow-500">
+                    <div>
+                        <span class="font-medium text-foreground">⚠️ Exigir Aprovação Manual</span>
+                        <p class="text-xs text-muted-foreground">Se ativado, novos estabelecimentos ficam inativos até você aprovar</p>
+                    </div>
+                </label>
+
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/50 transition">
+                    <input type="checkbox" name="registration_notify_master" value="1" 
+                           {{ old('registration_notify_master', \App\Models\MasterSetting::get('registration_notify_master', true)) ? 'checked' : '' }}
+                           class="h-4 w-4 rounded border-border text-primary focus:ring-primary">
+                    <div>
+                        <span class="font-medium text-foreground">Notificar Novos Cadastros</span>
+                        <p class="text-xs text-muted-foreground">Receber email quando novo estabelecimento se cadastrar</p>
+                    </div>
+                </label>
+            </div>
+
+            {{-- Email de Notificação --}}
+            <div>
+                <label for="registration_master_email" class="block text-sm font-medium text-foreground mb-1">
+                    Email para Notificações de Cadastro
+                </label>
+                <input type="email" name="registration_master_email" id="registration_master_email" 
+                       value="{{ old('registration_master_email', \App\Models\MasterSetting::get('registration_master_email', '')) }}"
+                       class="w-full max-w-md px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                       placeholder="admin@olika.com.br">
+                <p class="text-xs text-muted-foreground mt-1">Deixe vazio para não enviar notificações</p>
+            </div>
+
+            <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition font-medium">
+                💾 Salvar Configurações de Cadastro
+            </button>
+        </form>
+    </div>
+
     {{-- Informações do Sistema --}}
     <div class="rounded-lg border border-border bg-card shadow-sm">
         <div class="p-6 border-b border-border">

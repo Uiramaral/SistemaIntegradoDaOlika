@@ -104,24 +104,6 @@
             </div>
         </div>
 
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6">
-                <h3 class="text-2xl font-semibold leading-none tracking-tight">Clientes SaaS</h3>
-                <p class="text-sm text-muted-foreground">Gerenciar assinantes da plataforma</p>
-            </div>
-            <div class="p-6 pt-0">
-                <a href="{{ route('dashboard.saas-clients.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    Gerenciar Clientes SaaS
-                </a>
-                <p class="text-xs text-muted-foreground mt-2">Cadastre e gerencie novos assinantes da plataforma</p>
-            </div>
-        </div>
 
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6">

@@ -126,4 +126,42 @@ class MasterSetting extends Model
     {
         return static::get('billing_currency', 'BRL');
     }
+
+    /**
+     * ⚡ NOVO: Configurações de Cadastro de Estabelecimentos
+     */
+    public static function getRegistrationTrialDays(): int
+    {
+        return (int) static::get('registration_trial_days', 14);
+    }
+
+    public static function getRegistrationDefaultCommission(): float
+    {
+        return (float) static::get('registration_default_commission', 0.49);
+    }
+
+    public static function isRegistrationCommissionEnabled(): bool
+    {
+        return (bool) static::get('registration_commission_enabled', true);
+    }
+
+    public static function getRegistrationDefaultPlan(): string
+    {
+        return static::get('registration_default_plan', 'basic');
+    }
+
+    public static function isRegistrationApprovalRequired(): bool
+    {
+        return (bool) static::get('registration_require_approval', false);
+    }
+
+    public static function shouldNotifyMasterOnRegistration(): bool
+    {
+        return (bool) static::get('registration_notify_master', true);
+    }
+
+    public static function getRegistrationMasterEmail(): string
+    {
+        return static::get('registration_master_email', '');
+    }
 }

@@ -13,20 +13,37 @@ class CashbackController extends Controller
 {
     public function index()
     {
-        // Calcular totais de cashback
-        $totalCredits = CustomerCashback::where('type', 'credit')->sum('amount') ?? 0;
-        $totalDebits = CustomerCashback::where('type', 'debit')->sum('amount') ?? 0;
+        $clientId = currentClientId();
+        
+        // Calcular totais de cashback apenas do cliente atual
+        // Filtrar por client_id através dos customers
+        $totalCredits = CustomerCashback::whereHas('customer', function($q) use ($clientId) {
+            if ($clientId) {
+                $q->where('client_id', $clientId);
+            }
+        })->where('type', 'credit')->sum('amount') ?? 0;
+        
+        $totalDebits = CustomerCashback::whereHas('customer', function($q) use ($clientId) {
+            if ($clientId) {
+                $q->where('client_id', $clientId);
+            }
+        })->where('type', 'debit')->sum('amount') ?? 0;
+        
         $totalAvailable = max(0, (float)$totalCredits - (float)$totalDebits);
         
-        // Calcular quantos clientes têm saldo de cashback
+        // Calcular quantos clientes têm saldo de cashback (apenas do estabelecimento atual)
         $activeCustomers = Customer::whereHas('cashbackTransactions', function($q) {
             // Clientes com pelo menos uma transação
         })->get()->filter(function($customer) {
             return CustomerCashback::getBalance($customer->id) > 0;
         })->count();
         
-        // Buscar últimas transações
-        $recentTransactions = CustomerCashback::with(['customer', 'order'])
+        // Buscar últimas transações (apenas do estabelecimento atual)
+        $recentTransactions = CustomerCashback::whereHas('customer', function($q) use ($clientId) {
+            if ($clientId) {
+                $q->where('client_id', $clientId);
+            }
+        })->with(['customer', 'order'])
             ->latest()
             ->limit(20)
             ->get();
@@ -125,6 +142,7 @@ class CashbackController extends Controller
 
     public function create()
     {
+        // Usar Model Customer que já filtra por client_id automaticamente
         $customers = Customer::orderBy('name')->get();
         return view('dashboard.cashback.create', compact('customers'));
     }

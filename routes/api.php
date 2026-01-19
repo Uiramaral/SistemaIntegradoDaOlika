@@ -125,6 +125,18 @@ Route::prefix('fiados')->name('api.fiados.')->group(function () {
 Route::get('/whatsapp/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'whatsappSettingsApi'])
     ->name('api.whatsapp.settings');
 
+// API Customers (para campanhas de marketing)
+Route::get('/customers', function(\Illuminate\Http\Request $request) {
+    $customers = \App\Models\Customer::select('id', 'name', 'phone', 'email')
+        ->whereNotNull('phone')
+        ->where('phone', '!=', '')
+        ->orderBy('name')
+        ->limit(500)
+        ->get();
+    
+    return response()->json(['customers' => $customers]);
+})->middleware('auth')->name('api.customers.list');
+
 // ============================================
 // API BotConversa - Sincronização de clientes (sem CSRF - middleware api)
 // IMPORTANTE: Estas rotas também estão em routes/web.php para garantir funcionamento

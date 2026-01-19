@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ApiIntegration;
 use App\Models\Client;
+use App\Models\AiUsageLog;
+use App\Helpers\GeminiPricing;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,30 +14,88 @@ class GeminiService
     private ?ApiIntegration $integration = null;
     private bool $enabled = false;
     private string $apiKey = '';
-    private string $model = 'gemini-1.5-flash';
+    private string $model = 'gemini-2.5-flash'; // Modelo principal 2026
+    private string $fallbackModel = 'gemini-2.5-flash-lite'; // Fallback econômico
     private float $temperature = 0.7;
     private int $maxTokens = 500;
+    private string $apiVersion = 'v1'; // API estável
+    private ?int $currentClientId = null; // Para tracking de uso
+    private string $currentTaskType = 'chat'; // Tipo de tarefa atual
+
+    // Modelos válidos em 2026 (ordenados por recomendação)
+    private const VALID_MODELS = [
+        'gemini-2.5-flash',       // Principal - Chat rápido, 1M contexto
+        'gemini-2.5-flash-lite',  // Econômico - Notificações em massa
+        'gemini-3-pro',           // Avançado - Análises complexas
+        'gemini-2.0-flash',       // Legado
+        'gemini-1.5-flash-latest', // Fallback legado
+    ];
 
     public function __construct()
     {
         try {
-            $this->integration = ApiIntegration::getByProvider('gemini');
+            // Buscar token do Master (compartilhado)
+            $this->apiKey = \App\Models\MasterSetting::get('gemini_api_key', '');
             
-            if ($this->integration && $this->integration->isActive()) {
-                $this->apiKey = $this->integration->getCredential('api_key', '');
-                $this->model = $this->integration->getSetting('model', 'gemini-1.5-flash');
-                $this->temperature = (float) $this->integration->getSetting('temperature', 0.7);
-                $this->maxTokens = (int) $this->integration->getSetting('max_tokens', 500);
+            // Se não tem no master, tentar do estabelecimento (fallback)
+            if (empty($this->apiKey)) {
+                $this->integration = ApiIntegration::getByProvider('gemini');
                 
-                if (!empty($this->apiKey)) {
-                    $this->enabled = true;
-                    Log::info('GeminiService: Configurado com sucesso', ['model' => $this->model]);
+                if ($this->integration && $this->integration->isActive()) {
+                    $this->apiKey = $this->integration->getCredential('api_key', '');
                 }
+            }
+            
+            if (!empty($this->apiKey)) {
+                // Buscar configurações do estabelecimento (model, temperature, etc)
+                $this->integration = ApiIntegration::getByProvider('gemini');
+                $configuredModel = $this->integration ? $this->integration->getSetting('model', 'gemini-2.5-flash') : 'gemini-2.5-flash';
+                
+                // Validar e migrar modelo se necessário
+                $this->model = $this->migrateModelName($configuredModel);
+                $this->temperature = (float) ($this->integration ? $this->integration->getSetting('temperature', 0.7) : 0.7);
+                $this->maxTokens = (int) ($this->integration ? $this->integration->getSetting('max_tokens', 500) : 500);
+                
+                $this->enabled = true;
+                Log::info('GeminiService: Configurado com sucesso', [
+                    'model' => $this->model,
+                    'api_version' => $this->apiVersion,
+                    'token_source' => 'master_settings',
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('GeminiService init error: ' . $e->getMessage());
             $this->enabled = false;
         }
+    }
+
+    /**
+     * Migrar nomes de modelos deprecados para versões 2026
+     */
+    private function migrateModelName(string $model): string
+    {
+        $migrations = [
+            // Modelos antigos -> Modelos 2026
+            'gemini-1.5-flash' => 'gemini-2.5-flash',
+            'gemini-1.5-flash-8b' => 'gemini-2.5-flash-lite',
+            'gemini-1.5-pro' => 'gemini-3-pro',
+            'gemini-1.5-pro-latest' => 'gemini-3-pro',
+            'gemini-pro' => 'gemini-2.5-flash',
+            'gemini-flash' => 'gemini-2.5-flash',
+            'gemini-2.0-flash' => 'gemini-2.5-flash',
+            'gemini-2.0-flash-lite' => 'gemini-2.5-flash-lite',
+            'gemini-2.0-flash-exp' => 'gemini-2.5-flash',
+        ];
+
+        if (isset($migrations[$model])) {
+            Log::info('GeminiService: Modelo migrado para 2026', [
+                'old' => $model,
+                'new' => $migrations[$model],
+            ]);
+            return $migrations[$model];
+        }
+
+        return $model;
     }
 
     /**
@@ -125,7 +185,7 @@ PROMPT;
     }
 
     /**
-     * Gerar conteúdo usando Gemini API
+     * Gerar conteúdo usando Gemini API com fallback automático
      */
     public function generateContent(string $prompt): ?string
     {
@@ -133,8 +193,30 @@ PROMPT;
             return null;
         }
 
+        // Tentar modelo principal
+        $result = $this->callGeminiApi($this->model, $prompt);
+        
+        if ($result !== null) {
+            return $result;
+        }
+
+        // Fallback para modelo secundário se principal falhar
+        Log::warning('GeminiService: Modelo principal falhou, tentando fallback', [
+            'modelo_principal' => $this->model,
+            'modelo_fallback' => $this->fallbackModel,
+        ]);
+
+        return $this->callGeminiApi($this->fallbackModel, $prompt);
+    }
+
+    /**
+     * Chamada à API do Gemini com tracking de uso
+     */
+    private function callGeminiApi(string $model, string $prompt): ?string
+    {
         try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+            // Usar API v1 estável (não v1beta)
+            $url = "https://generativelanguage.googleapis.com/{$this->apiVersion}/models/{$model}:generateContent?key={$this->apiKey}";
 
             $response = Http::timeout(30)->post($url, [
                 'contents' => [
@@ -158,25 +240,135 @@ PROMPT;
                 // Extrair texto da resposta
                 $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
                 
+                // Extrair tokens para billing (se disponível)
+                $inputTokens = $data['usageMetadata']['promptTokenCount'] ?? $this->estimateTokens($prompt);
+                $outputTokens = $data['usageMetadata']['candidatesTokenCount'] ?? $this->estimateTokens($text ?? '');
+                
+                // Registrar uso se temos client_id
+                if ($this->currentClientId && $text) {
+                    $this->logUsage($model, $inputTokens, $outputTokens, $prompt, $text, true);
+                }
+                
                 if ($text) {
                     return trim($text);
                 }
                 
-                Log::warning('GeminiService: Resposta sem texto', ['response' => $data]);
+                Log::warning('GeminiService: Resposta sem texto', [
+                    'model' => $model,
+                    'response' => $data,
+                ]);
                 return null;
             }
 
+            // Registrar erro
+            if ($this->currentClientId) {
+                $this->logUsage($model, $this->estimateTokens($prompt), 0, $prompt, null, false, $response->body());
+            }
+
             Log::error('GeminiService: Erro na API', [
+                'model' => $model,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
             
             return null;
         } catch (\Exception $e) {
+            // Registrar exceção
+            if ($this->currentClientId) {
+                $this->logUsage($model, $this->estimateTokens($prompt), 0, $prompt, null, false, $e->getMessage());
+            }
+            
             Log::error('GeminiService: Exception ao gerar conteúdo', [
+                'model' => $model,
                 'error' => $e->getMessage(),
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Estimar tokens de um texto (aproximação: 4 chars = 1 token para português)
+     */
+    private function estimateTokens(string $text): int
+    {
+        return (int) ceil(strlen($text) / 4);
+    }
+
+    /**
+     * Registrar uso de IA no banco de dados
+     */
+    private function logUsage(
+        string $model, 
+        int $inputTokens, 
+        int $outputTokens, 
+        string $prompt, 
+        ?string $response, 
+        bool $success,
+        ?string $error = null
+    ): void {
+        try {
+            // Verificar se a tabela existe antes de tentar logar
+            if (!\Schema::hasTable('ai_usage_logs')) {
+                return;
+            }
+
+            AiUsageLog::logUsage(
+                $this->currentClientId,
+                $model,
+                $inputTokens,
+                $outputTokens,
+                $prompt,
+                $response,
+                $this->currentTaskType,
+                $success,
+                $error
+            );
+        } catch (\Exception $e) {
+            // Não falhar a requisição principal se o log falhar
+            Log::warning('GeminiService: Falha ao registrar uso', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Definir contexto do cliente para tracking
+     */
+    public function setClientContext(int $clientId, string $taskType = 'chat'): self
+    {
+        $this->currentClientId = $clientId;
+        $this->currentTaskType = $taskType;
+        return $this;
+    }
+
+    /**
+     * Verificar saldo de IA do cliente antes de usar
+     */
+    public function checkClientBalance(int $clientId): array
+    {
+        try {
+            $client = Client::find($clientId);
+            
+            if (!$client) {
+                return ['can_use' => false, 'message' => 'Cliente não encontrado'];
+            }
+
+            $minBalance = 0.01;
+            $balance = $client->ai_balance ?? 0;
+
+            if ($balance < $minBalance) {
+                return [
+                    'can_use' => false, 
+                    'message' => 'Saldo de créditos de IA insuficiente',
+                    'balance' => $balance,
+                    'min_required' => $minBalance,
+                ];
+            }
+
+            return [
+                'can_use' => true,
+                'balance' => $balance,
+            ];
+        } catch (\Exception $e) {
+            return ['can_use' => true, 'message' => 'Não foi possível verificar saldo'];
         }
     }
 
@@ -351,8 +543,30 @@ PROMPT;
             return null;
         }
 
+        // Tentar modelo principal com system instructions
+        $result = $this->callGeminiApiWithInstructions($this->model, $prompt, $safetySettings);
+        
+        if ($result !== null) {
+            return $result;
+        }
+
+        // Fallback para modelo secundário
+        Log::warning('GeminiService: Modelo principal falhou com system instructions, tentando fallback', [
+            'modelo_principal' => $this->model,
+            'modelo_fallback' => $this->fallbackModel,
+        ]);
+
+        return $this->callGeminiApiWithInstructions($this->fallbackModel, $prompt, $safetySettings);
+    }
+
+    /**
+     * Chamada à API do Gemini com System Instructions
+     */
+    private function callGeminiApiWithInstructions(string $model, string $prompt, array $safetySettings = []): ?string
+    {
         try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+            // Usar API v1 estável
+            $url = "https://generativelanguage.googleapis.com/{$this->apiVersion}/models/{$model}:generateContent?key={$this->apiKey}";
 
             $payload = [
                 'contents' => [
@@ -392,11 +606,15 @@ PROMPT;
                     return trim($text);
                 }
                 
-                Log::warning('GeminiService: Resposta sem texto', ['response' => $data]);
+                Log::warning('GeminiService: Resposta sem texto (system instructions)', [
+                    'model' => $model,
+                    'response' => $data,
+                ]);
                 return null;
             }
 
             Log::error('GeminiService: Erro na API com system instructions', [
+                'model' => $model,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -404,6 +622,7 @@ PROMPT;
             return null;
         } catch (\Exception $e) {
             Log::error('GeminiService: Exception ao gerar conteúdo com system instructions', [
+                'model' => $model,
                 'error' => $e->getMessage(),
             ]);
             return null;

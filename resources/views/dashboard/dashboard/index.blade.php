@@ -20,7 +20,7 @@
   <!-- Cards de Métricas - Layout 3 colunas horizontais -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <!-- Card Faturamento -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div class="metric-card">
       <div class="flex items-start justify-between">
         <div class="flex-1">
           <p class="text-sm font-medium text-gray-600 mb-1">Faturamento</p>
@@ -35,7 +35,7 @@
     </div>
 
     <!-- Card Pedidos -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div class="metric-card">
       <div class="flex items-start justify-between">
         <div class="flex-1">
           <p class="text-sm font-medium text-gray-600 mb-1">Pedidos</p>
@@ -50,7 +50,7 @@
     </div>
 
     <!-- Card Clientes -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div class="metric-card">
       <div class="flex items-start justify-between">
         <div class="flex-1">
           <p class="text-sm font-medium text-gray-600 mb-1">Clientes</p>
@@ -102,7 +102,7 @@
     </div>
 
     <!-- Tabela de Pedidos -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="card-hover">
       <div class="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 class="text-lg font-semibold text-gray-900">Pedidos</h3>
         <div class="flex items-center gap-2">
@@ -115,7 +115,7 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="data-table">
           <thead class="bg-gray-50 hidden md:table-header-group">
             <tr>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PEDIDO</th>
@@ -161,16 +161,16 @@
                         'cancelled' => 'Cancelado'
                       ];
                       $statusColors = [
-                        'pending' => 'bg-yellow-100 text-yellow-800',
-                        'confirmed' => 'bg-green-100 text-green-800',
-                        'preparing' => 'bg-blue-100 text-blue-800',
-                        'ready' => 'bg-purple-100 text-purple-800',
-                        'delivered' => 'bg-gray-100 text-gray-800',
-                        'cancelled' => 'bg-red-100 text-red-800'
+                        'pending' => 'status-badge status-pending',
+                        'confirmed' => 'status-badge status-paid',
+                        'preparing' => 'status-badge status-preparing',
+                        'ready' => 'status-badge status-preparing',
+                        'delivered' => 'status-badge status-paid',
+                        'cancelled' => 'status-badge status-cancelled'
                       ];
                       $status = $order->status ?? 'pending';
                     @endphp
-                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-800' }}">
+                    <span class="{{ $statusColors[$status] ?? 'status-badge status-pending' }}">
                       {{ $statusLabels[$status] ?? ucfirst($status) }}
                     </span>
                   </div>
@@ -204,16 +204,16 @@
                     'cancelled' => 'Cancelado'
                   ];
                   $statusColors = [
-                    'pending' => 'bg-yellow-100 text-yellow-800',
-                    'confirmed' => 'bg-green-100 text-green-800',
-                    'preparing' => 'bg-blue-100 text-blue-800',
-                    'ready' => 'bg-purple-100 text-purple-800',
-                    'delivered' => 'bg-gray-100 text-gray-800',
-                    'cancelled' => 'bg-red-100 text-red-800'
+                    'pending' => 'status-badge status-pending',
+                    'confirmed' => 'status-badge status-paid',
+                    'preparing' => 'status-badge status-preparing',
+                    'ready' => 'status-badge status-preparing',
+                    'delivered' => 'status-badge status-paid',
+                    'cancelled' => 'status-badge status-cancelled'
                   ];
                   $status = $order->status ?? 'pending';
                 @endphp
-                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-800' }}">
+                <span class="{{ $statusColors[$status] ?? 'status-badge status-pending' }}">
                   {{ $statusLabels[$status] ?? ucfirst($status) }}
                 </span>
               </td>
@@ -232,7 +232,7 @@
   <!-- Sidebar com Produtos e Categorias -->
   <div class="space-y-6 order-2">
     <!-- Produtos -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="card-hover">
       <div class="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 class="text-lg font-semibold text-gray-900">Produtos</h3>
         <a href="{{ route('dashboard.products.index') }}" class="text-sm font-medium text-primary hover:underline">Ver todos</a>
@@ -264,7 +264,7 @@
     </div>
 
     <!-- Compradores -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="card-hover">
       <div class="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 class="text-lg font-semibold text-gray-900">Compradores</h3>
         <a href="{{ route('dashboard.customers.index') }}" class="text-sm font-medium text-primary hover:underline">Ver todos</a>

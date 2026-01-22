@@ -143,6 +143,7 @@
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/lovable-global.css') }}">
     <link rel="stylesheet" href="{{ asset('css/sweetspot-theme.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard-sweetspot-pixel-perfect.css') }}">
     <link rel="stylesheet" href="{{ asset('css/sidebar-sweetspot-pixel-perfect.css') }}">

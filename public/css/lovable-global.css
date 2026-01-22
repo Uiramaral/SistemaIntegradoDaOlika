@@ -1,0 +1,216 @@
+/* Lovable Global Styles for Laravel views */
+
+:root {
+    --radius: 0.75rem;
+}
+
+html {
+    font-family: var(--font-family, "Inter", system-ui, sans-serif);
+}
+
+body {
+    background-color: hsl(var(--background, 210 20% 98%));
+    color: hsl(var(--foreground, 222 47% 11%));
+}
+
+* {
+    border-color: hsl(var(--border, 220 13% 91%));
+}
+
+/* Layout containers */
+.dashboard-wrapper,
+.dashboard-content-wrapper,
+.page-wrapper {
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+main {
+    background: hsl(var(--background, 210 20% 98%));
+}
+
+/* Page header */
+.page-header {
+    margin-bottom: 1.5rem;
+}
+
+.page-breadcrumb {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--primary));
+    margin-bottom: 0.25rem;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    line-height: 2rem;
+}
+
+.page-subtitle {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground, 220 9% 46%));
+    margin-top: 0.125rem;
+}
+
+/* Cards */
+.metric-card {
+    background: hsl(var(--card, 0 0% 100%));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.card-hover,
+.card-standard,
+.dashboard-card {
+    background: hsl(var(--card, 0 0% 100%));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition: box-shadow 0.2s ease;
+}
+
+/* Normalize common Tailwind card stacks */
+.dashboard-content .bg-white.rounded-lg.shadow-sm.border,
+.dashboard-content .bg-white.rounded-lg.shadow-sm.border-gray-200,
+.dashboard-content .bg-white.rounded-lg.border.border-gray-200,
+.dashboard-content .bg-white.rounded-lg.shadow-sm {
+    background: hsl(var(--card, 0 0% 100%)) !important;
+    border: 1px solid hsl(var(--border, 220 13% 91%)) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.dashboard-content .bg-white.rounded-lg.shadow-sm.border .border-b,
+.dashboard-content .bg-white.rounded-lg.shadow-sm.border-gray-200 .border-b {
+    border-color: hsl(var(--border, 220 13% 91%)) !important;
+}
+
+.card-hover:hover {
+    box-shadow: 0 6px 12px -6px rgb(0 0 0 / 0.18);
+}
+
+/* Tables */
+.data-table,
+.dashboard-content table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead,
+.dashboard-content table thead {
+    background: hsl(var(--muted, 220 14% 96%) / 0.3);
+}
+
+.data-table th,
+.dashboard-content table thead th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground, 220 9% 46%));
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.75rem 1rem;
+}
+
+.data-table tbody,
+.dashboard-content table tbody {
+    border-top: 1px solid hsl(var(--border));
+}
+
+.data-table tr,
+.dashboard-content table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.data-table tr:hover,
+.dashboard-content table tbody tr:hover {
+    background: hsl(var(--muted, 220 14% 96%) / 0.2);
+}
+
+.data-table td,
+.dashboard-content table tbody td {
+    padding: 1rem;
+    color: hsl(var(--foreground));
+}
+
+/* Common utility overrides inside dashboard content */
+.dashboard-content .rounded-lg {
+    border-radius: 0.75rem !important;
+}
+
+.dashboard-content .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.dashboard-content .border-gray-200 {
+    border-color: hsl(var(--border, 220 13% 91%)) !important;
+}
+
+/* Buttons */
+.btn-primary,
+.dashboard-content .btn-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground, 0 0% 100%));
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.btn-primary:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+.btn-secondary,
+.dashboard-content .btn-secondary {
+    background: hsl(var(--secondary, 220 14% 96%));
+    color: hsl(var(--secondary-foreground, 222 47% 11%));
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: hsl(var(--secondary) / 0.9);
+}
+
+/* Inputs & selects */
+input,
+select,
+textarea {
+    border: 1px solid hsl(var(--input, 220 13% 91%));
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    background: hsl(var(--card, 0 0% 100%));
+    color: hsl(var(--foreground));
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring, 221 83% 53%) / 0.2);
+    border-color: hsl(var(--ring, 221 83% 53%));
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-pending { background: hsl(var(--warning, 38 92% 50%) / 0.1); color: hsl(var(--warning, 38 92% 50%)); }
+.status-paid { background: hsl(var(--success, 142 71% 45%) / 0.1); color: hsl(var(--success, 142 71% 45%)); }
+.status-cancelled { background: hsl(var(--destructive, 0 84% 60%) / 0.1); color: hsl(var(--destructive, 0 84% 60%)); }
+.status-preparing { background: hsl(var(--info, 199 89% 48%) / 0.1); color: hsl(var(--info, 199 89% 48%)); }

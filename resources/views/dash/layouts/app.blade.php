@@ -322,6 +322,7 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/lovable-global.css') }}">
     <link rel="stylesheet" href="{{ asset('css/sidebar-sweetspot-pixel-perfect.css') }}">
     @stack('styles')
 </head>

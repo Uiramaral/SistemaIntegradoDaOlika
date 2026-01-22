@@ -1,0 +1,2206 @@
+. 2026-01-21 22:24:40.386 --------------------------------------------------------------------------
+. 2026-01-21 22:24:40.386 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 22:24:40.386 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 22:24:40.386 Log level: Normal
+. 2026-01-21 22:24:40.386 Local account: UIRÃ\uira_
+. 2026-01-21 22:24:40.386 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 22:24:40.386 Process ID: 12924
+. 2026-01-21 22:24:40.411 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 22:24:40.411 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_15752_93 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 22:24:40.411 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 22:24:40.417 Login time: quarta-feira, 21 de janeiro de 2026 22:24:40
+. 2026-01-21 22:24:40.417 --------------------------------------------------------------------------
+. 2026-01-21 22:24:40.417 Script: Retrospectively logging previous script records:
+> 2026-01-21 22:24:40.417 Script: open "Olika Dev"
+. 2026-01-21 22:24:40.417 --------------------------------------------------------------------------
+. 2026-01-21 22:24:40.417 Session name: Olika Dev (Site)
+. 2026-01-21 22:24:40.417 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 22:24:40.417 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 22:24:40.417 Transfer Protocol: FTP
+. 2026-01-21 22:24:40.417 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 22:24:40.417 Disable Nagle: No
+. 2026-01-21 22:24:40.417 Proxy: None
+. 2026-01-21 22:24:40.417 Send buffer: 262144
+. 2026-01-21 22:24:40.417 UTF: Auto
+. 2026-01-21 22:24:40.417 FTPS: None [Client certificate: No]
+. 2026-01-21 22:24:40.417 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 22:24:40.417 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 22:24:40.417 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 22:24:40.417 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 22:24:40.417 Timezone offset: 0h 0m
+. 2026-01-21 22:24:40.417 --------------------------------------------------------------------------
+< 2026-01-21 22:24:40.435 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:24:40.435 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:24:40.535 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 22:24:40.635 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 22:24:40.635 220-You are user number 2 of 150 allowed.
+< 2026-01-21 22:24:40.635 220-Local time is now 22:24. Server port: 21.
+< 2026-01-21 22:24:40.635 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 22:24:40.635 USER uira@menuolika.com.br
+< 2026-01-21 22:24:40.812 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 22:24:40.812 PASS ************
+< 2026-01-21 22:24:41.256 230 OK. Current restricted directory is /
+> 2026-01-21 22:24:41.256 SYST
+< 2026-01-21 22:24:41.301 215 UNIX Type: L8
+> 2026-01-21 22:24:41.301 FEAT
+< 2026-01-21 22:24:41.367 211-Extensions supported:
+< 2026-01-21 22:24:41.367  UTF8
+< 2026-01-21 22:24:41.367  EPRT
+< 2026-01-21 22:24:41.367  IDLE
+< 2026-01-21 22:24:41.367  MDTM
+< 2026-01-21 22:24:41.367  SIZE
+< 2026-01-21 22:24:41.367  MFMT
+< 2026-01-21 22:24:41.367  REST STREAM
+< 2026-01-21 22:24:41.367  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 22:24:41.367  MLSD
+< 2026-01-21 22:24:41.367  PRET
+< 2026-01-21 22:24:41.367  AUTH TLS
+< 2026-01-21 22:24:41.367  PBSZ
+< 2026-01-21 22:24:41.367  PROT
+< 2026-01-21 22:24:41.367  TVFS
+< 2026-01-21 22:24:41.367  ESTA
+< 2026-01-21 22:24:41.367  PASV
+< 2026-01-21 22:24:41.367  EPSV
+< 2026-01-21 22:24:41.367  ESTP
+< 2026-01-21 22:24:41.367 211 End.
+> 2026-01-21 22:24:41.367 OPTS UTF8 ON
+< 2026-01-21 22:24:41.461 504 Unknown command
+< 2026-01-21 22:24:41.461 Script: Conectado
+. 2026-01-21 22:24:41.461 Conectado
+. 2026-01-21 22:24:41.461 --------------------------------------------------------------------------
+. 2026-01-21 22:24:41.461 Using FTP protocol.
+. 2026-01-21 22:24:41.461 Doing startup conversation with host.
+< 2026-01-21 22:24:41.461 Script: Iniciando a sessão...
+> 2026-01-21 22:24:41.461 PWD
+< 2026-01-21 22:24:41.561 257 "/" is your current location
+. 2026-01-21 22:24:41.561 Changing directory to "/desenvolvimento".
+> 2026-01-21 22:24:41.561 CWD /desenvolvimento
+< 2026-01-21 22:24:41.664 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 22:24:41.664 Getting current directory name.
+> 2026-01-21 22:24:41.664 PWD
+< 2026-01-21 22:24:41.768 257 "/desenvolvimento" is your current location
+. 2026-01-21 22:24:41.768 Startup conversation with host finished.
+< 2026-01-21 22:24:41.768 Script: Sessão iniciada.
+< 2026-01-21 22:24:41.768 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 22:24:41.768 Script: option batch continue
+< 2026-01-21 22:24:41.768 Script: batch           continue  
+< 2026-01-21 22:24:41.768 Script: reconnecttime   120       
+> 2026-01-21 22:24:41.768 Script: option confirm off
+< 2026-01-21 22:24:41.768 Script: confirm         off       
+> 2026-01-21 22:24:41.768 Script: mkdir -p "/public_html/desenvolvimento/app/Helpers"
+< 2026-01-21 22:24:41.773 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.773 Script: Failed
+> 2026-01-21 22:24:41.773 Script: put "app/Helpers/FormatHelper.php" "/public_html/desenvolvimento/app/Helpers/FormatHelper.php"
+. 2026-01-21 22:24:41.773 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Helpers/" - total size: 0
+. 2026-01-21 22:24:41.773   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: FormatHelper.php
+. 2026-01-21 22:24:41.773   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.773   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.773 File: 'FormatHelper.php' [2026-01-19T21:49:56.563Z] [2905]
+* 2026-01-21 22:24:41.776 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.776 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.776 Asking user:
+. 2026-01-21 22:24:41.776 Arquivo ou pasta 'FormatHelper.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.776 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.776 Script: Arquivo ou pasta 'FormatHelper.php' não existe.
+< 2026-01-21 22:24:41.776 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.776 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.776 Answer: Skip
+* 2026-01-21 22:24:41.776 (ESkipFile) Arquivo ou pasta 'FormatHelper.php' não existe.
+* 2026-01-21 22:24:41.776 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.776 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.776 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.776 Script: mkdir -p "/public_html/desenvolvimento/app/Http/Controllers/Auth"
+< 2026-01-21 22:24:41.783 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.784 Script: Failed
+> 2026-01-21 22:24:41.784 Script: put "app/Http/Controllers/Auth/LoginController.php" "/public_html/desenvolvimento/app/Http/Controllers/Auth/LoginController.php"
+. 2026-01-21 22:24:41.784 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Auth/" - total size: 0
+. 2026-01-21 22:24:41.784   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: LoginController.php
+. 2026-01-21 22:24:41.784   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.784   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.784 File: 'LoginController.php' [2026-01-19T16:32:19.385Z] [2816]
+* 2026-01-21 22:24:41.789 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.789 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.789 Asking user:
+. 2026-01-21 22:24:41.789 Arquivo ou pasta 'LoginController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.789 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.789 Script: Arquivo ou pasta 'LoginController.php' não existe.
+< 2026-01-21 22:24:41.789 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.789 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.789 Answer: Skip
+* 2026-01-21 22:24:41.789 (ESkipFile) Arquivo ou pasta 'LoginController.php' não existe.
+* 2026-01-21 22:24:41.789 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.789 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.789 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.789 Script: mkdir -p "/public_html/desenvolvimento/app/Http/Controllers/Dashboard"
+< 2026-01-21 22:24:41.795 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.795 Script: Failed
+> 2026-01-21 22:24:41.795 Script: put "app/Http/Controllers/Dashboard/CustomersController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/CustomersController.php"
+. 2026-01-21 22:24:41.797 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:24:41.797   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: CustomersController.php
+. 2026-01-21 22:24:41.797   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.797   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.797 File: 'CustomersController.php' [2026-01-19T21:58:07.787Z] [19435]
+* 2026-01-21 22:24:41.800 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.800 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.800 Asking user:
+. 2026-01-21 22:24:41.800 Arquivo ou pasta 'CustomersController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.800 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.800 Script: Arquivo ou pasta 'CustomersController.php' não existe.
+< 2026-01-21 22:24:41.800 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.800 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.800 Answer: Skip
+* 2026-01-21 22:24:41.802 (ESkipFile) Arquivo ou pasta 'CustomersController.php' não existe.
+* 2026-01-21 22:24:41.802 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.802 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.802 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.802 Script: mkdir -p "/public_html/desenvolvimento/app/Http/Controllers/Dashboard"
+< 2026-01-21 22:24:41.807 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.807 Script: Failed
+> 2026-01-21 22:24:41.807 Script: put "app/Http/Controllers/Dashboard/DashboardController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/DashboardController.php"
+. 2026-01-21 22:24:41.807 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:24:41.807   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: DashboardController.php
+. 2026-01-21 22:24:41.807   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.807   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.807 File: 'DashboardController.php' [2026-01-19T21:58:07.787Z] [12295]
+* 2026-01-21 22:24:41.807 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.807 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.807 Asking user:
+. 2026-01-21 22:24:41.807 Arquivo ou pasta 'DashboardController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.807 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.807 Script: Arquivo ou pasta 'DashboardController.php' não existe.
+< 2026-01-21 22:24:41.807 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.807 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.807 Answer: Skip
+* 2026-01-21 22:24:41.817 (ESkipFile) Arquivo ou pasta 'DashboardController.php' não existe.
+* 2026-01-21 22:24:41.817 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.817 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.817 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.817 Script: mkdir -p "/public_html/desenvolvimento/app/Http/Controllers/Dashboard"
+< 2026-01-21 22:24:41.821 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.821 Script: Failed
+> 2026-01-21 22:24:41.821 Script: put "app/Http/Controllers/Dashboard/OrdersController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/OrdersController.php"
+. 2026-01-21 22:24:41.821 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:24:41.821   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: OrdersController.php
+. 2026-01-21 22:24:41.821   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.821   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.821 File: 'OrdersController.php' [2026-01-19T22:15:23.731Z] [107992]
+* 2026-01-21 22:24:41.823 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.823 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.823 Asking user:
+. 2026-01-21 22:24:41.823 Arquivo ou pasta 'OrdersController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.823 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.823 Script: Arquivo ou pasta 'OrdersController.php' não existe.
+< 2026-01-21 22:24:41.823 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.823 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.823 Answer: Skip
+* 2026-01-21 22:24:41.823 (ESkipFile) Arquivo ou pasta 'OrdersController.php' não existe.
+* 2026-01-21 22:24:41.823 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.823 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.823 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.823 Script: mkdir -p "/public_html/desenvolvimento/app/Http/Controllers/Dashboard"
+< 2026-01-21 22:24:41.832 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.832 Script: Failed
+> 2026-01-21 22:24:41.832 Script: put "app/Http/Controllers/Dashboard/PDVController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/PDVController.php"
+. 2026-01-21 22:24:41.832 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:24:41.832   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: PDVController.php
+. 2026-01-21 22:24:41.832   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.832   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.832 File: 'PDVController.php' [2026-01-22T00:38:23.036Z] [62135]
+* 2026-01-21 22:24:41.835 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.835 Asking user:
+. 2026-01-21 22:24:41.835 Arquivo ou pasta 'PDVController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.835 Script: Arquivo ou pasta 'PDVController.php' não existe.
+< 2026-01-21 22:24:41.835 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.835 Answer: Skip
+* 2026-01-21 22:24:41.835 (ESkipFile) Arquivo ou pasta 'PDVController.php' não existe.
+* 2026-01-21 22:24:41.835 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.835 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.835 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.835 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.835 Script: Failed
+> 2026-01-21 22:24:41.835 Script: put "public/css/admin-bridge.css" "/public_html/desenvolvimento/public/css/admin-bridge.css"
+. 2026-01-21 22:24:41.835 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.835   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: admin-bridge.css
+. 2026-01-21 22:24:41.835   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.835   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.835 File: 'admin-bridge.css' [2026-01-19T16:55:38.205Z] [2637]
+* 2026-01-21 22:24:41.835 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.835 Asking user:
+. 2026-01-21 22:24:41.835 Arquivo ou pasta 'admin-bridge.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.835 Script: Arquivo ou pasta 'admin-bridge.css' não existe.
+< 2026-01-21 22:24:41.835 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.835 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.835 Answer: Skip
+* 2026-01-21 22:24:41.848 (ESkipFile) Arquivo ou pasta 'admin-bridge.css' não existe.
+* 2026-01-21 22:24:41.848 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.848 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.848 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.850 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.851 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.851 Script: Failed
+> 2026-01-21 22:24:41.851 Script: put "public/css/dashboard-list-fixes.css" "/public_html/desenvolvimento/public/css/dashboard-list-fixes.css"
+. 2026-01-21 22:24:41.851 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.851   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-list-fixes.css
+. 2026-01-21 22:24:41.851   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.851   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.851 File: 'dashboard-list-fixes.css' [2026-01-19T19:35:15.478Z] [1778]
+* 2026-01-21 22:24:41.856 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.856 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.856 Asking user:
+. 2026-01-21 22:24:41.856 Arquivo ou pasta 'dashboard-list-fixes.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.856 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.856 Script: Arquivo ou pasta 'dashboard-list-fixes.css' não existe.
+< 2026-01-21 22:24:41.856 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.856 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.856 Answer: Skip
+* 2026-01-21 22:24:41.856 (ESkipFile) Arquivo ou pasta 'dashboard-list-fixes.css' não existe.
+* 2026-01-21 22:24:41.856 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.856 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.856 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.856 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.856 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.856 Script: Failed
+> 2026-01-21 22:24:41.864 Script: put "public/css/dashboard-mobile-fixes.css" "/public_html/desenvolvimento/public/css/dashboard-mobile-fixes.css"
+. 2026-01-21 22:24:41.864 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.864   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-mobile-fixes.css
+. 2026-01-21 22:24:41.864   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.864   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.864 File: 'dashboard-mobile-fixes.css' [2026-01-19T20:00:58.623Z] [1126]
+* 2026-01-21 22:24:41.864 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.864 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.867 Asking user:
+. 2026-01-21 22:24:41.867 Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.867 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.867 Script: Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe.
+< 2026-01-21 22:24:41.867 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.867 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.868 Answer: Skip
+* 2026-01-21 22:24:41.868 (ESkipFile) Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe.
+* 2026-01-21 22:24:41.868 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.868 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.868 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.868 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.868 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.868 Script: Failed
+> 2026-01-21 22:24:41.868 Script: put "public/css/dashboard-sweetspot-final.css" "/public_html/desenvolvimento/public/css/dashboard-sweetspot-final.css"
+. 2026-01-21 22:24:41.868 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.868   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-sweetspot-final.css
+. 2026-01-21 22:24:41.868   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.868   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.868 File: 'dashboard-sweetspot-final.css' [2026-01-19T19:49:18.990Z] [3432]
+* 2026-01-21 22:24:41.868 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.868 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.868 Asking user:
+. 2026-01-21 22:24:41.868 Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.868 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.868 Script: Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe.
+< 2026-01-21 22:24:41.868 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.868 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.868 Answer: Skip
+* 2026-01-21 22:24:41.880 (ESkipFile) Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe.
+* 2026-01-21 22:24:41.880 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.880 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.880 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.880 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.885 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.885 Script: Failed
+> 2026-01-21 22:24:41.885 Script: put "public/css/dashboard-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/dashboard-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:24:41.885 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.885   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-sweetspot-pixel-perfect.css
+. 2026-01-21 22:24:41.885   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.885   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.885 File: 'dashboard-sweetspot-pixel-perfect.css' [2026-01-19T19:33:10.220Z] [4086]
+* 2026-01-21 22:24:41.889 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.889 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.889 Asking user:
+. 2026-01-21 22:24:41.889 Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.889 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.889 Script: Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:24:41.889 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.889 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.889 Answer: Skip
+* 2026-01-21 22:24:41.889 (ESkipFile) Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:24:41.889 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.889 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.889 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.889 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.889 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.889 Script: Failed
+> 2026-01-21 22:24:41.896 Script: put "public/css/header-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/header-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:24:41.896 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.896   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: header-sweetspot-pixel-perfect.css
+. 2026-01-21 22:24:41.896   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.896   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.896 File: 'header-sweetspot-pixel-perfect.css' [2026-01-19T19:33:11.458Z] [2098]
+* 2026-01-21 22:24:41.896 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.896 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.896 Asking user:
+. 2026-01-21 22:24:41.896 Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.896 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.896 Script: Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:24:41.896 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.896 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.896 Answer: Skip
+* 2026-01-21 22:24:41.901 (ESkipFile) Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:24:41.901 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.901 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.901 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.901 Script: mkdir -p "/public_html/desenvolvimento/public/css"
+< 2026-01-21 22:24:41.901 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.901 Script: Failed
+> 2026-01-21 22:24:41.901 Script: put "public/css/sidebar-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:24:41.901 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:24:41.901   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:24:41.901   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.901   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.901 File: 'sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:02:14.650Z] [5071]
+* 2026-01-21 22:24:41.901 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.901 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.901 Asking user:
+. 2026-01-21 22:24:41.901 Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.901 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.901 Script: Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:24:41.901 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.901 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.901 Answer: Skip
+* 2026-01-21 22:24:41.912 (ESkipFile) Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:24:41.912 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.912 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.912 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.914 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dash/layouts"
+< 2026-01-21 22:24:41.914 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.914 Script: Failed
+> 2026-01-21 22:24:41.917 Script: put "resources/views/dash/layouts/app.blade.php" "/public_html/desenvolvimento/resources/views/dash/layouts/app.blade.php"
+. 2026-01-21 22:24:41.917 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dash/layouts/" - total size: 0
+. 2026-01-21 22:24:41.917   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: app.blade.php
+. 2026-01-21 22:24:41.918   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.918   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.918 File: 'app.blade.php' [2026-01-22T01:03:19.521Z] [31662]
+* 2026-01-21 22:24:41.918 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.918 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.918 Asking user:
+. 2026-01-21 22:24:41.918 Arquivo ou pasta 'app.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.918 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.918 Script: Arquivo ou pasta 'app.blade.php' não existe.
+< 2026-01-21 22:24:41.918 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.918 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.918 Answer: Skip
+* 2026-01-21 22:24:41.918 (ESkipFile) Arquivo ou pasta 'app.blade.php' não existe.
+* 2026-01-21 22:24:41.918 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.918 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.918 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.918 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/cashback"
+< 2026-01-21 22:24:41.927 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.927 Script: Failed
+> 2026-01-21 22:24:41.927 Script: put "resources/views/dashboard/cashback/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/cashback/index.blade.php"
+. 2026-01-21 22:24:41.927 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/cashback/" - total size: 0
+. 2026-01-21 22:24:41.927   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.927   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.927   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.927 File: 'index.blade.php' [2026-01-19T16:12:28.371Z] [11936]
+* 2026-01-21 22:24:41.927 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.927 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.927 Asking user:
+. 2026-01-21 22:24:41.927 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.927 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.927 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.927 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.927 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.927 Answer: Skip
+* 2026-01-21 22:24:41.935 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.935 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.935 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.935 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.935 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/categories"
+< 2026-01-21 22:24:41.935 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.935 Script: Failed
+> 2026-01-21 22:24:41.935 Script: put "resources/views/dashboard/categories/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/categories/index.blade.php"
+. 2026-01-21 22:24:41.935 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/categories/" - total size: 0
+. 2026-01-21 22:24:41.935   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.935   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.935   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.935 File: 'index.blade.php' [2026-01-19T16:19:13.212Z] [13412]
+* 2026-01-21 22:24:41.943 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.943 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.943 Asking user:
+. 2026-01-21 22:24:41.943 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.943 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.943 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.943 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.943 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.943 Answer: Skip
+* 2026-01-21 22:24:41.943 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.943 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.943 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.943 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.943 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/coupons"
+< 2026-01-21 22:24:41.943 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.951 Script: Failed
+> 2026-01-21 22:24:41.951 Script: put "resources/views/dashboard/coupons/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/coupons/index.blade.php"
+. 2026-01-21 22:24:41.951 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/coupons/" - total size: 0
+. 2026-01-21 22:24:41.951   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.951   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.951   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.951 File: 'index.blade.php' [2026-01-19T16:12:26.801Z] [12794]
+* 2026-01-21 22:24:41.951 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.951 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.951 Asking user:
+. 2026-01-21 22:24:41.951 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.951 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.951 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.951 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.951 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.951 Answer: Skip
+* 2026-01-21 22:24:41.951 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.951 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.951 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.951 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.951 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/customers"
+< 2026-01-21 22:24:41.960 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.960 Script: Failed
+> 2026-01-21 22:24:41.960 Script: put "resources/views/dashboard/customers/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/customers/index.blade.php"
+. 2026-01-21 22:24:41.960 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/customers/" - total size: 0
+. 2026-01-21 22:24:41.960   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.960   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.960   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.960 File: 'index.blade.php' [2026-01-19T16:34:16.447Z] [7093]
+* 2026-01-21 22:24:41.960 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.960 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.960 Asking user:
+. 2026-01-21 22:24:41.960 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.960 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.960 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.960 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.960 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.960 Answer: Skip
+* 2026-01-21 22:24:41.967 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.967 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.967 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.967 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.967 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/dashboard"
+< 2026-01-21 22:24:41.968 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.968 Script: Failed
+> 2026-01-21 22:24:41.968 Script: put "resources/views/dashboard/dashboard/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/dashboard/index.blade.php"
+. 2026-01-21 22:24:41.968 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/dashboard/" - total size: 0
+. 2026-01-21 22:24:41.968   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.968   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.968   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.968 File: 'index.blade.php' [2026-01-19T21:49:56.563Z] [17316]
+* 2026-01-21 22:24:41.968 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.968 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.968 Asking user:
+. 2026-01-21 22:24:41.968 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.968 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.968 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.968 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.968 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.968 Answer: Skip
+* 2026-01-21 22:24:41.968 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.968 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.968 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.968 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.968 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/deliveries"
+< 2026-01-21 22:24:41.968 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.982 Script: Failed
+> 2026-01-21 22:24:41.982 Script: put "resources/views/dashboard/deliveries/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/deliveries/index.blade.php"
+. 2026-01-21 22:24:41.983 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/deliveries/" - total size: 0
+. 2026-01-21 22:24:41.983   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.983   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.983   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.983 File: 'index.blade.php' [2026-01-19T16:19:53.845Z] [18511]
+* 2026-01-21 22:24:41.985 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.985 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.985 Asking user:
+. 2026-01-21 22:24:41.985 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.985 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.985 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.985 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.985 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.985 Answer: Skip
+* 2026-01-21 22:24:41.989 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.989 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.989 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.989 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.989 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/orders"
+< 2026-01-21 22:24:41.993 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:41.993 Script: Failed
+> 2026-01-21 22:24:41.993 Script: put "resources/views/dashboard/orders/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/orders/index.blade.php"
+. 2026-01-21 22:24:41.993 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/orders/" - total size: 0
+. 2026-01-21 22:24:41.993   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:41.993   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:41.993   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:41.993 File: 'index.blade.php' [2026-01-19T20:08:18.710Z] [38948]
+* 2026-01-21 22:24:41.996 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.996 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.996 Asking user:
+. 2026-01-21 22:24:41.996 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:41.996 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:41.996 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:41.996 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:41.996 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.996 Answer: Skip
+* 2026-01-21 22:24:41.999 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:41.999 Erro de sistema. Código: 2
+* 2026-01-21 22:24:41.999 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:41.999 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:41.999 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/pdv"
+< 2026-01-21 22:24:42.001 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.001 Script: Failed
+> 2026-01-21 22:24:42.001 Script: put "resources/views/dashboard/pdv/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/pdv/index.blade.php"
+. 2026-01-21 22:24:42.001 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/pdv/" - total size: 0
+. 2026-01-21 22:24:42.001   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:42.001   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.001   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.001 File: 'index.blade.php' [2026-01-22T00:38:23.036Z] [118285]
+* 2026-01-21 22:24:42.005 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.005 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.005 Asking user:
+. 2026-01-21 22:24:42.005 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.005 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.005 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:42.005 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.005 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.005 Answer: Skip
+* 2026-01-21 22:24:42.005 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:42.005 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.005 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.005 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.005 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/placeholders"
+< 2026-01-21 22:24:42.005 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.005 Script: Failed
+> 2026-01-21 22:24:42.005 Script: put "resources/views/dashboard/placeholders/coming-soon.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/placeholders/coming-soon.blade.php"
+. 2026-01-21 22:24:42.005 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/placeholders/" - total size: 0
+. 2026-01-21 22:24:42.005   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: coming-soon.blade.php
+. 2026-01-21 22:24:42.005   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.005   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.005 File: 'coming-soon.blade.php' [2026-01-22T00:47:09.446Z] [1083]
+* 2026-01-21 22:24:42.014 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.014 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.014 Asking user:
+. 2026-01-21 22:24:42.014 Arquivo ou pasta 'coming-soon.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.014 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.014 Script: Arquivo ou pasta 'coming-soon.blade.php' não existe.
+< 2026-01-21 22:24:42.014 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.014 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.014 Answer: Skip
+* 2026-01-21 22:24:42.018 (ESkipFile) Arquivo ou pasta 'coming-soon.blade.php' não existe.
+* 2026-01-21 22:24:42.018 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.018 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.018 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.018 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/products"
+< 2026-01-21 22:24:42.018 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.018 Script: Failed
+> 2026-01-21 22:24:42.018 Script: put "resources/views/dashboard/products/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/products/index.blade.php"
+. 2026-01-21 22:24:42.018 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/products/" - total size: 0
+. 2026-01-21 22:24:42.018   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:42.018   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.018   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.018 File: 'index.blade.php' [2026-01-19T16:33:10.332Z] [17443]
+* 2026-01-21 22:24:42.023 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.023 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.023 Asking user:
+. 2026-01-21 22:24:42.023 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.023 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.023 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:42.023 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.023 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.023 Answer: Skip
+* 2026-01-21 22:24:42.027 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:42.027 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.027 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.027 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.027 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/reports"
+< 2026-01-21 22:24:42.030 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.030 Script: Failed
+> 2026-01-21 22:24:42.030 Script: put "resources/views/dashboard/reports/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/reports/index.blade.php"
+. 2026-01-21 22:24:42.030 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/reports/" - total size: 0
+. 2026-01-21 22:24:42.030   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:42.030   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.030   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.030 File: 'index.blade.php' [2026-01-19T16:12:34.872Z] [14059]
+* 2026-01-21 22:24:42.035 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.035 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.035 Asking user:
+. 2026-01-21 22:24:42.035 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.035 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.035 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:42.035 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.035 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.035 Answer: Skip
+* 2026-01-21 22:24:42.035 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:42.035 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.035 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.035 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.035 Script: mkdir -p "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices"
+< 2026-01-21 22:24:42.040 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.040 Script: Failed
+> 2026-01-21 22:24:42.040 Script: put "resources/views/dashboard/wholesale-prices/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices/index.blade.php"
+. 2026-01-21 22:24:42.040 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices/" - total size: 0
+. 2026-01-21 22:24:42.040   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:24:42.040   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.040   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.040 File: 'index.blade.php' [2026-01-19T16:21:37.997Z] [9366]
+* 2026-01-21 22:24:42.044 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.044 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.044 Asking user:
+. 2026-01-21 22:24:42.044 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.044 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.044 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:24:42.044 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.044 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.044 Answer: Skip
+* 2026-01-21 22:24:42.047 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:24:42.047 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.047 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.047 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.047 Script: mkdir -p "/public_html/desenvolvimento/resources/views/layouts"
+< 2026-01-21 22:24:42.050 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.050 Script: Failed
+> 2026-01-21 22:24:42.051 Script: put "resources/views/layouts/admin.blade.php" "/public_html/desenvolvimento/resources/views/layouts/admin.blade.php"
+. 2026-01-21 22:24:42.051 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/layouts/" - total size: 0
+. 2026-01-21 22:24:42.051   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: admin.blade.php
+. 2026-01-21 22:24:42.051   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.051   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.051 File: 'admin.blade.php' [2026-01-22T01:02:40.712Z] [30389]
+* 2026-01-21 22:24:42.052 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.052 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.052 Asking user:
+. 2026-01-21 22:24:42.052 Arquivo ou pasta 'admin.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.052 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.052 Script: Arquivo ou pasta 'admin.blade.php' não existe.
+< 2026-01-21 22:24:42.052 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.052 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.052 Answer: Skip
+* 2026-01-21 22:24:42.052 (ESkipFile) Arquivo ou pasta 'admin.blade.php' não existe.
+* 2026-01-21 22:24:42.052 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.052 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.052 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.052 Script: mkdir -p "/public_html/desenvolvimento/routes"
+< 2026-01-21 22:24:42.052 Script: Argumento desconhecido 'p'.
+. 2026-01-21 22:24:42.052 Script: Failed
+> 2026-01-21 22:24:42.052 Script: put "routes/web.php" "/public_html/desenvolvimento/routes/web.php"
+. 2026-01-21 22:24:42.052 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/routes/" - total size: 0
+. 2026-01-21 22:24:42.052   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: web.php
+. 2026-01-21 22:24:42.052   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:24:42.052   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:24:42.052 File: 'web.php' [2026-01-22T00:46:51.623Z] [65406]
+* 2026-01-21 22:24:42.062 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.062 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.062 Asking user:
+. 2026-01-21 22:24:42.062 Arquivo ou pasta 'web.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:24:42.062 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:24:42.062 Script: Arquivo ou pasta 'web.php' não existe.
+< 2026-01-21 22:24:42.062 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:24:42.062 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.062 Answer: Skip
+* 2026-01-21 22:24:42.062 (ESkipFile) Arquivo ou pasta 'web.php' não existe.
+* 2026-01-21 22:24:42.062 Erro de sistema. Código: 2
+* 2026-01-21 22:24:42.062 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:24:42.062 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:24:42.062 Script: exit
+. 2026-01-21 22:24:42.062 Script: Exit code: 1
+. 2026-01-21 22:24:42.068 Desconectado do servidor
+. 2026-01-21 22:26:53.270 --------------------------------------------------------------------------
+. 2026-01-21 22:26:53.278 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 22:26:53.278 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 22:26:53.278 Log level: Normal
+. 2026-01-21 22:26:53.278 Local account: UIRÃ\uira_
+. 2026-01-21 22:26:53.278 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 22:26:53.278 Process ID: 25516
+. 2026-01-21 22:26:53.296 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 22:26:53.296 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_6464_973 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 22:26:53.296 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 22:26:53.296 Login time: quarta-feira, 21 de janeiro de 2026 22:26:53
+. 2026-01-21 22:26:53.296 --------------------------------------------------------------------------
+. 2026-01-21 22:26:53.296 Script: Retrospectively logging previous script records:
+> 2026-01-21 22:26:53.296 Script: open "Olika Dev"
+. 2026-01-21 22:26:53.296 --------------------------------------------------------------------------
+. 2026-01-21 22:26:53.296 Session name: Olika Dev (Site)
+. 2026-01-21 22:26:53.296 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 22:26:53.296 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 22:26:53.296 Transfer Protocol: FTP
+. 2026-01-21 22:26:53.296 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 22:26:53.296 Disable Nagle: No
+. 2026-01-21 22:26:53.296 Proxy: None
+. 2026-01-21 22:26:53.296 Send buffer: 262144
+. 2026-01-21 22:26:53.296 UTF: Auto
+. 2026-01-21 22:26:53.296 FTPS: None [Client certificate: No]
+. 2026-01-21 22:26:53.296 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 22:26:53.296 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 22:26:53.296 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 22:26:53.296 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 22:26:53.296 Timezone offset: 0h 0m
+. 2026-01-21 22:26:53.296 --------------------------------------------------------------------------
+< 2026-01-21 22:26:53.328 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:26:53.328 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:26:53.545 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 22:26:53.657 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 22:26:53.657 220-You are user number 3 of 150 allowed.
+< 2026-01-21 22:26:53.657 220-Local time is now 22:26. Server port: 21.
+< 2026-01-21 22:26:53.657 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 22:26:53.657 USER uira@menuolika.com.br
+< 2026-01-21 22:26:53.753 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 22:26:53.753 PASS ************
+< 2026-01-21 22:26:54.266 230 OK. Current restricted directory is /
+> 2026-01-21 22:26:54.266 SYST
+< 2026-01-21 22:26:54.362 215 UNIX Type: L8
+> 2026-01-21 22:26:54.362 FEAT
+< 2026-01-21 22:26:54.570 211-Extensions supported:
+< 2026-01-21 22:26:54.570  UTF8
+< 2026-01-21 22:26:54.601  EPRT
+< 2026-01-21 22:26:54.601  IDLE
+< 2026-01-21 22:26:54.601  MDTM
+< 2026-01-21 22:26:54.601  SIZE
+< 2026-01-21 22:26:54.601  MFMT
+< 2026-01-21 22:26:54.601  REST STREAM
+< 2026-01-21 22:26:54.601  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 22:26:54.601  MLSD
+< 2026-01-21 22:26:54.601  PRET
+< 2026-01-21 22:26:54.601  AUTH TLS
+< 2026-01-21 22:26:54.601  PBSZ
+< 2026-01-21 22:26:54.601  PROT
+< 2026-01-21 22:26:54.601  TVFS
+< 2026-01-21 22:26:54.601  ESTA
+< 2026-01-21 22:26:54.601  PASV
+< 2026-01-21 22:26:54.601  EPSV
+< 2026-01-21 22:26:54.601  ESTP
+< 2026-01-21 22:26:54.601 211 End.
+> 2026-01-21 22:26:54.601 OPTS UTF8 ON
+< 2026-01-21 22:26:54.646 504 Unknown command
+< 2026-01-21 22:26:54.646 Script: Conectado
+. 2026-01-21 22:26:54.646 Conectado
+. 2026-01-21 22:26:54.646 --------------------------------------------------------------------------
+. 2026-01-21 22:26:54.646 Using FTP protocol.
+. 2026-01-21 22:26:54.646 Doing startup conversation with host.
+< 2026-01-21 22:26:54.646 Script: Iniciando a sessão...
+> 2026-01-21 22:26:54.646 PWD
+< 2026-01-21 22:26:54.773 257 "/" is your current location
+. 2026-01-21 22:26:54.773 Changing directory to "/desenvolvimento".
+> 2026-01-21 22:26:54.773 CWD /desenvolvimento
+< 2026-01-21 22:26:54.885 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 22:26:54.885 Getting current directory name.
+> 2026-01-21 22:26:54.885 PWD
+< 2026-01-21 22:26:54.981 257 "/desenvolvimento" is your current location
+. 2026-01-21 22:26:54.981 Startup conversation with host finished.
+< 2026-01-21 22:26:54.981 Script: Sessão iniciada.
+< 2026-01-21 22:26:54.981 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 22:26:54.981 Script: option batch continue
+< 2026-01-21 22:26:54.981 Script: batch           continue  
+< 2026-01-21 22:26:54.981 Script: reconnecttime   120       
+> 2026-01-21 22:26:54.981 Script: option confirm off
+< 2026-01-21 22:26:54.981 Script: confirm         off       
+> 2026-01-21 22:26:54.981 Script: lcd "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika"
+< 2026-01-21 22:26:54.981 Script: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+> 2026-01-21 22:26:54.981 Script: mkdir "/public_html/desenvolvimento/app"
+. 2026-01-21 22:26:54.981 Creating directory "/public_html/desenvolvimento/app".
+> 2026-01-21 22:26:54.981 CWD /public_html/desenvolvimento
+< 2026-01-21 22:26:55.077 250 OK. Current directory is /public_html/desenvolvimento
+> 2026-01-21 22:26:55.077 MKD app
+< 2026-01-21 22:26:55.195 257 "app" : The directory was successfully created
+> 2026-01-21 22:26:55.195 Script: mkdir "/public_html/desenvolvimento/public"
+. 2026-01-21 22:26:55.195 Creating directory "/public_html/desenvolvimento/public".
+> 2026-01-21 22:26:55.195 CWD /public_html/desenvolvimento
+< 2026-01-21 22:26:55.285 250 OK. Current directory is /public_html/desenvolvimento
+> 2026-01-21 22:26:55.285 MKD public
+< 2026-01-21 22:26:55.381 257 "public" : The directory was successfully created
+> 2026-01-21 22:26:55.381 Script: mkdir "/public_html/desenvolvimento/routes"
+. 2026-01-21 22:26:55.381 Creating directory "/public_html/desenvolvimento/routes".
+> 2026-01-21 22:26:55.381 CWD /public_html/desenvolvimento
+< 2026-01-21 22:26:55.493 250 OK. Current directory is /public_html/desenvolvimento
+> 2026-01-21 22:26:55.493 MKD routes
+< 2026-01-21 22:26:55.557 257 "routes" : The directory was successfully created
+> 2026-01-21 22:26:55.557 Script: mkdir "/public_html/desenvolvimento/app/Http"
+. 2026-01-21 22:26:55.557 Creating directory "/public_html/desenvolvimento/app/Http".
+> 2026-01-21 22:26:55.557 CWD /public_html/desenvolvimento/app
+< 2026-01-21 22:26:55.605 250 OK. Current directory is /public_html/desenvolvimento/app
+> 2026-01-21 22:26:55.605 MKD Http
+< 2026-01-21 22:26:55.695 257 "Http" : The directory was successfully created
+> 2026-01-21 22:26:55.695 Script: mkdir "/public_html/desenvolvimento/resources"
+. 2026-01-21 22:26:55.695 Creating directory "/public_html/desenvolvimento/resources".
+> 2026-01-21 22:26:55.695 CWD /public_html/desenvolvimento
+< 2026-01-21 22:26:55.807 250 OK. Current directory is /public_html/desenvolvimento
+> 2026-01-21 22:26:55.807 MKD resources
+< 2026-01-21 22:26:55.903 257 "resources" : The directory was successfully created
+> 2026-01-21 22:26:55.903 Script: mkdir "/public_html/desenvolvimento/public/css"
+. 2026-01-21 22:26:55.903 Creating directory "/public_html/desenvolvimento/public/css".
+> 2026-01-21 22:26:55.903 CWD /public_html/desenvolvimento/public
+< 2026-01-21 22:26:56.015 250 OK. Current directory is /public_html/desenvolvimento/public
+> 2026-01-21 22:26:56.015 MKD css
+< 2026-01-21 22:26:56.063 257 "css" : The directory was successfully created
+> 2026-01-21 22:26:56.063 Script: mkdir "/public_html/desenvolvimento/app/Helpers"
+. 2026-01-21 22:26:56.063 Creating directory "/public_html/desenvolvimento/app/Helpers".
+> 2026-01-21 22:26:56.063 CWD /public_html/desenvolvimento/app
+< 2026-01-21 22:26:56.319 250 OK. Current directory is /public_html/desenvolvimento/app
+> 2026-01-21 22:26:56.319 MKD Helpers
+< 2026-01-21 22:26:56.523 257 "Helpers" : The directory was successfully created
+> 2026-01-21 22:26:56.527 Script: mkdir "/public_html/desenvolvimento/resources/views"
+. 2026-01-21 22:26:56.527 Creating directory "/public_html/desenvolvimento/resources/views".
+> 2026-01-21 22:26:56.527 CWD /public_html/desenvolvimento/resources
+< 2026-01-21 22:26:56.623 250 OK. Current directory is /public_html/desenvolvimento/resources
+> 2026-01-21 22:26:56.623 MKD views
+< 2026-01-21 22:26:56.824 257 "views" : The directory was successfully created
+> 2026-01-21 22:26:56.824 Script: mkdir "/public_html/desenvolvimento/resources/views/dash"
+. 2026-01-21 22:26:56.824 Creating directory "/public_html/desenvolvimento/resources/views/dash".
+> 2026-01-21 22:26:56.824 CWD /public_html/desenvolvimento/resources/views
+< 2026-01-21 22:26:56.935 250 OK. Current directory is /public_html/desenvolvimento/resources/views
+> 2026-01-21 22:26:56.935 MKD dash
+< 2026-01-21 22:26:57.029 257 "dash" : The directory was successfully created
+> 2026-01-21 22:26:57.029 Script: mkdir "/public_html/desenvolvimento/app/Http/Controllers"
+. 2026-01-21 22:26:57.029 Creating directory "/public_html/desenvolvimento/app/Http/Controllers".
+> 2026-01-21 22:26:57.029 CWD /public_html/desenvolvimento/app/Http
+< 2026-01-21 22:26:57.141 250 OK. Current directory is /public_html/desenvolvimento/app/Http
+> 2026-01-21 22:26:57.141 MKD Controllers
+< 2026-01-21 22:26:57.237 257 "Controllers" : The directory was successfully created
+> 2026-01-21 22:26:57.237 Script: mkdir "/public_html/desenvolvimento/resources/views/layouts"
+. 2026-01-21 22:26:57.237 Creating directory "/public_html/desenvolvimento/resources/views/layouts".
+> 2026-01-21 22:26:57.237 CWD /public_html/desenvolvimento/resources/views
+< 2026-01-21 22:26:57.342 250 OK. Current directory is /public_html/desenvolvimento/resources/views
+> 2026-01-21 22:26:57.342 MKD layouts
+< 2026-01-21 22:26:57.535 257 "layouts" : The directory was successfully created
+> 2026-01-21 22:26:57.535 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard"
+. 2026-01-21 22:26:57.535 Creating directory "/public_html/desenvolvimento/resources/views/dashboard".
+> 2026-01-21 22:26:57.535 CWD /public_html/desenvolvimento/resources/views
+< 2026-01-21 22:26:57.646 250 OK. Current directory is /public_html/desenvolvimento/resources/views
+> 2026-01-21 22:26:57.646 MKD dashboard
+< 2026-01-21 22:26:57.742 257 "dashboard" : The directory was successfully created
+> 2026-01-21 22:26:57.742 Script: mkdir "/public_html/desenvolvimento/app/Http/Controllers/Auth"
+. 2026-01-21 22:26:57.742 Creating directory "/public_html/desenvolvimento/app/Http/Controllers/Auth".
+> 2026-01-21 22:26:57.742 CWD /public_html/desenvolvimento/app/Http/Controllers
+< 2026-01-21 22:26:57.838 250 OK. Current directory is /public_html/desenvolvimento/app/Http/Controllers
+> 2026-01-21 22:26:57.838 MKD Auth
+< 2026-01-21 22:26:57.950 257 "Auth" : The directory was successfully created
+> 2026-01-21 22:26:57.950 Script: mkdir "/public_html/desenvolvimento/resources/views/dash/layouts"
+. 2026-01-21 22:26:57.950 Creating directory "/public_html/desenvolvimento/resources/views/dash/layouts".
+> 2026-01-21 22:26:57.950 CWD /public_html/desenvolvimento/resources/views/dash
+< 2026-01-21 22:26:58.060 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dash
+> 2026-01-21 22:26:58.060 MKD layouts
+< 2026-01-21 22:26:58.156 257 "layouts" : The directory was successfully created
+> 2026-01-21 22:26:58.156 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/pdv"
+. 2026-01-21 22:26:58.156 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/pdv".
+> 2026-01-21 22:26:58.156 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:58.253 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:58.253 MKD pdv
+< 2026-01-21 22:26:58.360 257 "pdv" : The directory was successfully created
+> 2026-01-21 22:26:58.360 Script: mkdir "/public_html/desenvolvimento/app/Http/Controllers/Dashboard"
+. 2026-01-21 22:26:58.360 Creating directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard".
+> 2026-01-21 22:26:58.360 CWD /public_html/desenvolvimento/app/Http/Controllers
+< 2026-01-21 22:26:58.456 250 OK. Current directory is /public_html/desenvolvimento/app/Http/Controllers
+> 2026-01-21 22:26:58.456 MKD Dashboard
+< 2026-01-21 22:26:58.560 257 "Dashboard" : The directory was successfully created
+> 2026-01-21 22:26:58.560 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/orders"
+. 2026-01-21 22:26:58.560 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/orders".
+> 2026-01-21 22:26:58.560 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:58.656 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:58.656 MKD orders
+< 2026-01-21 22:26:58.769 257 "orders" : The directory was successfully created
+> 2026-01-21 22:26:58.769 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/reports"
+. 2026-01-21 22:26:58.769 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/reports".
+> 2026-01-21 22:26:58.769 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:58.974 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:58.974 MKD reports
+< 2026-01-21 22:26:59.086 257 "reports" : The directory was successfully created
+> 2026-01-21 22:26:59.102 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/coupons"
+. 2026-01-21 22:26:59.102 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/coupons".
+> 2026-01-21 22:26:59.102 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:59.183 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:59.183 MKD coupons
+< 2026-01-21 22:26:59.283 257 "coupons" : The directory was successfully created
+> 2026-01-21 22:26:59.283 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/products"
+. 2026-01-21 22:26:59.283 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/products".
+> 2026-01-21 22:26:59.283 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:59.390 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:59.390 MKD products
+< 2026-01-21 22:26:59.486 257 "products" : The directory was successfully created
+> 2026-01-21 22:26:59.486 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/cashback"
+. 2026-01-21 22:26:59.486 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/cashback".
+> 2026-01-21 22:26:59.486 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:59.596 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:59.596 MKD cashback
+< 2026-01-21 22:26:59.690 257 "cashback" : The directory was successfully created
+> 2026-01-21 22:26:59.690 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/dashboard"
+. 2026-01-21 22:26:59.690 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/dashboard".
+> 2026-01-21 22:26:59.690 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:26:59.898 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:26:59.898 MKD dashboard
+< 2026-01-21 22:27:00.009 257 "dashboard" : The directory was successfully created
+> 2026-01-21 22:27:00.011 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/customers"
+. 2026-01-21 22:27:00.011 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/customers".
+> 2026-01-21 22:27:00.013 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:27:00.200 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:27:00.200 MKD customers
+< 2026-01-21 22:27:00.311 257 "customers" : The directory was successfully created
+> 2026-01-21 22:27:00.311 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/categories"
+. 2026-01-21 22:27:00.311 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/categories".
+> 2026-01-21 22:27:00.311 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:27:00.416 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:27:00.416 MKD categories
+< 2026-01-21 22:27:00.519 257 "categories" : The directory was successfully created
+> 2026-01-21 22:27:00.519 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/deliveries"
+. 2026-01-21 22:27:00.519 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/deliveries".
+> 2026-01-21 22:27:00.519 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:27:00.616 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:27:00.616 MKD deliveries
+< 2026-01-21 22:27:00.714 257 "deliveries" : The directory was successfully created
+> 2026-01-21 22:27:00.714 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/placeholders"
+. 2026-01-21 22:27:00.714 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/placeholders".
+> 2026-01-21 22:27:00.714 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:27:00.824 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:27:00.824 MKD placeholders
+< 2026-01-21 22:27:00.920 257 "placeholders" : The directory was successfully created
+> 2026-01-21 22:27:00.920 Script: mkdir "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices"
+. 2026-01-21 22:27:00.920 Creating directory "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices".
+> 2026-01-21 22:27:00.920 CWD /public_html/desenvolvimento/resources/views/dashboard
+< 2026-01-21 22:27:01.031 250 OK. Current directory is /public_html/desenvolvimento/resources/views/dashboard
+> 2026-01-21 22:27:01.031 MKD wholesale-prices
+< 2026-01-21 22:27:01.124 257 "wholesale-prices" : The directory was successfully created
+> 2026-01-21 22:27:01.134 Script: put "app/Helpers/FormatHelper.php" "/public_html/desenvolvimento/app/Helpers/FormatHelper.php"
+. 2026-01-21 22:27:01.134 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Helpers/" - total size: 0
+. 2026-01-21 22:27:01.134   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: FormatHelper.php
+. 2026-01-21 22:27:01.134   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.134   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.134 File: 'FormatHelper.php' [2026-01-19T21:49:56.563Z] [2905]
+* 2026-01-21 22:27:01.139 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.139 Asking user:
+. 2026-01-21 22:27:01.139 Arquivo ou pasta 'FormatHelper.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.139 Script: Arquivo ou pasta 'FormatHelper.php' não existe.
+< 2026-01-21 22:27:01.139 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.139 Answer: Skip
+* 2026-01-21 22:27:01.139 (ESkipFile) Arquivo ou pasta 'FormatHelper.php' não existe.
+* 2026-01-21 22:27:01.139 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.139 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.139 Script: put "app/Http/Controllers/Auth/LoginController.php" "/public_html/desenvolvimento/app/Http/Controllers/Auth/LoginController.php"
+. 2026-01-21 22:27:01.139 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Auth/" - total size: 0
+. 2026-01-21 22:27:01.139   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: LoginController.php
+. 2026-01-21 22:27:01.139   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.139   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.139 File: 'LoginController.php' [2026-01-19T16:32:19.385Z] [2816]
+* 2026-01-21 22:27:01.139 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.139 Asking user:
+. 2026-01-21 22:27:01.139 Arquivo ou pasta 'LoginController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.139 Script: Arquivo ou pasta 'LoginController.php' não existe.
+< 2026-01-21 22:27:01.139 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.139 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.155 Answer: Skip
+* 2026-01-21 22:27:01.159 (ESkipFile) Arquivo ou pasta 'LoginController.php' não existe.
+* 2026-01-21 22:27:01.159 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.159 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.159 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.159 Script: put "app/Http/Controllers/Dashboard/CustomersController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/CustomersController.php"
+. 2026-01-21 22:27:01.159 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:27:01.159   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: CustomersController.php
+. 2026-01-21 22:27:01.159   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.159   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.159 File: 'CustomersController.php' [2026-01-19T21:58:07.787Z] [19435]
+* 2026-01-21 22:27:01.166 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.166 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.166 Asking user:
+. 2026-01-21 22:27:01.166 Arquivo ou pasta 'CustomersController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.166 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.166 Script: Arquivo ou pasta 'CustomersController.php' não existe.
+< 2026-01-21 22:27:01.166 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.166 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.166 Answer: Skip
+* 2026-01-21 22:27:01.166 (ESkipFile) Arquivo ou pasta 'CustomersController.php' não existe.
+* 2026-01-21 22:27:01.166 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.166 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.166 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.166 Script: put "app/Http/Controllers/Dashboard/DashboardController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/DashboardController.php"
+. 2026-01-21 22:27:01.166 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:27:01.166   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: DashboardController.php
+. 2026-01-21 22:27:01.166   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.166   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.166 File: 'DashboardController.php' [2026-01-19T21:58:07.787Z] [12295]
+* 2026-01-21 22:27:01.171 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Asking user:
+. 2026-01-21 22:27:01.171 Arquivo ou pasta 'DashboardController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.171 Script: Arquivo ou pasta 'DashboardController.php' não existe.
+< 2026-01-21 22:27:01.171 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Answer: Skip
+* 2026-01-21 22:27:01.171 (ESkipFile) Arquivo ou pasta 'DashboardController.php' não existe.
+* 2026-01-21 22:27:01.171 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.171 Script: put "app/Http/Controllers/Dashboard/OrdersController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/OrdersController.php"
+. 2026-01-21 22:27:01.171 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:27:01.171   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: OrdersController.php
+. 2026-01-21 22:27:01.171   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.171   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.171 File: 'OrdersController.php' [2026-01-19T22:15:23.731Z] [107992]
+* 2026-01-21 22:27:01.171 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Asking user:
+. 2026-01-21 22:27:01.171 Arquivo ou pasta 'OrdersController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.171 Script: Arquivo ou pasta 'OrdersController.php' não existe.
+< 2026-01-21 22:27:01.171 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Answer: Skip
+* 2026-01-21 22:27:01.171 (ESkipFile) Arquivo ou pasta 'OrdersController.php' não existe.
+* 2026-01-21 22:27:01.171 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.171 Script: put "app/Http/Controllers/Dashboard/PDVController.php" "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/PDVController.php"
+. 2026-01-21 22:27:01.171 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/app/Http/Controllers/Dashboard/" - total size: 0
+. 2026-01-21 22:27:01.171   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: PDVController.php
+. 2026-01-21 22:27:01.171   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.171   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.171 File: 'PDVController.php' [2026-01-22T00:38:23.036Z] [62135]
+* 2026-01-21 22:27:01.171 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Asking user:
+. 2026-01-21 22:27:01.171 Arquivo ou pasta 'PDVController.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.171 Script: Arquivo ou pasta 'PDVController.php' não existe.
+< 2026-01-21 22:27:01.171 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.171 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.171 Answer: Skip
+* 2026-01-21 22:27:01.187 (ESkipFile) Arquivo ou pasta 'PDVController.php' não existe.
+* 2026-01-21 22:27:01.187 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.187 Script: put "public/css/admin-bridge.css" "/public_html/desenvolvimento/public/css/admin-bridge.css"
+. 2026-01-21 22:27:01.187 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.187   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: admin-bridge.css
+. 2026-01-21 22:27:01.187   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.187   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.187 File: 'admin-bridge.css' [2026-01-19T16:55:38.205Z] [2637]
+* 2026-01-21 22:27:01.187 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Asking user:
+. 2026-01-21 22:27:01.187 Arquivo ou pasta 'admin-bridge.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.187 Script: Arquivo ou pasta 'admin-bridge.css' não existe.
+< 2026-01-21 22:27:01.187 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Answer: Skip
+* 2026-01-21 22:27:01.187 (ESkipFile) Arquivo ou pasta 'admin-bridge.css' não existe.
+* 2026-01-21 22:27:01.187 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.187 Script: put "public/css/dashboard-list-fixes.css" "/public_html/desenvolvimento/public/css/dashboard-list-fixes.css"
+. 2026-01-21 22:27:01.187 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.187   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-list-fixes.css
+. 2026-01-21 22:27:01.187   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.187   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.187 File: 'dashboard-list-fixes.css' [2026-01-19T19:35:15.478Z] [1778]
+* 2026-01-21 22:27:01.187 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Asking user:
+. 2026-01-21 22:27:01.187 Arquivo ou pasta 'dashboard-list-fixes.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.187 Script: Arquivo ou pasta 'dashboard-list-fixes.css' não existe.
+< 2026-01-21 22:27:01.187 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Answer: Skip
+* 2026-01-21 22:27:01.187 (ESkipFile) Arquivo ou pasta 'dashboard-list-fixes.css' não existe.
+* 2026-01-21 22:27:01.187 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.187 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.187 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.187 Script: put "public/css/dashboard-mobile-fixes.css" "/public_html/desenvolvimento/public/css/dashboard-mobile-fixes.css"
+. 2026-01-21 22:27:01.187 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.187   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-mobile-fixes.css
+. 2026-01-21 22:27:01.187   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.187   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.187 File: 'dashboard-mobile-fixes.css' [2026-01-19T20:00:58.623Z] [1126]
+* 2026-01-21 22:27:01.202 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Asking user:
+. 2026-01-21 22:27:01.202 Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.202 Script: Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe.
+< 2026-01-21 22:27:01.202 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Answer: Skip
+* 2026-01-21 22:27:01.202 (ESkipFile) Arquivo ou pasta 'dashboard-mobile-fixes.css' não existe.
+* 2026-01-21 22:27:01.202 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.202 Script: put "public/css/dashboard-sweetspot-final.css" "/public_html/desenvolvimento/public/css/dashboard-sweetspot-final.css"
+. 2026-01-21 22:27:01.202 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.202   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-sweetspot-final.css
+. 2026-01-21 22:27:01.202   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.202   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.202 File: 'dashboard-sweetspot-final.css' [2026-01-19T19:49:18.990Z] [3432]
+* 2026-01-21 22:27:01.202 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Asking user:
+. 2026-01-21 22:27:01.202 Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.202 Script: Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe.
+< 2026-01-21 22:27:01.202 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Answer: Skip
+* 2026-01-21 22:27:01.202 (ESkipFile) Arquivo ou pasta 'dashboard-sweetspot-final.css' não existe.
+* 2026-01-21 22:27:01.202 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.202 Script: put "public/css/dashboard-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/dashboard-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:27:01.202 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.202   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: dashboard-sweetspot-pixel-perfect.css
+. 2026-01-21 22:27:01.202   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.202   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.202 File: 'dashboard-sweetspot-pixel-perfect.css' [2026-01-19T19:33:10.220Z] [4086]
+* 2026-01-21 22:27:01.202 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Asking user:
+. 2026-01-21 22:27:01.202 Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.202 Script: Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:27:01.202 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.202 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.202 Answer: Skip
+* 2026-01-21 22:27:01.219 (ESkipFile) Arquivo ou pasta 'dashboard-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:27:01.219 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.219 Script: put "public/css/header-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/header-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:27:01.219 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.219   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: header-sweetspot-pixel-perfect.css
+. 2026-01-21 22:27:01.219   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.219   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.219 File: 'header-sweetspot-pixel-perfect.css' [2026-01-19T19:33:11.458Z] [2098]
+* 2026-01-21 22:27:01.219 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Asking user:
+. 2026-01-21 22:27:01.219 Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.219 Script: Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:27:01.219 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Answer: Skip
+* 2026-01-21 22:27:01.219 (ESkipFile) Arquivo ou pasta 'header-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:27:01.219 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.219 Script: put "public/css/sidebar-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:27:01.219 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:27:01.219   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:27:01.219   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.219   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.219 File: 'sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:02:14.650Z] [5071]
+* 2026-01-21 22:27:01.219 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Asking user:
+. 2026-01-21 22:27:01.219 Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.219 Script: Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:27:01.219 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Answer: Skip
+* 2026-01-21 22:27:01.219 (ESkipFile) Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:27:01.219 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.219 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.219 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.219 Script: put "resources/views/dash/layouts/app.blade.php" "/public_html/desenvolvimento/resources/views/dash/layouts/app.blade.php"
+. 2026-01-21 22:27:01.219 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dash/layouts/" - total size: 0
+. 2026-01-21 22:27:01.219   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: app.blade.php
+. 2026-01-21 22:27:01.219   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.219   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.219 File: 'app.blade.php' [2026-01-22T01:03:19.521Z] [31662]
+* 2026-01-21 22:27:01.235 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Asking user:
+. 2026-01-21 22:27:01.235 Arquivo ou pasta 'app.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.235 Script: Arquivo ou pasta 'app.blade.php' não existe.
+< 2026-01-21 22:27:01.235 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Answer: Skip
+* 2026-01-21 22:27:01.235 (ESkipFile) Arquivo ou pasta 'app.blade.php' não existe.
+* 2026-01-21 22:27:01.235 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.235 Script: put "resources/views/dashboard/cashback/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/cashback/index.blade.php"
+. 2026-01-21 22:27:01.235 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/cashback/" - total size: 0
+. 2026-01-21 22:27:01.235   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.235   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.235   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.235 File: 'index.blade.php' [2026-01-19T16:12:28.371Z] [11936]
+* 2026-01-21 22:27:01.235 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Asking user:
+. 2026-01-21 22:27:01.235 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.235 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.235 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Answer: Skip
+* 2026-01-21 22:27:01.235 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.235 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.235 Script: put "resources/views/dashboard/categories/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/categories/index.blade.php"
+. 2026-01-21 22:27:01.235 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/categories/" - total size: 0
+. 2026-01-21 22:27:01.235   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.235   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.235   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.235 File: 'index.blade.php' [2026-01-19T16:19:13.212Z] [13412]
+* 2026-01-21 22:27:01.235 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Asking user:
+. 2026-01-21 22:27:01.235 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.235 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.235 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.235 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.235 Answer: Skip
+* 2026-01-21 22:27:01.251 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.251 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.251 Script: put "resources/views/dashboard/coupons/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/coupons/index.blade.php"
+. 2026-01-21 22:27:01.251 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/coupons/" - total size: 0
+. 2026-01-21 22:27:01.251   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.251   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.251   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.251 File: 'index.blade.php' [2026-01-19T16:12:26.801Z] [12794]
+* 2026-01-21 22:27:01.251 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Asking user:
+. 2026-01-21 22:27:01.251 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.251 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.251 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Answer: Skip
+* 2026-01-21 22:27:01.251 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.251 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.251 Script: put "resources/views/dashboard/customers/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/customers/index.blade.php"
+. 2026-01-21 22:27:01.251 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/customers/" - total size: 0
+. 2026-01-21 22:27:01.251   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.251   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.251   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.251 File: 'index.blade.php' [2026-01-19T16:34:16.447Z] [7093]
+* 2026-01-21 22:27:01.251 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Asking user:
+. 2026-01-21 22:27:01.251 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.251 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.251 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Answer: Skip
+* 2026-01-21 22:27:01.251 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.251 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.251 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.251 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.251 Script: put "resources/views/dashboard/dashboard/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/dashboard/index.blade.php"
+. 2026-01-21 22:27:01.251 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/dashboard/" - total size: 0
+. 2026-01-21 22:27:01.251   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.251   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.251   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.251 File: 'index.blade.php' [2026-01-19T21:49:56.563Z] [17316]
+* 2026-01-21 22:27:01.267 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Asking user:
+. 2026-01-21 22:27:01.267 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.267 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.267 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Answer: Skip
+* 2026-01-21 22:27:01.267 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.267 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.267 Script: put "resources/views/dashboard/deliveries/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/deliveries/index.blade.php"
+. 2026-01-21 22:27:01.267 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/deliveries/" - total size: 0
+. 2026-01-21 22:27:01.267   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.267   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.267   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.267 File: 'index.blade.php' [2026-01-19T16:19:53.845Z] [18511]
+* 2026-01-21 22:27:01.267 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Asking user:
+. 2026-01-21 22:27:01.267 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.267 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.267 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Answer: Skip
+* 2026-01-21 22:27:01.267 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.267 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.267 Script: put "resources/views/dashboard/orders/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/orders/index.blade.php"
+. 2026-01-21 22:27:01.267 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/orders/" - total size: 0
+. 2026-01-21 22:27:01.267   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.267   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.267   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.267 File: 'index.blade.php' [2026-01-19T20:08:18.710Z] [38948]
+* 2026-01-21 22:27:01.267 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Asking user:
+. 2026-01-21 22:27:01.267 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.267 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.267 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.267 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.267 Answer: Skip
+* 2026-01-21 22:27:01.281 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.281 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.281 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.281 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.282 Script: put "resources/views/dashboard/pdv/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/pdv/index.blade.php"
+. 2026-01-21 22:27:01.282 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/pdv/" - total size: 0
+. 2026-01-21 22:27:01.282   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.282   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.282   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.282 File: 'index.blade.php' [2026-01-22T00:38:23.036Z] [118285]
+* 2026-01-21 22:27:01.285 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.285 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.285 Asking user:
+. 2026-01-21 22:27:01.285 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.285 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.285 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.285 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.285 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.285 Answer: Skip
+* 2026-01-21 22:27:01.288 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.288 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.288 Script: put "resources/views/dashboard/placeholders/coming-soon.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/placeholders/coming-soon.blade.php"
+. 2026-01-21 22:27:01.288 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/placeholders/" - total size: 0
+. 2026-01-21 22:27:01.288   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: coming-soon.blade.php
+. 2026-01-21 22:27:01.288   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.288   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.288 File: 'coming-soon.blade.php' [2026-01-22T00:47:09.446Z] [1083]
+* 2026-01-21 22:27:01.288 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Asking user:
+. 2026-01-21 22:27:01.288 Arquivo ou pasta 'coming-soon.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.288 Script: Arquivo ou pasta 'coming-soon.blade.php' não existe.
+< 2026-01-21 22:27:01.288 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Answer: Skip
+* 2026-01-21 22:27:01.288 (ESkipFile) Arquivo ou pasta 'coming-soon.blade.php' não existe.
+* 2026-01-21 22:27:01.288 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.288 Script: put "resources/views/dashboard/products/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/products/index.blade.php"
+. 2026-01-21 22:27:01.288 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/products/" - total size: 0
+. 2026-01-21 22:27:01.288   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.288   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.288   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.288 File: 'index.blade.php' [2026-01-19T16:33:10.332Z] [17443]
+* 2026-01-21 22:27:01.288 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Asking user:
+. 2026-01-21 22:27:01.288 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.288 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.288 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.288 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.288 Answer: Skip
+* 2026-01-21 22:27:01.298 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.298 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.298 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.298 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.298 Script: put "resources/views/dashboard/reports/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/reports/index.blade.php"
+. 2026-01-21 22:27:01.298 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/reports/" - total size: 0
+. 2026-01-21 22:27:01.298   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.298   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.298   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.298 File: 'index.blade.php' [2026-01-19T16:12:34.872Z] [14059]
+* 2026-01-21 22:27:01.298 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.298 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.298 Asking user:
+. 2026-01-21 22:27:01.298 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.298 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.298 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.298 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.298 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.298 Answer: Skip
+* 2026-01-21 22:27:01.306 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.306 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.306 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.306 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.306 Script: put "resources/views/dashboard/wholesale-prices/index.blade.php" "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices/index.blade.php"
+. 2026-01-21 22:27:01.306 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/dashboard/wholesale-prices/" - total size: 0
+. 2026-01-21 22:27:01.306   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 22:27:01.306   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.306   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.306 File: 'index.blade.php' [2026-01-19T16:21:37.997Z] [9366]
+* 2026-01-21 22:27:01.306 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.306 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.306 Asking user:
+. 2026-01-21 22:27:01.306 Arquivo ou pasta 'index.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.306 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.306 Script: Arquivo ou pasta 'index.blade.php' não existe.
+< 2026-01-21 22:27:01.306 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.306 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.306 Answer: Skip
+* 2026-01-21 22:27:01.306 (ESkipFile) Arquivo ou pasta 'index.blade.php' não existe.
+* 2026-01-21 22:27:01.306 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.306 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.306 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.306 Script: put "resources/views/layouts/admin.blade.php" "/public_html/desenvolvimento/resources/views/layouts/admin.blade.php"
+. 2026-01-21 22:27:01.306 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/resources/views/layouts/" - total size: 0
+. 2026-01-21 22:27:01.306   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: admin.blade.php
+. 2026-01-21 22:27:01.306   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.306   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.306 File: 'admin.blade.php' [2026-01-22T01:02:40.712Z] [30389]
+* 2026-01-21 22:27:01.314 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Asking user:
+. 2026-01-21 22:27:01.314 Arquivo ou pasta 'admin.blade.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.314 Script: Arquivo ou pasta 'admin.blade.php' não existe.
+< 2026-01-21 22:27:01.314 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Answer: Skip
+* 2026-01-21 22:27:01.314 (ESkipFile) Arquivo ou pasta 'admin.blade.php' não existe.
+* 2026-01-21 22:27:01.314 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.314 Script: put "routes/web.php" "/public_html/desenvolvimento/routes/web.php"
+. 2026-01-21 22:27:01.314 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/routes/" - total size: 0
+. 2026-01-21 22:27:01.314   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: web.php
+. 2026-01-21 22:27:01.314   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:27:01.314   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:27:01.314 File: 'web.php' [2026-01-22T00:46:51.623Z] [65406]
+* 2026-01-21 22:27:01.314 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Asking user:
+. 2026-01-21 22:27:01.314 Arquivo ou pasta 'web.php' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:27:01.314 Script: Arquivo ou pasta 'web.php' não existe.
+< 2026-01-21 22:27:01.314 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Answer: Skip
+* 2026-01-21 22:27:01.314 (ESkipFile) Arquivo ou pasta 'web.php' não existe.
+* 2026-01-21 22:27:01.314 Erro de sistema. Código: 2
+* 2026-01-21 22:27:01.314 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:27:01.314 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:27:01.314 Script: exit
+. 2026-01-21 22:27:01.314 Script: Exit code: 0
+. 2026-01-21 22:27:01.314 Desconectado do servidor
+. 2026-01-21 22:36:09.067 --------------------------------------------------------------------------
+. 2026-01-21 22:36:09.067 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 22:36:09.067 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 22:36:09.067 Log level: Normal
+. 2026-01-21 22:36:09.067 Local account: UIRÃ\uira_
+. 2026-01-21 22:36:09.067 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 22:36:09.067 Process ID: 28216
+. 2026-01-21 22:36:09.091 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 22:36:09.091 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_9968_303 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 22:36:09.091 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 22:36:09.091 Login time: quarta-feira, 21 de janeiro de 2026 22:36:09
+. 2026-01-21 22:36:09.091 --------------------------------------------------------------------------
+. 2026-01-21 22:36:09.091 Script: Retrospectively logging previous script records:
+> 2026-01-21 22:36:09.091 Script: open "Olika Dev"
+. 2026-01-21 22:36:09.091 --------------------------------------------------------------------------
+. 2026-01-21 22:36:09.091 Session name: Olika Dev (Site)
+. 2026-01-21 22:36:09.091 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 22:36:09.091 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 22:36:09.091 Transfer Protocol: FTP
+. 2026-01-21 22:36:09.091 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 22:36:09.091 Disable Nagle: No
+. 2026-01-21 22:36:09.091 Proxy: None
+. 2026-01-21 22:36:09.091 Send buffer: 262144
+. 2026-01-21 22:36:09.091 UTF: Auto
+. 2026-01-21 22:36:09.091 FTPS: None [Client certificate: No]
+. 2026-01-21 22:36:09.091 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 22:36:09.091 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 22:36:09.091 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 22:36:09.091 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 22:36:09.091 Timezone offset: 0h 0m
+. 2026-01-21 22:36:09.091 --------------------------------------------------------------------------
+< 2026-01-21 22:36:09.121 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:36:09.121 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:36:09.271 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 22:36:09.376 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 22:36:09.376 220-You are user number 3 of 150 allowed.
+< 2026-01-21 22:36:09.376 220-Local time is now 22:36. Server port: 21.
+< 2026-01-21 22:36:09.376 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 22:36:09.376 USER uira@menuolika.com.br
+< 2026-01-21 22:36:09.471 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 22:36:09.471 PASS ************
+< 2026-01-21 22:36:09.990 230 OK. Current restricted directory is /
+> 2026-01-21 22:36:09.990 SYST
+< 2026-01-21 22:36:10.088 215 UNIX Type: L8
+> 2026-01-21 22:36:10.088 FEAT
+< 2026-01-21 22:36:10.287 211-Extensions supported:
+< 2026-01-21 22:36:10.287  UTF8
+< 2026-01-21 22:36:10.287  EPRT
+< 2026-01-21 22:36:10.287  IDLE
+< 2026-01-21 22:36:10.287  MDTM
+< 2026-01-21 22:36:10.287  SIZE
+< 2026-01-21 22:36:10.287  MFMT
+< 2026-01-21 22:36:10.287  REST STREAM
+< 2026-01-21 22:36:10.287  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 22:36:10.287  MLSD
+< 2026-01-21 22:36:10.287  PRET
+< 2026-01-21 22:36:10.287  AUTH TLS
+< 2026-01-21 22:36:10.287  PBSZ
+< 2026-01-21 22:36:10.287  PROT
+< 2026-01-21 22:36:10.287  TVFS
+< 2026-01-21 22:36:10.287  ESTA
+< 2026-01-21 22:36:10.287  PASV
+< 2026-01-21 22:36:10.287  EPSV
+< 2026-01-21 22:36:10.287  ESTP
+< 2026-01-21 22:36:10.287 211 End.
+> 2026-01-21 22:36:10.287 OPTS UTF8 ON
+< 2026-01-21 22:36:10.398 504 Unknown command
+< 2026-01-21 22:36:10.398 Script: Conectado
+. 2026-01-21 22:36:10.398 Conectado
+. 2026-01-21 22:36:10.398 --------------------------------------------------------------------------
+. 2026-01-21 22:36:10.398 Using FTP protocol.
+. 2026-01-21 22:36:10.398 Doing startup conversation with host.
+< 2026-01-21 22:36:10.398 Script: Iniciando a sessão...
+> 2026-01-21 22:36:10.398 PWD
+< 2026-01-21 22:36:10.494 257 "/" is your current location
+. 2026-01-21 22:36:10.494 Changing directory to "/desenvolvimento".
+> 2026-01-21 22:36:10.494 CWD /desenvolvimento
+< 2026-01-21 22:36:10.706 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 22:36:10.706 Getting current directory name.
+> 2026-01-21 22:36:10.706 PWD
+< 2026-01-21 22:36:10.808 257 "/desenvolvimento" is your current location
+. 2026-01-21 22:36:10.808 Startup conversation with host finished.
+< 2026-01-21 22:36:10.808 Script: Sessão iniciada.
+< 2026-01-21 22:36:10.808 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 22:36:10.808 Script: option batch continue
+< 2026-01-21 22:36:10.808 Script: batch           continue  
+< 2026-01-21 22:36:10.808 Script: reconnecttime   120       
+> 2026-01-21 22:36:10.808 Script: option confirm off
+< 2026-01-21 22:36:10.808 Script: confirm         off       
+> 2026-01-21 22:36:10.808 Script: lcd "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika"
+< 2026-01-21 22:36:10.808 Script: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+> 2026-01-21 22:36:10.808 Script: mkdir "/public_html/desenvolvimento/public"
+. 2026-01-21 22:36:10.808 Creating directory "/public_html/desenvolvimento/public".
+> 2026-01-21 22:36:10.808 CWD /public_html/desenvolvimento
+< 2026-01-21 22:36:10.904 250 OK. Current directory is /public_html/desenvolvimento
+> 2026-01-21 22:36:10.904 MKD public
+< 2026-01-21 22:36:11.013 550 Can't create directory: File exists
+. 2026-01-21 22:36:11.020 Asking user:
+. 2026-01-21 22:36:11.020 Impossível criar pasta '/public_html/desenvolvimento/public'. ("Can't create directory: File exists")
+< 2026-01-21 22:36:11.020 Script: Impossível criar pasta '/public_html/desenvolvimento/public'.
+< 2026-01-21 22:36:11.020 Script: Can't create directory: File exists
+. 2026-01-21 22:36:11.020 Answer: Skip
+> 2026-01-21 22:36:11.020 Script: mkdir "/public_html/desenvolvimento/public/css"
+. 2026-01-21 22:36:11.020 Creating directory "/public_html/desenvolvimento/public/css".
+> 2026-01-21 22:36:11.020 CWD /public_html/desenvolvimento/public
+< 2026-01-21 22:36:11.071 250 OK. Current directory is /public_html/desenvolvimento/public
+> 2026-01-21 22:36:11.071 MKD css
+< 2026-01-21 22:36:11.221 550 Can't create directory: File exists
+. 2026-01-21 22:36:11.231 Asking user:
+. 2026-01-21 22:36:11.231 Impossível criar pasta '/public_html/desenvolvimento/public/css'. ("Can't create directory: File exists")
+< 2026-01-21 22:36:11.231 Script: Impossível criar pasta '/public_html/desenvolvimento/public/css'.
+< 2026-01-21 22:36:11.231 Script: Can't create directory: File exists
+. 2026-01-21 22:36:11.231 Answer: Skip
+> 2026-01-21 22:36:11.231 Script: put "public/css/sidebar-sweetspot-pixel-perfect.css" "/public_html/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:36:11.231 Copying 1 files/directories to remote directory "/public_html/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:36:11.231   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:36:11.231   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:36:11.231   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:36:11.231 File: 'sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:33:44.927Z] [5156]
+* 2026-01-21 22:36:11.242 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:36:11.242 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:36:11.242 Asking user:
+. 2026-01-21 22:36:11.242 Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:36:11.242 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:36:11.242 Script: Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:36:11.242 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:36:11.242 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:36:11.244 Answer: Skip
+* 2026-01-21 22:36:11.246 (ESkipFile) Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:36:11.246 Erro de sistema. Código: 2
+* 2026-01-21 22:36:11.246 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:36:11.246 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:36:11.247 Script: exit
+. 2026-01-21 22:36:11.247 Script: Exit code: 0
+. 2026-01-21 22:36:11.247 Desconectado do servidor
+. 2026-01-21 22:39:28.706 --------------------------------------------------------------------------
+. 2026-01-21 22:39:28.706 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 22:39:28.706 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 22:39:28.706 Log level: Normal
+. 2026-01-21 22:39:28.706 Local account: UIRÃ\uira_
+. 2026-01-21 22:39:28.706 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 22:39:28.706 Process ID: 27636
+. 2026-01-21 22:39:28.747 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 22:39:28.747 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_11752_325 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 22:39:28.747 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 22:39:28.747 Login time: quarta-feira, 21 de janeiro de 2026 22:39:28
+. 2026-01-21 22:39:28.747 --------------------------------------------------------------------------
+. 2026-01-21 22:39:28.747 Script: Retrospectively logging previous script records:
+> 2026-01-21 22:39:28.747 Script: open "Olika Dev"
+. 2026-01-21 22:39:28.747 --------------------------------------------------------------------------
+. 2026-01-21 22:39:28.747 Session name: Olika Dev (Site)
+. 2026-01-21 22:39:28.747 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 22:39:28.747 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 22:39:28.747 Transfer Protocol: FTP
+. 2026-01-21 22:39:28.752 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 22:39:28.752 Disable Nagle: No
+. 2026-01-21 22:39:28.752 Proxy: None
+. 2026-01-21 22:39:28.752 Send buffer: 262144
+. 2026-01-21 22:39:28.752 UTF: Auto
+. 2026-01-21 22:39:28.752 FTPS: None [Client certificate: No]
+. 2026-01-21 22:39:28.752 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 22:39:28.752 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 22:39:28.752 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 22:39:28.752 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 22:39:28.752 Timezone offset: 0h 0m
+. 2026-01-21 22:39:28.752 --------------------------------------------------------------------------
+< 2026-01-21 22:39:28.779 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:39:28.779 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:39:28.950 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 22:39:29.046 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 22:39:29.046 220-You are user number 3 of 150 allowed.
+< 2026-01-21 22:39:29.046 220-Local time is now 22:39. Server port: 21.
+< 2026-01-21 22:39:29.046 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 22:39:29.046 USER uira@menuolika.com.br
+< 2026-01-21 22:39:29.117 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 22:39:29.117 PASS ************
+< 2026-01-21 22:39:29.564 230 OK. Current restricted directory is /
+> 2026-01-21 22:39:29.564 SYST
+< 2026-01-21 22:39:29.739 215 UNIX Type: L8
+> 2026-01-21 22:39:29.739 FEAT
+< 2026-01-21 22:39:29.860 211-Extensions supported:
+< 2026-01-21 22:39:29.860  UTF8
+< 2026-01-21 22:39:29.860  EPRT
+< 2026-01-21 22:39:29.860  IDLE
+< 2026-01-21 22:39:29.860  MDTM
+< 2026-01-21 22:39:29.860  SIZE
+< 2026-01-21 22:39:29.860  MFMT
+< 2026-01-21 22:39:29.860  REST STREAM
+< 2026-01-21 22:39:29.860  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 22:39:29.860  MLSD
+< 2026-01-21 22:39:29.860  PRET
+< 2026-01-21 22:39:29.860  AUTH TLS
+< 2026-01-21 22:39:29.860  PBSZ
+< 2026-01-21 22:39:29.860  PROT
+< 2026-01-21 22:39:29.860  TVFS
+< 2026-01-21 22:39:29.860  ESTA
+< 2026-01-21 22:39:29.860  PASV
+< 2026-01-21 22:39:29.860  EPSV
+< 2026-01-21 22:39:29.860  ESTP
+< 2026-01-21 22:39:29.860 211 End.
+> 2026-01-21 22:39:29.860 OPTS UTF8 ON
+< 2026-01-21 22:39:29.975 504 Unknown command
+< 2026-01-21 22:39:29.975 Script: Conectado
+. 2026-01-21 22:39:29.975 Conectado
+. 2026-01-21 22:39:29.975 --------------------------------------------------------------------------
+. 2026-01-21 22:39:29.975 Using FTP protocol.
+. 2026-01-21 22:39:29.975 Doing startup conversation with host.
+< 2026-01-21 22:39:29.975 Script: Iniciando a sessão...
+> 2026-01-21 22:39:29.975 PWD
+< 2026-01-21 22:39:30.065 257 "/" is your current location
+. 2026-01-21 22:39:30.065 Changing directory to "/desenvolvimento".
+> 2026-01-21 22:39:30.065 CWD /desenvolvimento
+< 2026-01-21 22:39:30.180 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 22:39:30.180 Getting current directory name.
+> 2026-01-21 22:39:30.180 PWD
+< 2026-01-21 22:39:30.379 257 "/desenvolvimento" is your current location
+. 2026-01-21 22:39:30.379 Startup conversation with host finished.
+< 2026-01-21 22:39:30.379 Script: Sessão iniciada.
+< 2026-01-21 22:39:30.379 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 22:39:30.379 Script: option batch continue
+< 2026-01-21 22:39:30.379 Script: batch           continue  
+< 2026-01-21 22:39:30.379 Script: reconnecttime   120       
+> 2026-01-21 22:39:30.382 Script: option confirm off
+< 2026-01-21 22:39:30.382 Script: confirm         off       
+> 2026-01-21 22:39:30.382 Script: lcd "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika"
+< 2026-01-21 22:39:30.382 Script: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+> 2026-01-21 22:39:30.382 Script: mkdir "/desenvolvimento/public"
+. 2026-01-21 22:39:30.382 Creating directory "/desenvolvimento/public".
+> 2026-01-21 22:39:30.382 CWD /desenvolvimento
+< 2026-01-21 22:39:30.488 250 OK. Current directory is /desenvolvimento
+> 2026-01-21 22:39:30.488 MKD public
+< 2026-01-21 22:39:30.588 550 Can't create directory: File exists
+. 2026-01-21 22:39:30.588 Asking user:
+. 2026-01-21 22:39:30.588 Impossível criar pasta '/desenvolvimento/public'. ("Can't create directory: File exists")
+< 2026-01-21 22:39:30.588 Script: Impossível criar pasta '/desenvolvimento/public'.
+< 2026-01-21 22:39:30.588 Script: Can't create directory: File exists
+. 2026-01-21 22:39:30.596 Answer: Skip
+> 2026-01-21 22:39:30.596 Script: mkdir "/desenvolvimento/public/css"
+. 2026-01-21 22:39:30.596 Creating directory "/desenvolvimento/public/css".
+> 2026-01-21 22:39:30.596 CWD /desenvolvimento/public
+< 2026-01-21 22:39:30.689 250 OK. Current directory is /desenvolvimento/public
+> 2026-01-21 22:39:30.689 MKD css
+< 2026-01-21 22:39:30.793 550 Can't create directory: File exists
+. 2026-01-21 22:39:30.802 Asking user:
+. 2026-01-21 22:39:30.802 Impossível criar pasta '/desenvolvimento/public/css'. ("Can't create directory: File exists")
+< 2026-01-21 22:39:30.802 Script: Impossível criar pasta '/desenvolvimento/public/css'.
+< 2026-01-21 22:39:30.802 Script: Can't create directory: File exists
+. 2026-01-21 22:39:30.802 Answer: Skip
+> 2026-01-21 22:39:30.802 Script: put "public/css/sidebar-sweetspot-pixel-perfect.css" "/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:39:30.802 Copying 1 files/directories to remote directory "/desenvolvimento/public/css/" - total size: 0
+. 2026-01-21 22:39:30.802   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:39:30.802   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:39:30.802   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:39:30.802 File: 'sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:33:44.927Z] [5156]
+* 2026-01-21 22:39:30.809 (EOSError) Erro de sistema. Código: 2
+* 2026-01-21 22:39:30.809 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:39:30.809 Asking user:
+. 2026-01-21 22:39:30.809 Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe. ("Erro de sistema. Código: 2
+. 2026-01-21 22:39:30.809 O sistema não pode encontrar o arquivo especificado")
+< 2026-01-21 22:39:30.809 Script: Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+< 2026-01-21 22:39:30.809 Script: Erro de sistema. Código: 2
+< 2026-01-21 22:39:30.809 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:39:30.809 Answer: Skip
+* 2026-01-21 22:39:30.809 (ESkipFile) Arquivo ou pasta 'sidebar-sweetspot-pixel-perfect.css' não existe.
+* 2026-01-21 22:39:30.809 Erro de sistema. Código: 2
+* 2026-01-21 22:39:30.809 O sistema não pode encontrar o arquivo especificado
+. 2026-01-21 22:39:30.809 Copying finished: Transferred: 0, Elapsed: 0:00:00, CPS: 0/s
+> 2026-01-21 22:39:30.809 Script: exit
+. 2026-01-21 22:39:30.809 Script: Exit code: 0
+. 2026-01-21 22:39:30.818 Desconectado do servidor
+. 2026-01-21 22:44:37.764 --------------------------------------------------------------------------
+. 2026-01-21 22:44:37.764 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 22:44:37.764 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 22:44:37.764 Log level: Normal
+. 2026-01-21 22:44:37.764 Local account: UIRÃ\uira_
+. 2026-01-21 22:44:37.764 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 22:44:37.764 Process ID: 17912
+. 2026-01-21 22:44:37.783 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 22:44:37.783 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_13944_445 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 22:44:37.783 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 22:44:37.783 Login time: quarta-feira, 21 de janeiro de 2026 22:44:37
+. 2026-01-21 22:44:37.783 --------------------------------------------------------------------------
+. 2026-01-21 22:44:37.783 Script: Retrospectively logging previous script records:
+> 2026-01-21 22:44:37.783 Script: open "Olika Dev"
+. 2026-01-21 22:44:37.783 --------------------------------------------------------------------------
+. 2026-01-21 22:44:37.783 Session name: Olika Dev (Site)
+. 2026-01-21 22:44:37.783 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 22:44:37.783 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 22:44:37.783 Transfer Protocol: FTP
+. 2026-01-21 22:44:37.783 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 22:44:37.783 Disable Nagle: No
+. 2026-01-21 22:44:37.783 Proxy: None
+. 2026-01-21 22:44:37.783 Send buffer: 262144
+. 2026-01-21 22:44:37.783 UTF: Auto
+. 2026-01-21 22:44:37.783 FTPS: None [Client certificate: No]
+. 2026-01-21 22:44:37.783 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 22:44:37.783 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 22:44:37.783 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 22:44:37.783 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 22:44:37.783 Timezone offset: 0h 0m
+. 2026-01-21 22:44:37.783 --------------------------------------------------------------------------
+< 2026-01-21 22:44:37.815 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:44:37.816 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 22:44:37.897 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 22:44:37.964 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 22:44:37.964 220-You are user number 3 of 150 allowed.
+< 2026-01-21 22:44:37.964 220-Local time is now 22:44. Server port: 21.
+< 2026-01-21 22:44:37.964 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 22:44:37.964 USER uira@menuolika.com.br
+< 2026-01-21 22:44:38.013 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 22:44:38.013 PASS ************
+< 2026-01-21 22:44:38.413 230 OK. Current restricted directory is /
+> 2026-01-21 22:44:38.413 SYST
+< 2026-01-21 22:44:38.479 215 UNIX Type: L8
+> 2026-01-21 22:44:38.479 FEAT
+< 2026-01-21 22:44:38.530 211-Extensions supported:
+< 2026-01-21 22:44:38.530  UTF8
+< 2026-01-21 22:44:38.530  EPRT
+< 2026-01-21 22:44:38.530  IDLE
+< 2026-01-21 22:44:38.530  MDTM
+< 2026-01-21 22:44:38.530  SIZE
+< 2026-01-21 22:44:38.530  MFMT
+< 2026-01-21 22:44:38.530  REST STREAM
+< 2026-01-21 22:44:38.530  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 22:44:38.530  MLSD
+< 2026-01-21 22:44:38.530  PRET
+< 2026-01-21 22:44:38.530  AUTH TLS
+< 2026-01-21 22:44:38.530  PBSZ
+< 2026-01-21 22:44:38.530  PROT
+< 2026-01-21 22:44:38.530  TVFS
+< 2026-01-21 22:44:38.530  ESTA
+< 2026-01-21 22:44:38.530  PASV
+< 2026-01-21 22:44:38.530  EPSV
+< 2026-01-21 22:44:38.530  ESTP
+< 2026-01-21 22:44:38.530 211 End.
+> 2026-01-21 22:44:38.530 OPTS UTF8 ON
+< 2026-01-21 22:44:38.580 504 Unknown command
+< 2026-01-21 22:44:38.580 Script: Conectado
+. 2026-01-21 22:44:38.580 Conectado
+. 2026-01-21 22:44:38.580 --------------------------------------------------------------------------
+. 2026-01-21 22:44:38.580 Using FTP protocol.
+. 2026-01-21 22:44:38.580 Doing startup conversation with host.
+< 2026-01-21 22:44:38.580 Script: Iniciando a sessão...
+> 2026-01-21 22:44:38.580 PWD
+< 2026-01-21 22:44:38.645 257 "/" is your current location
+. 2026-01-21 22:44:38.645 Changing directory to "/desenvolvimento".
+> 2026-01-21 22:44:38.646 CWD /desenvolvimento
+< 2026-01-21 22:44:38.697 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 22:44:38.697 Getting current directory name.
+> 2026-01-21 22:44:38.697 PWD
+< 2026-01-21 22:44:38.747 257 "/desenvolvimento" is your current location
+. 2026-01-21 22:44:38.747 Startup conversation with host finished.
+< 2026-01-21 22:44:38.747 Script: Sessão iniciada.
+< 2026-01-21 22:44:38.747 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 22:44:38.747 Script: option batch continue
+< 2026-01-21 22:44:38.747 Script: batch           continue  
+< 2026-01-21 22:44:38.747 Script: reconnecttime   120       
+> 2026-01-21 22:44:38.747 Script: option confirm off
+< 2026-01-21 22:44:38.747 Script: confirm         off       
+> 2026-01-21 22:44:38.747 Script: mkdir "/desenvolvimento/public"
+. 2026-01-21 22:44:38.747 Creating directory "/desenvolvimento/public".
+> 2026-01-21 22:44:38.747 CWD /desenvolvimento
+< 2026-01-21 22:44:38.813 250 OK. Current directory is /desenvolvimento
+> 2026-01-21 22:44:38.813 MKD public
+< 2026-01-21 22:44:38.864 550 Can't create directory: File exists
+. 2026-01-21 22:44:38.864 Asking user:
+. 2026-01-21 22:44:38.864 Impossível criar pasta '/desenvolvimento/public'. ("Can't create directory: File exists")
+< 2026-01-21 22:44:38.864 Script: Impossível criar pasta '/desenvolvimento/public'.
+< 2026-01-21 22:44:38.864 Script: Can't create directory: File exists
+. 2026-01-21 22:44:38.864 Answer: Skip
+> 2026-01-21 22:44:38.864 Script: mkdir "/desenvolvimento/public/css"
+. 2026-01-21 22:44:38.864 Creating directory "/desenvolvimento/public/css".
+> 2026-01-21 22:44:38.864 CWD /desenvolvimento/public
+< 2026-01-21 22:44:38.918 250 OK. Current directory is /desenvolvimento/public
+> 2026-01-21 22:44:38.918 MKD css
+< 2026-01-21 22:44:38.985 550 Can't create directory: File exists
+. 2026-01-21 22:44:38.985 Asking user:
+. 2026-01-21 22:44:38.985 Impossível criar pasta '/desenvolvimento/public/css'. ("Can't create directory: File exists")
+< 2026-01-21 22:44:38.985 Script: Impossível criar pasta '/desenvolvimento/public/css'.
+< 2026-01-21 22:44:38.985 Script: Can't create directory: File exists
+. 2026-01-21 22:44:38.985 Answer: Skip
+> 2026-01-21 22:44:38.985 Script: put "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css" "/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 22:44:38.985 Copying 1 files/directories to remote directory "/desenvolvimento/public/css/" - total size: 5.156
+. 2026-01-21 22:44:38.985   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:44:38.985   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 22:44:38.985   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 22:44:38.985 File: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:33:44.927Z] [5156]
+. 2026-01-21 22:44:38.985 Copying "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css" to remote directory started.
+. 2026-01-21 22:44:38.985 Binary transfer mode selected.
+. 2026-01-21 22:44:38.985 Iniciando carregamento de C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css
+> 2026-01-21 22:44:38.985 CWD /desenvolvimento/public/css
+< 2026-01-21 22:44:39.030 250 OK. Current directory is /desenvolvimento/public/css
+> 2026-01-21 22:44:39.030 PWD
+< 2026-01-21 22:44:39.098 257 "/desenvolvimento/public/css" is your current location
+> 2026-01-21 22:44:39.098 TYPE I
+< 2026-01-21 22:44:39.150 200 TYPE is now 8-bit binary
+> 2026-01-21 22:44:39.150 PASV
+< 2026-01-21 22:44:39.204 227 Entering Passive Mode (69,6,212,145,136,55)
+> 2026-01-21 22:44:39.208 STOR sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 22:44:39.208 Conectando a 69.6.212.145:34871...
+< 2026-01-21 22:44:39.314 150 Accepted data connection
+< 2026-01-21 22:44:39.364 226-File successfully transferred
+< 2026-01-21 22:44:39.364 226 0.054 seconds (measured here), 92.46 Kbytes per second
+> 2026-01-21 22:44:39.364 MFMT 20260122013344 sidebar-sweetspot-pixel-perfect.css
+< 2026-01-21 22:44:39.418 213 UTIME OK
+. 2026-01-21 22:44:39.418 Carregamento bem-sucedido
+. 2026-01-21 22:44:39.418 Transfer done: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css' => '/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css' [5156]
+. 2026-01-21 22:44:39.418 Copying finished: Transferred: 5.156, Elapsed: 0:00:00, CPS: 11.907/s
+> 2026-01-21 22:44:39.418 Script: exit
+. 2026-01-21 22:44:39.418 Script: Exit code: 0
+. 2026-01-21 22:44:39.418 Desconectado do servidor
+. 2026-01-21 23:00:03.188 --------------------------------------------------------------------------
+. 2026-01-21 23:00:03.188 WinSCP Versão 6.5.5 (Build 16453 2025-11-19) (OS 10.0.26200 – Windows 11 Home Single Language)
+. 2026-01-21 23:00:03.188 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2026-01-21 23:00:03.188 Log level: Normal
+. 2026-01-21 23:00:03.188 Local account: UIRÃ\uira_
+. 2026-01-21 23:00:03.188 Working directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika
+. 2026-01-21 23:00:03.188 Process ID: 22668
+. 2026-01-21 23:00:03.205 Ancestor processes: WinSCP, powershell, Cursor, Cursor, explorer, ...
+. 2026-01-21 23:00:03.205 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe" /console=6.5.5 /consoleinstance=_26404_922 "/log=.deploy-hostgator.log" "/command" "/stdin" 
+. 2026-01-21 23:00:03.205 Time zone: Current: GMT-3 (Hora Padrão da Bahia), No DST
+. 2026-01-21 23:00:03.205 Login time: quarta-feira, 21 de janeiro de 2026 23:00:03
+. 2026-01-21 23:00:03.205 --------------------------------------------------------------------------
+. 2026-01-21 23:00:03.205 Script: Retrospectively logging previous script records:
+> 2026-01-21 23:00:03.205 Script: open "Olika Dev"
+. 2026-01-21 23:00:03.205 --------------------------------------------------------------------------
+. 2026-01-21 23:00:03.205 Session name: Olika Dev (Site)
+. 2026-01-21 23:00:03.205 Host name: sh00076.hostgator.com.br (Port: 21)
+. 2026-01-21 23:00:03.205 User name: uira@menuolika.com.br (Password: Yes, Key file: No, Passphrase: No)
+. 2026-01-21 23:00:03.205 Transfer Protocol: FTP
+. 2026-01-21 23:00:03.205 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2026-01-21 23:00:03.205 Disable Nagle: No
+. 2026-01-21 23:00:03.205 Proxy: None
+. 2026-01-21 23:00:03.205 Send buffer: 262144
+. 2026-01-21 23:00:03.205 UTF: Auto
+. 2026-01-21 23:00:03.205 FTPS: None [Client certificate: No]
+. 2026-01-21 23:00:03.205 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2026-01-21 23:00:03.205 Local directory: C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika, Remote directory: /desenvolvimento, Update: Yes, Cache: Yes
+. 2026-01-21 23:00:03.205 Cache directory changes: Yes, Permanent: Yes
+. 2026-01-21 23:00:03.205 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2026-01-21 23:00:03.205 Timezone offset: 0h 0m
+. 2026-01-21 23:00:03.205 --------------------------------------------------------------------------
+< 2026-01-21 23:00:03.241 Script: Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 23:00:03.241 Conectando a sh00076.hostgator.com.br...
+. 2026-01-21 23:00:03.340 Conectado com sh00076.hostgator.com.br. Aguardando mensagem de boas-vindas...
+< 2026-01-21 23:00:03.390 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 2026-01-21 23:00:03.390 220-You are user number 1 of 150 allowed.
+< 2026-01-21 23:00:03.390 220-Local time is now 23:00. Server port: 21.
+< 2026-01-21 23:00:03.390 220 You will be disconnected after 15 minutes of inactivity.
+> 2026-01-21 23:00:03.390 USER uira@menuolika.com.br
+< 2026-01-21 23:00:03.439 331 User uira@menuolika.com.br OK. Password required
+> 2026-01-21 23:00:03.439 PASS ************
+< 2026-01-21 23:00:04.217 230 OK. Current restricted directory is /
+> 2026-01-21 23:00:04.217 SYST
+< 2026-01-21 23:00:04.261 215 UNIX Type: L8
+> 2026-01-21 23:00:04.261 FEAT
+< 2026-01-21 23:00:04.324 211-Extensions supported:
+< 2026-01-21 23:00:04.324  UTF8
+< 2026-01-21 23:00:04.324  EPRT
+< 2026-01-21 23:00:04.324  IDLE
+< 2026-01-21 23:00:04.324  MDTM
+< 2026-01-21 23:00:04.324  SIZE
+< 2026-01-21 23:00:04.343  MFMT
+< 2026-01-21 23:00:04.343  REST STREAM
+< 2026-01-21 23:00:04.343  MLST type*;size*;sizd*;modify*;UNIX.mode*;UNIX.uid*;UNIX.gid*;unique*;
+< 2026-01-21 23:00:04.343  MLSD
+< 2026-01-21 23:00:04.343  PRET
+< 2026-01-21 23:00:04.343  AUTH TLS
+< 2026-01-21 23:00:04.343  PBSZ
+< 2026-01-21 23:00:04.343  PROT
+< 2026-01-21 23:00:04.343  TVFS
+< 2026-01-21 23:00:04.343  ESTA
+< 2026-01-21 23:00:04.343  PASV
+< 2026-01-21 23:00:04.343  EPSV
+< 2026-01-21 23:00:04.343  ESTP
+< 2026-01-21 23:00:04.343 211 End.
+> 2026-01-21 23:00:04.343 OPTS UTF8 ON
+< 2026-01-21 23:00:04.378 504 Unknown command
+< 2026-01-21 23:00:04.378 Script: Conectado
+. 2026-01-21 23:00:04.378 Conectado
+. 2026-01-21 23:00:04.378 --------------------------------------------------------------------------
+. 2026-01-21 23:00:04.378 Using FTP protocol.
+. 2026-01-21 23:00:04.378 Doing startup conversation with host.
+< 2026-01-21 23:00:04.378 Script: Iniciando a sessão...
+> 2026-01-21 23:00:04.378 PWD
+< 2026-01-21 23:00:04.427 257 "/" is your current location
+. 2026-01-21 23:00:04.427 Changing directory to "/desenvolvimento".
+> 2026-01-21 23:00:04.427 CWD /desenvolvimento
+< 2026-01-21 23:00:04.489 250 OK. Current directory is /desenvolvimento
+. 2026-01-21 23:00:04.489 Getting current directory name.
+> 2026-01-21 23:00:04.489 PWD
+< 2026-01-21 23:00:04.543 257 "/desenvolvimento" is your current location
+. 2026-01-21 23:00:04.543 Startup conversation with host finished.
+< 2026-01-21 23:00:04.543 Script: Sessão iniciada.
+< 2026-01-21 23:00:04.543 Script: Sessão ativa: [1] Olika Dev
+> 2026-01-21 23:00:04.543 Script: option batch continue
+< 2026-01-21 23:00:04.543 Script: batch           continue  
+< 2026-01-21 23:00:04.543 Script: reconnecttime   120       
+> 2026-01-21 23:00:04.543 Script: option confirm off
+< 2026-01-21 23:00:04.543 Script: confirm         off       
+> 2026-01-21 23:00:04.543 Script: mkdir "/desenvolvimento/public"
+. 2026-01-21 23:00:04.543 Creating directory "/desenvolvimento/public".
+> 2026-01-21 23:00:04.543 CWD /desenvolvimento
+< 2026-01-21 23:00:04.593 250 OK. Current directory is /desenvolvimento
+> 2026-01-21 23:00:04.593 MKD public
+< 2026-01-21 23:00:04.655 550 Can't create directory: File exists
+. 2026-01-21 23:00:04.659 Asking user:
+. 2026-01-21 23:00:04.659 Impossível criar pasta '/desenvolvimento/public'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:04.659 Script: Impossível criar pasta '/desenvolvimento/public'.
+< 2026-01-21 23:00:04.659 Script: Can't create directory: File exists
+. 2026-01-21 23:00:04.660 Answer: Skip
+> 2026-01-21 23:00:04.660 Script: mkdir "/desenvolvimento/resources"
+. 2026-01-21 23:00:04.660 Creating directory "/desenvolvimento/resources".
+> 2026-01-21 23:00:04.660 CWD /desenvolvimento
+< 2026-01-21 23:00:04.713 250 OK. Current directory is /desenvolvimento
+> 2026-01-21 23:00:04.713 MKD resources
+< 2026-01-21 23:00:04.764 550 Can't create directory: File exists
+. 2026-01-21 23:00:04.764 Asking user:
+. 2026-01-21 23:00:04.764 Impossível criar pasta '/desenvolvimento/resources'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:04.764 Script: Impossível criar pasta '/desenvolvimento/resources'.
+< 2026-01-21 23:00:04.764 Script: Can't create directory: File exists
+. 2026-01-21 23:00:04.771 Answer: Skip
+> 2026-01-21 23:00:04.771 Script: mkdir "/desenvolvimento/public/css"
+. 2026-01-21 23:00:04.771 Creating directory "/desenvolvimento/public/css".
+> 2026-01-21 23:00:04.772 CWD /desenvolvimento/public
+< 2026-01-21 23:00:04.825 250 OK. Current directory is /desenvolvimento/public
+> 2026-01-21 23:00:04.825 MKD css
+< 2026-01-21 23:00:04.874 550 Can't create directory: File exists
+. 2026-01-21 23:00:04.883 Asking user:
+. 2026-01-21 23:00:04.883 Impossível criar pasta '/desenvolvimento/public/css'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:04.883 Script: Impossível criar pasta '/desenvolvimento/public/css'.
+< 2026-01-21 23:00:04.883 Script: Can't create directory: File exists
+. 2026-01-21 23:00:04.883 Answer: Skip
+> 2026-01-21 23:00:04.883 Script: mkdir "/desenvolvimento/resources/views"
+. 2026-01-21 23:00:04.883 Creating directory "/desenvolvimento/resources/views".
+> 2026-01-21 23:00:04.883 CWD /desenvolvimento/resources
+< 2026-01-21 23:00:04.941 250 OK. Current directory is /desenvolvimento/resources
+> 2026-01-21 23:00:04.941 MKD views
+< 2026-01-21 23:00:04.991 550 Can't create directory: File exists
+. 2026-01-21 23:00:04.991 Asking user:
+. 2026-01-21 23:00:04.991 Impossível criar pasta '/desenvolvimento/resources/views'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:04.991 Script: Impossível criar pasta '/desenvolvimento/resources/views'.
+< 2026-01-21 23:00:04.991 Script: Can't create directory: File exists
+. 2026-01-21 23:00:04.991 Answer: Skip
+> 2026-01-21 23:00:04.991 Script: mkdir "/desenvolvimento/resources/views/dash"
+. 2026-01-21 23:00:04.991 Creating directory "/desenvolvimento/resources/views/dash".
+> 2026-01-21 23:00:04.991 CWD /desenvolvimento/resources/views
+< 2026-01-21 23:00:05.054 250 OK. Current directory is /desenvolvimento/resources/views
+> 2026-01-21 23:00:05.054 MKD dash
+< 2026-01-21 23:00:05.107 550 Can't create directory: File exists
+. 2026-01-21 23:00:05.111 Asking user:
+. 2026-01-21 23:00:05.111 Impossível criar pasta '/desenvolvimento/resources/views/dash'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:05.111 Script: Impossível criar pasta '/desenvolvimento/resources/views/dash'.
+< 2026-01-21 23:00:05.111 Script: Can't create directory: File exists
+. 2026-01-21 23:00:05.111 Answer: Skip
+> 2026-01-21 23:00:05.111 Script: mkdir "/desenvolvimento/resources/views/layouts"
+. 2026-01-21 23:00:05.111 Creating directory "/desenvolvimento/resources/views/layouts".
+> 2026-01-21 23:00:05.111 CWD /desenvolvimento/resources/views
+< 2026-01-21 23:00:05.157 250 OK. Current directory is /desenvolvimento/resources/views
+> 2026-01-21 23:00:05.157 MKD layouts
+< 2026-01-21 23:00:05.223 550 Can't create directory: File exists
+. 2026-01-21 23:00:05.224 Asking user:
+. 2026-01-21 23:00:05.224 Impossível criar pasta '/desenvolvimento/resources/views/layouts'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:05.224 Script: Impossível criar pasta '/desenvolvimento/resources/views/layouts'.
+< 2026-01-21 23:00:05.224 Script: Can't create directory: File exists
+. 2026-01-21 23:00:05.224 Answer: Skip
+> 2026-01-21 23:00:05.224 Script: mkdir "/desenvolvimento/resources/views/dashboard"
+. 2026-01-21 23:00:05.224 Creating directory "/desenvolvimento/resources/views/dashboard".
+> 2026-01-21 23:00:05.224 CWD /desenvolvimento/resources/views
+< 2026-01-21 23:00:05.274 250 OK. Current directory is /desenvolvimento/resources/views
+> 2026-01-21 23:00:05.274 MKD dashboard
+< 2026-01-21 23:00:05.324 550 Can't create directory: File exists
+. 2026-01-21 23:00:05.339 Asking user:
+. 2026-01-21 23:00:05.339 Impossível criar pasta '/desenvolvimento/resources/views/dashboard'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:05.339 Script: Impossível criar pasta '/desenvolvimento/resources/views/dashboard'.
+< 2026-01-21 23:00:05.339 Script: Can't create directory: File exists
+. 2026-01-21 23:00:05.340 Answer: Skip
+> 2026-01-21 23:00:05.340 Script: mkdir "/desenvolvimento/resources/views/dash/layouts"
+. 2026-01-21 23:00:05.340 Creating directory "/desenvolvimento/resources/views/dash/layouts".
+> 2026-01-21 23:00:05.341 CWD /desenvolvimento/resources/views/dash
+< 2026-01-21 23:00:05.390 250 OK. Current directory is /desenvolvimento/resources/views/dash
+> 2026-01-21 23:00:05.390 MKD layouts
+< 2026-01-21 23:00:05.441 550 Can't create directory: File exists
+. 2026-01-21 23:00:05.441 Asking user:
+. 2026-01-21 23:00:05.441 Impossível criar pasta '/desenvolvimento/resources/views/dash/layouts'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:05.441 Script: Impossível criar pasta '/desenvolvimento/resources/views/dash/layouts'.
+< 2026-01-21 23:00:05.441 Script: Can't create directory: File exists
+. 2026-01-21 23:00:05.441 Answer: Skip
+> 2026-01-21 23:00:05.454 Script: mkdir "/desenvolvimento/resources/views/dashboard/dashboard"
+. 2026-01-21 23:00:05.454 Creating directory "/desenvolvimento/resources/views/dashboard/dashboard".
+> 2026-01-21 23:00:05.455 CWD /desenvolvimento/resources/views/dashboard
+< 2026-01-21 23:00:05.507 250 OK. Current directory is /desenvolvimento/resources/views/dashboard
+> 2026-01-21 23:00:05.507 MKD dashboard
+< 2026-01-21 23:00:05.559 550 Can't create directory: File exists
+. 2026-01-21 23:00:05.559 Asking user:
+. 2026-01-21 23:00:05.559 Impossível criar pasta '/desenvolvimento/resources/views/dashboard/dashboard'. ("Can't create directory: File exists")
+< 2026-01-21 23:00:05.559 Script: Impossível criar pasta '/desenvolvimento/resources/views/dashboard/dashboard'.
+< 2026-01-21 23:00:05.559 Script: Can't create directory: File exists
+. 2026-01-21 23:00:05.559 Answer: Skip
+> 2026-01-21 23:00:05.559 Script: put "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css" "/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css"
+. 2026-01-21 23:00:05.559 Copying 1 files/directories to remote directory "/desenvolvimento/public/css/" - total size: 5.156
+. 2026-01-21 23:00:05.559   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 23:00:05.559   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 23:00:05.559   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 23:00:05.559 File: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css' [2026-01-22T01:33:44.927Z] [5156]
+. 2026-01-21 23:00:05.559 Copying "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css" to remote directory started.
+. 2026-01-21 23:00:05.559 Binary transfer mode selected.
+. 2026-01-21 23:00:05.559 Iniciando carregamento de C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css
+> 2026-01-21 23:00:05.559 CWD /desenvolvimento/public/css
+< 2026-01-21 23:00:05.623 250 OK. Current directory is /desenvolvimento/public/css
+> 2026-01-21 23:00:05.623 PWD
+< 2026-01-21 23:00:05.673 257 "/desenvolvimento/public/css" is your current location
+> 2026-01-21 23:00:05.673 TYPE I
+< 2026-01-21 23:00:05.723 200 TYPE is now 8-bit binary
+> 2026-01-21 23:00:05.723 PASV
+< 2026-01-21 23:00:05.786 227 Entering Passive Mode (69,6,212,145,131,181)
+> 2026-01-21 23:00:05.786 STOR sidebar-sweetspot-pixel-perfect.css
+. 2026-01-21 23:00:05.786 Conectando a 69.6.212.145:33717...
+< 2026-01-21 23:00:05.888 150 Accepted data connection
+< 2026-01-21 23:00:05.938 226-File successfully transferred
+< 2026-01-21 23:00:05.938 226 0.053 seconds (measured here), 94.38 Kbytes per second
+> 2026-01-21 23:00:05.938 MFMT 20260122013344 sidebar-sweetspot-pixel-perfect.css
+< 2026-01-21 23:00:06.005 213 UTIME OK
+. 2026-01-21 23:00:06.005 Carregamento bem-sucedido
+. 2026-01-21 23:00:06.005 Transfer done: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\public\css\sidebar-sweetspot-pixel-perfect.css' => '/desenvolvimento/public/css/sidebar-sweetspot-pixel-perfect.css' [5156]
+. 2026-01-21 23:00:06.005 Copying finished: Transferred: 5.156, Elapsed: 0:00:00, CPS: 11.560/s
+> 2026-01-21 23:00:06.005 Script: put "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dash\layouts\app.blade.php" "/desenvolvimento/resources/views/dash/layouts/app.blade.php"
+. 2026-01-21 23:00:06.005 Copying 1 files/directories to remote directory "/desenvolvimento/resources/views/dash/layouts/" - total size: 31.736
+. 2026-01-21 23:00:06.005   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: app.blade.php
+. 2026-01-21 23:00:06.005   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 23:00:06.005   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 23:00:06.005 File: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dash\layouts\app.blade.php' [2026-01-22T01:57:58.944Z] [31736]
+. 2026-01-21 23:00:06.005 Copying "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dash\layouts\app.blade.php" to remote directory started.
+. 2026-01-21 23:00:06.005 Binary transfer mode selected.
+. 2026-01-21 23:00:06.005 Iniciando carregamento de C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dash\layouts\app.blade.php
+> 2026-01-21 23:00:06.005 CWD /desenvolvimento/resources/views/dash/layouts
+< 2026-01-21 23:00:06.056 250 OK. Current directory is /desenvolvimento/resources/views/dash/layouts
+> 2026-01-21 23:00:06.056 PWD
+< 2026-01-21 23:00:06.106 257 "/desenvolvimento/resources/views/dash/layouts" is your current location
+> 2026-01-21 23:00:06.106 TYPE I
+< 2026-01-21 23:00:06.155 200 TYPE is now 8-bit binary
+> 2026-01-21 23:00:06.155 PASV
+< 2026-01-21 23:00:06.221 227 Entering Passive Mode (69,6,212,145,152,119)
+> 2026-01-21 23:00:06.221 STOR app.blade.php
+. 2026-01-21 23:00:06.221 Conectando a 69.6.212.145:39031...
+< 2026-01-21 23:00:06.329 150 Accepted data connection
+< 2026-01-21 23:00:06.444 226-File successfully transferred
+< 2026-01-21 23:00:06.444 226 0.112 seconds (measured here), 276.75 Kbytes per second
+> 2026-01-21 23:00:06.444 MFMT 20260122015758 app.blade.php
+< 2026-01-21 23:00:06.503 213 UTIME OK
+. 2026-01-21 23:00:06.503 Carregamento bem-sucedido
+. 2026-01-21 23:00:06.503 Transfer done: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dash\layouts\app.blade.php' => '/desenvolvimento/resources/views/dash/layouts/app.blade.php' [31736]
+. 2026-01-21 23:00:06.503 Copying finished: Transferred: 31.736, Elapsed: 0:00:00, CPS: 63.726/s
+> 2026-01-21 23:00:06.504 Script: put "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dashboard\dashboard\index.blade.php" "/desenvolvimento/resources/views/dashboard/dashboard/index.blade.php"
+. 2026-01-21 23:00:06.504 Copying 1 files/directories to remote directory "/desenvolvimento/resources/views/dashboard/dashboard/" - total size: 16.985
+. 2026-01-21 23:00:06.504   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: index.blade.php
+. 2026-01-21 23:00:06.504   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 23:00:06.504   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 23:00:06.504 File: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dashboard\dashboard\index.blade.php' [2026-01-22T01:58:34.283Z] [16985]
+. 2026-01-21 23:00:06.504 Copying "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dashboard\dashboard\index.blade.php" to remote directory started.
+. 2026-01-21 23:00:06.504 Binary transfer mode selected.
+. 2026-01-21 23:00:06.505 Iniciando carregamento de C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dashboard\dashboard\index.blade.php
+> 2026-01-21 23:00:06.505 CWD /desenvolvimento/resources/views/dashboard/dashboard
+< 2026-01-21 23:00:06.559 250 OK. Current directory is /desenvolvimento/resources/views/dashboard/dashboard
+> 2026-01-21 23:00:06.559 PWD
+< 2026-01-21 23:00:06.612 257 "/desenvolvimento/resources/views/dashboard/dashboard" is your current location
+> 2026-01-21 23:00:06.612 TYPE I
+< 2026-01-21 23:00:06.668 200 TYPE is now 8-bit binary
+> 2026-01-21 23:00:06.668 PASV
+< 2026-01-21 23:00:06.723 227 Entering Passive Mode (69,6,212,145,126,237)
+> 2026-01-21 23:00:06.723 STOR index.blade.php
+. 2026-01-21 23:00:06.723 Conectando a 69.6.212.145:32493...
+< 2026-01-21 23:00:06.835 150 Accepted data connection
+< 2026-01-21 23:00:06.940 226-File successfully transferred
+< 2026-01-21 23:00:06.940 226 0.119 seconds (measured here), 139.09 Kbytes per second
+> 2026-01-21 23:00:06.940 MFMT 20260122015834 index.blade.php
+< 2026-01-21 23:00:07.004 213 UTIME OK
+. 2026-01-21 23:00:07.005 Carregamento bem-sucedido
+. 2026-01-21 23:00:07.005 Transfer done: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\dashboard\dashboard\index.blade.php' => '/desenvolvimento/resources/views/dashboard/dashboard/index.blade.php' [16985]
+. 2026-01-21 23:00:07.005 Copying finished: Transferred: 16.985, Elapsed: 0:00:00, CPS: 33.902/s
+> 2026-01-21 23:00:07.005 Script: put "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\layouts\admin.blade.php" "/desenvolvimento/resources/views/layouts/admin.blade.php"
+. 2026-01-21 23:00:07.005 Copying 1 files/directories to remote directory "/desenvolvimento/resources/views/layouts/" - total size: 30.462
+. 2026-01-21 23:00:07.005   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0001; Resume: S (102400); CalcS: No; Mask: admin.blade.php
+. 2026-01-21 23:00:07.005   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2026-01-21 23:00:07.005   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2026-01-21 23:00:07.005 File: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\layouts\admin.blade.php' [2026-01-22T01:57:53.032Z] [30462]
+. 2026-01-21 23:00:07.005 Copying "C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\layouts\admin.blade.php" to remote directory started.
+. 2026-01-21 23:00:07.005 Binary transfer mode selected.
+. 2026-01-21 23:00:07.005 Iniciando carregamento de C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\layouts\admin.blade.php
+> 2026-01-21 23:00:07.005 CWD /desenvolvimento/resources/views/layouts
+< 2026-01-21 23:00:07.066 250 OK. Current directory is /desenvolvimento/resources/views/layouts
+> 2026-01-21 23:00:07.066 PWD
+< 2026-01-21 23:00:07.106 257 "/desenvolvimento/resources/views/layouts" is your current location
+> 2026-01-21 23:00:07.106 TYPE I
+< 2026-01-21 23:00:07.174 200 TYPE is now 8-bit binary
+> 2026-01-21 23:00:07.174 PASV
+< 2026-01-21 23:00:07.228 227 Entering Passive Mode (69,6,212,145,138,35)
+> 2026-01-21 23:00:07.228 STOR admin.blade.php
+. 2026-01-21 23:00:07.228 Conectando a 69.6.212.145:35363...
+< 2026-01-21 23:00:07.340 150 Accepted data connection
+< 2026-01-21 23:00:07.451 226-File successfully transferred
+< 2026-01-21 23:00:07.451 226 0.111 seconds (measured here), 267.68 Kbytes per second
+> 2026-01-21 23:00:07.451 MFMT 20260122015753 admin.blade.php
+< 2026-01-21 23:00:07.504 213 UTIME OK
+. 2026-01-21 23:00:07.504 Carregamento bem-sucedido
+. 2026-01-21 23:00:07.505 Transfer done: 'C:\Users\uira_\OneDrive\Documentos\Sistema Unificado da Olika\resources\views\layouts\admin.blade.php' => '/desenvolvimento/resources/views/layouts/admin.blade.php' [30462]
+. 2026-01-21 23:00:07.505 Copying finished: Transferred: 30.462, Elapsed: 0:00:00, CPS: 60.924/s
+> 2026-01-21 23:00:07.505 Script: exit
+. 2026-01-21 23:00:07.505 Script: Exit code: 0
+. 2026-01-21 23:00:07.508 Desconectado do servidor

@@ -1,0 +1,170 @@
+/* Dashboard Sweetspot Pixel-Perfect Styles */
+
+/* Cards de Métricas - Layout exato do Sweetspot */
+.dashboard-wrapper .grid.grid-cols-1.md\:grid-cols-2 {
+    gap: 1.5rem; /* 24px */
+}
+
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm {
+    border-radius: 0.5rem; /* 8px */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+}
+
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm.p-6 {
+    padding: 1.5rem; /* 24px */
+}
+
+/* Cards de métricas - Textos */
+.dashboard-wrapper .text-sm.font-medium.text-gray-600 {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.25rem; /* 4px */
+}
+
+.dashboard-wrapper .text-3xl.font-bold.text-gray-900 {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 700;
+    color: #111827;
+    line-height: 2.25rem;
+}
+
+/* Ícones dos cards */
+.dashboard-wrapper .w-12.h-12.rounded-full {
+    width: 3rem; /* 48px */
+    height: 3rem; /* 48px */
+    border-radius: 9999px;
+}
+
+.dashboard-wrapper .w-6.h-6 {
+    width: 1.5rem; /* 24px */
+    height: 1.5rem; /* 24px */
+}
+
+/* Cores dos ícones */
+.dashboard-wrapper .bg-green-100 {
+    background-color: #d1fae5;
+}
+
+.dashboard-wrapper .text-green-600 {
+    color: #059669;
+}
+
+.dashboard-wrapper .bg-blue-100 {
+    background-color: #dbeafe;
+}
+
+.dashboard-wrapper .text-blue-600 {
+    color: #2563eb;
+}
+
+/* Controles superiores */
+.dashboard-wrapper .space-y-6 > * + * {
+    margin-top: 1.5rem; /* 24px */
+}
+
+/* Seletor de mês */
+.dashboard-wrapper select.appearance-none {
+    padding: 0.5rem 1rem; /* 8px 16px */
+    padding-right: 2rem; /* 32px para o ícone */
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    border-radius: 0.5rem; /* 8px */
+    border: 1px solid #d1d5db;
+}
+
+/* Botão Exportar */
+.dashboard-wrapper button.inline-flex.items-center.gap-2 {
+    padding: 0.5rem 1rem; /* 8px 16px */
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    border-radius: 0.5rem; /* 8px */
+    gap: 0.5rem; /* 8px */
+}
+
+/* Filtros de período */
+.dashboard-wrapper .flex.gap-2 button {
+    padding: 0.5rem 1rem; /* 8px 16px */
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    border-radius: 0.5rem; /* 8px */
+    border: 1px solid #d1d5db;
+}
+
+/* Tabela de pedidos */
+.dashboard-wrapper table thead th {
+    padding: 0.75rem 1rem; /* 12px 16px */
+    font-size: 0.75rem; /* 12px */
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    background-color: #f9fafb;
+}
+
+.dashboard-wrapper table tbody td {
+    padding: 0.75rem 1rem; /* 12px 16px */
+    font-size: 0.875rem; /* 14px */
+    color: #6b7280;
+}
+
+.dashboard-wrapper table tbody td .font-semibold {
+    font-weight: 600;
+    color: #111827;
+}
+
+/* Cards de sidebar (Produtos e Categorias) */
+.dashboard-wrapper .space-y-6 > div.space-y-6 > * + * {
+    margin-top: 1.5rem; /* 24px */
+}
+
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm:not(.p-6) {
+    border-radius: 0.5rem; /* 8px */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+}
+
+.dashboard-wrapper .p-4 {
+    padding: 1rem; /* 16px */
+}
+
+.dashboard-wrapper .border-b.border-gray-200 {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dashboard-wrapper h3.text-lg.font-semibold {
+    font-size: 1.125rem; /* 18px */
+    font-weight: 600;
+    color: #111827;
+}
+
+/* Header - Avatar */
+header .w-10.h-10.rounded-full {
+    width: 2.5rem; /* 40px */
+    height: 2.5rem; /* 40px */
+    border-radius: 9999px;
+}
+
+header .w-10.h-10.rounded-full span {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 600;
+}
+
+/* Espaçamentos gerais */
+.dashboard-wrapper {
+    padding: 1rem 1.5rem; /* 16px 24px em mobile, 24px 24px em desktop */
+}
+
+@media (min-width: 768px) {
+    .dashboard-wrapper {
+        padding: 1.5rem; /* 24px */
+    }
+}
+
+/* Grid de cards - garantir que o terceiro card fique sozinho na segunda linha */
+@media (min-width: 768px) {
+    .dashboard-wrapper .grid.grid-cols-1.md\:grid-cols-2 > div:nth-child(3) {
+        grid-column: span 1;
+    }
+}

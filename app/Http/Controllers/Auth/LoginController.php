@@ -59,7 +59,7 @@ class LoginController extends Controller
             }
             
             // Redirecionar para a URL intencionada ou dashboard
-            return redirect()->intended('/')->with('success', 'Login realizado com sucesso!');
+            return redirect()->intended('/');
         }
 
         return back()

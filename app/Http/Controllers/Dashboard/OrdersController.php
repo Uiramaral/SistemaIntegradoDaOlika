@@ -21,16 +21,28 @@ class OrdersController extends Controller
 {
     public function index(Request $request)
     {
+        // Filtrar por client_id do estabelecimento atual
+        $clientId = currentClientId();
+        
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
-                'customer:id,name,phone,email',
+                'customer' => function($q) {
+                    // Remover scope para carregar customer (pedido já está filtrado)
+                    $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                      ->select('id', 'name', 'phone', 'email', 'client_id');
+                },
                 'address:id,street,number,neighborhood,city,state,cep,complement',
                 'payment:id,order_id,status,provider,provider_id'
             ])
             ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
                      'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 
-                     'address_id', 'payment_id', 'scheduled_delivery_at')
+                     'address_id', 'payment_id', 'scheduled_delivery_at', 'client_id')
             ->orderBy('created_at', 'desc');
+
+        // Filtrar por client_id se existir
+        if ($clientId) {
+            $query->where('client_id', $clientId);
+        }
 
         // Busca por cliente ou número do pedido
         if ($request->has('q') && $request->q) {
@@ -38,30 +50,31 @@ class OrdersController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($c) use ($search) {
-                      $c->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                      // Remover scope para buscar customer
+                      $c->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                        ->where(function($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%")
+                                          ->orWhere('phone', 'like', "%{$search}%");
+                        });
                   });
             });
         }
 
-        // Filtro por status
-        $statusFilter = $request->input('status', 'active'); // Padrão: 'active' (confirmados + aguardando pagamento)
+        // Filtro por status - padrão: mostrar todos os pedidos
+        $statusFilter = $request->input('status', 'all');
         
-        if ($statusFilter === 'active') {
-            // Por padrão: apenas confirmados e aguardando pagamento (pending)
-            $query->whereIn('status', ['confirmed', 'pending']);
-        } elseif ($statusFilter === 'all') {
-            // Mostrar todos (incluindo cancelados)
+        if ($statusFilter === 'all') {
+            // Mostrar todos os pedidos (incluindo cancelados e finalizados)
             // Não aplicar filtro de status
+        } elseif ($statusFilter === 'active') {
+            // Apenas ativos: confirmados e aguardando pagamento
+            $query->whereIn('status', ['confirmed', 'pending']);
         } elseif ($statusFilter === 'cancelled') {
             // Apenas cancelados
             $query->where('status', 'cancelled');
-        } elseif ($statusFilter && $statusFilter !== 'active') {
-            // Status específico
+        } elseif ($statusFilter && in_array($statusFilter, ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'])) {
+            // Status específico válido
             $query->where('status', $statusFilter);
-        } else {
-            // Padrão: confirmados e aguardando pagamento
-            $query->whereIn('status', ['confirmed', 'pending']);
         }
 
         $orders = $query->paginate(20)->withQueryString();
@@ -76,14 +89,29 @@ class OrdersController extends Controller
     public function getNewOrders(Request $request)
     {
         try {
+            // Filtrar por client_id do estabelecimento atual
+            $clientId = currentClientId();
+            
             // Pegar o ID do último pedido conhecido (ou timestamp)
             $lastOrderId = $request->input('last_order_id', 0);
             $lastOrderCreatedAt = $request->input('last_order_created_at');
             $knownOrderIds = $request->input('known_order_ids', []); // IDs dos pedidos já exibidos na página
             
             // Buscar novos pedidos (criados após o último conhecido)
-            $newOrdersQuery = Order::with(['customer', 'address', 'payment'])
+            $newOrdersQuery = Order::with([
+                    'customer' => function($q) {
+                        // Remover scope para carregar customer (pedido já está filtrado)
+                        $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
+                    },
+                    'address',
+                    'payment'
+                ])
                 ->orderBy('created_at', 'desc');
+            
+            // Filtrar por client_id se existir
+            if ($clientId) {
+                $newOrdersQuery->where('client_id', $clientId);
+            }
             
             if ($lastOrderId > 0) {
                 $newOrdersQuery->where('id', '>', $lastOrderId);
@@ -102,6 +130,11 @@ class OrdersController extends Controller
             // Pegar os últimos 50 pedidos para verificar atualizações
             $updatedOrdersQuery = Order::with(['customer', 'address', 'payment'])
                 ->whereIn('id', $knownOrderIds);
+            
+            // Filtrar por client_id se existir
+            if ($clientId) {
+                $updatedOrdersQuery->where('client_id', $clientId);
+            }
             
             // Se não houver IDs conhecidos ainda, não buscar atualizados
             if (empty($knownOrderIds)) {
@@ -131,23 +164,19 @@ class OrdersController extends Controller
             }
             
             // Aplicar mesmo filtro de status do método index
-            $statusFilter = $request->input('status', 'active');
+            $statusFilter = $request->input('status', 'all');
             
-            if ($statusFilter === 'active') {
+            if ($statusFilter === 'all') {
+                // Mostrar todos - não aplicar filtro
+            } elseif ($statusFilter === 'active') {
                 $newOrdersQuery->whereIn('status', ['confirmed', 'pending']);
                 $updatedOrdersQuery->whereIn('status', ['confirmed', 'pending']);
-            } elseif ($statusFilter === 'all') {
-                // Mostrar todos - não aplicar filtro
             } elseif ($statusFilter === 'cancelled') {
                 $newOrdersQuery->where('status', 'cancelled');
                 $updatedOrdersQuery->where('status', 'cancelled');
-            } elseif ($statusFilter && $statusFilter !== 'active') {
+            } elseif ($statusFilter && in_array($statusFilter, ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'])) {
                 $newOrdersQuery->where('status', $statusFilter);
                 $updatedOrdersQuery->where('status', $statusFilter);
-            } else {
-                // Padrão: confirmados e aguardando pagamento
-                $newOrdersQuery->whereIn('status', ['confirmed', 'pending']);
-                $updatedOrdersQuery->whereIn('status', ['confirmed', 'pending']);
             }
             
             $newOrders = $newOrdersQuery->get();
@@ -387,10 +416,86 @@ class OrdersController extends Controller
         }
     }
 
+    /**
+     * Endpoint JSON para verificar status de pagamento (usado pelo polling)
+     */
+    public function paymentStatus(Order $order)
+    {
+        // Verificar se o pedido pertence ao estabelecimento atual
+        $clientId = currentClientId();
+        if ($clientId && $order->client_id !== $clientId) {
+            return response()->json(['success' => false, 'message' => 'Pedido não encontrado'], 404);
+        }
+        
+        // Se ainda pendente e houver payment_id, tentar atualizar consultando o provedor
+        $wasPaid = in_array(strtolower((string)$order->payment_status), ['approved','paid']);
+        if (!$wasPaid && !empty($order->payment_id)) {
+            try {
+                $svc = new \App\Services\MercadoPagoApiService();
+                $res = $svc->getPaymentStatus((string)$order->payment_id);
+                if (!empty($res['success']) && !empty($res['payment'])) {
+                    $payment = $res['payment'];
+                    $status = strtolower((string)($payment['status'] ?? 'pending'));
+                    $mappedStatus = \App\Services\MercadoPagoApiService::mapPaymentStatus($status);
+                    $order->payment_status = $mappedStatus;
+                    $order->payment_raw_response = $payment;
+                    
+                    if (in_array($status, ['approved','paid'])) {
+                        $order->status = 'confirmed';
+                    }
+                    $order->save();
+                    
+                    // Processar confirmação de pagamento se necessário
+                    if (in_array($status, ['approved','paid']) && empty($order->notified_paid_at)) {
+                        try {
+                            $orderStatusService = app(\App\Services\OrderStatusService::class);
+                            $orderStatusService->changeStatus(
+                                $order, 
+                                'paid', 
+                                'Pagamento aprovado via polling (PIX)',
+                                null,
+                                false,
+                                false
+                            );
+                        } catch (\Exception $e) {
+                            Log::warning('Erro ao processar confirmação de pagamento', [
+                                'order_id' => $order->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Erro ao consultar status de pagamento', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        $order->refresh();
+        
+        return response()->json([
+            'success' => true,
+            'payment_status' => $order->payment_status,
+            'status' => $order->status,
+            'is_paid' => in_array(strtolower((string)$order->payment_status), ['approved','paid']),
+        ]);
+    }
+
     public function show(Order $order)
     {
+        // Verificar se o pedido pertence ao estabelecimento atual
+        $clientId = currentClientId();
+        if ($clientId && $order->client_id !== $clientId) {
+            abort(404, 'Pedido não encontrado');
+        }
+        
         $order->load([
-            'customer',
+            'customer' => function($q) {
+                // Remover scope para carregar customer (pedido já está filtrado)
+                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
+            },
             'address',
             'items.product',
             'payment',

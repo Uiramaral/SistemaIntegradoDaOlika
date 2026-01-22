@@ -1,68 +1,108 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Pedidos')
-@section('page_subtitle', 'Gerencie todos os pedidos do restaurante')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
-    <a href="{{ route('dashboard.orders.printerMonitor') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-            <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
-            <rect x="6" y="14" width="12" height="8"></rect>
-        </svg>
-        Monitor de Impressão
-    </a>
-    <a href="{{ route('dashboard.pdv.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
+    <div class="flex items-center gap-2">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+        </button>
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+            </svg>
+        </button>
+    </div>
+    <a href="{{ route('dashboard.pdv.index') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
             <path d="M12 5v14"></path>
         </svg>
-        Novo Pedido
+        + Agendar pedido
     </a>
 @endsection
 
 @section('content')
 <div class="space-y-6">
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
-            <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col sm:flex-row gap-4">
-                <div class="relative flex-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.3-4.3"></path>
-                    </svg>
-                    <input type="search" name="q" value="{{ request('q') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-10" placeholder="Buscar por cliente, número do pedido...">
-                </div>
-                <div class="flex gap-2">
-                    <select name="status" onchange="this.form.submit()" class="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                        <option value="active" {{ request('status', 'active') === 'active' ? 'selected' : '' }}>Ativos (Confirmados + Aguardando)</option>
-                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Aguardando Pagamento</option>
-                        <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmados</option>
-                        <option value="preparing" {{ request('status') === 'preparing' ? 'selected' : '' }}>Em Preparo</option>
-                        <option value="ready" {{ request('status') === 'ready' ? 'selected' : '' }}>Prontos</option>
-                        <option value="delivered" {{ request('status') === 'delivered' ? 'selected' : '' }}>Entregues</option>
-                        <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelados</option>
-                        <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>Todos</option>
-                    </select>
-                    @if(request('q') || request('status') !== 'active')
-                        <a href="{{ route('dashboard.orders.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Limpar</a>
-                    @endif
-                </div>
-            </form>
-        </div>
-        <div class="p-6 pt-0">
+    <!-- Busca e Filtros -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col sm:flex-row gap-4">
+            <!-- Campo de Busca -->
+            <div class="flex-1">
+                <input type="text" 
+                       name="q" 
+                       value="{{ request('q') }}" 
+                       placeholder="Buscar por cliente ou número do pedido..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <!-- Manter filtro de status na URL -->
+            @if(request('status'))
+                <input type="hidden" name="status" value="{{ request('status') }}">
+            @endif
+            <!-- Botões -->
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+                    Buscar
+                </button>
+                @if(request('q') || request('status'))
+                    <a href="{{ route('dashboard.orders.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
+                        Limpar
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+    
+    <!-- Filtros de Status -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'all'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ (request('status', 'all') === 'all') ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Todos
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'active'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'active' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Ativos
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'pending'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'pending' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Pendentes
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'confirmed'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'confirmed' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Confirmados
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'preparing'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'preparing' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Em Preparo
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'ready'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'ready' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Prontos
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'delivered'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'delivered' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Entregues
+        </a>
+        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'cancelled'])) }}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'cancelled' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
+            Cancelados
+        </a>
+    </div>
+    
+    <div class="rounded-lg border bg-white shadow-sm border-gray-200">
             <div class="overflow-x-auto">
-                <div class="relative w-full overflow-auto">
-                    <table class="w-full caption-bottom text-sm" data-mobile-card="true">
-                        <thead class="[&_tr]:border-b">
-                            <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">#</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Cliente</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Total</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Status</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Pagamento</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Quando</th>
-                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Ações</th>
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                            <tr class="border-b">
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">DATA</th>
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORIA</th>
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">VALOR</th>
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
                             </tr>
                         </thead>
                         <tbody class="[&_tr:last-child]:border-0" id="orders-tbody">
@@ -104,50 +144,33 @@
                                     $paymentColor = $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
                                     $paymentText = $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status);
                                 @endphp
-                                <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium" data-label="#">{{ $order->order_number }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell" data-label="Cliente">
-                                        <div>
-                                            <div class="font-medium">{{ $order->customer->name ?? 'Cliente não informado' }}</div>
-                                            @if($order->customer && $order->customer->phone)
-                                                <div class="text-xs text-muted-foreground">{{ $order->customer->phone }}</div>
-                                            @endif
-                                        </div>
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-semibold text-gray-900">{{ $order->customer->name ?? 'Cliente não informado' }}</div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-semibold" data-label="Total">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Status">
-                                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent {{ $statusColor }}">{{ $statusText }}</div>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                        {{ $order->created_at->format('d/m/y, H:i') }}
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Pagamento">
-                                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors {{ $paymentColor }}">{{ $paymentText }}</div>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Padaria</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="font-semibold text-gray-900">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</span>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground" data-label="Quando">
-                                        @php
-                                            try {
-                                                $diff = $order->created_at->diffForHumans();
-                                            } catch (\Exception $e) {
-                                                $diff = $order->created_at->format('d/m/Y H:i');
-                                            }
-                                        @endphp
-                                        {{ $diff }}
-                                        <div class="text-xs">{{ $order->created_at->format('d/m/Y H:i') }}</div>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                            {{ $statusText }}
+                                        </span>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 actions-cell" data-label="Ações">
-                                        <div class="flex gap-2 justify-end mobile-actions">
-                                            <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3 w-full sm:w-auto" title="Imprimir Recibo Fiscal" data-order-id="{{ $order->id }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
-                                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                                                    <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
-                                                    <rect x="6" y="14" width="12" height="8"></rect>
-                                                </svg>
-                                            </button>
-                                            <a href="{{ route('dashboard.orders.show', $order->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full sm:w-auto text-center">Ver detalhes</a>
-                                        </div>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <a href="{{ route('dashboard.orders.show', $order->id) }}" class="text-gray-400 hover:text-gray-600" title="Ver detalhes">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                        </a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="p-8 text-center text-muted-foreground">
+                                    <td colspan="6" class="p-8 text-center text-gray-500">
                                         Nenhum pedido encontrado.
                                     </td>
                                 </tr>
@@ -175,22 +198,24 @@
     const ANIMATION_DURATION = 500;
     
     // Estado da atualização
-    let lastOrderId = {{ $orders->isNotEmpty() ? $orders->first()->id : 0 }};
-    let lastOrderCreatedAt = '{{ $orders->isNotEmpty() ? $orders->first()->created_at->toIso8601String() : '' }}';
+    let lastOrderId = {{ ($orders && $orders->isNotEmpty()) ? $orders->first()->id : 0 }};
+    let lastOrderCreatedAt = '{{ ($orders && $orders->isNotEmpty()) ? $orders->first()->created_at->toIso8601String() : '' }}';
     let pollingInterval = null;
     let isPolling = false;
     let knownOrderIds = new Set();
     let orderDataMap = new Map(); // Armazenar dados dos pedidos para comparar mudanças
     
     // Inicializar IDs conhecidos e dados
-    @foreach($orders as $order)
-        knownOrderIds.add({{ $order->id }});
-        orderDataMap.set({{ $order->id }}, {
-            status: '{{ $order->status }}',
-            payment_status: '{{ $order->payment_status }}',
-            updated_at: '{{ $order->updated_at->toIso8601String() }}'
-        });
-    @endforeach
+    @if($orders && $orders->isNotEmpty())
+        @foreach($orders as $order)
+            knownOrderIds.add({{ $order->id }});
+            orderDataMap.set({{ $order->id }}, {
+                status: '{{ $order->status }}',
+                payment_status: '{{ $order->payment_status }}',
+                updated_at: '{{ $order->updated_at->toIso8601String() }}'
+            });
+        @endforeach
+    @endif
     
     // Função para criar uma linha de pedido
     function createOrderRow(order) {
@@ -381,7 +406,7 @@
                 }
                 
                 // Remover linha vazia se existir
-                const emptyRow = tbody.querySelector('td[colspan="7"]');
+                const emptyRow = tbody.querySelector('td[colspan="6"]');
                 if (emptyRow && emptyRow.closest('tr')) {
                     emptyRow.closest('tr').remove();
                 }

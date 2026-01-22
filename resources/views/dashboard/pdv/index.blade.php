@@ -1,6 +1,7 @@
 @extends('dashboard.layouts.app')
 
-@section('page_title', 'PDV - Ponto de Venda')
+@section('page_title', 'PDV')
+@section('page_subtitle', 'Ponto de Venda - Registre suas vendas')
 
 {{-- CSS antigo removido - usando apenas Photo-Zen design system --}}
 
@@ -19,277 +20,253 @@
     </div>
     @endif
 
-    <!-- Seção para Confirmar Pagamento de Pedidos Migrados -->
-    <details class="rounded-lg border bg-card text-card-foreground shadow-sm mb-6 group">
-        <summary class="cursor-pointer select-none p-4 hover:bg-muted/30 transition-colors">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-base font-semibold leading-none tracking-tight">Confirmar Pagamento (Migração)</h3>
-                    <p class="text-xs text-muted-foreground mt-1">Confirme o pagamento de pedidos migrados sem enviar notificação</p>
+    <!-- Barra superior: Cliente + Buscar Produto -->
+    <div class="rounded-xl border bg-white shadow-sm p-4">
+        <div class="grid gap-4 lg:grid-cols-2">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold">Cliente</h3>
+                    <button type="button" id="btn-new-customer" class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                        <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
+                        Novo
+                    </button>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down transition-transform group-open:rotate-180">
-                    <path d="m6 9 6 6 6-6"></path>
-                </svg>
-            </div>
-        </summary>
-        <div class="p-6 pt-0 border-t">
-            <div class="flex gap-2">
-                <input type="text" 
-                       id="order-number-search" 
-                       class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                       placeholder="Digite o número do pedido (ex: OLK20241106123456)..."
-                       autocomplete="off">
-                <button type="button" 
-                        id="btn-search-order" 
-                        class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
-                    Buscar
-                </button>
-            </div>
-            <div id="order-search-result" class="mt-4 hidden">
-                <div class="p-4 border rounded-md bg-muted/50">
-                    <div id="order-info" class="space-y-2"></div>
-                    <div class="mt-4">
-                        <button type="button" 
-                                id="btn-confirm-payment-silent" 
-                                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                            </svg>
-                            Confirmar Pagamento (Sem Notificar)
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+                    <input type="text" id="customer-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" placeholder="Buscar ou cadastrar cliente" autocomplete="off">
+                </div>
+                <div id="customer-results" class="hidden max-h-60 overflow-y-auto border rounded-md bg-background mt-2"></div>
+                <input type="hidden" id="customer-id" name="customer_id" required>
+                <div id="selected-customer" class="hidden p-3 rounded-md bg-muted mt-2">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold truncate" id="selected-customer-name"></p>
+                            <p class="text-sm truncate text-muted-foreground" id="selected-customer-info"></p>
+                        </div>
+                        <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
+                            <i data-lucide="x" class="h-5 w-5"></i>
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
-    </details>
-
-    <!-- Seleção de Cliente - PRIMEIRO (antes de tudo) -->
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm mb-6" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
-        <div class="flex flex-col space-y-1.5 p-6">
-            <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Cliente</h3>
-        </div>
-        <div class="p-6 pt-0">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-2" style="color: hsl(var(--foreground));">Buscar Cliente *</label>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <div class="relative flex-1">
-                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style="color: hsl(var(--muted-foreground));"></i>
-                            <input type="text" id="customer-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" style="border-color: hsl(var(--border)); background-color: hsl(var(--background)); color: hsl(var(--foreground));" placeholder="Digite nome, telefone ou email..." autocomplete="off">
-                        </div>
-                        <button type="button" id="btn-new-customer" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4" style="background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground));">
-                            <i data-lucide="user-plus" class="h-4 w-4"></i>
-                            Novo Cliente
-                        </button>
-                    </div>
-                    <div id="customer-results" class="mt-2 hidden max-h-60 overflow-y-auto border rounded-md bg-background" style="border-color: hsl(var(--border)); background-color: hsl(var(--background));"></div>
-                    <input type="hidden" id="customer-id" name="customer_id" required>
-                    <div id="selected-customer" class="mt-3 hidden p-3 rounded-md" style="background-color: hsl(var(--muted));">
-                        <div class="flex items-center justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="font-semibold truncate" id="selected-customer-name" style="color: hsl(var(--foreground));"></p>
-                                <p class="text-sm truncate" id="selected-customer-info" style="color: hsl(var(--muted-foreground));"></p>
-                            </div>
-                            <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
-                                <i data-lucide="x" class="h-5 w-5"></i>
-                            </button>
-                        </div>
-                    </div>
+            <div>
+                <h3 class="text-sm font-semibold mb-2">Buscar Produto</h3>
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+                    <input type="text" id="product-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" placeholder="Digite o nome do produto..." autocomplete="off">
                 </div>
+                <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg"></div>
             </div>
         </div>
     </div>
 
-    <div class="dashboard-two-panel gap-4 lg:items-start">
-        <!-- Coluna Resumo -->
-        <div class="dashboard-aside flex flex-col gap-4 lg:flex-shrink-0">
-            <!-- Itens do Pedido -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                <div class="flex flex-col space-y-1.5 p-4 pb-3 border-b border-border/60">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Produtos</h3>
-                </div>
-                <div class="p-4">
-                    <div id="pdv-items-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-                        <div class="flex flex-col items-center justify-center gap-3 py-8 text-center text-muted-foreground">
-                            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
-                                <i data-lucide="shopping-cart" class="h-5 w-5"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-foreground text-sm">Nenhum produto adicionado</p>
+    <!-- Filtros de categorias -->
+    <div class="flex flex-wrap gap-2">
+        <button type="button" data-category="all" class="category-filter inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 text-primary text-sm font-medium px-3 h-8">
+            <i data-lucide="tags" class="h-3.5 w-3.5"></i>
+            Todos
+        </button>
+        @php
+            $categoryFilters = $products->map(function($p){
+                return $p->category->name ?? 'Sem categoria';
+            })->unique()->values();
+        @endphp
+        @foreach($categoryFilters as $cat)
+            <button type="button" data-category="{{ $cat }}" class="category-filter inline-flex items-center gap-1 rounded-full border border-border bg-white text-foreground text-sm font-medium px-3 h-8">
+                <i data-lucide="tag" class="h-3.5 w-3.5"></i>
+                {{ $cat }}
+            </button>
+        @endforeach
+    </div>
+
+    <!-- Seção Completa do PDV - Sempre visível -->
+    <div id="pdv-full-interface">
+        <div class="flex flex-col gap-4 lg:items-start lg:flex-row-reverse">
+            <!-- Coluna Resumo -->
+            <div class="dashboard-aside flex flex-col gap-4 lg:flex-shrink-0 lg:w-[380px] lg:max-w-[380px]">
+                <!-- Carrinho -->
+                <div class="rounded-xl border bg-white shadow-sm">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="shopping-cart" class="h-4 w-4 text-muted-foreground"></i>
+                            <h3 class="text-base font-semibold">Carrinho</h3>
+                        </div>
+                        <span class="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5">
+                            <span id="cart-items-count">0</span> itens
+                        </span>
+                    </div>
+                    <div class="p-4">
+                        <div id="pdv-items-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            <div class="flex flex-col items-center justify-center gap-2 py-8 text-center text-muted-foreground">
+                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <i data-lucide="shopping-cart" class="h-5 w-5"></i>
+                                </div>
+                                <div class="text-sm font-medium">Carrinho vazio</div>
+                                <div class="text-xs">Clique nos produtos para adicionar</div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Resumo -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm lg:sticky lg:top-20">
-                <div class="flex flex-col space-y-1.5 p-4 pb-3">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight">Resumo</h3>
-                </div>
-                <div class="p-4 pt-0 space-y-4">
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Total de Itens:</span>
-                            <span id="summary-items-count">0</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Subtotal:</span>
-                            <span id="summary-subtotal">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Taxa de Entrega:</span>
-                            <span id="summary-delivery-fee">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
-                            <span>Desconto:</span>
-                            <span id="summary-discount">- R$ 0,00</span>
-                        </div>
-
-                        <div class="border-t pt-2 flex justify-between font-semibold">
-                            <span>Total:</span>
-                            <span id="summary-total" class="text-primary">R$ 0,00</span>
-                        </div>
+                <!-- Entrega -->
+                <div class="rounded-xl border bg-white shadow-sm p-4 space-y-3">
+                    <button type="button" id="btn-toggle-delivery" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white text-sm font-medium h-10">
+                        <i data-lucide="truck" class="h-4 w-4"></i>
+                        Entrega Ativada
+                    </button>
+                    <select id="delivery-type" class="hidden">
+                        <option value="delivery" selected>Entrega</option>
+                        <option value="pickup">Retirada</option>
+                    </select>
+                    <div>
+                        <input type="text" id="delivery-address" class="w-full rounded-md border border-input bg-background text-sm h-10 px-3" placeholder="Endereço">
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="destination-cep" class="w-full rounded-md border border-input bg-background text-sm h-10 px-3" placeholder="CEP" maxlength="10">
+                        <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm h-10 px-3" placeholder="Taxa">
+                    </div>
+                    <button type="button" id="btn-calculate-fee" class="w-full inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-white hover:bg-accent hover:text-accent-foreground h-10">
+                        Calcular
+                    </button>
+                    <div id="delivery-fee-info" class="text-xs text-muted-foreground hidden"></div>
+                </div>
 
-                    <div class="space-y-3">
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Cupom (opcional)</label>
-                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="Código do cupom">
-                                    <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                                        Aplicar
-                                    </button>
-                                </div>
-                                <div id="coupon-info" class="mt-2 hidden p-2 bg-muted rounded-md text-sm"></div>
+                <!-- Total e Pagamento -->
+                <div class="rounded-xl border bg-white shadow-sm lg:sticky lg:top-20">
+                    <div class="p-4 space-y-4">
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-muted-foreground">
+                                <span>Subtotal</span>
+                                <span id="summary-subtotal">R$ 0,00</span>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Tipo de Entrega</label>
-                                <select id="delivery-type" class="w-full rounded-md border border-input bg-background text-sm">
-                                    <option value="delivery">Entrega</option>
-                                    <option value="pickup">Retirada</option>
-                                </select>
+                            <div class="flex justify-between text-muted-foreground">
+                                <span>Total</span>
+                                <span id="summary-total" class="text-primary font-semibold">R$ 0,00</span>
                             </div>
-                        </div>
-                        
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Taxa de Entrega Manual</label>
-                                <input type="number" id="delivery-fee-input" step="0.01" min="0" value="0" class="w-full rounded-md border border-input bg-background text-sm" placeholder="R$ 0,00">
+                            <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
+                                <span>Desconto</span>
+                                <span id="summary-discount">- R$ 0,00</span>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Calcular por CEP</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="destination-cep" class="flex-1 rounded-md border border-input bg-background text-sm" placeholder="00000-000" maxlength="10">
-                                    <button type="button" id="btn-calculate-fee" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3">
-                                        Calcular
-                                    </button>
-                                </div>
-                                <div id="delivery-fee-info" class="mt-1 text-xs text-muted-foreground hidden"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Desconto Manual (Valor Fixo)</label>
-                                <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="R$ 0,00" class="w-full rounded-md border border-input bg-background text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Desconto Manual (%)</label>
-                                <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="0%" class="w-full rounded-md border border-input bg-background text-sm">
-                            </div>
+                            <span id="summary-items-count" class="hidden">0</span>
+                            <span id="summary-delivery-fee" class="hidden">R$ 0,00</span>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Observações</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-payment-pix" class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-600 bg-blue-50 text-blue-700 text-sm font-medium h-10">
+                                <i data-lucide="qr-code" class="h-4 w-4"></i>
+                                PIX
+                            </button>
+                            <button type="button" id="btn-payment-link" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium h-10">
+                                <i data-lucide="link" class="h-4 w-4"></i>
+                                Link MP
+                            </button>
+                        </div>
+
+                        <button type="button" id="btn-finalize-order" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 text-white text-sm font-medium h-10 disabled:opacity-70 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="credit-card" class="h-4 w-4"></i>
+                            Finalizar Venda
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Detalhes do Pedido -->
+                <details class="rounded-xl border bg-white shadow-sm group">
+                    <summary class="cursor-pointer select-none p-4 hover:bg-muted/30 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-base font-semibold leading-none tracking-tight">Detalhes do Pedido</h3>
+                                <p class="text-xs text-muted-foreground mt-1">Pagamento e observações</p>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down transition-transform group-open:rotate-180">
+                                <path d="m6 9 6 6 6-6"></path>
+                            </svg>
+                        </div>
+                    </summary>
+                    <div class="p-4 pt-0 border-t space-y-4">
+                        <input type="hidden" id="payment-method-select" value="pix">
+                        <div class="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
+                            <h4 class="text-sm font-semibold">Custos e Descontos</h4>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" id="coupon-code" class="flex-1 rounded-md border border-input bg-background text-sm h-10 px-3" placeholder="Código do cupom">
+                                <button type="button" id="btn-apply-coupon" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-white hover:bg-accent hover:text-accent-foreground px-3 h-10 sm:w-auto w-full">
+                                    Aplicar
+                                </button>
+                            </div>
+                            <div id="coupon-info" class="hidden p-2 bg-muted rounded-md text-sm"></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="manual-discount-fixed" step="0.01" min="0" value="0" placeholder="Desconto (R$)" class="w-full rounded-md border border-input bg-background text-sm h-10 px-3">
+                                <input type="number" id="manual-discount-percent" step="0.01" min="0" max="100" value="0" placeholder="Desconto (%)" class="w-full rounded-md border border-input bg-background text-sm h-10 px-3">
+                            </div>
+                        </div>
+                        <div class="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+                            <h4 class="text-sm font-semibold">Observações</h4>
                             <textarea id="order-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Observações do pedido..."></textarea>
                         </div>
-                    </div>
 
-                    <div class="flex flex-col gap-3">
-                        <div class="flex flex-col gap-3 sm:flex-row">
-                            <button type="button" id="btn-send-order" class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <div class="flex flex-col gap-2">
+                            <button type="button" id="btn-send-order" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 Enviar Pedido
                             </button>
-                            <button type="button" id="btn-finalize-order" class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                Finalizar Pedido
-                            </button>
-                        </div>
-                        <button type="button" id="btn-create-paid-order" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled title="Criar pedido já como pago, sem enviar notificação ao cliente (para migração)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle-2">
-                                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                                <path d="m9 12 2 2 4-4"></path>
-                            </svg>
-                            Criar Pedido Pago (Migração)
-                        </button>
-
-                        <div class="mt-4 pt-4 border-t">
                             <button type="button" id="btn-add-more-items" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
-                                    <path d="M5 12h14"></path>
-                                    <path d="M12 5v14"></path>
-                                </svg>
                                 Adicionar Mais Itens
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
+                </details>
         </div>
 
         <!-- Coluna Conteúdo (Produtos) -->
-        <div class="dashboard-main flex flex-col space-y-6">
+        <div class="dashboard-main flex flex-col space-y-6 lg:flex-1">
 
-            <!-- Seleção de Produtos - TERCEIRO (após cliente e frete) -->
-            <div id="products-section" class="rounded-lg border bg-card text-card-foreground shadow-sm hidden" style="background-color: hsl(var(--card)); border-color: hsl(var(--border));">
-                <div class="flex flex-col space-y-1.5 p-6">
-                    <h3 class="text-lg font-semibold leading-none tracking-tight" style="color: hsl(var(--foreground));">Produtos</h3>
-                </div>
-                <div class="p-6 pt-0">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-2" style="color: hsl(var(--foreground));">Buscar Produto</label>
-                            <div class="relative">
-                                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style="color: hsl(var(--muted-foreground));"></i>
-                                <input type="text" id="product-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" style="border-color: hsl(var(--border)); background-color: hsl(var(--background)); color: hsl(var(--foreground));" placeholder="Buscar produtos..." autocomplete="off">
+            <div id="products-section">
+                <!-- Grid de Produtos - Estilo do Site -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" id="products-grid">
+                    @foreach($products as $product)
+                        @php
+                            $categoryName = $product->category->name ?? 'Sem categoria';
+                            $activeVariants = $product->variants
+                                ? $product->variants->where('is_active', true)->values()
+                                : collect();
+                            $variantsPayload = $activeVariants->map(function ($variant) {
+                                return [
+                                    'id' => $variant->id,
+                                    'name' => $variant->name,
+                                    'price' => (float)$variant->price,
+                                ];
+                            });
+                        @endphp
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow cursor-pointer product-card-pdv product-quick-add relative"
+                             data-product-id="{{ $product->id }}"
+                             data-product-name="{{ $product->name }}"
+                             data-product-price="{{ (float)($product->price ?? 0) }}"
+                             data-category="{{ $categoryName }}"
+                             data-has-variants="{{ $activeVariants->count() > 0 ? 'true' : 'false' }}"
+                             data-variants='@json($variantsPayload)'>
+                            @if($activeVariants->count() > 0)
+                                <span class="absolute right-2 top-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-xs font-semibold">
+                                    +{{ $activeVariants->count() }}
+                                </span>
+                            @endif
+                        <div class="flex flex-col items-center text-center gap-2">
+                                <!-- Ícone Placeholder -->
+                                <div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
+                                </div>
+                                <!-- Tag de Categoria -->
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                                    {{ $categoryName }}
+                                </span>
+                                <!-- Nome do Produto -->
+                                <h3 class="text-sm font-semibold text-gray-900">{{ $product->name }}</h3>
+                            <p class="text-sm text-blue-600 font-semibold product-price-display">R$ {{ number_format((float)($product->price ?? 0), 2, ',', '.') }}</p>
+                            @if($activeVariants->count() > 0)
+                                <span class="text-xs text-orange-600">Escolher opção →</span>
+                            @endif
                             </div>
-                            <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border rounded-md bg-background shadow-lg" style="border-color: hsl(var(--border)); background-color: hsl(var(--background));"></div>
                         </div>
-
-                        <div class="mt-4">
-                            <h4 class="text-sm font-medium mb-3" style="color: hsl(var(--foreground));">Produtos Frequentes</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
-                                @foreach($products as $product)
-                                    @php
-                                        $variantsActive = $product->variants()->where('is_active', true)->orderBy('sort_order')->get();
-                                        $hasVariants = $variantsActive->count() > 0;
-                                        $displayPrice = $hasVariants ? $variantsActive->first()->price : $product->price;
-                                        $variantsData = $variantsActive->map(function($v) {
-                                            return [
-                                                'id' => $v->id,
-                                                'name' => $v->name,
-                                                'price' => (float)$v->price,
-                                            ];
-                                        })->toArray();
-                                    @endphp
-                                    <button type="button" class="product-quick-add text-left border rounded-lg hover:bg-accent hover:border-primary transition-all shadow-sm hover:shadow-md p-4" style="border-color: hsl(var(--border)); background-color: hsl(var(--card));" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-price="{{ $displayPrice }}" data-has-variants="{{ $hasVariants ? 'true' : 'false' }}" data-variants="{{ json_encode($variantsData) }}">
-                                        <p class="font-semibold text-sm mb-2" style="color: hsl(var(--foreground));">{{ $product->name }}</p>
-                                        <div class="mt-auto">
-                                            @if($hasVariants)
-                                                <p class="text-base font-bold product-price-display mb-2" style="color: hsl(var(--primary));">A partir de R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
-                                                <p class="text-xs font-medium" style="color: hsl(var(--primary));">Escolher opção →</p>
-                                            @else
-                                                <p class="text-base font-bold product-price-display" style="color: hsl(var(--primary));">R$ {{ number_format($displayPrice, 2, ',', '.') }}</p>
-                                            @endif
-                                        </div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -297,7 +274,7 @@
 </div>
 
 <!-- Modal: Novo Cliente -->
-<div id="new-customer-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
+<div id="new-customer-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75">
     <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto relative">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
@@ -388,12 +365,12 @@
     </div>
 </div>
 
-<!-- Modal: Confirmação de Finalização -->
-<div id="finalize-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75">
+<!-- Modal: Agendamento e Pagamento -->
+<div id="finalize-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75">
     <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-xl font-semibold">Finalizar Pedido</h3>
+                <h3 class="text-xl font-semibold">Agendar Entrega</h3>
                 <button type="button" id="btn-close-finalize-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
@@ -404,43 +381,179 @@
             
             <div class="space-y-4">
                 <div>
-                    <p class="text-sm text-muted-foreground mb-4">Como deseja processar este pedido?</p>
-                    
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-accent">
-                            <input type="radio" name="payment_option" value="send_link" class="h-4 w-4 text-primary" checked>
-                            <div class="flex-1">
-                                <p class="font-medium">Enviar link de pagamento ao cliente</p>
-                                <p class="text-xs text-muted-foreground">O cliente receberá os dados do pedido e link para finalizar, agendar entrega e pagar</p>
-                            </div>
-                        </label>
-                        
-                        <label class="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-accent">
-                            <input type="radio" name="payment_option" value="debt" class="h-4 w-4 text-primary">
-                            <div class="flex-1">
-                                <p class="font-medium">Criar como débito (fiado)</p>
-                                <p class="text-xs text-muted-foreground">Pedido será registrado como débito no cadastro do cliente</p>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div id="payment-method-section" class="mt-4 space-y-2">
-                        <label class="block text-sm font-medium">Método de Pagamento</label>
-                        <select id="payment-method-select" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                            <option value="pix">PIX</option>
-                            <option value="credit_card">Cartão de Crédito</option>
-                            <option value="debit_card">Cartão de Débito</option>
-                        </select>
-                    </div>
+                    <label class="block text-sm font-medium mb-2">Data *</label>
+                    <select id="scheduled_delivery_date" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <option value="">Selecione uma data</option>
+                        @foreach($availableDates ?? [] as $date)
+                            <option value="{{ $date['date'] }}">{{ $date['day_name'] }}, {{ $date['label'] }}</option>
+                        @endforeach
+                    </select>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Horário *</label>
+                    <select id="scheduled_delivery_slot" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" disabled>
+                        <option value="">Selecione primeiro uma data</option>
+                    </select>
+                </div>
+
             </div>
-            
+
             <div class="flex gap-3 mt-6">
                 <button type="button" id="btn-cancel-finalize" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
                     Cancelar
                 </button>
-                <button type="button" id="btn-confirm-finalize" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">
+                <button type="button" id="btn-confirm-finalize" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4">
                     Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pagamento via PIX -->
+<div id="pix-payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+        <div class="p-6 space-y-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="qr-code" class="h-5 w-5 text-blue-600"></i>
+                    <h3 class="text-lg font-semibold">Pagamento via PIX</h3>
+                </div>
+                <button type="button" id="btn-close-pix-payment-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-2 text-sm">
+                <p class="text-muted-foreground">Resumo do Pedido</p>
+                <div id="pix-summary-items" class="space-y-1"></div>
+                <div class="border-t pt-2 space-y-1">
+                    <div class="flex justify-between text-muted-foreground">
+                        <span>Subtotal</span>
+                        <span id="pix-subtotal">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-muted-foreground">
+                        <span>Entrega</span>
+                        <span id="pix-delivery">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-base font-semibold">
+                        <span>Total</span>
+                        <span id="pix-total" class="text-blue-600">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg bg-gray-50 border p-3 text-sm">
+                <p class="font-medium text-gray-700">Endereço de Entrega</p>
+                <p id="pix-address" class="text-gray-600"></p>
+                <p id="pix-cep" class="text-gray-500"></p>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-sm font-semibold">Como deseja processar o PIX?</p>
+                <label class="flex items-center justify-between gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent">
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="pix_option" value="display_qr" class="h-4 w-4 text-blue-600">
+                        <div>
+                            <p class="text-sm font-medium">Gerar QR Code em Tela</p>
+                            <p class="text-xs text-muted-foreground">Cliente escaneia o QR Code na tela</p>
+                        </div>
+                    </div>
+                </label>
+                <label class="flex items-center justify-between gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent">
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="pix_option" value="send_whatsapp" class="h-4 w-4 text-blue-600">
+                        <div>
+                            <p class="text-sm font-medium">Enviar Cobrança PIX</p>
+                            <p class="text-xs text-muted-foreground">Envia cobrança via WhatsApp</p>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" id="btn-cancel-pix-payment" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-white hover:bg-accent h-10 px-4">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-confirm-pix-payment" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4">
+                    Gerar QR Code
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Link de Pagamento -->
+<div id="link-payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+        <div class="p-6 space-y-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="link" class="h-5 w-5 text-blue-600"></i>
+                    <h3 class="text-lg font-semibold">Link de Pagamento</h3>
+                </div>
+                <button type="button" id="btn-close-link-payment-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-2 text-sm">
+                <p class="text-muted-foreground">Resumo do Pedido</p>
+                <div id="link-summary-items" class="space-y-1"></div>
+                <div class="border-t pt-2 space-y-1">
+                    <div class="flex justify-between text-muted-foreground">
+                        <span>Subtotal</span>
+                        <span id="link-subtotal">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-base font-semibold">
+                        <span>Total</span>
+                        <span id="link-total" class="text-blue-600">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm">
+                <p class="font-medium text-blue-700">Link será enviado ao cliente</p>
+                <p class="text-xs text-blue-600">O link de pagamento será enviado automaticamente via WhatsApp.</p>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" id="btn-cancel-link-payment" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-white hover:bg-accent h-10 px-4">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-confirm-link-payment" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4">
+                    Enviar Cobrança
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Exibir QR Code PIX -->
+<div id="pix-qr-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">Pagamento PIX</h3>
+                <button type="button" id="btn-close-pix-qr-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                        <path d="M18 6 6 18"></path>
+                        <path d="M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="pix-qr-content" class="space-y-4">
+                <!-- QR Code será inserido aqui -->
+                <div class="text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                    <p class="text-sm text-muted-foreground">Gerando QR Code...</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-3">
+                <button type="button" id="btn-close-pix-qr" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4">
+                    Fechar
                 </button>
             </div>
         </div>
@@ -457,7 +570,10 @@ const pdvState = {
     deliveryType: 'delivery',
     deliveryFee: 0,
     notes: '',
+    scheduled_delivery_date: '',
+    scheduled_delivery_slot: '',
 };
+const availableDates = @json($availableDates ?? []);
 
 // Funções de busca de cliente
 let customerSearchTimeout;
@@ -465,8 +581,10 @@ document.getElementById('customer-search')?.addEventListener('input', function(e
     clearTimeout(customerSearchTimeout);
     const query = e.target.value.trim();
     
+    const resultsEl = document.getElementById('customer-results');
     if (query.length < 2) {
-        document.getElementById('customer-results').classList.add('hidden');
+        resultsEl.classList.add('hidden');
+        resultsEl.innerHTML = '';
         return;
     }
     
@@ -474,7 +592,6 @@ document.getElementById('customer-search')?.addEventListener('input', function(e
         fetch(`{{ route('api.pdv.customers.search') }}?q=${encodeURIComponent(query)}`)
             .then(res => res.json())
             .then(data => {
-                const resultsEl = document.getElementById('customer-results');
                 if (data.customers && data.customers.length > 0) {
                     resultsEl.innerHTML = data.customers.map(c => `
                         <button type="button" class="customer-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
@@ -488,7 +605,7 @@ document.getElementById('customer-search')?.addEventListener('input', function(e
                                 data-customer-city="${c.city || ''}"
                                 data-customer-state="${c.state || ''}"
                                 data-customer-fee="${c.custom_delivery_fee ?? ''}"
-                                data-customer-wholesale="${c.is_wholesale ? '1' : '0'}">
+                                data-customer-wholesale="${Number(c.is_wholesale) === 1 ? '1' : '0'}">
                             <p class="font-medium">${c.name || 'Sem nome'}</p>
                             ${c.phone ? `<p class="text-xs text-muted-foreground">${c.phone}</p>` : ''}
                             ${c.email ? `<p class="text-xs text-muted-foreground">${c.email}</p>` : ''}
@@ -502,6 +619,13 @@ document.getElementById('customer-search')?.addEventListener('input', function(e
             })
             .catch(err => console.error('Erro ao buscar clientes:', err));
     }, 300);
+});
+
+document.getElementById('customer-search')?.addEventListener('blur', function() {
+    const resultsEl = document.getElementById('customer-results');
+    setTimeout(() => {
+        resultsEl.classList.add('hidden');
+    }, 150);
 });
 
 // Selecionar cliente
@@ -544,8 +668,15 @@ document.addEventListener('click', function(e) {
         }
         document.getElementById('selected-customer-info').textContent = info;
         document.getElementById('selected-customer').classList.remove('hidden');
-        document.getElementById('customer-results').classList.add('hidden');
+        const resultsEl = document.getElementById('customer-results');
+        resultsEl.classList.add('hidden');
+        resultsEl.innerHTML = '';
         document.getElementById('customer-search').value = '';
+
+        const deliveryAddress = document.getElementById('delivery-address');
+        if (deliveryAddress) {
+            deliveryAddress.value = customerAddress || '';
+        }
         
         // Mostrar seção de frete após selecionar cliente
         // Seção de frete agora está integrada no resumo
@@ -695,8 +826,7 @@ document.getElementById('btn-clear-customer')?.addEventListener('click', functio
     pdvState.customer = null;
     document.getElementById('customer-id').value = '';
     document.getElementById('selected-customer').classList.add('hidden');
-    // Campos de frete permanecem visíveis no resumo
-    document.getElementById('products-section').classList.add('hidden'); // Ocultar produtos quando cliente é removido
+    // Campos de frete permanecem visíveis no topo
     resetProductPricesToNormal(); // Resetar preços quando cliente é removido
     updateFinalizeButton();
 });
@@ -850,11 +980,33 @@ document.getElementById('product-search')?.addEventListener('input', function(e)
     }, 300);
 });
 
+// Filtros de categoria
+document.querySelectorAll('.category-filter').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const selected = this.dataset.category;
+        document.querySelectorAll('.category-filter').forEach(b => {
+            b.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+            b.classList.add('border-border', 'bg-white', 'text-foreground');
+        });
+        this.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+        this.classList.remove('border-border', 'bg-white', 'text-foreground');
+
+        document.querySelectorAll('.product-quick-add').forEach(card => {
+            const cardCategory = card.dataset.category || '';
+            if (selected === 'all' || cardCategory === selected) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    });
+});
+
 // Modal de seleção de quantidade
 function showQuantityModal(productName, productPrice, callback) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
     modal.id = 'quantity-modal';
     
     let quantity = 1;
@@ -862,38 +1014,48 @@ function showQuantityModal(productName, productPrice, callback) {
     const updateTotal = () => {
         const totalEl = modal.querySelector('#quantity-total');
         if (totalEl) {
-            totalEl.textContent = `Total: R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}`;
+            totalEl.textContent = `R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}`;
         }
     };
     
     modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
-            <div class="p-6">
-                <h3 class="text-xl font-semibold mb-2">${productName}</h3>
-                <p class="text-sm text-muted-foreground mb-4">Preço unitário: R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
-                
-                <div class="flex items-center justify-center gap-4 mb-6">
-                    <button type="button" id="btn-decrease-qty" class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                        </svg>
-                    </button>
-                    <span id="quantity-display" class="text-2xl font-bold w-16 text-center">${quantity}</span>
-                    <button type="button" id="btn-increase-qty" class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                            <path d="M12 5v14"></path>
-                        </svg>
-                    </button>
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+            <div class="p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-muted-foreground">Pães</p>
+                        <h3 class="text-lg font-semibold">${productName}</h3>
+                        <p class="text-blue-600 font-semibold">R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
+                    </div>
                 </div>
-                
-                <p id="quantity-total" class="text-lg font-semibold text-center mb-6">Total: R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}</p>
-                
+
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold">Quantidade</p>
+                    <div class="flex items-center gap-3">
+                        <button type="button" id="btn-decrease-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
+                        <span id="quantity-display" class="text-lg font-semibold w-6 text-center">${quantity}</span>
+                        <button type="button" id="btn-increase-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold">Observação (opcional)</p>
+                    <textarea id="item-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado, cortar em fatias..."></textarea>
+                </div>
+
+                <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
+                    <span class="text-sm text-blue-700">Total do item</span>
+                    <span id="quantity-total" class="text-blue-700 font-semibold">R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}</span>
+                </div>
+
                 <div class="flex gap-3">
                     <button type="button" id="btn-cancel-quantity" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">
                         Cancelar
                     </button>
-                    <button type="button" id="btn-add-quantity" class="flex-1 px-4 py-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white font-medium">
+                    <button type="button" id="btn-add-quantity" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">
                         Adicionar
                     </button>
                 </div>
@@ -902,6 +1064,9 @@ function showQuantityModal(productName, productPrice, callback) {
     `;
     
     document.body.appendChild(modal);
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
     
     const quantityDisplay = modal.querySelector('#quantity-display');
     const btnDecrease = modal.querySelector('#btn-decrease-qty');
@@ -928,7 +1093,8 @@ function showQuantityModal(productName, productPrice, callback) {
     });
     
     btnAdd.addEventListener('click', () => {
-        callback(quantity);
+        const notes = modal.querySelector('#item-notes')?.value?.trim() || '';
+        callback(quantity, notes);
         document.body.removeChild(modal);
         document.getElementById('product-results')?.classList.add('hidden');
         document.getElementById('product-search').value = '';
@@ -944,68 +1110,122 @@ function showQuantityModal(productName, productPrice, callback) {
 
 // Modal de seleção de variante
 function showVariantModal(productId, productName, variants) {
-    // Criar modal dinamicamente
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
     modal.id = 'variant-modal';
+
+    const first = variants[0];
+    const initialPrice = parseFloat(first?.price || 0);
+
     modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 relative">
-            <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4">${productName}</h3>
-                <p class="text-sm text-muted-foreground mb-4">Escolha uma opção:</p>
-                <div class="space-y-2 max-h-60 overflow-y-auto">
-                    ${variants.map(v => `
-                        <button type="button" 
-                                class="variant-option w-full text-left p-3 border rounded-md hover:bg-accent transition-colors"
-                                data-variant-id="${v.id}"
-                                data-variant-name="${v.name}"
-                                data-variant-price="${v.price}">
-                            <p class="font-medium">${v.name}</p>
-                            <p class="text-sm text-muted-foreground">R$ ${parseFloat(v.price).toFixed(2).replace('.', ',')}</p>
-                        </button>
-                    `).join('')}
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+            <div class="p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-muted-foreground">Pães</p>
+                        <h3 class="text-lg font-semibold">${productName}</h3>
+                        <p class="text-blue-600 font-semibold">R$ <span id="variant-price">${initialPrice.toFixed(2).replace('.', ',')}</span></p>
+                    </div>
                 </div>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button type="button" 
-                            id="btn-cancel-variant" 
-                            class="px-4 py-2 rounded-md border border-input bg-background hover:bg-accent">
-                        Cancelar
-                    </button>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold">Escolha a variação</p>
+                    <div class="space-y-2">
+                        ${variants.map((v, index) => `
+                            <label class="flex items-center justify-between gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent">
+                                <div class="flex items-center gap-3">
+                                    <input type="radio" name="variant_option" value="${v.id}" data-name="${v.name}" data-price="${v.price}" ${index === 0 ? 'checked' : ''}>
+                                    <span class="text-sm font-medium">${v.name}</span>
+                                </div>
+                                <span class="text-sm font-semibold">R$ ${parseFloat(v.price).toFixed(2).replace('.', ',')}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold">Quantidade</p>
+                    <div class="flex items-center gap-3">
+                        <button type="button" id="variant-dec" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
+                        <span id="variant-qty" class="text-lg font-semibold w-6 text-center">1</span>
+                        <button type="button" id="variant-inc" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold">Observação (opcional)</p>
+                    <textarea id="variant-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado..."></textarea>
+                </div>
+
+                <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
+                    <span class="text-sm text-blue-700">Total do item</span>
+                    <span id="variant-total" class="text-blue-700 font-semibold">R$ ${initialPrice.toFixed(2).replace('.', ',')}</span>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" id="variant-cancel" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">Cancelar</button>
+                    <button type="button" id="variant-add" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">Adicionar</button>
                 </div>
             </div>
         </div>
     `;
+
     document.body.appendChild(modal);
-    
-    // Handlers
-    modal.querySelectorAll('.variant-option').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const variantId = btn.dataset.variantId;
-            const variantName = btn.dataset.variantName;
-            const variantPrice = parseFloat(btn.dataset.variantPrice);
-            
-            showQuantityModal(productName, variantPrice, (qty) => {
-                addItem({
-                    product_id: productId,
-                    variant_id: variantId,
-                    name: `${productName} - ${variantName}`,
-                    price: variantPrice,
-                    quantity: qty,
-                });
-            });
-            
-            document.body.removeChild(modal);
-            document.getElementById('product-results')?.classList.add('hidden');
-            document.getElementById('product-search').value = '';
-        });
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    let qty = 1;
+    const updateTotals = () => {
+        const selected = modal.querySelector('input[name="variant_option"]:checked');
+        const price = parseFloat(selected?.dataset.price || 0);
+        modal.querySelector('#variant-price').textContent = price.toFixed(2).replace('.', ',');
+        modal.querySelector('#variant-total').textContent = `R$ ${(price * qty).toFixed(2).replace('.', ',')}`;
+    };
+
+    modal.querySelectorAll('input[name="variant_option"]').forEach(radio => {
+        radio.addEventListener('change', updateTotals);
     });
-    
-    modal.querySelector('#btn-cancel-variant')?.addEventListener('click', function() {
+    modal.querySelector('#variant-dec')?.addEventListener('click', () => {
+        qty = Math.max(1, qty - 1);
+        modal.querySelector('#variant-qty').textContent = qty;
+        updateTotals();
+    });
+    modal.querySelector('#variant-inc')?.addEventListener('click', () => {
+        qty += 1;
+        modal.querySelector('#variant-qty').textContent = qty;
+        updateTotals();
+    });
+
+    modal.querySelector('#variant-add')?.addEventListener('click', () => {
+        const selected = modal.querySelector('input[name="variant_option"]:checked');
+        const variantId = selected?.value;
+        const variantName = selected?.dataset.name || '';
+        const variantPrice = parseFloat(selected?.dataset.price || 0);
+        const notes = modal.querySelector('#variant-notes')?.value?.trim() || '';
+
+        addItem({
+            product_id: productId,
+            variant_id: variantId,
+            name: `${productName} - ${variantName}`,
+            price: variantPrice,
+            quantity: qty,
+            special_instructions: notes,
+        });
+
+        document.body.removeChild(modal);
+        document.getElementById('product-results')?.classList.add('hidden');
+        document.getElementById('product-search').value = '';
+    });
+
+    modal.querySelector('#variant-cancel')?.addEventListener('click', () => {
         document.body.removeChild(modal);
     });
-    
-    // Fechar ao clicar fora
+
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             document.body.removeChild(modal);
@@ -1037,13 +1257,14 @@ document.addEventListener('click', function(e) {
         }
         
         // Sem variantes, mostrar modal de quantidade
-        showQuantityModal(productName, productPrice, (qty) => {
+        showQuantityModal(productName, productPrice, (qty, notes) => {
             addItem({
                 product_id: productId,
                 variant_id: null,
                 name: productName,
                 price: productPrice,
                 quantity: qty,
+                special_instructions: notes,
             });
         });
         
@@ -1073,6 +1294,7 @@ function addItem(item) {
         const variantId = item.variant_id ? parseInt(item.variant_id) : null;
         const price = parseFloat(item.price);
         const quantity = parseInt(item.quantity || 1);
+        const notes = String(item.special_instructions || '').trim();
         
         // Validar preço
         if (isNaN(price) || price <= 0) {
@@ -1092,6 +1314,7 @@ function addItem(item) {
         const existingItem = pdvState.items.find(i => 
             i.product_id === productId && 
             i.variant_id === variantId &&
+            i.special_instructions === notes &&
             Math.abs(i.price - price) < 0.01 // Comparação de float com tolerância
         );
         
@@ -1104,6 +1327,7 @@ function addItem(item) {
                 name: String(item.name).trim(),
                 price: price,
                 quantity: quantity,
+                special_instructions: notes,
             });
         }
         
@@ -1158,6 +1382,7 @@ function renderItems() {
             <div class="flex-1">
                 <p class="font-medium text-sm">${item.name}</p>
                 <p class="text-xs text-muted-foreground">R$ ${item.price.toFixed(2).replace('.', ',')} x ${item.quantity}</p>
+                ${item.special_instructions ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.special_instructions}</p>` : ''}
             </div>
             <div class="flex items-center gap-2">
                 <button type="button" class="btn-dec-qty p-1 hover:bg-accent rounded" data-index="${index}">-</button>
@@ -1210,6 +1435,10 @@ function updateSummary() {
     const itemsCountEl = document.getElementById('summary-items-count');
     if (itemsCountEl) {
         itemsCountEl.textContent = itemsCount;
+    }
+    const cartCountEl = document.getElementById('cart-items-count');
+    if (cartCountEl) {
+        cartCountEl.textContent = itemsCount;
     }
     const summarySubtotalEl = document.getElementById('summary-subtotal');
     if (summarySubtotalEl) {
@@ -1450,6 +1679,23 @@ document.getElementById('delivery-type')?.addEventListener('change', function(e)
     pdvState.deliveryType = e.target.value;
 });
 
+document.getElementById('btn-toggle-delivery')?.addEventListener('click', function() {
+    const deliverySelect = document.getElementById('delivery-type');
+    if (!deliverySelect) {
+        return;
+    }
+    const nextValue = deliverySelect.value === 'delivery' ? 'pickup' : 'delivery';
+    deliverySelect.value = nextValue;
+    pdvState.deliveryType = nextValue;
+    this.textContent = nextValue === 'delivery' ? 'Entrega Ativada' : 'Retirada';
+});
+
+document.getElementById('delivery-address')?.addEventListener('input', function(e) {
+    if (pdvState.customer) {
+        pdvState.customer.address = e.target.value;
+    }
+});
+
 // Observações
 document.getElementById('order-notes')?.addEventListener('input', function(e) {
     pdvState.notes = e.target.value;
@@ -1481,130 +1727,102 @@ function updateFinalizeButtons() {
     
     document.getElementById('btn-finalize-order').disabled = !enabled;
     document.getElementById('btn-send-order').disabled = !enabled;
-    document.getElementById('btn-create-paid-order').disabled = !enabled;
+    // Botões removidos de migração
 }
 
-// Enviar pedido (cria e envia link ao cliente)
+// Enviar pedido (abre fluxo de agendamento + pagamento)
 document.getElementById('btn-send-order')?.addEventListener('click', function() {
     if (!pdvState.customer || pdvState.items.length === 0) {
         alert('Preencha cliente e adicione itens ao pedido');
         return;
     }
-    
-    if (!pdvState.customer.phone) {
-        alert('O cliente precisa ter um telefone cadastrado para receber o pedido');
-        return;
-    }
-    
-    if (!confirm('Deseja enviar este pedido ao cliente por WhatsApp? Ele receberá o resumo e um link para escolher data/hora de entrega e forma de pagamento.')) {
-        return;
-    }
-    
-    const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
-    const discount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
-    
-    // Buscar CEP do campo de destino
-    const destinationCep = document.getElementById('destination-cep')?.value?.trim() || '';
-    const cepClean = destinationCep.replace(/\D/g, '');
-    
-    // Preparar dados de endereço se CEP foi fornecido
-    let addressData = null;
-    if (cepClean.length === 8) {
-        // Se houver dados do endereço preenchidos (via busca de CEP), incluir
-        addressData = {
-            zip_code: cepClean,
-            street: pdvState.customer.address || '', // Se tiver endereço do cliente
-            number: pdvState.customer.number || '',
-            neighborhood: pdvState.customer.neighborhood || '',
-            city: pdvState.customer.city || '',
-            state: pdvState.customer.state || '',
-        };
-    }
-    
-    const orderData = {
-        customer_id: pdvState.customer.id,
-        items: pdvState.items.map(item => ({
-            product_id: item.product_id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-        })),
-        delivery_type: pdvState.deliveryType,
-        delivery_fee: deliveryFee,
-        coupon_code: pdvState.coupon ? pdvState.coupon.code : null,
-        discount_amount: discount,
-        notes: pdvState.notes,
-        send_to_customer: true, // Flag para enviar ao cliente
-        zip_code: cepClean.length === 8 ? cepClean : null,
-        address: addressData,
-    };
-    
-    this.disabled = true;
-    this.textContent = 'Enviando...';
-    
-    fetch('{{ route("dashboard.pdv.send") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify(orderData),
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            if (data.whatsapp_error) {
-                // Pedido criado mas WhatsApp falhou
-                const msg = data.message || 'Pedido criado, mas houve problema ao enviar via WhatsApp.';
-                if (confirm(msg + '\n\nDeseja ver os detalhes do pedido?')) {
-                    window.location.href = '{{ route("dashboard.orders.index") }}?search=' + data.order.order_number;
-                } else {
-                    window.location.reload();
-                }
-            } else {
-                alert(data.message || 'Pedido enviado ao cliente com sucesso!');
-                // Limpar estado e recarregar página
-                window.location.reload();
-            }
-        } else {
-            alert('Erro: ' + (data.message || 'Erro ao enviar pedido'));
-            this.disabled = false;
-            this.textContent = 'Enviar Pedido';
-        }
-    })
-    .catch(err => {
-        console.error('Erro ao enviar pedido:', err);
-        alert('Erro ao enviar pedido');
-        this.disabled = false;
-        this.textContent = 'Enviar Pedido';
-    });
+    document.getElementById('btn-finalize-order')?.click();
 });
 
-// Finalizar pedido
+// Atualizar slots de agendamento
+function updateScheduleSlots() {
+    const dateSelect = document.getElementById('scheduled_delivery_date');
+    const slotSelect = document.getElementById('scheduled_delivery_slot');
+    if (!dateSelect || !slotSelect) return;
+
+    const selectedDate = dateSelect.value;
+    const dateObj = availableDates.find(d => d.date === selectedDate);
+
+    if (!dateObj || !dateObj.slots || dateObj.slots.length === 0) {
+        slotSelect.innerHTML = '<option value="">Nenhum horário disponível</option>';
+        slotSelect.disabled = true;
+        return;
+    }
+
+    slotSelect.innerHTML = '<option value="">Selecione um horário</option>' + dateObj.slots.map(slot => {
+        const label = `${slot.label} (${slot.available} vagas)`;
+        return `<option value="${slot.value}">${label}</option>`;
+    }).join('');
+    slotSelect.disabled = false;
+}
+
+document.getElementById('scheduled_delivery_date')?.addEventListener('change', updateScheduleSlots);
+
+// Finalizar pedido (abre agendamento)
 document.getElementById('btn-finalize-order')?.addEventListener('click', function() {
+    const dateSelect = document.getElementById('scheduled_delivery_date');
+    if (dateSelect && !dateSelect.value && availableDates.length > 0) {
+        dateSelect.value = availableDates[0].date;
+        updateScheduleSlots();
+    }
     document.getElementById('finalize-modal').classList.remove('hidden');
 });
 
-// Opções de pagamento no modal
-document.querySelectorAll('input[name="payment_option"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        const paymentSection = document.getElementById('payment-method-section');
-        if (this.value === 'send_link') {
-            paymentSection.classList.remove('hidden');
-        } else {
-            paymentSection.classList.add('hidden');
-        }
-    });
+// Atualizar botões de pagamento
+document.getElementById('payment-method-select')?.addEventListener('change', function() {
+    updatePaymentButtons();
 });
 
-// Confirmar finalização
-document.getElementById('btn-confirm-finalize')?.addEventListener('click', function() {
-    const paymentOption = document.querySelector('input[name="payment_option"]:checked').value;
-    const paymentMethod = paymentOption === 'send_link' 
-        ? document.getElementById('payment-method-select').value 
-        : null;
-    
+function updatePaymentButtons() {
+    const paymentSelect = document.getElementById('payment-method-select');
+    const btnPix = document.getElementById('btn-payment-pix');
+    const btnLink = document.getElementById('btn-payment-link');
+    if (!paymentSelect || !btnPix || !btnLink) {
+        return;
+    }
+
+    const method = paymentSelect.value;
+    const activeClasses = ['border-blue-600', 'bg-blue-50', 'text-blue-700'];
+    const inactiveClasses = ['border-gray-300', 'bg-white', 'text-gray-700'];
+
+    if (method === 'pix') {
+        btnPix.classList.add(...activeClasses);
+        btnPix.classList.remove(...inactiveClasses);
+        btnLink.classList.add(...inactiveClasses);
+        btnLink.classList.remove(...activeClasses);
+    } else {
+        btnLink.classList.add(...activeClasses);
+        btnLink.classList.remove(...inactiveClasses);
+        btnPix.classList.add(...inactiveClasses);
+        btnPix.classList.remove(...activeClasses);
+    }
+}
+
+function setPaymentMethod(method) {
+    const paymentSelect = document.getElementById('payment-method-select');
+    if (paymentSelect) {
+        paymentSelect.value = method;
+    }
+    updatePaymentButtons();
+}
+
+document.getElementById('btn-payment-pix')?.addEventListener('click', function () {
+    setPaymentMethod('pix');
+});
+
+document.getElementById('btn-payment-link')?.addEventListener('click', function () {
+    setPaymentMethod('credit_card');
+});
+
+// Inicializar seleção de pagamento no carregamento
+updatePaymentButtons();
+
+function calculateOrderTotals() {
     const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
     const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
@@ -1612,7 +1830,82 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
     const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
     const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
     const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
-    
+    const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
+    return { subtotal, deliveryFee, total, totalDiscount };
+}
+
+function fillPaymentSummary(prefix) {
+    const { subtotal, deliveryFee, total } = calculateOrderTotals();
+    const listEl = document.getElementById(`${prefix}-summary-items`);
+    if (listEl) {
+        listEl.innerHTML = pdvState.items.map(item => `
+            <div class="flex justify-between text-sm">
+                <span>${item.quantity}x ${item.name}</span>
+                <span>R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
+            </div>
+        `).join('');
+    }
+    const subtotalEl = document.getElementById(`${prefix}-subtotal`);
+    if (subtotalEl) subtotalEl.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+    const totalEl = document.getElementById(`${prefix}-total`);
+    if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    const deliveryEl = document.getElementById(`${prefix}-delivery`);
+    if (deliveryEl) deliveryEl.textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+
+    if (prefix === 'pix') {
+        const address = document.getElementById('delivery-address')?.value || pdvState.customer?.address || '';
+        const cep = document.getElementById('destination-cep')?.value || pdvState.customer?.zip_code || '';
+        const addressEl = document.getElementById('pix-address');
+        const cepEl = document.getElementById('pix-cep');
+        if (addressEl) addressEl.textContent = address || 'Endereço não informado';
+        if (cepEl) cepEl.textContent = cep ? `CEP: ${cep}` : '';
+    }
+}
+
+function openPixPaymentModal() {
+    fillPaymentSummary('pix');
+    const radio = document.querySelector('input[name="pix_option"][value="display_qr"]');
+    if (radio) {
+        radio.checked = true;
+    }
+    const btn = document.getElementById('btn-confirm-pix-payment');
+    if (btn) {
+        btn.textContent = 'Gerar QR Code';
+    }
+    document.getElementById('pix-payment-modal')?.classList.remove('hidden');
+}
+
+function openLinkPaymentModal() {
+    fillPaymentSummary('link');
+    document.getElementById('link-payment-modal')?.classList.remove('hidden');
+}
+
+// Confirmar agendamento
+document.getElementById('btn-confirm-finalize')?.addEventListener('click', function() {
+    const scheduledDate = document.getElementById('scheduled_delivery_date')?.value || '';
+    const scheduledSlot = document.getElementById('scheduled_delivery_slot')?.value || '';
+    if (!scheduledDate || !scheduledSlot) {
+        alert('Selecione a data e o horário de entrega.');
+        return;
+    }
+    pdvState.scheduled_delivery_date = scheduledDate;
+    pdvState.scheduled_delivery_slot = scheduledSlot;
+    document.getElementById('finalize-modal')?.classList.add('hidden');
+
+    const paymentMethod = document.getElementById('payment-method-select')?.value || 'pix';
+    if (paymentMethod === 'pix') {
+        openPixPaymentModal();
+    } else {
+        openLinkPaymentModal();
+    }
+});
+
+function submitOrder(paymentMethod, pixOption) {
+    const { totalDiscount } = calculateOrderTotals();
+    const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
+    const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
+    const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
+
     const orderData = {
         customer_id: pdvState.customer.id,
         items: pdvState.items.map(item => ({
@@ -1620,6 +1913,7 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
             name: item.name,
             price: item.price,
             quantity: item.quantity,
+            special_instructions: item.special_instructions || null,
         })),
         delivery_type: pdvState.deliveryType,
         delivery_fee: deliveryFee,
@@ -1628,11 +1922,14 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
         manual_discount_fixed: manualDiscountFixed,
         manual_discount_percent: manualDiscountPercent,
         notes: pdvState.notes,
-        send_payment_link: paymentOption === 'send_link',
+        send_payment_link: true,
         payment_method: paymentMethod,
+        pix_option: pixOption || null,
         address_id: pdvState.customer.address_id || null,
+        scheduled_delivery_date: pdvState.scheduled_delivery_date || null,
+        scheduled_delivery_slot: pdvState.scheduled_delivery_slot || null,
     };
-    
+
     fetch('{{ route("dashboard.pdv.store") }}', {
         method: 'POST',
         headers: {
@@ -1644,9 +1941,17 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            // Limpar estado e recarregar página
-            window.location.reload();
+            if (paymentMethod === 'pix' && pixOption === 'display_qr' && data.order_id) {
+                fetch(`{{ url("/dashboard/pdv/pix-qr/:id") }}`.replace(':id', data.order_id))
+                    .then(res => res.json())
+                    .then(pixData => {
+                        showPixQrModal(data.order_id, pixData);
+                        document.getElementById('pix-payment-modal')?.classList.add('hidden');
+                    });
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
         } else {
             alert('Erro: ' + (data.message || 'Erro ao criar pedido'));
         }
@@ -1655,7 +1960,7 @@ document.getElementById('btn-confirm-finalize')?.addEventListener('click', funct
         console.error('Erro ao criar pedido:', err);
         alert('Erro ao criar pedido');
     });
-});
+}
 
 // Fechar modais
 document.getElementById('btn-close-finalize-modal')?.addEventListener('click', () => {
@@ -1665,93 +1970,32 @@ document.getElementById('btn-cancel-finalize')?.addEventListener('click', () => 
     document.getElementById('finalize-modal').classList.add('hidden');
 });
 
-// Criar pedido já como pago (sem notificar - para migração)
-document.getElementById('btn-create-paid-order')?.addEventListener('click', function() {
-    if (!pdvState.customer || pdvState.items.length === 0) {
-        alert('Preencha cliente e adicione itens ao pedido');
-        return;
-    }
-    
-    if (!confirm('Deseja criar este pedido já como PAGO, sem enviar notificação ao cliente?\n\nEsta ação é para migração de pedidos do sistema antigo.')) {
-        return;
-    }
-    
-    const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const deliveryFee = parseFloat(document.getElementById('delivery-fee-input').value) || 0;
-    const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
-    const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
-    const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
-    const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
-    const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
-    
-    // Buscar CEP do campo de destino ou do cliente
-    const destinationCep = document.getElementById('destination-cep')?.value?.trim() || pdvState.customer.zip_code || '';
-    const cepClean = destinationCep.replace(/\D/g, '');
-    
-    // Preparar dados de endereço se CEP foi fornecido
-    let addressData = null;
-    if (cepClean.length === 8) {
-        addressData = {
-            zip_code: cepClean,
-            street: pdvState.customer.address || '',
-            number: pdvState.customer.number || '',
-            neighborhood: pdvState.customer.neighborhood || '',
-            city: pdvState.customer.city || '',
-            state: pdvState.customer.state || '',
-        };
-    }
-    
-    const orderData = {
-        customer_id: pdvState.customer.id,
-        items: pdvState.items.map(item => ({
-            product_id: item.product_id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-        })),
-        delivery_type: pdvState.deliveryType,
-        delivery_fee: deliveryFee,
-        coupon_code: pdvState.coupon ? pdvState.coupon.code : null,
-        discount_amount: totalDiscount,
-        manual_discount_fixed: manualDiscountFixed,
-        manual_discount_percent: manualDiscountPercent,
-        notes: pdvState.notes,
-        create_as_paid: true, // Flag para criar já como pago
-        skip_notification: true, // Não notificar cliente
-        zip_code: cepClean.length === 8 ? cepClean : null,
-        address: addressData,
-        address_id: pdvState.customer.address_id || null,
-    };
-    
-    this.disabled = true;
-    this.textContent = 'Criando...';
-    
-    fetch('{{ route("dashboard.pdv.store") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify(orderData),
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message || 'Pedido criado como pago com sucesso!');
-            // Limpar estado e recarregar página
-            window.location.reload();
-        } else {
-            alert('Erro: ' + (data.message || 'Erro ao criar pedido'));
-            this.disabled = false;
-            this.textContent = 'Criar Pedido Pago (Migração)';
-        }
-    })
-    .catch(err => {
-        console.error('Erro ao criar pedido pago:', err);
-        alert('Erro ao criar pedido pago');
-        this.disabled = false;
-        this.textContent = 'Criar Pedido Pago (Migração)';
+document.getElementById('btn-close-pix-payment-modal')?.addEventListener('click', () => {
+    document.getElementById('pix-payment-modal').classList.add('hidden');
+});
+document.getElementById('btn-cancel-pix-payment')?.addEventListener('click', () => {
+    document.getElementById('pix-payment-modal').classList.add('hidden');
+});
+document.getElementById('btn-confirm-pix-payment')?.addEventListener('click', () => {
+    const pixOption = document.querySelector('input[name="pix_option"]:checked')?.value || 'display_qr';
+    submitOrder('pix', pixOption);
+});
+document.querySelectorAll('input[name="pix_option"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const btn = document.getElementById('btn-confirm-pix-payment');
+        if (!btn) return;
+        btn.textContent = radio.value === 'send_whatsapp' ? 'Enviar Cobrança' : 'Gerar QR Code';
     });
+});
+
+document.getElementById('btn-close-link-payment-modal')?.addEventListener('click', () => {
+    document.getElementById('link-payment-modal').classList.add('hidden');
+});
+document.getElementById('btn-cancel-link-payment')?.addEventListener('click', () => {
+    document.getElementById('link-payment-modal').classList.add('hidden');
+});
+document.getElementById('btn-confirm-link-payment')?.addEventListener('click', () => {
+    submitOrder('credit_card', null);
 });
 
 // Modal de novo cliente
@@ -2096,6 +2340,178 @@ if (zipCodeInput) {
         }
     });
 }
+
+// Função para exibir modal com QR Code PIX
+function showPixQrModal(orderId, pixData) {
+    const modal = document.getElementById('pix-qr-modal');
+    const content = document.getElementById('pix-qr-content');
+    
+    if (!pixData || !pixData.qr_code_base64) {
+        content.innerHTML = `
+            <div class="text-center py-8">
+                <p class="text-red-600 mb-4">Erro ao gerar QR Code</p>
+                <button onclick="location.reload()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                    Fechar
+                </button>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+        return;
+    }
+    
+    const qrCodeImg = pixData.qr_code_base64 ? `data:image/png;base64,${pixData.qr_code_base64}` : '';
+    const copyPaste = pixData.copy_paste || pixData.qr_code || '';
+    const amount = pixData.amount || 0;
+    
+    content.innerHTML = `
+        <div class="text-center space-y-4">
+            <div>
+                <p class="text-lg font-semibold mb-2">Valor: R$ ${parseFloat(amount).toFixed(2).replace('.', ',')}</p>
+                <p class="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código PIX</p>
+            </div>
+            
+            ${qrCodeImg ? `
+                <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                    <img src="${qrCodeImg}" alt="QR Code PIX" class="w-64 h-64 mx-auto">
+                </div>
+            ` : ''}
+            
+            ${copyPaste ? `
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-left">Código PIX (Copiar e Colar):</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="pix-copy-paste-code" value="${copyPaste}" readonly 
+                               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-sm font-mono">
+                        <button type="button" onclick="copyPixCode()" 
+                                class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 whitespace-nowrap">
+                            Copiar
+                        </button>
+                    </div>
+                    <p id="copy-feedback" class="text-xs text-green-600 hidden">Código copiado!</p>
+                </div>
+            ` : ''}
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p class="text-sm text-blue-900">
+                    <strong>Aguardando pagamento...</strong><br>
+                    O pagamento será confirmado automaticamente quando processado.
+                </p>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    
+    // Iniciar monitoramento de pagamento
+    startPaymentMonitoring(orderId);
+}
+
+function copyPixCode() {
+    const input = document.getElementById('pix-copy-paste-code');
+    if (!input) return;
+    
+    input.select();
+    input.setSelectionRange(0, 99999);
+    
+    try {
+        document.execCommand('copy');
+        const feedback = document.getElementById('copy-feedback');
+        if (feedback) {
+            feedback.classList.remove('hidden');
+            setTimeout(() => feedback.classList.add('hidden'), 2000);
+        }
+    } catch (err) {
+        console.error('Erro ao copiar:', err);
+        alert('Erro ao copiar código. Por favor, selecione e copie manualmente.');
+    }
+}
+
+// Monitoramento de pagamento
+let paymentPollInterval = null;
+
+function startPaymentMonitoring(orderId) {
+    if (paymentPollInterval) {
+        clearInterval(paymentPollInterval);
+    }
+    
+    let pollCount = 0;
+    const maxPolls = 240; // Máximo 20 minutos (240 * 5 segundos)
+    
+    paymentPollInterval = setInterval(() => {
+        pollCount++;
+        
+        if (pollCount > maxPolls) {
+            clearInterval(paymentPollInterval);
+            const content = document.getElementById('pix-qr-content');
+            if (content) {
+                const warning = document.createElement('div');
+                warning.className = 'bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4';
+                warning.innerHTML = '<p class="text-sm text-yellow-900">Tempo de espera excedido. Você pode fechar esta tela e verificar o pagamento mais tarde.</p>';
+                content.appendChild(warning);
+            }
+            return;
+        }
+        
+        fetch(`/dashboard/orders/${orderId}/payment-status`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && (data.payment_status === 'paid' || data.payment_status === 'approved')) {
+                clearInterval(paymentPollInterval);
+                
+                // Atualizar UI com confirmação
+                const content = document.getElementById('pix-qr-content');
+                if (content) {
+                    content.innerHTML = `
+                        <div class="text-center space-y-4">
+                            <div class="inline-block p-4 bg-green-100 rounded-full">
+                                <svg class="w-16 h-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xl font-semibold text-green-600 mb-2">Pagamento Confirmado!</p>
+                                <p class="text-sm text-muted-foreground">O pedido foi pago com sucesso.</p>
+                            </div>
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="location.reload()" 
+                                        class="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90">
+                                    Novo Pedido
+                                </button>
+                                <button onclick="window.location.href='/dashboard/orders/${orderId}'" 
+                                        class="flex-1 border border-input bg-background px-4 py-2 rounded-lg hover:bg-accent">
+                                    Ver Pedido
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao verificar pagamento:', err);
+        });
+    }, 5000); // Verificar a cada 5 segundos
+}
+
+// Fechar modal QR Code
+document.getElementById('btn-close-pix-qr-modal')?.addEventListener('click', function() {
+    if (paymentPollInterval) {
+        clearInterval(paymentPollInterval);
+    }
+    document.getElementById('pix-qr-modal').classList.add('hidden');
+});
+
+document.getElementById('btn-close-pix-qr')?.addEventListener('click', function() {
+    if (paymentPollInterval) {
+        clearInterval(paymentPollInterval);
+    }
+    document.getElementById('pix-qr-modal').classList.add('hidden');
+});
 </script>
 @endpush
 @endsection

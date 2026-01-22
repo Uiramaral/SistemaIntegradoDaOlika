@@ -1,15 +1,27 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Categorias')
-@section('page_subtitle', 'Organize seus produtos por categoria')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
-    <a href="{{ route('dashboard.categories.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+    <div class="flex items-center gap-2">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+        </button>
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+            </svg>
+        </button>
+    </div>
+    <a href="{{ route('dashboard.categories.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
             <path d="M12 5v14"></path>
         </svg>
-        Nova Categoria
+        Adicionar categoria
     </a>
 @endsection
 
@@ -21,62 +33,51 @@
         <div class="p-6">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm" data-mobile-card="true">
-                    <thead>
+                    <thead class="bg-gray-50">
                         <tr class="border-b">
-                            <th class="text-left p-3 text-sm font-medium">Nome</th>
-                            <th class="text-left p-3 text-sm font-medium">Produtos</th>
-                            <th class="text-left p-3 text-sm font-medium">Ordem</th>
-                            <th class="text-left p-3 text-sm font-medium">Status</th>
-                            <th class="text-right p-3 text-sm font-medium">Ações</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORIA</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">SLUG</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUTOS</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($categories as $category)
-                        <tr class="border-b hover:bg-muted/50">
-                            <td class="p-3" data-label="Nome">
-                                <div class="font-medium">{{ $category->name }}</div>
-                                @if($category->description)
-                                <div class="text-sm text-muted-foreground mt-1">{{ \Illuminate\Support\Str::limit($category->description, 60) }}</div>
-                                @endif
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                    <span class="font-semibold text-gray-900">{{ $category->name }}</span>
+                                </div>
                             </td>
-                            <td class="p-3" data-label="Produtos">
-                                <button onclick="toggleProducts({{ $category->id }})" class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 cursor-pointer">
-                                    {{ $category->products_count }} produto(s)
-                                </button>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                / {{ strtolower(\Illuminate\Support\Str::slug($category->name)) }}
                             </td>
-                            <td class="p-3 text-sm text-muted-foreground" data-label="Ordem">{{ $category->sort_order }}</td>
-                            <td class="p-3" data-label="Status">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                {{ $category->products_count ?? 0 }} produtos
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 @if($category->is_active)
-                                <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Ativa</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Ativo</span>
                                 @else
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Inativa</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Inativo</span>
                                 @endif
                             </td>
-                            <td class="p-3 actions-cell" data-label="Ações">
-                                <div class="flex items-center justify-end gap-2 mobile-actions">
-                                    <button onclick="toggleProducts({{ $category->id }})" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3" title="Gerenciar produtos">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <button class="text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
-                                        <span class="ml-1 text-xs">Produtos</span>
                                     </button>
-                                    <a href="{{ route('dashboard.categories.edit', $category) }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Editar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    <button class="text-gray-400 hover:text-red-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                         </svg>
-                                    </a>
-                                    <form action="{{ route('dashboard.categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta categoria?');" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground text-red-600 hover:text-red-700 h-8 w-8" title="Excluir">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                            </svg>
-                                        </button>
-                                    </form>
+                                    </button>
                                 </div>
                             </td>
                         </tr>

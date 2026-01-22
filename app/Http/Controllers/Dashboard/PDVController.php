@@ -15,11 +15,13 @@ use App\Models\CustomerDebt;
 use App\Models\Coupon;
 use App\Models\Setting;
 use App\Models\OrderDeliveryFee;
+use App\Models\DeliverySchedule;
 use App\Services\MercadoPagoApi;
 use App\Services\WhatsAppService;
 use App\Services\DistanceCalculatorService;
 use App\Models\DeliveryFee;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class PDVController extends Controller
 {
@@ -46,7 +48,102 @@ class PDVController extends Controller
             ->limit(50)
             ->get(['id', 'name', 'phone', 'email', 'is_wholesale']);
 
-        return view('dashboard.pdv.index', compact('products', 'recentCustomers'));
+        $availableDates = $this->getAvailableDeliveryDates();
+
+        return view('dashboard.pdv.index', compact('products', 'recentCustomers', 'availableDates'));
+    }
+
+    private function getAvailableDeliveryDates(): array
+    {
+        $advanceDays = 2;
+        try {
+            if (Schema::hasTable('settings')) {
+                if (Schema::hasColumn('settings', 'advance_order_days')) {
+                    $advanceDays = (int) (DB::table('settings')->value('advance_order_days') ?? 2);
+                } else {
+                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    if ($keyCol && $valCol) {
+                        $val = DB::table('settings')->where($keyCol, 'advance_order_days')->value($valCol);
+                        if ($val !== null) $advanceDays = (int) $val;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Mantém padrão
+        }
+
+        $deliverySchedules = DeliverySchedule::where('is_active', true)
+            ->get()
+            ->groupBy('day_of_week');
+
+        $availableDates = [];
+        $slotCapacity = 2;
+        try {
+            if (Schema::hasTable('settings')) {
+                if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
+                    $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
+                } else {
+                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    if ($keyCol && $valCol) {
+                        $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
+                        if ($val !== null) $slotCapacity = (int) $val;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Mantém padrão
+        }
+
+        $today = Carbon::today();
+        for ($i = $advanceDays; $i <= $advanceDays + 13; $i++) {
+            $checkDate = $today->copy()->addDays($i);
+            $dayOfWeek = strtolower($checkDate->format('l'));
+
+            if ($deliverySchedules->has($dayOfWeek)) {
+                $schedules = $deliverySchedules[$dayOfWeek]->filter(fn($s) => $s->is_active);
+                if ($schedules->count() > 0) {
+                    $slots = [];
+                    foreach ($schedules as $schedule) {
+                        $start = Carbon::today()->setTimeFromTimeString($schedule->start_time->format('H:i'));
+                        $end = Carbon::today()->setTimeFromTimeString($schedule->end_time->format('H:i'));
+
+                        while ($start < $end) {
+                            $slotStart = $start->copy();
+                            $slotEnd = $start->copy()->addMinutes(30);
+
+                            $used = Order::whereDate('scheduled_delivery_at', $checkDate->toDateString())
+                                ->whereTime('scheduled_delivery_at', $slotStart->format('H:i:00'))
+                                ->count();
+
+                            $available = max(0, $slotCapacity - $used);
+                            if ($available > 0) {
+                                $slotKey = $checkDate->format('Y-m-d') . ' ' . $slotStart->format('H:i');
+                                $slots[] = [
+                                    'value' => $slotKey,
+                                    'label' => $slotStart->format('H:i') . ' - ' . $slotEnd->format('H:i'),
+                                    'available' => $available,
+                                ];
+                            }
+
+                            $start->addMinutes(30);
+                        }
+                    }
+
+                    if (!empty($slots)) {
+                        $availableDates[] = [
+                            'date' => $checkDate->format('Y-m-d'),
+                            'label' => $checkDate->format('d/m/Y'),
+                            'day_name' => $checkDate->locale('pt_BR')->dayName,
+                            'slots' => $slots,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $availableDates;
     }
 
     public function searchCustomers(Request $request)
@@ -347,6 +444,7 @@ class PDVController extends Controller
             'payment_method' => 'nullable|in:pix,credit_card,debit_card', // Método se enviar link
             'create_as_paid' => 'nullable|boolean', // Criar pedido já como pago
             'skip_notification' => 'nullable|boolean', // Pular notificações
+            'scheduled_delivery_slot' => 'required|string', // Agendamento (obrigatório)
         ]);
 
         try {
@@ -403,8 +501,20 @@ class PDVController extends Controller
             $initialStatus = $createAsPaid ? 'confirmed' : 'pending';
             $initialPaymentStatus = $createAsPaid ? 'paid' : 'pending';
 
+            // Processar agendamento
+            $scheduledDeliveryAt = null;
+            try {
+                $scheduledDeliveryAt = Carbon::createFromFormat('Y-m-d H:i', $request->scheduled_delivery_slot);
+            } catch (\Exception $e) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'scheduled_delivery_slot' => ['Horário de entrega inválido.']
+                ]);
+            }
+
+            $clientId = currentClientId();
             // Criar pedido
             $order = Order::create([
+                'client_id' => $clientId,
                 'customer_id' => $customer->id,
                 'address_id' => $request->address_id,
                 'order_number' => $orderNumber,
@@ -417,6 +527,7 @@ class PDVController extends Controller
                 'payment_method' => $request->payment_method ?? 'pix',
                 'payment_status' => $initialPaymentStatus,
                 'delivery_type' => $request->delivery_type,
+                'scheduled_delivery_at' => $scheduledDeliveryAt,
                 'notes' => $request->notes,
             ]);
             
@@ -495,85 +606,114 @@ class PDVController extends Controller
                         ];
                     })->toArray();
 
-                    // Sempre usar createPaymentLinkFromOrder que permite cartão E PIX
-                    // Isso permite que o cliente escolha no link do Mercado Pago
-                    $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
+                    // Verificar opção PIX (display_qr ou send_whatsapp)
+                    $pixOption = $request->input('pix_option'); // null, 'display_qr', ou 'send_whatsapp'
+                    $paymentMethod = $request->payment_method ?? 'pix';
+                    
+                    // Se PIX, criar pagamento PIX diretamente
+                    if ($paymentMethod === 'pix' && ($pixOption === 'display_qr' || $pixOption === 'send_whatsapp')) {
+                        // Criar pagamento PIX diretamente (não link genérico)
+                        $pixPayment = $mpApi->createPixPreference($order, $customer, $mpItems);
+                        
+                        $order->update([
+                            'payment_provider' => 'mercadopago',
+                            'payment_id' => $pixPayment['preference_id'] ?? null,
+                            'pix_qr_base64' => $pixPayment['qr_base64'] ?? null,
+                            'pix_copy_paste' => $pixPayment['copia_cola'] ?? null,
+                            'pix_expires_at' => !empty($pixPayment['expires_at']) ? Carbon::parse($pixPayment['expires_at']) : null,
+                            'payment_status' => 'pending',
+                        ]);
+                        
+                        // Se opção for send_whatsapp, enviar QR Code via WhatsApp
+                        if ($pixOption === 'send_whatsapp' && $customer->phone) {
+                            $this->sendPixViaWhatsApp($order, $customer, $finalAmount, $orderNumber);
+                        }
+                        
+                        Log::info('PDV: Pagamento PIX criado', [
+                            'order_id' => $order->id,
+                            'order_number' => $orderNumber,
+                            'pix_option' => $pixOption,
+                        ]);
+                    } else {
+                        // Usar link genérico do Mercado Pago (permite escolha de método)
+                        $pref = $mpApi->createPaymentLinkFromOrder($order, $customer, $mpItems);
 
-                    $order->update([
-                        'payment_provider' => 'mercadopago',
-                        'preference_id' => $pref['preference_id'] ?? null,
-                        'payment_link' => $pref['checkout_url'] ?? null,
-                        'pix_qr_base64' => $pref['qr_base64'] ?? null,
-                        'pix_copia_cola' => $pref['copia_cola'] ?? null,
-                        'pix_expires_at' => !empty($pref['expires_at']) ? Carbon::parse($pref['expires_at']) : null,
-                        'payment_status' => 'pending',
-                    ]);
+                        $order->update([
+                            'payment_provider' => 'mercadopago',
+                            'preference_id' => $pref['preference_id'] ?? null,
+                            'payment_link' => $pref['checkout_url'] ?? null,
+                            'pix_qr_base64' => $pref['qr_base64'] ?? null,
+                            'pix_copy_paste' => $pref['copia_cola'] ?? null,
+                            'pix_expires_at' => !empty($pref['expires_at']) ? Carbon::parse($pref['expires_at']) : null,
+                            'payment_status' => 'pending',
+                        ]);
 
-                    // Enviar mensagem ao cliente via WhatsApp (se configurado)
-                    if ($customer->phone) {
-                        try {
-                            $whatsappService = new WhatsAppService();
-                            if ($whatsappService->isEnabled()) {
-                                $message = "Olá, {$customer->name}! 🛒\n\n";
-                                $message .= "Seu pedido #{$orderNumber} foi criado!\n\n";
-                                $message .= "Total: R$ " . number_format($finalAmount, 2, ',', '.') . "\n\n";
-                                
-                                if ($request->payment_method === 'pix') {
-                                    $message .= "Para pagar via PIX, acesse:\n";
-                                } else {
-                                    $message .= "Para finalizar o pagamento, acesse:\n";
-                                }
-                                
-                                $phoneParam = urlencode(preg_replace('/\D/', '', $customer->phone));
-                                $paymentUrl = route('customer.orders.show', [
-                                    'order' => $orderNumber,
-                                    'phone' => $phoneParam
-                                ]);
-                                
-                                $message .= $paymentUrl . "\n\n";
-                                $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
-
-                                // Normalizar telefone antes de enviar
-                                $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
-                                if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
-                                    $phoneNormalized = '55' . $phoneNormalized;
-                                }
-                                
-                                // Enviar mensagem via WhatsApp
-                                $result = $whatsappService->sendText($phoneNormalized, $message);
-                                
-                                if (isset($result['success']) && $result['success']) {
-                                    Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
-                                        'order_id' => $order->id,
-                                        'customer_phone_original' => $customer->phone,
-                                        'phone_normalized' => $phoneNormalized,
+                        // Enviar mensagem ao cliente via WhatsApp (se configurado)
+                        if ($customer->phone) {
+                            try {
+                                $whatsappService = new WhatsAppService();
+                                if ($whatsappService->isEnabled()) {
+                                    $message = "Olá, {$customer->name}! 🛒\n\n";
+                                    $message .= "Seu pedido #{$orderNumber} foi criado!\n\n";
+                                    $message .= "Total: R$ " . number_format($finalAmount, 2, ',', '.') . "\n\n";
+                                    
+                                    if ($request->payment_method === 'pix') {
+                                        $message .= "Para pagar via PIX, acesse:\n";
+                                    } else {
+                                        $message .= "Para finalizar o pagamento, acesse:\n";
+                                    }
+                                    
+                                    $phoneParam = urlencode(preg_replace('/\D/', '', $customer->phone));
+                                    $paymentUrl = route('customer.orders.show', [
+                                        'order' => $orderNumber,
+                                        'phone' => $phoneParam
                                     ]);
+                                    
+                                    $message .= $paymentUrl . "\n\n";
+                                    $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
+
+                                    // Normalizar telefone antes de enviar
+                                    $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
+                                    if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
+                                        $phoneNormalized = '55' . $phoneNormalized;
+                                    }
+                                    
+                                    // Enviar mensagem via WhatsApp
+                                    $result = $whatsappService->sendText($phoneNormalized, $message);
+                                    
+                                    if (isset($result['success']) && $result['success']) {
+                                        Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
+                                            'order_id' => $order->id,
+                                            'customer_phone_original' => $customer->phone,
+                                            'phone_normalized' => $phoneNormalized,
+                                        ]);
+                                    } else {
+                                        Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
+                                            'order_id' => $order->id,
+                                            'customer_phone_original' => $customer->phone,
+                                            'phone_normalized' => $phoneNormalized,
+                                            'error' => $result['error'] ?? 'Erro desconhecido',
+                                        ]);
+                                    }
                                 } else {
-                                    Log::warning('PDV: Falha ao enviar mensagem via WhatsApp', [
+                                    Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
                                         'order_id' => $order->id,
-                                        'customer_phone_original' => $customer->phone,
-                                        'phone_normalized' => $phoneNormalized,
-                                        'error' => $result['error'] ?? 'Erro desconhecido',
                                     ]);
                                 }
-                            } else {
-                                Log::warning('PDV: WhatsApp não configurado, mensagem não enviada', [
+                            } catch (\Exception $e) {
+                                Log::warning('PDV: Erro ao enviar mensagem ao cliente', [
                                     'order_id' => $order->id,
+                                    'error' => $e->getMessage(),
                                 ]);
                             }
-                        } catch (\Exception $e) {
-                            Log::warning('PDV: Erro ao enviar mensagem ao cliente', [
-                                'order_id' => $order->id,
-                                'error' => $e->getMessage(),
-                            ]);
                         }
-                    }
 
-                    Log::info('PDV: Link de pagamento criado', [
-                        'order_id' => $order->id,
-                        'order_number' => $orderNumber,
-                        'payment_link' => $order->payment_link,
-                    ]);
+                        Log::info('PDV: Link de pagamento criado', [
+                            'order_id' => $order->id,
+                            'order_number' => $orderNumber,
+                            'payment_link' => $order->payment_link,
+                        ]);
+                    }
                 } catch (\Exception $e) {
                     Log::error('PDV: Erro ao criar link de pagamento', [
                         'order_id' => $order->id,
@@ -585,8 +725,10 @@ class PDVController extends Controller
 
             DB::commit();
 
-            return response()->json([
+            // Preparar resposta com order_id para PIX display_qr
+            $responseData = [
                 'success' => true,
+                'order_id' => $order->id,
                 'order' => [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
@@ -597,7 +739,14 @@ class PDVController extends Controller
                 'message' => $request->send_payment_link 
                     ? 'Pedido criado e link de pagamento enviado ao cliente!' 
                     : 'Pedido criado como débito!',
-            ]);
+            ];
+            
+            // Se PIX display_qr, incluir flag
+            if ($paymentMethod === 'pix' && $pixOption === 'display_qr') {
+                $responseData['pix_display_qr'] = true;
+            }
+            
+            return response()->json($responseData);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -733,8 +882,10 @@ class PDVController extends Controller
                 $addressId = $address->id;
             }
 
+            $clientId = currentClientId();
             // Criar pedido (sem link de pagamento ainda - cliente vai escolher depois)
             $order = Order::create([
+                'client_id' => $clientId,
                 'customer_id' => $customer->id,
                 'address_id' => $addressId,
                 'order_number' => $orderNumber,

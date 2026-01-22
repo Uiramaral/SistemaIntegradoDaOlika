@@ -1,0 +1,125 @@
+/* Admin Bridge CSS - Estilos de ponte entre o layout admin e o Sweetspot */
+
+/* Garantir que o layout principal tenha o mesmo estilo do Sweetspot */
+.dashboard-wrapper {
+    max-width: 100%;
+}
+
+.dashboard-content {
+    padding: 0;
+}
+
+/* Ajustes de espaçamento para corresponder ao Sweetspot */
+.dashboard-wrapper > * + * {
+    margin-top: 1.5rem;
+}
+
+/* Cards com estilo Sweetspot */
+.bg-card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Ajustes para o header */
+header.sticky {
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+}
+
+/* Sidebar com estilo Sweetspot */
+aside#sidebar {
+    background-color: hsl(222 47% 11%);
+    border-right: 1px solid hsl(217 33% 17%);
+}
+
+/* Ajustes de tipografia */
+h1, h2, h3 {
+    font-weight: 700;
+    color: hsl(222 47% 11%);
+}
+
+/* Botões primários */
+button.bg-primary,
+a.bg-primary {
+    background-color: hsl(var(--primary));
+    color: white;
+    transition: all 0.2s ease-in-out;
+}
+
+button.bg-primary:hover,
+a.bg-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Inputs e selects */
+select,
+input[type="text"],
+input[type="email"],
+input[type="number"],
+textarea {
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+/* Tabelas */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+table thead th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+table tbody tr {
+    transition: background-color 0.15s ease-in-out;
+}
+
+table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Badges e status */
+.badge,
+[class*="rounded-full"][class*="bg-"] {
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}

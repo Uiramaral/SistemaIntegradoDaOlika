@@ -1,7 +1,7 @@
 @extends('dashboard.layouts.app')
 
-@section('page_title', 'Painel de Entregas')
-@section('page_subtitle', 'Visão simplificada dos pedidos com entrega agendada, pronta para o time de rua')
+@section('page_title', 'Entregas')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('content')
 <div class="space-y-6">
@@ -13,15 +13,116 @@
     @endif
 
     @if($orders->isEmpty())
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-12 text-center">
-            <i data-lucide="clipboard-list" class="mx-auto mb-4 h-12 w-12 text-muted-foreground"></i>
-            <h3 class="text-lg font-semibold mb-2">Sem entregas pendentes</h3>
-            <p class="text-muted-foreground">
+        <div class="rounded-lg border bg-white shadow-sm p-12 text-center">
+            <svg class="mx-auto mb-4 h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 class="text-lg font-semibold mb-2 text-gray-900">Sem entregas pendentes</h3>
+            <p class="text-gray-500">
                 Quando houver pedidos agendados ou em rota, eles serão exibidos aqui.
             </p>
         </div>
     @else
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <!-- Tabela de Entregas - Estilo do Site -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr class="border-b">
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">PEDIDO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">ENDEREÇO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">HORÁRIO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">VALOR</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($orders as $order)
+                            @php
+                                $customer = $order->customer;
+                                $address = $order->address;
+                                $deliveryTime = optional($order->scheduled_delivery_at);
+                                $timeRange = $deliveryTime ? $deliveryTime->format('H:i') . ' - ' . $deliveryTime->addHour()->format('H:i') : '-';
+                            @endphp
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="font-semibold text-gray-900">#{{ $order->order_number }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="font-semibold text-gray-900">{{ $customer->name ?? 'Cliente não identificado' }}</div>
+                                    @if($customer && $customer->phone)
+                                    <div class="text-sm text-gray-500">{{ $customer->phone }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if($address)
+                                    <div class="flex items-center gap-1 text-sm text-gray-500">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        {{ $address->street ?? '' }}{{ $address->number ? ', ' . $address->number : '' }}{{ $address->neighborhood ? ' - ' . $address->neighborhood : '' }}
+                                    </div>
+                                    @else
+                                    <span class="text-sm text-gray-500">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center gap-1 text-sm text-gray-500">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        {{ $timeRange }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="font-semibold text-gray-900">R$ {{ number_format($order->final_amount ?? 0, 2, ',', '.') }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @php
+                                        $statusColors = [
+                                            'pending' => 'bg-yellow-100 text-yellow-800',
+                                            'confirmed' => 'bg-green-100 text-green-800',
+                                            'preparing' => 'bg-blue-100 text-blue-800',
+                                            'ready' => 'bg-purple-100 text-purple-800',
+                                            'out_for_delivery' => 'bg-orange-100 text-orange-800',
+                                            'delivered' => 'bg-green-100 text-green-800',
+                                            'cancelled' => 'bg-red-100 text-red-800',
+                                        ];
+                                        $statusLabels = [
+                                            'pending' => 'Pendente',
+                                            'confirmed' => 'Confirmado',
+                                            'preparing' => 'Em Preparo',
+                                            'ready' => 'Pronto',
+                                            'out_for_delivery' => 'Em Rota',
+                                            'delivered' => 'Entregue',
+                                            'cancelled' => 'Cancelado',
+                                        ];
+                                        $statusColor = $statusColors[$order->status] ?? 'bg-gray-100 text-gray-800';
+                                        $statusLabel = $statusLabels[$order->status] ?? ucfirst($order->status);
+                                    @endphp
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">{{ $statusLabel }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if($order->status === 'pending' || $order->status === 'confirmed')
+                                    <button class="px-4 py-2 text-sm font-medium text-primary bg-white border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                                        Iniciar
+                                    </button>
+                                    @elseif($order->status === 'out_for_delivery')
+                                    <button class="px-4 py-2 text-sm font-medium text-primary bg-white border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                                        Entregar
+                                    </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
             @foreach($orders as $order)
                 @php
                     $customer = $order->customer;

@@ -118,13 +118,13 @@
                         card: { DEFAULT: "hsl(0 0% 100%)", foreground: "hsl(222 47% 11%)" },
                         success: { DEFAULT: "hsl(142 76% 36%)", foreground: "hsl(0 0% 100%)" },
                         sidebar: {
-                            DEFAULT: "hsl(0 0% 100%)",
-                            foreground: "hsl(222 47% 11%)",
+                            DEFAULT: "hsl(222 47% 11%)",
+                            foreground: "hsl(0 0% 98%)",
                             primary: "hsl({{ $primaryHsl }})",
                             "primary-foreground": "hsl(0 0% 100%)",
-                            accent: "hsl(0 0% 96%)",
-                            "accent-foreground": "hsl(222 47% 11%)",
-                            border: "hsl(0 0% 89%)",
+                            accent: "hsl({{ $primaryHsl }})",
+                            "accent-foreground": "hsl(0 0% 100%)",
+                            border: "hsl(217 33% 17%)",
                             ring: "hsl({{ $primaryHsl }})"
                         }
                     },
@@ -144,8 +144,43 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
     <link rel="stylesheet" href="{{ asset('css/sweetspot-theme.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-sweetspot-pixel-perfect.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/sidebar-sweetspot-pixel-perfect.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/header-sweetspot-pixel-perfect.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-list-fixes.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-sweetspot-final.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard-mobile-fixes.css') }}">
 
     <script defer src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --primary: {{ $primaryHsl }};
+            --secondary: {{ $secondaryHsl }};
+            --accent: {{ $accentHsl }};
+            --radius: {{ $themeSettings['theme_border_radius'] }};
+            --font-family: {!! $themeSettings['theme_font_family'] !!};
+        }
+
+        body {
+            font-family: var(--font-family);
+        }
+
+        .active-item {
+            position: relative;
+        }
+        
+        .active-item::after {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 20%;
+            bottom: 20%;
+            width: 4px;
+            background-color: hsl(var(--primary));
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
 
     @stack('styles')
 </head>
@@ -155,7 +190,7 @@
             [
                 'title' => 'Menu Principal',
                 'items' => [
-                    ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
+                    ['label' => 'Dashboard', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
                     ['label' => 'PDV', 'icon' => 'monitor', 'route' => 'dashboard.pdv.index', 'routePattern' => 'dashboard.pdv.*'],
                     ['label' => 'Pedidos', 'icon' => 'receipt', 'route' => 'dashboard.orders.index', 'routePattern' => 'dashboard.orders.*'],
                     ['label' => 'Clientes', 'icon' => 'users', 'route' => 'dashboard.customers.index', 'routePattern' => 'dashboard.customers.*'],
@@ -168,6 +203,19 @@
                     ['label' => 'Produtos', 'icon' => 'package', 'route' => 'dashboard.products.index', 'routePattern' => 'dashboard.products.*'],
                     ['label' => 'Categorias', 'icon' => 'tag', 'route' => 'dashboard.categories.index', 'routePattern' => 'dashboard.categories.*'],
                     ['label' => 'Preços de Revenda', 'icon' => 'shopping-bag', 'route' => 'dashboard.wholesale-prices.index', 'routePattern' => 'dashboard.wholesale-prices.*'],
+                ],
+            ],
+            [
+                'title' => 'Produção',
+                'items' => [
+                    ['label' => 'Dashboard', 'icon' => 'layout-dashboard', 'route' => 'dashboard.producao.index', 'routePattern' => 'dashboard.producao.index'],
+                    ['label' => 'Receitas', 'icon' => 'book-open', 'route' => 'dashboard.producao.receitas.index', 'routePattern' => 'dashboard.producao.receitas.*'],
+                    ['label' => 'Ingredientes', 'icon' => 'wheat', 'route' => 'dashboard.producao.ingredientes.index', 'routePattern' => 'dashboard.producao.ingredientes.*'],
+                    ['label' => 'Lista de Produção', 'icon' => 'list-todo', 'route' => 'dashboard.producao.lista-producao.index', 'routePattern' => 'dashboard.producao.lista-producao.*'],
+                    ['label' => 'Estoque Produzidos', 'icon' => 'box', 'route' => 'dashboard.producao.estoque-produzidos.index', 'routePattern' => 'dashboard.producao.estoque-produzidos.*'],
+                    ['label' => 'Estoque Insumos', 'icon' => 'boxes', 'route' => 'dashboard.producao.estoque-insumos.index', 'routePattern' => 'dashboard.producao.estoque-insumos.*'],
+                    ['label' => 'Custos', 'icon' => 'calculator', 'route' => 'dashboard.producao.custos.index', 'routePattern' => 'dashboard.producao.custos.*'],
+                    ['label' => 'Relatórios', 'icon' => 'bar-chart-3', 'route' => 'dashboard.producao.relatorios-producao.index', 'routePattern' => 'dashboard.producao.relatorios-producao.*'],
                 ],
             ],
             [
@@ -185,14 +233,9 @@
                 ],
             ],
             [
-                'title' => 'Sistema',
+                'title' => 'Outros',
                 'items' => [
-                    ['label' => 'Personalização', 'icon' => 'palette', 'route' => 'dashboard.themes.index', 'routePattern' => 'dashboard.themes.*'],
-                    ['label' => 'Campanhas', 'icon' => 'megaphone', 'route' => 'dashboard.marketing.index', 'routePattern' => 'dashboard.marketing.*'],
-                    ['label' => 'Integrações', 'icon' => 'plug', 'route' => 'dashboard.integrations.index', 'routePattern' => 'dashboard.integrations.*'],
-                    ['label' => 'Plano e Assinatura', 'icon' => 'crown', 'route' => 'dashboard.subscription.index', 'routePattern' => 'dashboard.subscription.*'],
-                    ['label' => 'Relatórios', 'icon' => 'chart-column', 'route' => 'dashboard.reports', 'routePattern' => 'dashboard.reports*'],
-                    ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings'],
+                    ['label' => 'Planos', 'icon' => 'crown', 'route' => 'dashboard.subscription.index', 'routePattern' => 'dashboard.subscription.*'],
                 ],
             ],
         ];
@@ -212,7 +255,7 @@
         }
         if ($isSuperAdmin) {
             $navGroups[] = [
-                'title' => 'Master (Admin)',
+                'title' => 'Master',
                 'items' => [
                     ['label' => 'Dashboard Master', 'icon' => 'shield', 'route' => 'master.dashboard', 'routePattern' => 'master.dashboard'],
                     ['label' => 'Clientes/Estab.', 'icon' => 'building-2', 'route' => 'master.clients.index', 'routePattern' => 'master.clients.*'],
@@ -229,64 +272,59 @@
             <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/80 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
             <aside id="sidebar"
-                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sweetspot transition-transform duration-200 ease-in-out md:static md:translate-x-0">
-                <div class="flex items-center justify-between border-b border-sidebar-border px-6 py-5">
+                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-in-out md:static md:translate-x-0">
+                <div class="sidebar-logo-area flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         @if($themeSettings['theme_logo_url'] && $themeSettings['theme_logo_url'] !== '/images/logo-default.png')
-                            <img src="{{ $themeSettings['theme_logo_url'] }}" alt="Logo" class="h-10 w-10 object-contain rounded-full">
+                            <img src="{{ $themeSettings['theme_logo_url'] }}" alt="Logo" class="h-10 w-10 object-contain rounded-xl">
                         @else
-                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white font-bold text-sm shadow-sweetspot">
-                                {{ strtoupper(substr($themeSettings['theme_brand_name'], 0, 2)) }}
+                            <div class="sidebar-logo-circle">
+                                {{ strtoupper(substr($themeSettings['theme_brand_name'], 0, 1)) }}
                             </div>
                         @endif
-                        <span class="text-xl font-bold text-sidebar-primary tracking-tight">{{ $themeSettings['theme_brand_name'] }}</span>
+                        <div>
+                            <div class="sidebar-brand-name">{{ strtolower($themeSettings['theme_brand_name']) }}</div>
+                            <div class="sidebar-sub-brand">padaria.olika.app</div>
+                        </div>
                     </div>
                     <button id="sidebar-close"
-                            class="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:hidden">
-                        <i data-lucide="x" class="h-5 w-5"></i>
-                        <span class="sr-only">Fechar menu</span>
+                            class="lg:hidden p-2 rounded-lg text-sidebar-foreground">
+                        <i data-lucide="x" class="h-6 w-6"></i>
                     </button>
                 </div>
 
-                <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+                <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
                     @foreach ($navGroups as $group)
                         <div>
-                            <p class="flex h-8 items-center rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <h3 class="sidebar-group-label">
                                 {{ $group['title'] }}
-                            </p>
-                            <ul class="mt-2 space-y-1">
+                            </h3>
+                            <div class="space-y-0.5">
                                 @foreach ($group['items'] as $item)
                                     @php
                                         $isAvailable = !isset($item['feature']) || currentClientHasFeature($item['feature']);
                                         $href = $isAvailable ? route($item['route']) : route('dashboard.subscription.index');
                                         $isActive = request()->routeIs($item['routePattern']);
                                     @endphp
-                                    <li>
-                                        <a href="{{ $href }}"
-                                           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-sweetspot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring {{ $isActive ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-semibold shadow-sweetspot border-l-4 border-primary-500' : 'text-sidebar-foreground' }} {{ !$isAvailable ? 'opacity-50' : '' }}">
-                                            <i data-lucide="{{ $item['icon'] }}" class="h-5 w-5 {{ $isActive ? 'text-primary-600' : '' }}"></i>
-                                            <span class="truncate">{{ $item['label'] }}</span>
-                                            @if(!$isAvailable)
-                                                <i data-lucide="lock" class="ml-auto h-4 w-4"></i>
-                                            @endif
-                                        </a>
-                                    </li>
+                                    <a href="{{ $href }}"
+                                       class="sidebar-item {{ $isActive ? 'active-item' : '' }} {{ !$isAvailable ? 'opacity-50' : '' }}">
+                                        <i data-lucide="{{ $item['icon'] }}"></i>
+                                        <span class="truncate">{{ $item['label'] }}</span>
+                                        @if(!$isAvailable)
+                                            <i data-lucide="lock" class="ml-auto h-4 w-4"></i>
+                                        @endif
+                                    </a>
                                 @endforeach
-                            </ul>
+                            </div>
                         </div>
                     @endforeach
                 </nav>
 
-                <div class="border-t border-sidebar-border px-4 py-4">
-                    <div class="mb-3 px-3 py-2 rounded-lg bg-sidebar-accent/50">
-                        <p class="text-xs font-medium text-sidebar-foreground">{{ Auth::user()->name }}</p>
-                        <p class="text-[10px] text-muted-foreground truncate">{{ Auth::user()->email }}</p>
-                    </div>
+                <div class="sidebar-footer">
                     <form method="POST" action="{{ route('auth.logout') }}">
                         @csrf
-                        <button type="submit"
-                                class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive">
-                            <i data-lucide="log-out" class="h-5 w-5"></i>
+                        <button type="submit" class="sidebar-logout-btn">
+                            <i data-lucide="log-out"></i>
                             <span>Sair</span>
                         </button>
                     </form>
@@ -329,70 +367,61 @@
                     }
                 @endphp
 
-                <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-                    <div class="flex flex-col sm:flex-row sm:h-16 sm:items-center sm:justify-between px-4 md:px-6 py-3 sm:py-0 gap-2 sm:gap-0">
+                <header class="bg-white border-b border-border px-6 py-4 sticky top-0 z-20">
+                    <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <button id="sidebar-open"
-                                    class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
-                                <i data-lucide="menu" class="h-5 w-5"></i>
-                                <span class="sr-only">Abrir menu</span>
+                                    class="lg:hidden p-2 rounded-lg bg-sidebar text-sidebar-foreground shadow-lg mr-2">
+                                <i data-lucide="menu" class="h-6 w-6"></i>
                             </button>
 
-                            @if ($hasPageHeader)
-                                <div class="flex flex-col gap-0.5">
-                                    @yield('page_header')
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-1 text-sm font-medium text-primary mb-1">
+                                    <span>Menu Principal</span>
+                                    <i data-lucide="chevron-right" class="h-3 w-3"></i>
+                                    <span>{{ $pageTitle ?? 'Dashboard' }}</span>
                                 </div>
-                            @else
-                                <div class="flex flex-col gap-0.5">
-                                    <h1 class="text-base sm:text-lg font-semibold tracking-tight text-foreground md:text-2xl">
-                                        {{ $pageTitle ?? trim($__env->yieldContent('title', 'Dashboard')) }}
-                                    </h1>
-                                    @if ($pageSubtitle)
-                                        <p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">{{ $pageSubtitle }}</p>
-                                    @elseif ($pageDescriptionSection)
-                                        <div class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                                            @yield($pageDescriptionSection)
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
+                                <h1 class="text-2xl font-bold text-foreground">
+                                    {{ $pageTitle ?? 'Dashboard' }}
+                                </h1>
+                                @if ($pageSubtitle)
+                                    <p class="text-sm text-muted-foreground mt-0.5">{{ $pageSubtitle }}</p>
+                                @endif
+                            </div>
                         </div>
 
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            @if ($pageActionsSection)
-                                <div class="flex items-center gap-2 flex-1 sm:flex-none">
-                                    @yield($pageActionsSection)
+                        <div class="flex items-center gap-3">
+                            @auth
+                                <div class="hidden md:flex items-center gap-3 pl-3">
+                                    <div class="text-right">
+                                        <p class="text-sm font-medium text-foreground">{{ Auth::user()->name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ Auth::user()->email }}</p>
+                                    </div>
+                                    <div class="h-10 w-10 rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                                        {{ strtoupper(substr(Auth::user()->name, 0, 1) . (explode(' ', Auth::user()->name)[1] ? substr(explode(' ', Auth::user()->name)[1], 0, 1) : '')) }}
+                                    </div>
                                 </div>
-                            @endif
-
-                            <div class="hidden flex-col items-end text-sm md:flex">
-                                <span class="font-medium text-foreground">{{ Auth::user()->name ?? 'Admin' }}</span>
-                                <span class="text-xs text-muted-foreground">{{ Auth::user()->email ?? 'admin@olika.com' }}</span>
-                            </div>
-                            <button class="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                <i data-lucide="bell" class="h-5 w-5"></i>
-                                <span class="sr-only">Notificações</span>
-                            </button>
+                            @endauth
                         </div>
                     </div>
                 </header>
 
                 <main class="flex-1" id="main-content">
-                    <div class="dashboard-wrapper">
-                        @if(session('success'))
-                            <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
+                    <div class="dashboard-wrapper px-4 md:px-6 py-4 md:py-6">
+                        @if(session('success') && !request()->routeIs('dashboard.index'))
+                            <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm mb-6">
                                 {{ session('success') }}
                             </div>
                         @endif
 
                         @if(session('error'))
-                            <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
+                            <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm mb-6">
                                 {{ session('error') }}
                             </div>
                         @endif
 
                         @if($errors->any())
-                            <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
+                            <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm mb-6">
                                 <ul class="list-disc space-y-1 pl-5 text-sm">
                                     @foreach($errors->all() as $error)
                                         <li>{{ $error }}</li>
@@ -402,19 +431,19 @@
                         @endif
 
                         @if ($pageToolbarSection)
-                            <div class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+                            <div class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm mb-6">
                                 @yield($pageToolbarSection)
                             </div>
                         @endif
 
                         @if ($statCardsSection)
-                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                                 @yield($statCardsSection)
                             </div>
                         @endif
 
                         @if ($quickFiltersSection)
-                            <div class="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card px-4 py-3 shadow-sm mb-6">
                                 @yield($quickFiltersSection)
                             </div>
                         @endif

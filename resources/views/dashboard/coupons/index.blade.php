@@ -1,7 +1,7 @@
 @extends('dashboard.layouts.app')
 
-@section('page_title', 'Cupons de Desconto')
-@section('page_subtitle', 'Gerencie cupons públicos e privados')
+@section('page_title', 'Cupons')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
     <a href="{{ route('dashboard.coupons.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">

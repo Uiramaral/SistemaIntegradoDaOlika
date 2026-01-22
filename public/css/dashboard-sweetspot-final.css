@@ -1,0 +1,134 @@
+/* Dashboard Sweetspot Final - Ajustes finais pixel-perfect */
+
+/* Lista de produtos - estilo exato do Sweetspot */
+.dashboard-wrapper .space-y-3 > div {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem; /* 12px */
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.dashboard-wrapper .space-y-3 .w-10.h-10.rounded-full {
+    width: 2.5rem; /* 40px */
+    height: 2.5rem; /* 40px */
+    background-color: #f3f4f6 !important; /* Cinza claro */
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.dashboard-wrapper .space-y-3 .w-10.h-10.rounded-full span {
+    color: #4b5563 !important; /* Cinza médio */
+    font-size: 0.875rem; /* 14px */
+    font-weight: 600;
+}
+
+.dashboard-wrapper .space-y-3 .text-sm.font-medium {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    color: #111827;
+}
+
+.dashboard-wrapper .space-y-3 .text-xs.text-gray-500 {
+    font-size: 0.75rem; /* 12px */
+    color: #6b7280;
+}
+
+/* Lista de categorias - estilo exato do Sweetspot */
+.dashboard-wrapper .space-y-2 > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 8px */
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.dashboard-wrapper .space-y-2 .w-2.h-2.rounded-full {
+    width: 0.5rem; /* 8px */
+    height: 0.5rem; /* 8px */
+    background-color: #3b82f6 !important; /* Azul */
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+/* Tabela de pedidos - apenas 4 colunas */
+.dashboard-wrapper table thead th,
+.dashboard-wrapper table tbody td {
+    padding: 0.75rem 1rem; /* 12px 16px */
+}
+
+/* Garantir que textos não vazem - FORÇAR */
+.dashboard-wrapper .truncate,
+.dashboard-wrapper .min-w-0 {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+}
+
+.dashboard-wrapper .flex-1 {
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Cards - sombras e bordas exatas */
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem; /* 8px */
+}
+
+/* Espaçamento entre itens das listas */
+.dashboard-wrapper .space-y-3 > * + * {
+    margin-top: 0.75rem; /* 12px */
+}
+
+.dashboard-wrapper .space-y-2 > * + * {
+    margin-top: 0.5rem; /* 8px */
+}
+
+/* Garantir que listas não vazem - CONTAINER */
+.dashboard-wrapper .overflow-hidden {
+    overflow: hidden !important;
+}
+
+.dashboard-wrapper .p-4 {
+    overflow: hidden !important;
+}
+
+.dashboard-wrapper .max-h-\[400px\] {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dashboard-wrapper .max-h-\[300px\] {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Forçar que itens das listas não vazem */
+.dashboard-wrapper .space-y-3 > div,
+.dashboard-wrapper .space-y-2 > div {
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+.dashboard-wrapper .space-y-3 > div > div.flex-1,
+.dashboard-wrapper .space-y-2 > div > div.flex-1 {
+    max-width: calc(100% - 120px) !important; /* Espaço para círculo e agend. */
+}
+
+/* Mobile - ordem correta */
+@media (max-width: 1023px) {
+    .dashboard-wrapper .order-1 {
+        order: 1 !important;
+    }
+    
+    .dashboard-wrapper .order-2 {
+        order: 2 !important;
+    }
+}

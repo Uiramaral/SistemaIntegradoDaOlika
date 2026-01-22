@@ -1,0 +1,165 @@
+/* Sidebar Sweetspot Pixel-Perfect Styles (Based on Source Code) */
+
+/* CSS Variables from Source */
+:root {
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 16%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-muted: 220 9% 60%;
+    --sidebar-ring: 221 83% 53%;
+}
+
+/* Sidebar base */
+aside#sidebar {
+    background-color: hsl(var(--sidebar-background)) !important;
+    border-right: 1px solid hsl(var(--sidebar-border)) !important;
+    width: 16rem !important; /* 256px */
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Logo section */
+.sidebar-logo-area {
+    padding: 1.5rem 1.25rem !important; /* py-6 px-5 */
+    border-bottom: 1px solid hsl(var(--sidebar-border)) !important;
+}
+
+/* Logo circle */
+.sidebar-logo-circle {
+    background-color: hsl(var(--primary)) !important;
+    color: white !important;
+    width: 2.5rem !important; /* h-10 */
+    height: 2.5rem !important; /* w-10 */
+    border-radius: 0.75rem !important; /* rounded-xl (12px) */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    font-size: 1.125rem !important; /* text-lg */
+    flex-shrink: 0 !important;
+}
+
+/* Brand Name */
+.sidebar-brand-name {
+    color: hsl(var(--sidebar-foreground)) !important;
+    font-size: 1.125rem !important; /* text-lg */
+    font-weight: 700 !important; /* font-bold */
+    line-height: 1.2 !important;
+}
+
+/* Sub Brand (Host) */
+.sidebar-sub-brand {
+    color: hsl(var(--sidebar-muted)) !important;
+    font-size: 0.75rem !important; /* text-xs */
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+}
+
+/* Navigation Container */
+aside#sidebar nav {
+    padding: 1rem 0.75rem !important; /* py-4 px-3 */
+}
+
+/* Group Headers */
+.sidebar-group-label {
+    font-size: 0.75rem !important; /* text-xs */
+    font-medium: 500 !important;
+    color: hsl(var(--sidebar-muted)) !important;
+    padding: 0 1rem !important; /* px-4 */
+    margin-top: 1.25rem !important; /* space-y-5 container margin */
+    margin-bottom: 0.5rem !important; /* mb-2 */
+    text-transform: none !important;
+    tracking-wide: 0.025em !important; /* tracking-wide */
+}
+
+/* First Group Label margin adjustment */
+aside#sidebar nav > div:first-child .sidebar-group-label {
+    margin-top: 0 !important;
+}
+
+/* Menu Items */
+.sidebar-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important; /* gap-3 (12px) */
+    padding: 0.625rem 1rem !important; /* py-2.5 px-4 */
+    border-radius: 0.5rem !important; /* rounded-lg (8px) */
+    font-size: 0.875rem !important; /* text-sm */
+    font-weight: 500 !important;
+    color: hsla(var(--sidebar-foreground), 0.7) !important; /* text-sidebar-foreground/70 */
+    transition: all 0.2s duration-200 !important;
+    text-decoration: none !important;
+    margin-bottom: 0.125rem !important; /* space-y-0.5 */
+}
+
+.sidebar-item:hover {
+    background-color: hsl(var(--sidebar-accent)) !important;
+    color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Active Item */
+.sidebar-item.active-item {
+    background-color: hsl(var(--sidebar-primary)) !important; /* Blue brand color */
+    color: hsl(var(--sidebar-primary-foreground)) !important;
+    font-weight: 500 !important;
+}
+
+/* Icons */
+.sidebar-item i, .sidebar-item svg {
+    width: 1.25rem !important; /* h-5 */
+    height: 1.25rem !important; /* w-5 */
+    flex-shrink: 0 !important;
+    color: inherit !important;
+}
+
+/* User Footer Section */
+.sidebar-footer {
+    border-top: 1px solid hsl(var(--sidebar-border)) !important;
+    padding: 1rem 0.75rem !important; /* py-4 px-3 */
+    margin-top: auto !important;
+}
+
+.sidebar-logout-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important; /* gap-3 */
+    width: 100% !important;
+    padding: 0.625rem 1rem !important; /* py-2.5 px-4 */
+    border-radius: 0.5rem !important; /* rounded-lg */
+    font-size: 0.875rem !important; /* text-sm */
+    font-weight: 500 !important;
+    color: hsla(var(--sidebar-foreground), 0.7) !important;
+    transition: all 0.2s !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+
+.sidebar-logout-btn:hover {
+    background-color: hsl(var(--sidebar-accent)) !important;
+    color: hsl(var(--sidebar-foreground)) !important;
+}
+
+.sidebar-logout-btn i, .sidebar-logout-btn svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    color: inherit !important;
+}
+
+/* Scrollbar styling */
+aside#sidebar nav::-webkit-scrollbar {
+    width: 4px;
+}
+aside#sidebar nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+aside#sidebar nav::-webkit-scrollbar-thumb {
+    background: hsla(var(--sidebar-foreground), 0.1);
+    border-radius: 10px;
+}

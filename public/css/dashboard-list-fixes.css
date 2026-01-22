@@ -1,0 +1,71 @@
+/* Fixes para listas do dashboard - evitar vazamento */
+
+/* Lista de produtos - garantir que não vaze */
+.dashboard-wrapper .space-y-3 {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dashboard-wrapper .space-y-3 > * {
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+/* Lista de categorias */
+.dashboard-wrapper .space-y-2 {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dashboard-wrapper .space-y-2 > * {
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+/* Garantir que textos não vazem */
+.dashboard-wrapper .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Cards de produtos e categorias */
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm .p-4 {
+    overflow: hidden;
+}
+
+/* Em mobile, manter ordem: Pedidos primeiro, depois Produtos e Categorias */
+@media (max-width: 1023px) {
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > .order-1 {
+        order: 1;
+    }
+    
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > .order-2 {
+        order: 2;
+    }
+}
+
+/* Scrollbar personalizada para listas */
+.dashboard-wrapper .space-y-3::-webkit-scrollbar,
+.dashboard-wrapper .space-y-2::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-wrapper .space-y-3::-webkit-scrollbar-track,
+.dashboard-wrapper .space-y-2::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.dashboard-wrapper .space-y-3::-webkit-scrollbar-thumb,
+.dashboard-wrapper .space-y-2::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.dashboard-wrapper .space-y-3::-webkit-scrollbar-thumb:hover,
+.dashboard-wrapper .space-y-2::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}

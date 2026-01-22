@@ -1,6 +1,7 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Relatórios')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 @section('page_subtitle', 'Analise o desempenho do seu negócio')
 
 @section('page_actions')

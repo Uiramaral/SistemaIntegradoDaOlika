@@ -282,6 +282,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/customers/debts/{debt}/settle', [\App\Http\Controllers\Dashboard\DebtsController::class, 'settleDebt'])->name('dashboard.customers.debts.settle');
     Route::post('/customers/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
     Route::put('/customers/{customer}/cashback', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateCashback'])->name('dashboard.customers.updateCashback');
+    Route::post('/customers/{customer}/adjust-debt-balance', [\App\Http\Controllers\Dashboard\CustomersController::class, 'adjustDebtBalance'])->name('dashboard.customers.adjustDebtBalance');
     Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
         'index' => 'dashboard.wholesale-prices.index',
         'create' => 'dashboard.wholesale-prices.create',
@@ -327,6 +328,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::get('/printer-monitor', [\App\Http\Controllers\Dashboard\OrdersController::class, 'printerMonitor'])->name('printerMonitor');
         Route::get('/orders-for-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getOrdersForPrint'])->name('forPrint'); // ANTES de /{order}
         Route::get('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'show'])->name('show');
+        Route::get('/{order}/payment-status', [\App\Http\Controllers\Dashboard\OrdersController::class, 'paymentStatus'])->name('paymentStatus');
         Route::post('/{order}/status', [\App\Http\Controllers\Dashboard\OrdersController::class, 'updateStatus'])->name('updateStatus');
         Route::put('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'update'])->name('update');
         Route::post('/{order}/coupon', [\App\Http\Controllers\Dashboard\OrdersController::class, 'applyCoupon'])->name('applyCoupon');
@@ -423,6 +425,18 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::get('/products/search', [\App\Http\Controllers\Dashboard\PDVController::class, 'searchProducts'])->name('products.search');
         Route::post('/coupons/validate', [\App\Http\Controllers\Dashboard\PDVController::class, 'validateCoupon'])->name('coupons.validate');
         Route::post('/calculate-delivery-fee', [\App\Http\Controllers\Dashboard\PDVController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+        Route::get('/pix-qr/{order}', [\App\Http\Controllers\Dashboard\PDVController::class, 'getPixQr'])->name('pixQr');
+    });
+
+    Route::prefix('production')->name('dashboard.producao.')->group(function () {
+        Route::get('/', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Dashboard de Produção']); })->name('index');
+        Route::get('/recipes', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Receitas']); })->name('receitas.index');
+        Route::get('/ingredients', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Ingredientes']); })->name('ingredientes.index');
+        Route::get('/list', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Lista de Produção']); })->name('lista-producao.index');
+        Route::get('/inventory-produced', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Estoque Produzidos']); })->name('estoque-produzidos.index');
+        Route::get('/inventory-supplies', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Estoque Insumos']); })->name('estoque-insumos.index');
+        Route::get('/costs', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Análise de Custos']); })->name('custos.index');
+        Route::get('/reports', function() { return view('dashboard.placeholders.coming-soon', ['title' => 'Relatórios de Produção']); })->name('relatorios-producao.index');
     });
 
     // Gerenciamento de Temas

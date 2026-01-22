@@ -1,60 +1,47 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Clientes')
-@section('page_subtitle', 'Gerencie sua base de clientes')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
-    <form method="POST" action="{{ route('dashboard.customers.updateStats') }}" class="inline" onsubmit="return confirm('Deseja atualizar as estatísticas de TODOS os clientes? (total_orders, total_spent, last_order_at, loyalty_balance)');">
-        @csrf
-        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw h-4 w-4">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                <path d="M21 3v5h-5"></path>
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                <path d="M3 21v-5h5"></path>
+    <div class="flex items-center gap-2">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
             </svg>
-            Atualizar Estatísticas
         </button>
-    </form>
-    <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+            </svg>
+        </button>
+    </div>
+    <a href="{{ route('dashboard.customers.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
             <path d="M12 5v14"></path>
         </svg>
-        Novo Cliente
+        + Adicionar cliente
     </a>
 @endsection
 
 @section('content')
 <div class="space-y-6">
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
-            <div class="relative">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.3-4.3"></path>
-                </svg>
-                <form method="GET" action="{{ route('dashboard.customers.index') }}" class="w-full">
-                    <input type="text" name="q" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-10" placeholder="Buscar clientes por nome, email ou telefone..." value="{{ $search ?? '' }}" onkeydown="if(event.key === 'Enter') this.form.submit();">
-                    <button type="submit" class="hidden"></button>
-                </form>
-            </div>
-        </div>
-        <div class="p-6 pt-0">
-            <div class="overflow-x-auto">
-                <div class="relative w-full overflow-auto">
-                    <table class="w-full caption-bottom text-sm" data-mobile-card="true">
-                        <thead class="[&_tr]:border-b">
-                            <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Cliente</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Contato</th>
-                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Pedidos</th>
-                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Total Gasto</th>
-                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Débitos</th>
-                                <th class="h-12 px-4 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody class="[&_tr:last-child]:border-0">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr class="border-b">
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">TELEFONE</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">PEDIDOS</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL GASTO</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">ÚLTIMO PEDIDO</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                        <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($customers as $customer)
                                 @php
                                     $initials = strtoupper(substr($customer->name ?? '', 0, 1) . substr($customer->name ?? '', strpos($customer->name ?? '', ' ') + 1, 1) ?? '');
@@ -62,72 +49,50 @@
                                         $initials = strtoupper(substr($customer->name, 0, 2));
                                     }
                                 @endphp
-                                <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Cliente">
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="flex items-center gap-3">
-                                            <span class="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                                                <span class="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">{{ $initials }}</span>
+                                            <span class="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full bg-blue-100">
+                                                <span class="flex h-full w-full items-center justify-center rounded-full text-blue-600 font-semibold text-sm">{{ $initials }}</span>
                                             </span>
                                             <div>
-                                                <div class="font-medium">{{ $customer->name ?? 'Sem nome' }}</div>
+                                                <div class="font-semibold text-gray-900">{{ $customer->name ?? 'Sem nome' }}</div>
                                                 @if($customer->email)
-                                                <div class="text-sm text-muted-foreground flex items-center gap-1">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail h-3 w-3">
-                                                        <rect width="20" height="16" x="2" y="4" rx="2"></rect>
-                                                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                                                    </svg>
-                                                    {{ $customer->email }}
-                                                </div>
+                                                <div class="text-sm text-gray-500">{{ $customer->email }}</div>
                                                 @endif
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0" data-label="Contato">
-                                        @if($customer->phone)
-                                        <div class="flex items-center gap-1 text-muted-foreground">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone h-3 w-3">
-                                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                        {{ $customer->phone ?? '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $customer->total_orders ?? 0 }} pedidos</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="font-semibold text-gray-900">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                        {{ $customer->last_order_at ? \Carbon\Carbon::parse($customer->last_order_at)->format('d/m/y') : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Ativo</span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <button class="text-gray-400 hover:text-gray-600">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
                                             </svg>
-                                            {{ $customer->phone }}
-                                        </div>
-                                        @else
-                                        <span class="text-muted-foreground text-sm">-</span>
-                                        @endif
-                                    </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-medium" data-label="Pedidos">{{ $customer->total_orders ?? 0 }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right font-semibold" data-label="Total Gasto">R$ {{ number_format($customer->total_spent ?? 0, 2, ',', '.') }}</td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell" data-label="Débitos">
-                                        @php
-                                            $debtsBalance = (float)($customer->total_debts ?? 0);
-                                        @endphp
-                                        @if($debtsBalance > 0)
-                                            <span class="font-semibold text-red-600">R$ {{ number_format($debtsBalance, 2, ',', '.') }}</span>
-                                        @else
-                                            <span class="text-muted-foreground">R$ 0,00</span>
-                                        @endif
-                                    </td>
-                                    <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right actions-cell" data-label="Ações">
-                                        <div class="mobile-actions">
-                                            <a href="{{ route('dashboard.customers.show', $customer->id) }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full sm:w-auto text-center">Ver perfil</a>
-                                        </div>
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="p-8 text-center text-muted-foreground">
+                                    <td colspan="7" class="p-8 text-center text-gray-500">
                                         Nenhum cliente encontrado.
                                     </td>
                                 </tr>
                             @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            @if(method_exists($customers, 'links'))
-                <div class="p-4 border-t">
-                    {{ $customers->onEachSide(1)->links('vendor.pagination.compact') }}
-                </div>
-            @endif
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

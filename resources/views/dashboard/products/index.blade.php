@@ -1,125 +1,90 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Produtos')
-@section('page_subtitle', 'Gerencie o cardápio do seu restaurante')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
-    <a href="{{ route('dashboard.products.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
+    <div class="flex items-center gap-2">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+        </button>
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+            </svg>
+        </button>
+    </div>
+    <a href="{{ route('dashboard.products.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
             <path d="M12 5v14"></path>
         </svg>
-        Novo Produto
+        Adicionar produto
     </a>
 @endsection
 
 @section('content')
 <div class="space-y-6">
-
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
-            <div class="flex items-center justify-between gap-4 mb-4 min-w-0">
-                <form method="GET" action="{{ route('dashboard.products.index') }}" class="flex flex-col md:flex-row gap-4 flex-1 min-w-0">
-                <div class="relative flex-1 min-w-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.3-4.3"></path>
-                    </svg>
-                    <input type="text" name="search" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-10" placeholder="Buscar produtos..." value="{{ request('search') }}">
-                </div>
-                <select name="category_id" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm">
-                    <option value="">Todas as categorias</option>
-                    @foreach($categories ?? [] as $category)
-                        <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>{{ $category->name }}</option>
-                    @endforeach
-                </select>
-                <select name="status" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm">
-                    <option value="">Todos os status</option>
-                    <option value="active" @selected(request('status') == 'active')>Ativo</option>
-                    <option value="inactive" @selected(request('status') == 'inactive')>Inativo</option>
-                </select>
-                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                    Buscar
-                </button>
-            </form>
-            </div>
-        </div>
-        <div class="p-6 pt-0 overflow-x-hidden" id="productsContainer">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="p-6">
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @forelse($products as $product)
-                    <div class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow w-full">
-                        <div class="p-6">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-16 h-16 rounded-lg bg-accent flex items-center justify-center overflow-hidden">
-                                    @if($product->cover_image || ($product->images && $product->images->count() > 0))
-                                        <img src="{{ $product->cover_image ? asset('storage/' . $product->cover_image) : asset('storage/' . $product->images->first()->path) }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
-                                    @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package h-8 w-8 text-accent-foreground">
-                                            <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
-                                            <path d="M12 22V12"></path>
-                                            <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
-                                            <path d="m7.5 4.27 9 5.15"></path>
-                                        </svg>
-                                    @endif
+                    @php
+                        $categoryName = $product->category->name ?? 'Sem categoria';
+                    @endphp
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                        <div class="flex flex-col items-center text-center">
+                            <!-- Avatar/Iniciais -->
+                            <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
+                                <span class="text-gray-600 font-semibold text-lg">
+                                    {{ strtoupper(substr($product->name, 0, 2)) }}
+                                </span>
+                            </div>
+                            <!-- Nome do Produto -->
+                            <h3 class="font-semibold text-gray-900 mb-2">{{ $product->name }}</h3>
+                            <!-- Categoria com ponto verde -->
+                            <div class="flex items-center gap-1 mb-4">
+                                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span class="text-sm text-gray-500">{{ $categoryName }}</span>
+                            </div>
+                            <!-- Informações Adicionais -->
+                            <div class="w-full space-y-2 text-sm text-gray-500 mb-4">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span>Segunda a Sexta</span>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-start justify-between gap-2 mb-2">
-                                        <h3 class="font-semibold truncate">{{ $product->name }}</h3>
-                                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {{ $product->is_active ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80' : 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80' }}">
-                                            {{ $product->is_active ? 'Ativo' : 'Inativo' }}
-                                        </div>
-                                    </div>
-                                    <p class="text-sm text-muted-foreground mb-2">{{ $product->category->name ?? 'Sem categoria' }}</p>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-lg font-bold text-primary">R$ {{ number_format($product->price, 2, ',', '.') }}</span>
-                                        @if($product->stock !== null)
-                                        <span class="text-sm text-muted-foreground">Estoque: {{ $product->stock }}</span>
-                                        @endif
-                                    </div>
-                                    @if($product->allergens && $product->allergens->count() > 0)
-                                        <div class="mb-3">
-                                            <div class="flex flex-wrap gap-1">
-                                                @foreach($product->allergens->take(3) as $allergen)
-                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-foreground/80 border border-border">{{ $allergen->name }}</span>
-                                                @endforeach
-                                                @if($product->allergens->count() > 3)
-                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-foreground/80 border border-border">+{{ $product->allergens->count() - 3 }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endif
-                                    <div class="flex flex-wrap gap-2">
-                                        <a href="{{ route('dashboard.products.edit', $product) }}" class="flex-1 min-w-[100px] inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3">
-                                            Editar
-                                        </a>
-                                        <form method="POST" action="{{ route('dashboard.products.duplicate', $product) }}" class="flex-1 min-w-[100px] inline" onsubmit="return confirm('Deseja duplicar este produto? Uma cópia será criada e você será redirecionado para editá-la.')">
-                                            @csrf
-                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 h-9 rounded-md px-3" title="Duplicar produto para criar variações">
-                                                Duplicar
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('dashboard.products.destroy', $product) }}" class="flex-1 min-w-[100px] inline" onsubmit="return confirm('Tem certeza que deseja excluir este produto?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-500 text-white hover:bg-red-600 h-9 rounded-md px-3">
-                                                Excluir
-                                            </button>
-                                        </form>
-                                    </div>
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>Das 8 as 17</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>R$ {{ number_format($product->price, 2, ',', '.') }}</span>
                                 </div>
                             </div>
+                            <!-- Botão Ver detalhes -->
+                            <a href="{{ route('dashboard.products.edit', $product) }}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+                                Ver detalhes
+                            </a>
                         </div>
                     </div>
                 @empty
                     <div class="col-span-3 text-center py-12">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-muted-foreground">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-gray-400">
                             <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
                             <path d="M12 22V12"></path>
                             <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
                             <path d="m7.5 4.27 9 5.15"></path>
                         </svg>
-                        <p class="text-muted-foreground">Nenhum produto encontrado</p>
-                        <a href="{{ route('dashboard.products.create') }}" class="mt-4 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4">
+                        <p class="text-gray-500">Nenhum produto encontrado</p>
+                        <a href="{{ route('dashboard.products.create') }}" class="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
                             Criar primeiro produto
                         </a>
                     </div>
@@ -131,8 +96,6 @@
                     {{ $products->onEachSide(1)->links('vendor.pagination.compact') }}
                 </div>
             @endif
-            </div>
-        </div>
     </div>
 </div>
 

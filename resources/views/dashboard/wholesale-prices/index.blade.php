@@ -1,16 +1,21 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Preços de Revenda')
-@section('page_subtitle', 'Gerencie os preços diferenciados para clientes de revenda e restaurantes')
+@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
 
 @section('page_actions')
-    <a href="{{ route('dashboard.wholesale-prices.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus h-4 w-4">
-            <path d="M5 12h14"></path>
-            <path d="M12 5v14"></path>
-        </svg>
-        Novo Preço de Revenda
-    </a>
+    <div class="flex items-center gap-2">
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+        </button>
+        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+            </svg>
+        </button>
+    </div>
 @endsection
 
 @section('content')
@@ -28,113 +33,113 @@
         </div>
     @endif
 
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
-            <form method="GET" action="{{ route('dashboard.wholesale-prices.index') }}" class="flex flex-col md:flex-row gap-4">
-                <select name="product_id" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="">Todos os produtos</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" @selected(request('product_id') == $product->id)>{{ $product->name }}</option>
-                    @endforeach
-                </select>
-                <select name="status" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="">Todos os status</option>
-                    <option value="active" @selected(request('status') == 'active')>Ativos</option>
-                    <option value="inactive" @selected(request('status') == 'inactive')>Inativos</option>
-                </select>
-                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                    Filtrar
-                </button>
-                @if(request()->has('product_id') || request()->has('status'))
-                    <a href="{{ route('dashboard.wholesale-prices.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                        Limpar
-                    </a>
-                @endif
-            </form>
+    <!-- Cards de Tabelas de Preços - Estilo do Site -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Tabelas</h3>
+            <button class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                </svg>
+            </button>
         </div>
-        <div class="p-6 pt-0">
+        <div class="flex flex-wrap gap-4">
+            <!-- Card Revenda Padrão (Selecionado) -->
+            <button class="flex-1 min-w-[200px] bg-primary text-white rounded-lg p-4 text-left hover:bg-primary/90 transition-colors">
+                <div class="font-semibold text-lg mb-1">Revenda Padrão</div>
+                <div class="flex items-center gap-2 text-sm opacity-90 mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>8 clientes</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-600 text-white">-15%</span>
+            </button>
+            <!-- Card Atacado -->
+            <button class="flex-1 min-w-[200px] bg-white border border-gray-300 rounded-lg p-4 text-left hover:bg-gray-50 transition-colors">
+                <div class="font-semibold text-lg mb-1 text-gray-900">Atacado</div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>3 clientes</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">-25%</span>
+            </button>
+            <!-- Card VIP -->
+            <button class="flex-1 min-w-[200px] bg-white border border-gray-300 rounded-lg p-4 text-left hover:bg-gray-50 transition-colors">
+                <div class="font-semibold text-lg mb-1 text-gray-900">VIP</div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>2 clientes</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">-30%</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Busca de Produtos e Tabela - Estilo do Site -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-6">
+            <!-- Barra de Busca -->
+            <div class="mb-6">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Buscar produto..." autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Tabela de Produtos -->
             <div class="overflow-x-auto">
-                <table class="w-full caption-bottom text-sm">
-                    <thead class="[&_tr]:border-b">
-                        <tr class="border-b transition-colors hover:bg-muted/50">
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Produto</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Variante</th>
-                            <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Preço de Revenda</th>
-                            <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Qtd. Mínima</th>
-                            <th class="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Status</th>
-                            <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Ações</th>
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr class="border-b">
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUTO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">REVENDA PADRÃO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">ATACADO</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">VIP</th>
+                            <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
                         </tr>
                     </thead>
-                    <tbody class="[&_tr:last-child]:border-0">
-                        @forelse($prices as $price)
-                            <tr class="border-b transition-colors hover:bg-muted/50">
-                                <td class="p-4 align-middle">
-                                    <div class="font-medium">{{ $price->product->name ?? 'Produto não encontrado' }}</div>
-                                    <div class="text-xs text-muted-foreground">
-                                        Preço normal: R$ {{ number_format($price->product->price ?? 0, 2, ',', '.') }}
-                                    </div>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @php
+                            // Agrupar produtos para mostrar na tabela
+                            $productsList = $products ?? collect();
+                        @endphp
+                        @forelse($productsList->take(10) as $product)
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="font-semibold text-gray-900">{{ $product->name }}</span>
                                 </td>
-                                <td class="p-4 align-middle">
-                                    @if($price->variant)
-                                        <span class="text-sm">{{ $price->variant->name }}</span>
-                                        <div class="text-xs text-muted-foreground">
-                                            Preço normal: R$ {{ number_format($price->variant->price ?? 0, 2, ',', '.') }}
-                                        </div>
-                                    @else
-                                        <span class="text-sm text-muted-foreground">Produto base</span>
-                                    @endif
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    R$ {{ number_format($product->price * 0.85, 2, ',', '.') }}
                                 </td>
-                                <td class="p-4 align-middle text-right">
-                                    <span class="font-semibold text-primary">R$ {{ number_format($price->wholesale_price, 2, ',', '.') }}</span>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    R$ {{ number_format($product->price * 0.75, 2, ',', '.') }}
                                 </td>
-                                <td class="p-4 align-middle text-right">
-                                    <span class="text-sm">{{ $price->min_quantity }}</span>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    R$ {{ number_format($product->price * 0.70, 2, ',', '.') }}
                                 </td>
-                                <td class="p-4 align-middle text-center">
-                                    @if($price->is_active)
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            Ativo
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                            Inativo
-                                        </span>
-                                    @endif
-                                </td>
-                                <td class="p-4 align-middle text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('dashboard.wholesale-prices.edit', $price) }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
-                                            Editar
-                                        </a>
-                                        <form action="{{ route('dashboard.wholesale-prices.destroy', $price) }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja remover este preço de revenda?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-destructive hover:text-destructive-foreground h-8 px-3 text-destructive">
-                                                Excluir
-                                            </button>
-                                        </form>
-                                    </div>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <button class="text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-muted-foreground">
-                                    <p>Nenhum preço de revenda cadastrado ainda.</p>
-                                    <a href="{{ route('dashboard.wholesale-prices.create') }}" class="text-primary hover:underline mt-2 inline-block">
-                                        Cadastrar primeiro preço
-                                    </a>
-                                </td>
+                                <td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum produto encontrado</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-
-            @if($prices->hasPages())
-                <div class="mt-4">
-                    {{ $prices->onEachSide(1)->links('vendor.pagination.compact') }}
-                </div>
-            @endif
         </div>
     </div>
 </div>

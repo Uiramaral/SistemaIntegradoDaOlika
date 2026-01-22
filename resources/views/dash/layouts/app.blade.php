@@ -10,10 +10,67 @@
     <meta property="og:title" content="OLIKA Painel">
     <meta property="og:description" content="Sistema de gestão de restaurante">
     <meta property="og:type" content="website">
+
+    @php
+        // Carregar configurações de tema do estabelecimento (SaaS)
+        $clientSettings = \App\Models\Setting::getSettings();
+        $themeSettings = $clientSettings->getThemeSettings();
+        
+        // Helper para converter HEX para HSL
+        if (!function_exists('hexToHsl')) {
+            function hexToHsl($hex) {
+                $hex = str_replace('#', '', $hex);
+                if (strlen($hex) === 3) {
+                    $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+                }
+                $r = hexdec(substr($hex, 0, 2)) / 255;
+                $g = hexdec(substr($hex, 2, 2)) / 255;
+                $b = hexdec(substr($hex, 4, 2)) / 255;
+                
+                $max = max($r, $g, $b);
+                $min = min($r, $g, $b);
+                $delta = $max - $min;
+                
+                $h = 0;
+                $s = 0;
+                $l = ($max + $min) / 2;
+                
+                if ($delta !== 0.0) {
+                    $s = $l > 0.5 ? $delta / (2 - $max - $min) : $delta / ($max + $min);
+                    
+                    switch ($max) {
+                        case $r:
+                            $h = ($g - $b) / $delta + ($g < $b ? 6 : 0);
+                            break;
+                        case $g:
+                            $h = ($b - $r) / $delta + 2;
+                            break;
+                        case $b:
+                            $h = ($r - $g) / $delta + 4;
+                            break;
+                    }
+                    
+                    $h /= 6;
+                }
+                
+                $h = round($h * 360);
+                $s = round($s * 100);
+                $l = round($l * 100);
+                
+                return "{$h} {$s}% {$l}%";
+            }
+        }
+        
+        $primaryHsl = hexToHsl($themeSettings['theme_primary_color']);
+        $secondaryHsl = hexToHsl($themeSettings['theme_secondary_color']);
+        $accentHsl = hexToHsl($themeSettings['theme_accent_color']);
+    @endphp
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -54,6 +111,12 @@
                 },
             },
         }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
     </script>
     <style>
         /* Prevenir scroll horizontal no mobile - Global */
@@ -103,67 +166,45 @@
             --card-foreground: 222.2 84% 4.9%;
             --popover: 0 0% 100%;
             --popover-foreground: 222.2 84% 4.9%;
-            --primary: 222.2 47.4% 11.2%;
-            --primary-foreground: 210 40% 98%;
-            --secondary: 210 40% 96%;
+            --primary: {{ $primaryHsl }};
+            --primary-foreground: 0 0% 100%;
+            --secondary: {{ $secondaryHsl }};
             --secondary-foreground: 222.2 84% 4.9%;
             --muted: 210 40% 96%;
             --muted-foreground: 215.4 16.3% 46.9%;
-            --accent: 210 40% 96%;
+            --accent: {{ $accentHsl }};
             --accent-foreground: 222.2 84% 4.9%;
             --destructive: 0 84.2% 60.2%;
             --destructive-foreground: 210 40% 98%;
             --border: 214.3 31.8% 91.4%;
             --input: 214.3 31.8% 91.4%;
-            --ring: 222.2 84% 4.9%;
-            --radius: 0.5rem;
-            --sidebar-background: 0 0% 98%;
-            --sidebar-foreground: 240 5.3% 26.1%;
-            --sidebar-primary: 240 5.9% 10%;
-            --sidebar-primary-foreground: 0 0% 98%;
-            --sidebar-accent: 240 4.8% 95.9%;
-            --sidebar-accent-foreground: 240 5.9% 10%;
-            --sidebar-border: 220 13% 91%;
-            --sidebar-ring: 217.2 10.6% 64.9%;
+            --ring: {{ $primaryHsl }};
+            --radius: {{ $themeSettings['theme_border_radius'] }};
+            --font-family: {!! $themeSettings['theme_font_family'] !!};
+            /* Sidebar escuro como no site */
+            --sidebar-background: 222 47% 11%;
+            --sidebar-foreground: 0 0% 98%;
+            --sidebar-primary: {{ $primaryHsl }};
+            --sidebar-primary-foreground: 0 0% 100%;
+            --sidebar-accent: {{ $primaryHsl }};
+            --sidebar-accent-foreground: 0 0% 100%;
+            --sidebar-border: 217 33% 17%;
+            --sidebar-ring: {{ $primaryHsl }};
             --success: 142.1 76.2% 36.3%;
             --success-foreground: 355.7 100% 97.3%;
             --warning: 38.7 92% 50%;
             --warning-foreground: 26 83.3% 14.1%;
+            /* Cores dos ícones dos cards */
+            --metric-green: 142 76% 36%;
+            --metric-blue: 217 91% 60%;
+            --metric-purple: 262 83% 58%;
         }
-        .dark {
-            --background: 222.2 84% 4.9%;
-            --foreground: 210 40% 98%;
-            --card: 222.2 84% 4.9%;
-            --card-foreground: 210 40% 98%;
-            --popover: 222.2 84% 4.9%;
-            --popover-foreground: 210 40% 98%;
-            --primary: 210 40% 98%;
-            --primary-foreground: 222.2 47.4% 11.2%;
-            --secondary: 217.2 32.6% 17.5%;
-            --secondary-foreground: 210 40% 98%;
-            --muted: 217.2 32.6% 17.5%;
-            --muted-foreground: 215 20.2% 65.1%;
-            --accent: 217.2 32.6% 17.5%;
-            --accent-foreground: 210 40% 98%;
-            --destructive: 0 62.8% 30.6%;
-            --destructive-foreground: 210 40% 98%;
-            --border: 217.2 32.6% 17.5%;
-            --input: 217.2 32.6% 17.5%;
-            --ring: 212.7 26.8% 83.9%;
-            --sidebar-background: 240 5.9% 10%;
-            --sidebar-foreground: 240 4.8% 95.9%;
-            --sidebar-primary: 224.3 76.3% 94.1%;
-            --sidebar-primary-foreground: 240 5.9% 10%;
-            --sidebar-accent: 240 3.7% 15.9%;
-            --sidebar-accent-foreground: 240 4.8% 95.9%;
-            --sidebar-border: 240 3.7% 15.9%;
-            --sidebar-ring: 217.2 10.6% 64.9%;
-            --success: 142.1 70.6% 45.3%;
-            --success-foreground: 144.9 61.2% 20.6%;
-            --warning: 47.9 95.8% 53.1%;
-            --warning-foreground: 26 83.3% 14.1%;
+
+        body {
+            font-family: var(--font-family);
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
         }
-        body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
         * { border-color: hsl(var(--border)); }
         
         /* Padronização de espaçamentos */
@@ -280,6 +321,8 @@
             opacity: 0.9;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/sidebar-sweetspot-pixel-perfect.css') }}">
     @stack('styles')
 </head>
 <body>
@@ -298,77 +341,29 @@
                     <div class="fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l">
                         <div data-sidebar="sidebar" class="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow">
                             <div data-sidebar="content" class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden">
-                                <div class="p-4 border-b">
-                                    <h1 class="font-bold text-xl text-primary transition-all">OLIKA</h1>
-                                    <p class="text-xs text-muted-foreground">Dashboard</p>
+                                <div class="sidebar-logo-area flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        @if($themeSettings['theme_logo_url'] && $themeSettings['theme_logo_url'] !== '/images/logo-default.png')
+                                            <img src="{{ $themeSettings['theme_logo_url'] }}" alt="Logo" class="h-10 w-10 object-contain rounded-xl">
+                                        @else
+                                            <div class="sidebar-logo-circle">
+                                                {{ strtoupper(substr($themeSettings['theme_brand_name'], 0, 1)) }}
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <div class="sidebar-brand-name">{{ strtolower($themeSettings['theme_brand_name']) }}</div>
+                                            <div class="sidebar-sub-brand">padaria.olika.app</div>
+                                        </div>
+                                    </div>
+                                    <button id="sidebar-close" class="lg:hidden p-2 rounded-lg text-sidebar-foreground">
+                                        <i data-lucide="x" class="h-6 w-6"></i>
+                                    </button>
                                 </div>
-                                @php
-                                    $currentRoute = request()->path();
-                                    $iconMap = [
-                                        'lucide-layout-dashboard' => '<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>',
-                                        'lucide-shopping-cart' => '<circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>',
-                                        'lucide-file-text' => '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
-                                        'lucide-users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
-                                        'lucide-package' => '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path><path d="m7.5 4.27 9 5.15"></path>',
-                                        'lucide-folder-tree' => '<path d="M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"></path><path d="M3 5a2 2 0 0 0 2 2h3"></path><path d="M3 3v13a2 2 0 0 0 2 2h3"></path>',
-                                        'lucide-ticket' => '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path>',
-                                        'lucide-wallet' => '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path>',
-                                        'lucide-heart' => '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>',
-                                        'lucide-chart-column' => '<path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path>',
-                                        'lucide-message-circle' => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>',
-                                        'lucide-credit-card' => '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>',
-                                        'lucide-settings2' => '<path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle>',
-                                        'lucide-truck' => '<path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"></path><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"></path><circle cx="7" cy="18" r="2"></circle><path d="M9 18h5"></path><circle cx="17" cy="18" r="2"></circle>',
-                                        'lucide-percent' => '<circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0l-11.45 11.45a5.5 5.5 0 0 0 7.78 7.78L20.84 12.39a5.5 5.5 0 0 0 0-7.78Z"></path>',
-                                    ];
-                                    
-                                    $menuGroups = [
-                                        [
-                                            'title' => 'Menu Principal',
-                                            'items' => [
-                                                ['url' => route('dashboard.index'), 'label' => 'Visão Geral', 'icon' => 'lucide-layout-dashboard', 'pattern' => ['', '/']],
-                                                ['url' => route('dashboard.pdv.index'), 'label' => 'PDV', 'icon' => 'lucide-shopping-cart', 'pattern' => ['pdv']],
-                                                ['url' => route('dashboard.orders.index'), 'label' => 'Pedidos', 'icon' => 'lucide-file-text', 'pattern' => ['orders', 'pedidos']],
-                                                ['url' => route('dashboard.customers.index'), 'label' => 'Clientes', 'icon' => 'lucide-users', 'pattern' => ['customers', 'clientes']],
-                                                ['url' => route('dashboard.deliveries.index'), 'label' => 'Entregas', 'icon' => 'lucide-truck', 'pattern' => ['deliveries', 'entregas']],
-                                            ],
-                                        ],
-                                        [
-                                            'title' => 'Produtos',
-                                            'items' => [
-                                                ['url' => route('dashboard.products.index'), 'label' => 'Produtos', 'icon' => 'lucide-package', 'pattern' => ['products', 'produtos']],
-                                                ['url' => route('dashboard.categories.index'), 'label' => 'Categorias', 'icon' => 'lucide-folder-tree', 'pattern' => ['categories', 'categorias']],
-                                                ['url' => route('dashboard.wholesale-prices.index'), 'label' => 'Preços de Revenda', 'icon' => 'lucide-wallet', 'pattern' => ['wholesale-prices', 'precos-revenda']],
-                                            ],
-                                        ],
-                                        [
-                                            'title' => 'Marketing',
-                                            'items' => [
-                                                ['url' => route('dashboard.coupons.index'), 'label' => 'Cupons', 'icon' => 'lucide-ticket', 'pattern' => ['coupons', 'cupons']],
-                                                ['url' => route('dashboard.cashback.index'), 'label' => 'Cashback', 'icon' => 'lucide-wallet', 'pattern' => ['cashback']],
-                                            ],
-                                        ],
-                                        [
-                                            'title' => 'Integrações',
-                                            'items' => [
-                                                ['url' => route('dashboard.settings.whatsapp'), 'label' => 'WhatsApp', 'icon' => 'lucide-message-circle', 'pattern' => ['whatsapp']],
-                                                ['url' => route('dashboard.settings.mp'), 'label' => 'Mercado Pago', 'icon' => 'lucide-credit-card', 'pattern' => ['mercadopago', 'mp']],
-                                            ],
-                                        ],
-                                        [
-                                            'title' => 'Sistema',
-                                            'items' => [
-                                                ['url' => route('dashboard.reports'), 'label' => 'Relatórios', 'icon' => 'lucide-chart-column', 'pattern' => ['reports', 'relatorios']],
-                                                ['url' => route('dashboard.settings'), 'label' => 'Configurações', 'icon' => 'lucide-settings2', 'pattern' => ['settings', 'configuracoes']],
-                                            ],
-                                        ],
-                                    ];
-                                @endphp
-                                @foreach($menuGroups as $group)
-                                    <div data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
-                                        <div data-sidebar="group-label" class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wider outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0">{{ $group['title'] }}</div>
-                                        <div data-sidebar="group-content" class="w-full text-sm">
-                                            <ul data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-1">
+                                <div class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+                                    @foreach($menuGroups as $group)
+                                        <div>
+                                            <h3 class="sidebar-group-label">{{ $group['title'] }}</h3>
+                                            <div class="space-y-0.5">
                                                 @foreach($group['items'] as $item)
                                                     @php
                                                         $itemPath = parse_url($item['url'], PHP_URL_PATH);
@@ -384,21 +379,26 @@
                                                                 break;
                                                             }
                                                         }
-                                                        $activeClass = $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : '';
                                                     @endphp
-                                                    <li data-sidebar="menu-item" class="group/menu-item relative">
-                                                        <a data-sidebar="menu-button" data-size="default" data-active="{{ $isActive ? 'true' : 'false' }}" class="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" @if($isActive) aria-current="page" @endif>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide {{ $item['icon'] }} h-4 w-4">
-                                                                {!! $iconMap[$item['icon']] ?? '' !!}
-                                                            </svg>
-                                                            <span>{{ $item['label'] }}</span>
-                                                        </a>
-                                                    </li>
+                                                    <a href="{{ $item['url'] }}"
+                                                       class="sidebar-item {{ $isActive ? 'active-item' : '' }}">
+                                                        <i data-lucide="{{ $item['icon'] }}"></i>
+                                                        <span class="truncate">{{ $item['label'] }}</span>
+                                                    </a>
                                                 @endforeach
-                                            </ul>
+                                            </div>
                                         </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                </div>
+                                <div class="sidebar-footer">
+                                    <form method="POST" action="{{ route('auth.logout') }}">
+                                        @csrf
+                                        <button type="submit" class="sidebar-logout-btn">
+                                            <i data-lucide="log-out"></i>
+                                            <span>Sair</span>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -407,23 +407,29 @@
                 <!-- Sidebar Mobile (Offcanvas) -->
                 <div id="mobile-sidebar" class="fixed inset-y-0 left-0 z-50 w-[--sidebar-width] bg-sidebar border-r border-sidebar-border transform -translate-x-full transition-transform duration-200 ease-in-out md:hidden">
                     <div class="flex h-full w-full flex-col">
-                        <div class="p-4 border-b border-sidebar-border flex items-center justify-between">
-                            <div>
-                                <h1 class="font-bold text-xl text-primary transition-all">OLIKA</h1>
-                                <p class="text-xs text-muted-foreground">Dashboard</p>
+                        <div class="sidebar-logo-area flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                @if($themeSettings['theme_logo_url'] && $themeSettings['theme_logo_url'] !== '/images/logo-default.png')
+                                    <img src="{{ $themeSettings['theme_logo_url'] }}" alt="Logo" class="h-8 w-8 object-contain rounded">
+                                @else
+                                    <div class="sidebar-logo-circle">
+                                        {{ strtoupper(substr($themeSettings['theme_brand_name'], 0, 1)) }}
+                                    </div>
+                                @endif
+                                <div>
+                                    <div class="sidebar-brand-name">{{ strtolower($themeSettings['theme_brand_name']) }}</div>
+                                    <div class="sidebar-sub-brand">{{ request()->getHost() }}</div>
+                                </div>
                             </div>
-                            <button type="button" onclick="toggleSidebar()" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent hover:text-accent-foreground">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x h-5 w-5">
-                                    <path d="M18 6 6 18"></path>
-                                    <path d="M6 6l12 12"></path>
-                                </svg>
+                            <button type="button" onclick="toggleSidebar()" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent hover:text-accent-foreground text-white">
+                                <i data-lucide="x" class="h-5 w-5 text-white"></i>
                             </button>
                         </div>
                         <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-2">
                             @foreach($menuGroups as $group)
-                                <div class="relative flex w-full min-w-0 flex-col">
-                                    <div class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wider mb-2">{{ $group['title'] }}</div>
-                                    <ul class="flex w-full min-w-0 flex-col gap-1 text-sm">
+                                <div class="mb-4">
+                                    <p class="sidebar-group-label">{{ $group['title'] }}</p>
+                                    <ul class="space-y-1">
                                         @foreach($group['items'] as $item)
                                             @php
                                                 $itemPath = parse_url($item['url'], PHP_URL_PATH);
@@ -439,14 +445,12 @@
                                                         break;
                                                     }
                                                 }
-                                                $activeClass = $isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : '';
                                             @endphp
-                                            <li class="group/menu-item relative">
-                                                <a class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm {{ $activeClass }}" href="{{ $item['url'] }}" onclick="toggleSidebar()" @if($isActive) aria-current="page" @endif>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                                                        {!! $iconMap[$item['icon']] ?? '' !!}
-                                                    </svg>
-                                                    <span>{{ $item['label'] }}</span>
+                                            <li>
+                                                <a href="{{ $item['url'] }}"
+                                                   class="sidebar-item {{ $isActive ? 'active-item' : '' }}" onclick="toggleSidebar()">
+                                                    <i data-lucide="{{ $item['icon'] }}"></i>
+                                                    <span class="truncate">{{ $item['label'] }}</span>
                                                 </a>
                                             </li>
                                         @endforeach
@@ -458,60 +462,54 @@
                 </div>
                 
                 <div class="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
-                    <header class="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 w-full max-w-full overflow-x-hidden">
-                        <div class="flex h-16 items-center gap-4 px-4 md:px-6 max-w-full">
-                            <button type="button" id="sidebar-toggle" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7 text-foreground" data-sidebar="trigger">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left">
-                                    <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-                                    <path d="M9 3v18"></path>
-                                </svg>
-                                <span class="sr-only">Toggle Sidebar</span>
-                            </button>
-                            @php
-                                $pageTitle = View::hasSection('page_title') ? trim($__env->yieldContent('page_title')) : (View::hasSection('page-title') ? trim($__env->yieldContent('page-title')) : (View::hasSection('title') ? trim($__env->yieldContent('title')) : 'Dashboard'));
-                                $pageSubtitle = View::hasSection('page_subtitle') ? trim($__env->yieldContent('page_subtitle')) : (View::hasSection('page-subtitle') ? trim($__env->yieldContent('page-subtitle')) : null);
-                            @endphp
-                            @if($pageTitle !== 'Dashboard' || $pageSubtitle)
-                                <div class="flex flex-col gap-0.5">
-                                    <h1 class="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{{ $pageTitle }}</h1>
-                                    @if($pageSubtitle)
-                                        <p class="text-xs text-muted-foreground sm:text-sm">{{ $pageSubtitle }}</p>
+                    <header class="bg-white border-b border-border px-6 py-4 sticky top-0 z-20">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <button id="sidebar-toggle" class="lg:hidden p-2 rounded-lg bg-sidebar text-sidebar-foreground shadow-lg mr-2" data-sidebar="trigger">
+                                    <i data-lucide="menu" class="h-6 w-6"></i>
+                                </button>
+
+                                <div class="flex flex-col">
+                                    <div class="flex items-center gap-1 text-sm font-medium text-primary mb-1">
+                                        <span>Menu Principal</span>
+                                        <i data-lucide="chevron-right" class="h-3 w-3"></i>
+                                        <span>{{ $pageTitle ?? 'Dashboard' }}</span>
+                                    </div>
+                                    <h1 class="text-2xl font-bold text-foreground">
+                                        {{ $pageTitle ?? 'Dashboard' }}
+                                    </h1>
+                                    @if ($pageSubtitle)
+                                        <p class="text-sm text-muted-foreground mt-0.5">{{ $pageSubtitle }}</p>
                                     @endif
                                 </div>
-                            @endif
-                            <div class="flex-1"></div>
-                            @auth
-                                <div class="flex items-center gap-3">
-                                    <div class="text-right hidden sm:block">
-                                        <p class="text-sm font-medium">{{ auth()->user()->name }}</p>
-                                        <p class="text-xs text-muted-foreground">{{ auth()->user()->email }}</p>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                @auth
+                                    <div class="hidden md:flex items-center gap-3 pl-3">
+                                        <div class="text-right">
+                                            <p class="text-sm font-medium text-foreground">{{ auth()->user()->name }}</p>
+                                            <p class="text-xs text-muted-foreground">{{ auth()->user()->email }}</p>
+                                        </div>
+                                        <div class="h-10 w-10 rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                                            {{ strtoupper(substr(auth()->user()->name, 0, 1) . (explode(' ', auth()->user()->name)[1] ? substr(explode(' ', auth()->user()->name)[1], 0, 1) : '')) }}
+                                        </div>
                                     </div>
-                                    <form action="{{ route('auth.logout') }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out h-4 w-4">
-                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                                <polyline points="16 17 21 12 16 7"></polyline>
-                                                <line x1="21" x2="9" y1="12" y2="12"></line>
-                                            </svg>
-                                            <span class="hidden sm:inline">Sair</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            @endauth
+                                @endauth
+                            </div>
                         </div>
                     </header>
                     <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden max-w-full">
                         <div class="max-w-7xl mx-auto space-y-6">
-                            @if(session('success'))
-                                <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
-                                    {{ session('success') }}
-                                </div>
-                            @endif
-
                             @if(session('error'))
                                 <div class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
                                     {{ session('error') }}
+                                </div>
+                            @endif
+                            
+                            @if(session('success') && !request()->routeIs('dashboard.index'))
+                                <div class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-success shadow-sm">
+                                    {{ session('success') }}
                                 </div>
                             @endif
 

@@ -85,4 +85,32 @@ class FormatHelper
     {
         return number_format($distance, 1, ',', '.') . ' ' . $unit;
     }
+
+    /**
+     * Trunca nome para mostrar apenas os 2 primeiros nomes e o último
+     * Exemplo: "João Pedro Silva Santos" -> "João Pedro Santos"
+     * 
+     * @param string $name Nome completo
+     * @return string Nome truncado
+     */
+    public static function truncateName(string $name): string
+    {
+        $name = trim($name);
+        if (empty($name)) {
+            return $name;
+        }
+
+        $parts = preg_split('/\s+/', $name);
+        
+        // Se tiver 3 ou menos partes, retorna como está
+        if (count($parts) <= 3) {
+            return $name;
+        }
+
+        // Pega os 2 primeiros e o último
+        $firstTwo = array_slice($parts, 0, 2);
+        $last = end($parts);
+        
+        return implode(' ', $firstTwo) . ' ' . $last;
+    }
 }

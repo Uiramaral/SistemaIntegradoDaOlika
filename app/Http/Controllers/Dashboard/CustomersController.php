@@ -78,9 +78,28 @@ class CustomersController extends Controller
 
     public function show($id)
     {
-        $customer = \App\Models\Customer::find($id);
-        if (!$customer) {
-            return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
+        // Buscar cliente - usar o scope global que já filtra por client_id
+        // Se precisar buscar sem scope, verificar manualmente
+        try {
+            $customer = \App\Models\Customer::findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Se não encontrou com scope, tentar buscar sem scope para verificar se existe
+            $clientId = currentClientId();
+            if ($clientId) {
+                $customer = \App\Models\Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                    ->where('id', $id)
+                    ->where(function($q) use ($clientId) {
+                        $q->where('client_id', $clientId)
+                          ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
+                    })
+                    ->first();
+                    
+                if (!$customer) {
+                    return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
+                }
+            } else {
+                return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
+            }
         }
 
         $orders = DB::table('orders')
@@ -356,10 +375,29 @@ class CustomersController extends Controller
      */
     public function adjustDebtBalance(Request $request, $id)
     {
-        $customer = \App\Models\Customer::find($id);
-        if (!$customer) {
-            return redirect()->route('dashboard.customers.show', $id)
-                ->with('error', 'Cliente não encontrado');
+        // Buscar cliente - usar o scope global que já filtra por client_id
+        try {
+            $customer = \App\Models\Customer::findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Se não encontrou com scope, tentar buscar sem scope para verificar se existe
+            $clientId = currentClientId();
+            if ($clientId) {
+                $customer = \App\Models\Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                    ->where('id', $id)
+                    ->where(function($q) use ($clientId) {
+                        $q->where('client_id', $clientId)
+                          ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
+                    })
+                    ->first();
+                    
+                if (!$customer) {
+                    return redirect()->route('dashboard.customers.show', $id)
+                        ->with('error', 'Cliente não encontrado');
+                }
+            } else {
+                return redirect()->route('dashboard.customers.show', $id)
+                    ->with('error', 'Cliente não encontrado');
+            }
         }
 
         $request->validate([

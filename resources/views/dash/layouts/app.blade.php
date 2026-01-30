@@ -336,12 +336,12 @@
             <!-- Overlay para mobile -->
             <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-200" onclick="toggleSidebar()"></div>
             
-            <div class="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+            <div class="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background items-stretch">
                 <div class="group peer hidden text-sidebar-foreground md:block" data-state="expanded" data-collapsible="" data-variant="sidebar" data-side="left" id="desktop-sidebar">
-                    <div class="relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 group-data-[collapsible=icon]:w-[--sidebar-width-icon]"></div>
-                    <div class="fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l">
-                        <div data-sidebar="sidebar" class="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow">
-                            <div data-sidebar="content" class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden">
+                    <div class="relative w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 group-data-[collapsible=icon]:w-[--sidebar-width-icon]"></div>
+                    <div class="relative z-10 hidden w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l self-stretch">
+                        <div data-sidebar="sidebar" class="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow min-h-full">
+                            <div data-sidebar="content" class="flex flex-col gap-2">
                                 <div class="sidebar-logo-area flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         @if($themeSettings['theme_logo_url'] && $themeSettings['theme_logo_url'] !== '/images/logo-default.png')
@@ -360,7 +360,7 @@
                                         <i data-lucide="x" class="h-6 w-6"></i>
                                     </button>
                                 </div>
-                                <div class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+                                <div class="flex-1 px-3 py-4 space-y-5">
                                     @foreach($menuGroups as $group)
                                         <div>
                                             <h3 class="sidebar-group-label">{{ $group['title'] }}</h3>

@@ -4,7 +4,6 @@
             'title' => 'Menu Principal',
             'items' => [
                 ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
-                ['label' => 'PDV', 'icon' => 'monitor', 'route' => 'dashboard.pdv.index', 'routePattern' => 'dashboard.pdv.*'],
                 ['label' => 'Pedidos', 'icon' => 'receipt', 'route' => 'dashboard.orders.index', 'routePattern' => 'dashboard.orders.*'],
                 ['label' => 'Clientes', 'icon' => 'users', 'route' => 'dashboard.customers.index', 'routePattern' => 'dashboard.customers.*'],
                 ['label' => 'Entregas', 'icon' => 'truck', 'route' => 'dashboard.deliveries.index', 'routePattern' => 'dashboard.deliveries.*'],
@@ -36,15 +35,71 @@
             'title' => 'Sistema',
             'items' => [
                 ['label' => 'Relatórios', 'icon' => 'chart-column', 'route' => 'dashboard.reports', 'routePattern' => 'dashboard.reports*'],
-                ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings'],
+                ['label' => 'Notificações', 'icon' => 'bell', 'route' => 'dashboard.notifications.index', 'routePattern' => 'dashboard.notifications*'],
+                ['label' => 'Configurações', 'icon' => 'settings', 'route' => 'dashboard.settings', 'routePattern' => 'dashboard.settings*'],
             ],
         ],
     ];
 @endphp
 
+@php
+    // Buscar logo das configurações
+    $clientId = currentClientId();
+    $personalizationSettings = \App\Models\PaymentSetting::where('client_id', $clientId)
+        ->whereIn('key', ['logo'])
+        ->pluck('value', 'key')
+        ->toArray();
+    
+    $logoUrl = null;
+    $brandName = 'OLIKA';
+    
+    if (isset($personalizationSettings['logo']) && $personalizationSettings['logo']) {
+        $logoUrl = asset('storage/' . $personalizationSettings['logo']) . '?v=' . time();
+    }
+    
+    // Se não encontrado, tentar do Setting model
+    if (!$logoUrl) {
+        try {
+            $settings = \App\Models\Setting::getSettings($clientId);
+            $themeSettings = $settings->getThemeSettings();
+            $logoUrl = $themeSettings['theme_logo_url'] ?? null;
+            $brandName = $themeSettings['theme_brand_name'] ?? 'OLIKA';
+            if ($logoUrl && $logoUrl !== '/images/logo-default.png') {
+                // Se for URL relativa, converter para asset
+                if (strpos($logoUrl, 'http') !== 0 && strpos($logoUrl, '/storage/') === false) {
+                    $logoUrl = asset($logoUrl);
+                }
+                // Adicionar timestamp para evitar cache
+                $logoUrl .= '?v=' . time();
+            } else {
+                $logoUrl = null;
+            }
+        } catch (\Exception $e) {
+            $logoUrl = null;
+        }
+    } else {
+        // Buscar nome da marca também
+        try {
+            $settings = \App\Models\Setting::getSettings($clientId);
+            $themeSettings = $settings->getThemeSettings();
+            $brandName = $themeSettings['theme_brand_name'] ?? 'OLIKA';
+        } catch (\Exception $e) {
+            // Manter padrão
+        }
+    }
+@endphp
+
 <aside class="sidebar">
-    <div class="sidebar-logo">
-        <div class="text-logo">OLIKA</div>
+    <div class="sidebar-logo flex items-center gap-3">
+        @if($logoUrl)
+            <img src="{{ $logoUrl }}" alt="Logo" class="w-10 h-10 object-contain rounded-lg">
+            <div>
+                <div class="text-logo font-bold text-lg">{{ $brandName }}</div>
+                <div class="text-xs text-muted-foreground">Gestão profissional</div>
+            </div>
+        @else
+            <div class="text-logo">{{ $brandName }}</div>
+        @endif
     </div>
     
     <nav class="sidebar-nav">

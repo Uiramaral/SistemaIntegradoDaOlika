@@ -9,6 +9,8 @@ use App\Models\Coupon;
 use App\Models\OrderCoupon;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Services\DeliverySlotsService;
 use App\Services\MercadoPagoApi;
 use App\Services\MercadoPagoApiService;
 use App\Services\WhatsAppService;
@@ -27,16 +29,17 @@ class OrdersController extends Controller
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
                 'customer' => function($q) {
-                    // Remover scope para carregar customer (pedido já está filtrado)
                     $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                       ->select('id', 'name', 'phone', 'email', 'client_id');
                 },
                 'address:id,street,number,neighborhood,city,state,cep,complement',
-                'payment:id,order_id,status,provider,provider_id'
+                'payment:id,order_id,status,provider,provider_id',
+                'items' => fn($q) => $q->with(['product' => fn($p) => $p->with('category:id,name')]),
             ])
-            ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount', 
-                     'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id', 
-                     'address_id', 'payment_id', 'scheduled_delivery_at', 'client_id')
+            ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount',
+                     'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id',
+                     'address_id', 'payment_id', 'scheduled_delivery_at', 'client_id', 'delivery_type')
+            ->withExists(['debts as has_fiado_pendente' => fn($q) => $q->where('type', 'debit')->where('status', 'open')])
             ->orderBy('created_at', 'desc');
 
         // Filtrar por client_id se existir
@@ -60,26 +63,229 @@ class OrdersController extends Controller
             });
         }
 
-        // Filtro por status - padrão: mostrar todos os pedidos
+        // Filtro por status - padrão: all (todos exceto cancelados)
         $statusFilter = $request->input('status', 'all');
         
         if ($statusFilter === 'all') {
-            // Mostrar todos os pedidos (incluindo cancelados e finalizados)
-            // Não aplicar filtro de status
+            // Todos exceto cancelados
+            $query->where('status', '!=', 'cancelled');
         } elseif ($statusFilter === 'active') {
-            // Apenas ativos: confirmados e aguardando pagamento
+            // Ativos: confirmados e aguardando pagamento
             $query->whereIn('status', ['confirmed', 'pending']);
-        } elseif ($statusFilter === 'cancelled') {
-            // Apenas cancelados
-            $query->where('status', 'cancelled');
         } elseif ($statusFilter && in_array($statusFilter, ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'])) {
             // Status específico válido
             $query->where('status', $statusFilter);
         }
 
+        // Se for requisição AJAX, retornar JSON sem paginação
+        if ($request->ajax() || $request->wantsJson()) {
+            $allOrders = $query->get();
+            return response()->json([
+                'orders' => $allOrders->map(function($order) {
+                    $customerName = $order->customer->name ?? 'Cliente';
+                    $nameParts = explode(' ', trim($customerName));
+                    $shortName = count($nameParts) > 1 
+                        ? $nameParts[0] . ' ' . end($nameParts) 
+                        : $customerName;
+                    
+                    $statusMap = [
+                        'pending' => ['label' => 'Pendente', 'class' => 'status-badge-pending'],
+                        'confirmed' => ['label' => 'Confirmado', 'class' => 'status-badge-processing'],
+                        'preparing' => ['label' => 'Preparando', 'class' => 'status-badge-processing'],
+                        'ready' => ['label' => 'Pronto', 'class' => 'status-badge-processing'],
+                        'delivered' => ['label' => 'Concluído', 'class' => 'status-badge-completed'],
+                        'cancelled' => ['label' => 'Cancelado', 'class' => 'status-badge-cancelled'],
+                    ];
+                    $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'status-badge-pending'];
+                    
+                    return [
+                        'id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'customer_id' => $order->customer_id,
+                        'customer_name' => $shortName,
+                        'customer_full_name' => $customerName,
+                        'status' => $order->status,
+                        'status_label' => $statusData['label'],
+                        'status_class' => $statusData['class'],
+                        'final_amount' => (float)($order->final_amount ?? 0),
+                        'items_count' => $order->items->count() ?? 0,
+                        'delivery_type' => ($order->delivery_type ?? null) === 'delivery' || $order->address ? 'delivery' : 'pickup',
+                        'delivery_label' => ($order->delivery_type ?? null) === 'delivery' || $order->address ? 'Entrega' : 'Retirada',
+                        'created_at' => $order->created_at ? $order->created_at->format('d/m/Y H:i') : '',
+                    ];
+                })
+            ]);
+        }
+        
         $orders = $query->paginate(20)->withQueryString();
 
-        return view('dashboard.orders.index', compact('orders'));
+        // Modal passa a buscar produtos via API (modal-products) com customer_id.
+        // Enviamos lista vazia; evita enviar wholesale_only sem cliente.
+        $productsForModal = [];
+
+        return view('dashboard.orders.index', compact('orders', 'productsForModal'));
+    }
+
+    /**
+     * API: produtos para o modal Nova Encomenda.
+     * ?customer_id= opcional. Sem cliente ou cliente não-revenda → só não wholesale_only.
+     * Cliente is_wholesale=1 → todos.
+     */
+    public function modalProducts(Request $request)
+    {
+        $customerId = $request->get('customer_id');
+        $includeWholesale = false;
+
+        if ($customerId) {
+            $customer = \App\Models\Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                ->find($customerId);
+            $includeWholesale = $customer && (bool) $customer->is_wholesale;
+        }
+
+        $products = $this->buildProductsForModal($includeWholesale);
+
+        return response()->json(['products' => $products]);
+    }
+
+    /**
+     * API: dias e horários de entrega disponíveis (regras em configurações / delivery_schedules).
+     */
+    public function deliverySlots(Request $request)
+    {
+        try {
+            $clientId = currentClientId();
+            $slots = DeliverySlotsService::buildAvailableDates($clientId);
+
+            return response()->json([
+                'slots' => $slots,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar slots de entrega: ' . $e->getMessage());
+            return response()->json([
+                'slots' => [],
+                'success' => false,
+                'error' => 'Erro ao carregar horários disponíveis'
+            ], 500);
+        }
+    }
+
+    /**
+     * Monta lista de produtos para o modal Nova Encomenda.
+     * - Exclusivo revenda (só is_wholesale=1): wholesale_only=1 OU show_in_catalog=0.
+     * - Sem cliente / não-revenda: exclui só exclusivos. Demais aparecem com preço normal.
+     * - Revenda: todos; preço de revenda quando houver em product_wholesale_prices.
+     *
+     * @param bool $includeWholesale Se false, exclui exclusivos de revenda; preço normal. Se true, todos e preço revenda quando houver.
+     */
+    private function buildProductsForModal(bool $includeWholesale): array
+    {
+        $hasWholesaleColumn = Schema::hasColumn('products', 'wholesale_only');
+        $wp = \App\Models\ProductWholesalePrice::class;
+
+        $collection = Product::where('products.is_active', true)
+            ->with([
+                'variants' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'wholesalePrices' => fn ($q) => $q->where('is_active', true),
+            ])
+            ->orderBy('products.name', 'asc')
+            ->get();
+
+        $mapped = $collection->map(function ($product) use ($hasWholesaleColumn, $includeWholesale, $wp) {
+            $wholesaleRows = $product->wholesalePrices ?? collect();
+            $fromColumn = $hasWholesaleColumn && ($product->wholesale_only ?? false);
+            $showInCatalog = (int) ($product->show_in_catalog ?? 1);
+            $exclusiveRevenda = $fromColumn || ($showInCatalog === 0);
+
+            // Ter preço em product_wholesale_prices NÃO torna variante exclusiva de revenda.
+            // Exclusivo = só wholesale_only=1 ou show_in_catalog=0 no PRODUTO. Variantes aparecem para todos.
+
+            $variantsCollection = $product->variants ?? collect();
+            $variants = $variantsCollection->map(function ($v) use ($product, $includeWholesale, $wp) {
+                $price = (float) $v->price;
+                if ($includeWholesale) {
+                    $w = $wp::getWholesalePrice($product->id, $v->id, 1);
+                    if ($w !== null) {
+                        $price = $w;
+                    }
+                }
+                return [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'price' => $price,
+                    'wholesale_only' => false,
+                ];
+            })->values()->all();
+
+            // Fallback 1: relação vazia → carregar explicitamente de product_variants (ex.: produto 73)
+            if (count($variants) === 0) {
+                $explicit = ProductVariant::where('product_id', $product->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get();
+                foreach ($explicit as $v) {
+                    $price = (float) $v->price;
+                    if ($includeWholesale) {
+                        $w = $wp::getWholesalePrice($product->id, $v->id, 1);
+                        if ($w !== null) {
+                            $price = $w;
+                        }
+                    }
+                    $variants[] = [
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'price' => $price,
+                        'wholesale_only' => false,
+                    ];
+                }
+            }
+
+            // Fallback 2: coluna JSON products.variants (legado) quando product_variants vazio
+            if (count($variants) === 0) {
+                $raw = $product->getRawOriginal('variants');
+                if ($raw !== null && $raw !== '') {
+                    $decoded = \is_string($raw) ? json_decode($raw, true) : $raw;
+                    if (\is_array($decoded)) {
+                        $basePrice = (float) ($product->price ?? 0);
+                        foreach ($decoded as $i => $j) {
+                            if (empty($j['name'] ?? null)) {
+                                continue;
+                            }
+                            $variants[] = [
+                                'id' => 'j' . $i,
+                                'name' => (string) $j['name'],
+                                'price' => isset($j['price']) ? (float) $j['price'] : $basePrice,
+                                'wholesale_only' => false,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            $price = (float) $product->price;
+            if ($includeWholesale) {
+                $w = $wp::getWholesalePrice($product->id, null, 1);
+                if ($w !== null) {
+                    $price = $w;
+                }
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $price,
+                'description' => (string) ($product->description ?? ''),
+                'has_variants' => count($variants) > 0,
+                'variants' => $variants,
+                'wholesale_only' => $exclusiveRevenda,
+            ];
+        });
+
+        if (!$includeWholesale) {
+            $mapped = $mapped->filter(fn ($p) => !($p['wholesale_only'] ?? false))->values();
+        }
+
+        return $mapped->all();
     }
 
     /**
@@ -167,7 +373,8 @@ class OrdersController extends Controller
             $statusFilter = $request->input('status', 'all');
             
             if ($statusFilter === 'all') {
-                // Mostrar todos - não aplicar filtro
+                $newOrdersQuery->where('status', '!=', 'cancelled');
+                $updatedOrdersQuery->where('status', '!=', 'cancelled');
             } elseif ($statusFilter === 'active') {
                 $newOrdersQuery->whereIn('status', ['confirmed', 'pending']);
                 $updatedOrdersQuery->whereIn('status', ['confirmed', 'pending']);
@@ -483,21 +690,33 @@ class OrdersController extends Controller
         ]);
     }
 
-    public function show(Order $order)
+    public function show($id)
     {
+        \Log::info('OrdersController@show Debug', ['id' => $id, 'clientId' => currentClientId()]);
+        
+        // Buscar pedido sem o global scope para permitir dados legados (client_id null)
+        $order = Order::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->findOrFail($id);
+
+        \Log::info('OrdersController@show Order Found', ['order_id' => $order->id, 'order_client_id' => $order->client_id]);
+
         // Verificar se o pedido pertence ao estabelecimento atual
         $clientId = currentClientId();
-        if ($clientId && $order->client_id !== $clientId) {
-            abort(404, 'Pedido não encontrado');
+        if ($clientId) {
+            // Permitir se o client_id bater OU se o pedido for antigo (null)
+            if ($order->client_id !== null && (int)$order->client_id !== (int)$clientId) {
+                \Log::warning('OrdersController@show Access Denied', ['order_client_id' => $order->client_id, 'session_client_id' => $clientId]);
+                abort(404, 'Pedido não encontrado');
+            }
         }
         
         $order->load([
             'customer' => function($q) {
                 // Remover scope para carregar customer (pedido já está filtrado)
-                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
+                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                  ->select('id', 'name', 'phone', 'email', 'client_id');
             },
             'address',
-            'items.product',
+            'items.product:id,name,price',
             'payment',
             'orderDeliveryFee'
         ]);
@@ -508,47 +727,27 @@ class OrdersController extends Controller
             ->where('status', 'open')
             ->exists();
 
-        // Histórico de status
+        // Histórico de status - usar DB::table já que o modelo não existe
         $statusHistory = DB::table('order_status_history')
             ->where('order_id', $order->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Status disponíveis
-        $availableStatuses = DB::table('order_statuses')
-            ->where('active', 1)
-            ->orderBy('id')
-            ->get(['id', 'code', 'name']);
+        // Status disponíveis - usar OrderStatusService como no edit
+        $availableStatuses = \App\Services\OrderStatusService::getAvailableStatuses($order);
 
-        // Cupons ativos e válidos
-        // Filtrar cupons de frete grátis se o pedido não tiver entrega ou não tiver taxa de entrega
-        $isDelivery = $order->delivery_type === 'delivery' || $order->address_id !== null;
-        $hasDeliveryFee = ($order->delivery_fee ?? 0) > 0;
-        
-        $availableCoupons = Coupon::active()
-            ->valid()
-            ->orderBy('name')
-            ->get(['id', 'code', 'name', 'type', 'value', 'minimum_amount', 'description'])
-            ->filter(function($coupon) use ($isDelivery, $hasDeliveryFee) {
-                // Verificar se é cupom de frete grátis
-                $isFreeDeliveryCoupon = stripos($coupon->name ?? '', 'frete') !== false && 
-                                       (stripos($coupon->name ?? '', 'grátis') !== false || 
-                                        stripos($coupon->name ?? '', 'gratis') !== false ||
-                                        stripos($coupon->description ?? '', 'frete grátis') !== false ||
-                                        stripos($coupon->description ?? '', 'frete gratis') !== false);
-                
-                // Se for cupom de frete grátis, só mostrar se o pedido tiver entrega E tiver taxa de entrega > 0
-                if ($isFreeDeliveryCoupon) {
-                    return $isDelivery && $hasDeliveryFee;
-                }
-                
-                // Outros cupons sempre disponíveis
-                return true;
+        // Cupons disponíveis - usar mesma lógica do edit
+        $availableCoupons = Coupon::where('client_id', $clientId)
+            ->where('is_active', true)
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>=', now());
             })
-            ->values();
+            ->get();
 
-        // Produtos disponíveis para adicionar ao pedido
-        $availableProducts = Product::where('is_active', true)
+        // Produtos disponíveis - usar mesma lógica do edit
+        $availableProducts = Product::where('client_id', $clientId)
+            ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'price']);
 
@@ -557,7 +756,7 @@ class OrdersController extends Controller
 
         $mpInfo = $this->extractMercadoPagoStatusInfo($order);
 
-        return view('dashboard.orders.show', array_merge(compact(
+        return view('dashboard.orders.edit', array_merge(compact(
             'order',
             'statusHistory',
             'availableStatuses',
@@ -572,6 +771,67 @@ class OrdersController extends Controller
             'paymentReviewNotifiedAt' => $mpInfo['notified_at'],
             'hasOpenDebt' => $hasOpenDebt,
         ]));
+    }
+
+    public function edit($id)
+    {
+        $order = Order::with([
+            'customer' => function($q) {
+                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                  ->select('id', 'name', 'phone', 'email', 'client_id');
+            },
+            'items.product:id,name,price',
+            'address',
+            'payment'
+        ])->findOrFail($id);
+
+        // Verificar se o pedido pertence ao cliente atual
+        $clientId = currentClientId();
+        if ($clientId && $order->client_id !== $clientId) {
+            abort(404);
+        }
+
+        // Verificar se o pedido tem cliente (para pedidos legados)
+        if (!$order->customer_id && $order->client_id) {
+            // Tentar encontrar um cliente padrão ou criar um temporário
+            $order->customer_id = 1; // Cliente padrão temporário
+        }
+
+        // Status disponíveis
+        $availableStatuses = \App\Services\OrderStatusService::getAvailableStatuses($order);
+
+        // Cupons disponíveis
+        $availableCoupons = Coupon::where('client_id', $clientId)
+            ->where('is_active', true)
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>=', now());
+            })
+            ->get();
+
+        // Produtos disponíveis
+        $availableProducts = Product::where('client_id', $clientId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'price']);
+
+        // Histórico de status - usar DB::table já que o modelo não existe
+        $statusHistory = DB::table('order_status_history')
+            ->where('order_id', $order->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Settings
+        $settings = \App\Models\Setting::getSettings();
+
+        return view('dashboard.orders.edit', compact(
+            'order',
+            'statusHistory',
+            'availableStatuses',
+            'availableCoupons',
+            'availableProducts',
+            'settings'
+        ));
     }
 
     /**
@@ -708,6 +968,9 @@ class OrdersController extends Controller
                 $message .= ' (Sem notificação ao cliente)';
             }
 
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json(['success' => true, 'message' => $message]);
+            }
             return redirect()->back()->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -717,7 +980,84 @@ class OrdersController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect()->back()->with('error', 'Erro ao atualizar status: ' . $e->getMessage());
+            $errMsg = 'Erro ao atualizar status: ' . $e->getMessage();
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return redirect()->back()->with('error', $errMsg);
+        }
+    }
+
+    /**
+     * Alterar status em lote (ações rápidas na lista). Nunca envia notificação WhatsApp.
+     */
+    public function batchStatus(Request $request)
+    {
+        $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'integer|exists:orders,id',
+            'status' => 'required|string|in:pending,confirmed,preparing,ready,delivered,cancelled,paid,waiting_payment,out_for_delivery',
+        ]);
+
+        $statusMapping = [
+            'pending' => 'pending',
+            'waiting_payment' => 'pending',
+            'paid' => 'confirmed',
+            'confirmed' => 'confirmed',
+            'preparing' => 'preparing',
+            'out_for_delivery' => 'ready',
+            'ready' => 'ready',
+            'delivered' => 'delivered',
+            'cancelled' => 'cancelled',
+        ];
+        $requestedStatusCode = $request->status;
+        $enumStatus = $statusMapping[$requestedStatusCode] ?? $requestedStatusCode;
+
+        $updated = [];
+        try {
+            DB::beginTransaction();
+            $orderStatusService = new \App\Services\OrderStatusService();
+
+            foreach ($request->order_ids as $orderId) {
+                $order = Order::find($orderId);
+                if (!$order) continue;
+
+                $order->refresh();
+                if ($enumStatus === 'confirmed' || $requestedStatusCode === 'paid') {
+                    if ($order->payment_status !== 'paid' && $order->payment_status !== 'approved') {
+                        $order->payment_status = 'paid';
+                    }
+                }
+                $order->status = $enumStatus;
+                $order->save();
+
+                $orderStatusService->changeStatus(
+                    $order->fresh(),
+                    $requestedStatusCode,
+                    null,
+                    auth()->check() ? auth()->id() : null,
+                    false,
+                    true // skipNotifications: nunca notificar em ação rápida
+                );
+                $updated[] = (int) $orderId;
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => count($updated) > 1
+                    ? count($updated) . ' pedidos atualizados (sem notificação).'
+                    : 'Status atualizado (sem notificação).',
+                'updated' => $updated,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erro ao alterar status em lote', [
+                'order_ids' => $request->order_ids,
+                'status' => $request->status,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Erro: ' . $e->getMessage()], 422);
         }
     }
 
@@ -1893,6 +2233,20 @@ class OrdersController extends Controller
     }
     
     /**
+     * Exibe recibo de conferência (sem valores, apenas produtos e quantidades)
+     */
+    public function checkReceipt(Order $order)
+    {
+        $order->load([
+            'customer',
+            'items.product',
+            'items.variant',
+        ]);
+        
+        return view('dashboard.orders.check-receipt', compact('order'));
+    }
+    
+    /**
      * Gera QR code do WhatsApp em base64 para impressão
      */
     private function generateWhatsAppQRCode(): ?string
@@ -1960,6 +2314,35 @@ class OrdersController extends Controller
     }
 
     /**
+     * Gera comandos ESC/POS para impressão do RECIBO DE CONFERÊNCIA (sem preços)
+     */
+    public function checkReceiptEscPos(Order $order)
+    {
+        $order->load([
+            'customer',
+            'items.product',
+            'items.variant'
+        ]);
+        
+        $printerService = new \App\Services\FiscalPrinterService();
+        // Usar modo 'check' para gerar recibo sem preços
+        $result = $printerService->sendToPrinter($order, 'thermal', 'check');
+        
+        if (!$result['success']) {
+            return response()->json($result, 500);
+        }
+        
+        // Adicionar informações adicionais para o monitor
+        $result['order_id'] = $order->id;
+        $result['order_number'] = $order->order_number;
+        $result['status'] = $order->status;
+        $result['payment_status'] = $order->payment_status;
+        $result['created_at'] = $order->created_at->toIso8601String();
+        
+        return response()->json($result);
+    }
+
+    /**
      * Exibe página de monitor de impressão
      */
     public function printerMonitor()
@@ -1973,33 +2356,33 @@ class OrdersController extends Controller
     public function getOrdersForPrint(Request $request)
     {
         try {
-            // Prioridade 1: Pedidos solicitados explicitamente (print_requested_at) - SEMPRE retornar
-            // Prioridade 2: Pedidos pagos e confirmados que ainda não foram impressos
-            $query = Order::with(['customer', 'address'])
-                ->where(function($q) {
+            $clientId = currentClientId();
+            
+            // Buscar pedidos que precisam ser impressos:
+            // 1. Pedidos com print_requested_at (independente de pagamento) - prioridade 1
+            // 2. Pedidos pagos e confirmados recentes - prioridade 2
+            $timeLimit = now()->subHours(24);
+            
+            $orders = Order::with(['customer', 'address'])
+                ->where(function($q) use ($timeLimit) {
+                    // PRIORIDADE 1: Qualquer pedido solicitado explicitamente (print_requested_at)
                     $q->where(function($subQ) {
-                        // Pedidos solicitados explicitamente - aceitar qualquer status/pagamento
                         $subQ->whereNotNull('print_requested_at')
                              ->whereNull('printed_at');
                     })
-                    ->orWhere(function($subQ) {
-                        // Pedidos pagos e confirmados que ainda não foram impressos
+                    // PRIORIDADE 2: Pedidos pagos e confirmados das últimas 24h
+                    ->orWhere(function($subQ) use ($timeLimit) {
                         $subQ->whereIn('payment_status', ['paid', 'approved'])
                              ->where('status', 'confirmed')
+                             ->where('created_at', '>=', $timeLimit)
                              ->whereNull('printed_at');
                     });
                 })
                 ->orderByRaw('CASE WHEN print_requested_at IS NOT NULL THEN 0 ELSE 1 END') // Priorizar solicitados
+                ->orderBy('print_requested_at', 'desc')
                 ->orderBy('created_at', 'desc')
-                ->limit(20);
-
-            $orders = $query->get(['id', 'order_number', 'status', 'payment_status', 'created_at', 'print_requested_at', 'printed_at']);
-
-            // Log apenas se houver erro ou se encontrar pedidos (para debug quando necessário)
-            if ($orders->count() > 0) {
-                // Log apenas quando encontra pedidos para debug
-                // Remover depois que funcionar
-            }
+                ->limit(20)
+                ->get(['id', 'order_number', 'status', 'payment_status', 'created_at', 'print_requested_at', 'printed_at', 'print_type']);
 
             return response()->json([
                 'success' => true,
@@ -2012,6 +2395,7 @@ class OrdersController extends Controller
                         'created_at' => $order->created_at->toIso8601String(),
                         'print_requested_at' => $order->print_requested_at ? $order->print_requested_at->toIso8601String() : null,
                         'printed_at' => $order->printed_at ? $order->printed_at->toIso8601String() : null,
+                        'print_type' => $order->print_type ?? 'normal', // Tipo de recibo (normal ou check)
                     ];
                 })
             ]);
@@ -2035,8 +2419,10 @@ class OrdersController extends Controller
     public function requestPrint(Request $request, Order $order)
     {
         try {
-            // Marcar pedido como solicitado para impressão
+            // Marcar pedido como solicitado para impressão NORMAL
+            $order->printed_at = null; // Limpar para permitir reimpressão
             $order->print_requested_at = now();
+            $order->print_type = 'normal'; // Recibo normal (com preços)
             $order->save();
 
             return response()->json([
@@ -2048,6 +2434,38 @@ class OrdersController extends Controller
             Log::error('Erro ao solicitar impressão', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao solicitar impressão: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Solicita impressão do recibo de conferência (igual ao recibo normal, adiciona à fila)
+     */
+    public function requestPrintCheck(Request $request, Order $order)
+    {
+        try {
+            // Marcar pedido como solicitado para impressão DE CONFERÊNCIA
+            $order->printed_at = null; // Limpar para permitir reimpressão
+            $order->print_requested_at = now();
+            $order->print_type = 'check'; // Recibo de conferência (sem preços)
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recibo de conferência adicionado à fila de impressão. Será impresso automaticamente no desktop.',
+                'order_id' => $order->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao solicitar impressão do recibo de conferência', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -2080,6 +2498,46 @@ class OrdersController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao marcar como impresso: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpa solicitações de impressão antigas (mais de 24h) para evitar reimpressões acidentais
+     * Chamado automaticamente quando o monitor é ativado
+     */
+    public function clearOldPrintRequests(Request $request)
+    {
+        try {
+            $timeLimit = now()->subHours(24);
+            
+            // Marcar como impresso todos os pedidos antigos que ainda estão pendentes
+            $updated = Order::whereNotNull('print_requested_at')
+                ->where('print_requested_at', '<', $timeLimit)
+                ->whereNull('printed_at')
+                ->update([
+                    'printed_at' => now(),
+                    'updated_at' => now()
+                ]);
+            
+            Log::info('Solicitações antigas de impressão limpas', [
+                'count' => $updated,
+                'time_limit' => $timeLimit->toDateTimeString()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "$updated solicitações antigas foram limpas",
+                'cleared_count' => $updated,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao limpar solicitações antigas', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao limpar solicitações antigas: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -2384,8 +2842,9 @@ class OrdersController extends Controller
 
             // 6. Registrar no histórico de status
             try {
-                // Verificar se a coluna updated_at existe antes de inserir
+                // Verificar se as colunas existem antes de inserir
                 $hasUpdatedAt = DB::getSchemaBuilder()->hasColumn('order_status_history', 'updated_at');
+                $hasClientId = DB::getSchemaBuilder()->hasColumn('order_status_history', 'client_id');
                 
                 $insertData = [
                     'order_id' => $order->id,
@@ -2395,6 +2854,12 @@ class OrdersController extends Controller
                     'user_id' => auth()->check() ? auth()->id() : null,
                     'created_at' => now(),
                 ];
+                
+                // Adicionar client_id se a coluna existir
+                if ($hasClientId) {
+                    // Usar client_id do pedido ou currentClientId() como fallback
+                    $insertData['client_id'] = $order->client_id ?? currentClientId() ?? null;
+                }
                 
                 // Só adicionar updated_at se a coluna existir
                 if ($hasUpdatedAt) {
@@ -2440,6 +2905,169 @@ class OrdersController extends Controller
             ]);
 
             return redirect()->back()->with('error', 'Erro ao estornar pedido: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Duplicar pedido cancelado - cria um novo pedido baseado no pedido cancelado
+     */
+    public function duplicate(Order $order)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Verificar se o pedido original está cancelado
+            if ($order->status !== 'cancelled') {
+                return redirect()->back()->with('error', 'Somente pedidos cancelados podem ser duplicados.');
+            }
+
+            // Gerar novo número de pedido
+            $prefix = 'OLK';
+            $lastOrder = Order::where('order_number', 'like', 'OLK-%')
+                ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
+                ->first();
+            
+            $sequenceNumber = 144;
+            if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
+                $lastSequence = (int)$matches[1];
+                if ($lastSequence >= 144) {
+                    $sequenceNumber = $lastSequence + 1;
+                }
+            }
+            
+            $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            $randomSuffix = '';
+            for ($i = 0; $i < 6; $i++) {
+                $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
+            }
+            $newOrderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+
+            // Criar novo pedido com os mesmos dados do pedido cancelado
+            $newOrder = Order::create([
+                'client_id' => $order->client_id,
+                'customer_id' => $order->customer_id,
+                'address_id' => $order->address_id,
+                'order_number' => $newOrderNumber,
+                'status' => 'pending',
+                'total_amount' => $order->total_amount,
+                'delivery_fee' => $order->delivery_fee,
+                'discount_amount' => 0, // Não replicar descontos automáticos
+                'coupon_code' => null, // Cupom não deve ser replicado
+                'discount_type' => null,
+                'discount_original_value' => null,
+                'cashback_used' => 0,
+                'cashback_earned' => 0,
+                'final_amount' => $order->total_amount + ($order->delivery_fee ?? 0),
+                'payment_method' => 'pix',
+                'payment_status' => 'pending',
+                'delivery_type' => $order->delivery_type,
+                'scheduled_delivery_at' => null, // Cliente deverá reagendar
+                'notes' => 'Pedido duplicado de #' . $order->order_number . ($order->notes ? ' | ' . $order->notes : ''),
+            ]);
+
+            // Copiar itens do pedido
+            foreach ($order->items as $item) {
+                OrderItem::create([
+                    'order_id' => $newOrder->id,
+                    'product_id' => $item->product_id,
+                    'custom_name' => $item->custom_name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price,
+                    'special_instructions' => $item->special_instructions,
+                ]);
+            }
+
+            DB::commit();
+
+            \Log::info('Pedido duplicado com sucesso', [
+                'original_order_id' => $order->id,
+                'original_order_number' => $order->order_number,
+                'new_order_id' => $newOrder->id,
+                'new_order_number' => $newOrder->order_number,
+                'user_id' => auth()->check() ? auth()->id() : null
+            ]);
+
+            return redirect()->route('dashboard.orders.edit', $newOrder->id)
+                ->with('success', 'Pedido duplicado com sucesso! Novo pedido: ' . $newOrder->order_number);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erro ao duplicar pedido', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erro ao duplicar pedido: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enviar cobrança de pagamento diretamente via WhatsApp
+     */
+    public function sendPaymentCharge(Order $order)
+    {
+        try {
+            // Verificar se o pedido tem pagamento pendente
+            if ($order->payment_status !== 'pending') {
+                return redirect()->back()->with('error', 'Este pedido não tem pagamento pendente.');
+            }
+
+            // Verificar se o cliente tem telefone
+            if (!$order->customer || !$order->customer->phone) {
+                return redirect()->back()->with('error', 'Cliente sem telefone cadastrado.');
+            }
+
+            // Buscar link de pagamento PIX existente ou usar rota padrão
+            // A cobrança normalmente já existe quando o pedido é criado
+            // Vamos apenas enviar a cobrança via WhatsApp
+
+            // Preparar mensagem de cobrança
+            $customerName = $order->customer->name;
+            $orderNumber = $order->order_number;
+            $total = number_format($order->final_amount, 2, ',', '.');
+            
+            // Usar o link de pagamento PIX padrão (gerado quando o pedido foi criado)
+            $paymentLink = route('pedido.payment.pix', $order->id);
+            
+            $message = "*Cobrança - Pedido #{$orderNumber}*\n\n";
+            $message .= "Olá {$customerName}!\n\n";
+            $message .= "💵 *Valor:* R$ {$total}\n";
+            $message .= "💳 *Método:* " . strtoupper($order->payment_method ?? 'PIX') . "\n\n";
+            $message .= "Para realizar o pagamento, acesse o link abaixo:\n";
+            $message .= $paymentLink;
+
+            // Enviar via WhatsApp
+            $whatsAppService = app(WhatsAppService::class);
+            $phone = preg_replace('/\D/', '', $order->customer->phone);
+            $result = $whatsAppService->sendText($phone, $message);
+
+            if ($result && isset($result['success']) && $result['success']) {
+                \Log::info('Cobrança enviada com sucesso', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_phone' => $phone,
+                ]);
+                
+                return redirect()->back()->with('success', 'Cobrança enviada via WhatsApp com sucesso!');
+            } else {
+                \Log::warning('Erro ao enviar cobrança via WhatsApp', [
+                    'order_id' => $order->id,
+                    'result' => $result,
+                ]);
+                
+                return redirect()->back()->with('error', 'Erro ao enviar cobrança via WhatsApp.');
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao enviar cobrança', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erro ao enviar cobrança: ' . $e->getMessage());
         }
     }
 }

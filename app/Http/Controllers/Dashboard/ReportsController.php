@@ -9,7 +9,9 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\AnalyticsEvent;
+use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class ReportsController extends Controller
@@ -18,28 +20,124 @@ class ReportsController extends Controller
     {
         $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date')) : now()->startOfMonth();
         $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date')) : now()->endOfMonth();
+        $clientId = currentClientId();
 
-        // Pedidos pagos no período (usar apenas 'paid' conforme estrutura do banco)
-        $orders = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->where('payment_status', 'paid')
-            ->get();
+        // CORREÇÃO: Usar FinancialTransaction como fonte de verdade para receita
+        // Isso captura pedidos fiados que foram pagos no período, mesmo que criados antes
+        $hasFinancialTransactions = Schema::hasTable('financial_transactions');
         
-        $totalOrders = $orders->count();
-        $totalAmount = $orders->sum('final_amount') ?? 0;
+        if ($hasFinancialTransactions) {
+            // Receita total do período baseada em transações financeiras
+            $revenueQuery = FinancialTransaction::where('type', 'revenue')
+                ->whereBetween('transaction_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+            
+            if ($clientId) {
+                $revenueQuery->where('client_id', $clientId);
+            }
+            
+            $totalAmount = $revenueQuery->sum('amount') ?? 0;
+            
+            // Pedidos únicos que geraram receita no período
+            $orderIds = FinancialTransaction::where('type', 'revenue')
+                ->whereBetween('transaction_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                ->whereNotNull('order_id');
+            
+            if ($clientId) {
+                $orderIds->where('client_id', $clientId);
+            }
+            
+            $orderIds = $orderIds->pluck('order_id')->unique()->toArray();
+            $totalOrders = count($orderIds);
+            
+            // Buscar pedidos para outras métricas
+            $orders = Order::whereIn('id', $orderIds)->get();
+            
+            // Período anterior
+            $periodDays = $startDate->diffInDays($endDate) + 1;
+            $previousStartDate = $startDate->copy()->subDays($periodDays);
+            $previousEndDate = $startDate->copy()->subDay();
+            
+            $previousRevenueQuery = FinancialTransaction::where('type', 'revenue')
+                ->whereBetween('transaction_date', [$previousStartDate->format('Y-m-d'), $previousEndDate->format('Y-m-d')]);
+            
+            if ($clientId) {
+                $previousRevenueQuery->where('client_id', $clientId);
+            }
+            
+            $previousTotalAmount = $previousRevenueQuery->sum('amount') ?? 0;
+            
+            $previousOrderIds = FinancialTransaction::where('type', 'revenue')
+                ->whereBetween('transaction_date', [$previousStartDate->format('Y-m-d'), $previousEndDate->format('Y-m-d')])
+                ->whereNotNull('order_id');
+            
+            if ($clientId) {
+                $previousOrderIds->where('client_id', $clientId);
+            }
+            
+            $previousOrderIds = $previousOrderIds->pluck('order_id')->unique()->toArray();
+            $previousTotalOrders = count($previousOrderIds);
+            
+            // Produtos vendidos: itens dos pedidos que geraram receita no período
+            $productsSold = OrderItem::whereIn('order_id', $orderIds)
+                ->sum('quantity') ?? 0;
+            
+            $previousProductsSold = OrderItem::whereIn('order_id', $previousOrderIds)
+                ->sum('quantity') ?? 0;
+        } else {
+            // Fallback: usar método antigo se a tabela não existir
+            $orders = Order::whereBetween('created_at', [$startDate, $endDate])
+                ->where('payment_status', 'paid');
+            
+            if ($clientId) {
+                $orders->where('client_id', $clientId);
+            }
+            
+            $orders = $orders->get();
+            
+            $totalOrders = $orders->count();
+            $totalAmount = $orders->sum('final_amount') ?? 0;
+            
+            $periodDays = $startDate->diffInDays($endDate) + 1;
+            $previousStartDate = $startDate->copy()->subDays($periodDays);
+            $previousEndDate = $startDate->copy()->subDay();
+            
+            $previousOrders = Order::whereBetween('created_at', [$previousStartDate, $previousEndDate])
+                ->where('payment_status', 'paid');
+            
+            if ($clientId) {
+                $previousOrders->where('client_id', $clientId);
+            }
+            
+            $previousOrders = $previousOrders->get();
+            
+            $previousTotalAmount = $previousOrders->sum('final_amount') ?? 0;
+            $previousTotalOrders = $previousOrders->count();
+            
+            $productsSold = OrderItem::whereHas('order', function($q) use ($startDate, $endDate, $clientId) {
+                    $q->whereBetween('created_at', [$startDate, $endDate])
+                      ->where('payment_status', 'paid');
+                    if ($clientId) {
+                        $q->where('client_id', $clientId);
+                    }
+                })
+                ->sum('quantity') ?? 0;
+            
+            $previousProductsSold = OrderItem::whereHas('order', function($q) use ($previousStartDate, $previousEndDate, $clientId) {
+                    $q->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+                      ->where('payment_status', 'paid');
+                    if ($clientId) {
+                        $q->where('client_id', $clientId);
+                    }
+                })
+                ->sum('quantity') ?? 0;
+        }
+        
         $averageTicket = $totalOrders > 0 ? $totalAmount / $totalOrders : 0;
-        
-        // Período anterior para comparação
-        $periodDays = $startDate->diffInDays($endDate) + 1;
-        $previousStartDate = $startDate->copy()->subDays($periodDays);
-        $previousEndDate = $startDate->copy()->subDay();
-        
-        $previousOrders = Order::whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->where('payment_status', 'paid')
-            ->get();
-        
-        $previousTotalAmount = $previousOrders->sum('final_amount') ?? 0;
-        $previousTotalOrders = $previousOrders->count();
-        $previousNewCustomers = Customer::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        $previousNewCustomers = Customer::whereBetween('created_at', [$previousStartDate, $previousEndDate]);
+        if ($clientId) {
+            $previousNewCustomers->where('client_id', $clientId);
+        }
+        $previousNewCustomers = $previousNewCustomers->count();
         
         // Comparações percentuais
         $revenueChange = $previousTotalAmount > 0 
@@ -51,35 +149,32 @@ class ReportsController extends Controller
             : ($totalOrders > 0 ? 100 : 0);
         
         // Novos clientes no período
-        $newCustomers = Customer::whereBetween('created_at', [$startDate, $endDate])->count();
+        $newCustomers = Customer::whereBetween('created_at', [$startDate, $endDate]);
+        if ($clientId) {
+            $newCustomers->where('client_id', $clientId);
+        }
+        $newCustomers = $newCustomers->count();
+        
         $customersChange = $previousNewCustomers > 0 
             ? (($newCustomers - $previousNewCustomers) / $previousNewCustomers) * 100 
             : ($newCustomers > 0 ? 100 : 0);
-        
-        // Produtos vendidos (quantidade de itens)
-        $productsSold = OrderItem::whereHas('order', function($q) use ($startDate, $endDate) {
-                $q->whereBetween('created_at', [$startDate, $endDate])
-                  ->where('payment_status', 'paid');
-            })
-            ->sum('quantity') ?? 0;
-        
-        $previousProductsSold = OrderItem::whereHas('order', function($q) use ($previousStartDate, $previousEndDate) {
-                $q->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-                  ->where('payment_status', 'paid');
-            })
-            ->sum('quantity') ?? 0;
         
         $productsChange = $previousProductsSold > 0 
             ? (($productsSold - $previousProductsSold) / $previousProductsSold) * 100 
             : ($productsSold > 0 ? 100 : 0);
         
-        $statusSummary = $orders->groupBy('status')->map->count();
+        // Status summary: usar pedidos que geraram receita no período
+        if (isset($orders) && $orders->count() > 0) {
+            $statusSummary = $orders->groupBy('status')->map->count();
+        } else {
+            $statusSummary = collect();
+        }
         
         // Métricas de Analytics
         // Contar visitas únicas: 1 sessão por dia (mesma sessão no mesmo dia = 1 visita)
         // Usar groupBy para contar combinações únicas de data + session_id
         // Filtrar por client_id do estabelecimento atual
-        $clientId = currentClientId();
+        // $clientId já foi definido acima
         
         $pageViewsQuery = AnalyticsEvent::where('event_type', 'page_view')
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -257,12 +352,37 @@ class ReportsController extends Controller
 
     private function getChartData($startDate, $endDate)
     {
-        $orders = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->where('payment_status', 'paid')
-            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+        $clientId = currentClientId();
+        $hasFinancialTransactions = Schema::hasTable('financial_transactions');
+        
+        if ($hasFinancialTransactions) {
+            // Usar transações financeiras para contar pedidos por data de receita
+            $revenueQuery = FinancialTransaction::where('type', 'revenue')
+                ->whereBetween('transaction_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                ->whereNotNull('order_id');
+            
+            if ($clientId) {
+                $revenueQuery->where('client_id', $clientId);
+            }
+            
+            $orders = $revenueQuery->selectRaw('transaction_date as date, COUNT(DISTINCT order_id) as count')
+                ->groupBy('transaction_date')
+                ->orderBy('transaction_date')
+                ->get();
+        } else {
+            // Fallback: método antigo
+            $ordersQuery = Order::whereBetween('created_at', [$startDate, $endDate])
+                ->where('payment_status', 'paid');
+            
+            if ($clientId) {
+                $ordersQuery->where('client_id', $clientId);
+            }
+            
+            $orders = $ordersQuery->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+        }
 
         return [
             'labels' => $orders->pluck('date')->map(fn($date) => \Carbon\Carbon::parse($date)->format('d/m')),

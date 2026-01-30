@@ -6,6 +6,7 @@ use App\Events\OrderStatusUpdated;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Services\WhatsAppService;
 
 class OrderStatusService
@@ -124,6 +125,7 @@ class OrderStatusService
             if (!$recentHistory) {
                 // Verificar se a coluna updated_at existe antes de inserir
                 $hasUpdatedAt = DB::getSchemaBuilder()->hasColumn('order_status_history', 'updated_at');
+                $hasClientId = DB::getSchemaBuilder()->hasColumn('order_status_history', 'client_id');
                 
                 $insertData = [
                     'order_id'   => $order->id,
@@ -133,6 +135,12 @@ class OrderStatusService
                     'user_id'    => $userId,
                     'created_at' => now(),
                 ];
+                
+                // Adicionar client_id se a coluna existir
+                if ($hasClientId) {
+                    // Usar client_id do pedido ou currentClientId() como fallback
+                    $insertData['client_id'] = $order->client_id ?? currentClientId() ?? null;
+                }
                 
                 // Só adicionar updated_at se a coluna existir
                 if ($hasUpdatedAt) {
@@ -238,6 +246,12 @@ class OrderStatusService
 
             if (!empty($deliveryNote)) {
                 $tplText .= "\n📝 Observações do entregador:\n{observacao}\n";
+            }
+            
+            // Adicionar link de rastreamento se disponível
+            if ($order->tracking_enabled && $order->tracking_token) {
+                $trackingUrl = route('tracking.show', ['token' => $order->tracking_token]);
+                $tplText .= "\n📍 *Acompanhe em tempo real:*\n{$trackingUrl}\n";
             }
 
             $tplText .= "\nAcompanhe por aqui e, se precisar, é só nos chamar!";
@@ -362,16 +376,18 @@ class OrderStatusService
                                 'phone' => $phoneNormalized
                             ]);
                             
-                            // Marcar mensagens pendentes deste pedido como enviadas
-                            DB::table('whatsapp_failed_messages')
-                                ->where('order_id', $order->id)
-                                ->where('recipient_phone', $phoneNormalized)
-                                ->where('status', 'pending')
-                                ->update([
-                                    'status' => 'sent',
-                                    'sent_at' => now(),
-                                    'updated_at' => now()
-                                ]);
+                            // Marcar mensagens pendentes deste pedido como enviadas (se tabela existir)
+                            if (Schema::hasTable('whatsapp_failed_messages')) {
+                                DB::table('whatsapp_failed_messages')
+                                    ->where('order_id', $order->id)
+                                    ->where('recipient_phone', $phoneNormalized)
+                                    ->where('status', 'pending')
+                                    ->update([
+                                        'status' => 'sent',
+                                        'sent_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+                            }
                         } else {
                             $errorMessage = $result['error'] ?? 'Erro desconhecido';
                             $errorType = 'api_error';
@@ -392,30 +408,32 @@ class OrderStatusService
                                 'error_type' => $errorType
                             ]);
                             
-                            // Salvar falha no banco de dados
-                            try {
-                                DB::table('whatsapp_failed_messages')->insert([
-                                    'order_id' => $order->id,
-                                    'recipient_phone' => $phoneNormalized,
-                                    'message' => $processedText,
-                                    'error_message' => $errorMessage,
-                                    'error_type' => $errorType,
-                                    'attempt_count' => 1,
-                                    'status' => 'pending',
-                                    'last_attempt_at' => now(),
-                                    'metadata' => json_encode([
-                                        'status_code' => $statusCodeForLookup,
-                                        'order_number' => $order->order_number ?? null,
-                                        'customer_name' => $order->customer->name ?? null,
-                                    ]),
-                                    'created_at' => now(),
-                                    'updated_at' => now()
-                                ]);
-                            } catch (\Exception $e) {
-                                Log::error('OrderStatusService: Erro ao salvar falha no banco', [
-                                    'order_id' => $order->id,
-                                    'error' => $e->getMessage()
-                                ]);
+                            // Salvar falha no banco de dados (se tabela existir)
+                            if (Schema::hasTable('whatsapp_failed_messages')) {
+                                try {
+                                    DB::table('whatsapp_failed_messages')->insert([
+                                        'order_id' => $order->id,
+                                        'recipient_phone' => $phoneNormalized,
+                                        'message' => $processedText,
+                                        'error_message' => $errorMessage,
+                                        'error_type' => $errorType,
+                                        'attempt_count' => 1,
+                                        'status' => 'pending',
+                                        'last_attempt_at' => now(),
+                                        'metadata' => json_encode([
+                                            'status_code' => $statusCodeForLookup,
+                                            'order_number' => $order->order_number ?? null,
+                                            'customer_name' => $order->customer->name ?? null,
+                                        ]),
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+                                } catch (\Exception $e) {
+                                    Log::error('OrderStatusService: Erro ao salvar falha no banco', [
+                                        'order_id' => $order->id,
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
                             }
                         }
                     }
@@ -532,14 +550,75 @@ class OrderStatusService
 
         $eventType = $map[$status];
         
+        // Se status é out_for_delivery E rastreamento está ativo, adicionar link
+        $meta = [];
+        if ($status === 'out_for_delivery' && $order->tracking_enabled && $order->tracking_token) {
+            $meta['tracking_url'] = route('tracking.show', ['token' => $order->tracking_token]);
+        }
+        
         Log::info('📨 Disparando evento OrderStatusUpdated', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'status' => $status,
             'event' => $eventType,
+            'meta' => $meta,
         ]);
         
-        event(new OrderStatusUpdated($order, $eventType, $note));
+        event(new OrderStatusUpdated($order, $eventType, $note, $meta));
+    }
+
+    /**
+     * Retorna os status disponíveis para um pedido baseado no status atual
+     */
+    public static function getAvailableStatuses(Order $order): array
+    {
+        $currentStatus = $order->status ?? 'pending';
+        
+        // Buscar status do banco de dados
+        $statuses = DB::table('order_statuses')
+            ->where('active', 1)
+            ->orderBy('id')
+            ->get(['id', 'code', 'name']);
+        
+        $availableStatuses = [];
+        
+        // Mapear códigos de ENUM para códigos de order_statuses
+        $enumToStatusCodeMapping = [
+            'confirmed' => 'paid',
+            'pending' => 'pending',
+            'preparing' => 'preparing',
+            'ready' => 'out_for_delivery',
+            'delivered' => 'delivered',
+            'cancelled' => 'cancelled',
+        ];
+        
+        $currentStatusCode = $enumToStatusCodeMapping[$currentStatus] ?? $currentStatus;
+        
+        // Filtrar status disponíveis baseado no status atual
+        foreach ($statuses as $status) {
+            // Permitir todos os status por enquanto (pode ser refinado depois)
+            $availableStatuses[] = (object)[
+                'id' => $status->id,
+                'code' => $status->code,
+                'name' => $status->name,
+            ];
+        }
+        
+        // Se não encontrou nenhum, retornar status padrão
+        if (empty($availableStatuses)) {
+            $defaultStatuses = [
+                (object)['id' => 1, 'code' => 'pending', 'name' => 'Aguardando Revisão'],
+                (object)['id' => 2, 'code' => 'paid', 'name' => 'Pago'],
+                (object)['id' => 3, 'code' => 'preparing', 'name' => 'Preparando'],
+                (object)['id' => 4, 'code' => 'out_for_delivery', 'name' => 'Saiu para Entrega'],
+                (object)['id' => 5, 'code' => 'delivered', 'name' => 'Entregue'],
+                (object)['id' => 6, 'code' => 'cancelled', 'name' => 'Cancelado'],
+            ];
+            
+            return $defaultStatuses;
+        }
+        
+        return $availableStatuses;
     }
 }
 

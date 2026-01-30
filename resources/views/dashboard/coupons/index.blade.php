@@ -1,7 +1,7 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Cupons')
-@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
+@section('page_subtitle', 'Gerenciamento de cupons de desconto')
 
 @section('page_actions')
     <a href="{{ route('dashboard.coupons.create') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
@@ -14,163 +14,344 @@
 @endsection
 
 @section('content')
-<div class="space-y-6">
-
-    <!-- Estatísticas -->
-    @if(isset($stats))
-    <x-stat-grid :items="[
-        ['label' => 'Total', 'value' => ($stats['total'] ?? 0), 'icon' => 'layers'],
-        ['label' => 'Ativos', 'value' => ($stats['active'] ?? 0), 'icon' => 'check-circle'],
-        ['label' => 'Públicos', 'value' => ($stats['public'] ?? 0), 'icon' => 'users'],
-        ['label' => 'Privados', 'value' => ($stats['private'] ?? 0), 'icon' => 'lock'],
-    ]" />
-    @endif
-
-    <!-- Filtros -->
-    <div class="rounded-lg border bg-card p-4">
-        <form method="GET" action="{{ route('dashboard.coupons.index') }}" class="flex flex-col md:flex-row gap-4">
-            <div class="flex-1">
-                <input type="text" name="search" placeholder="Buscar por código, nome..." value="{{ request('search') }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-            </div>
-            <select name="visibility" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="">Todas as visibilidades</option>
-                <option value="public" {{ request('visibility') == 'public' ? 'selected' : '' }}>Público</option>
-                <option value="private" {{ request('visibility') == 'private' ? 'selected' : '' }}>Privado</option>
-                <option value="targeted" {{ request('visibility') == 'targeted' ? 'selected' : '' }}>Direcionado</option>
-            </select>
-            <select name="is_active" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="">Todos os status</option>
-                <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Ativo</option>
-                <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Inativo</option>
-            </select>
-            <button type="submit" class="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Filtrar</button>
-            @if(request()->hasAny(['search', 'visibility', 'is_active']))
-            <a href="{{ route('dashboard.coupons.index') }}" class="px-4 py-2 rounded-md border hover:bg-accent">Limpar</a>
-            @endif
-        </form>
-    </div>
-
-    <!-- Tabela de Cupons -->
-    @if($coupons->count() > 0)
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="p-6">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm" data-mobile-card="true">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left p-3 text-sm font-medium">Código</th>
-                            <th class="text-left p-3 text-sm font-medium">Nome</th>
-                            <th class="text-left p-3 text-sm font-medium">Desconto</th>
-                            <th class="text-left p-3 text-sm font-medium">Visibilidade</th>
-                            <th class="text-left p-3 text-sm font-medium">Uso</th>
-                            <th class="text-left p-3 text-sm font-medium">Validade</th>
-                            <th class="text-left p-3 text-sm font-medium">Status</th>
-                            <th class="text-right p-3 text-sm font-medium">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($coupons as $coupon)
-                        <tr class="border-b hover:bg-muted/50">
-                            <td class="p-3 actions-cell">
-                                <code class="text-sm font-mono bg-muted px-2 py-1 rounded">{{ $coupon->code }}</code>
-                            </td>
-                            <td class="p-3">
-                                <div class="font-medium">{{ $coupon->name }}</div>
-                                @if($coupon->description)
-                                <div class="text-xs text-muted-foreground mt-1">{{ \Illuminate\Support\Str::limit($coupon->description, 50) }}</div>
-                                @endif
-                            </td>
-                            <td class="p-3">
-                                <div class="font-semibold">{{ $coupon->formatted_value }}</div>
-                                @if($coupon->minimum_amount)
-                                <div class="text-xs text-muted-foreground">Mín: R$ {{ number_format($coupon->minimum_amount, 2, ',', '.') }}</div>
-                                @endif
-                            </td>
-                            <td class="p-3">
-                                @if($coupon->visibility === 'public')
-                                <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Público</span>
-                                @elseif($coupon->visibility === 'private')
-                                <span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">Privado</span>
-                                @else
-                                <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">Direcionado</span>
-                                @endif
-                                @if($coupon->first_order_only)
-                                <div class="text-xs text-muted-foreground mt-1">1º pedido</div>
-                                @endif
-                                @if($coupon->free_shipping_only)
-                                <div class="text-xs text-muted-foreground">Frete grátis</div>
-                                @endif
-                            </td>
-                            <td class="p-3 text-sm">
-                                {{ $coupon->used_count ?? 0 }} / {{ $coupon->usage_limit ?: '∞' }}
-                            </td>
-                            <td class="p-3 text-sm text-muted-foreground">
-                                @if($coupon->starts_at || $coupon->expires_at)
-                                <div class="text-xs">
-                                    @if($coupon->starts_at)
-                                    <div>Início: {{ $coupon->starts_at->format('d/m/Y') }}</div>
-                                    @endif
-                                    @if($coupon->expires_at)
-                                    <div>Fim: {{ $coupon->expires_at->format('d/m/Y') }}</div>
-                                    @endif
-                                </div>
-                                @else
-                                Sem validade
-                                @endif
-                            </td>
-                            <td class="p-3">
-                                @if($coupon->is_active)
-                                <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Ativo</span>
-                                @else
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Inativo</span>
-                                @endif
-                            </td>
-                            <td class="p-3">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('dashboard.coupons.edit', $coupon) }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Editar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                    </a>
-                                    <form action="{{ route('dashboard.coupons.destroy', $coupon) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cupom?');" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground text-red-600 hover:text-red-700 h-8 w-8" title="Excluir">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4c1 0 2 1 2 2v2"></path>
-                                            </svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4">
-                {{ $coupons->onEachSide(1)->links('vendor.pagination.compact') }}
-            </div>
+<div class="bg-card rounded-xl border border-border animate-fade-in" 
+     id="coupons-page"
+     x-data="couponsLiveSearch('{{ request('search') ?? '' }}')">
+    <div class="p-4 border-b border-border flex flex-col sm:flex-row gap-4 justify-between">
+        <div class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
+            <input
+                type="text"
+                x-model="search"
+                @input="filterCoupons()"
+                placeholder="Buscar cupom..."
+                class="form-input pl-10"
+                autocomplete="off"
+            />
         </div>
-    </div>
-    @else
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-12 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-muted-foreground">
-            <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"></path>
-            <path d="m12 12 4 4 6-6"></path>
-        </svg>
-        <h3 class="text-lg font-semibold mb-2">Nenhum cupom encontrado</h3>
-        <p class="text-muted-foreground mb-4">Comece criando seu primeiro cupom de desconto</p>
-        <a href="{{ route('dashboard.coupons.create') }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="M12 5v14"></path>
-            </svg>
+        <a href="{{ route('dashboard.coupons.create') }}" class="btn-primary gap-2 h-9 px-4">
+            <i data-lucide="plus" class="h-4 w-4"></i>
             Novo Cupom
         </a>
     </div>
-    @endif
+
+    <div id="coupons-grid" class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @foreach($coupons as $coupon)
+            @php
+                $statusClass = $coupon->is_active ? 'status-badge-completed' : 'status-badge-pending';
+                $statusLabel = $coupon->is_active ? 'Ativo' : 'Inativo';
+            @endphp
+            <div class="coupon-card border border-border rounded-xl p-4 hover:shadow-md transition-all"
+                 data-search-code="{{ mb_strtolower($coupon->code, 'UTF-8') }}">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <i data-lucide="ticket" class="h-5 w-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold font-mono">{{ $coupon->code }}</h3>
+                                <button type="button" class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted copy-coupon-btn" data-code="{{ $coupon->code }}">
+                                    <i data-lucide="copy" class="h-3 w-3"></i>
+                                </button>
+                            </div>
+                            <span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Desconto</span>
+                        <span class="font-semibold text-accent">{{ $coupon->formatted_value }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Usos</span>
+                        <span>{{ $coupon->used_count ?? 0 }} / {{ $coupon->usage_limit ?: '∞' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Expira em</span>
+                        <span>{{ $coupon->expires_at ? $coupon->expires_at->format('d/m/Y') : 'Sem validade' }}</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-4 pt-4 border-t border-border">
+                    <a href="{{ route('dashboard.coupons.edit', $coupon) }}" class="btn-outline flex-1 h-9 text-xs gap-1">
+                        <i data-lucide="edit" class="h-4 w-4"></i>
+                        Editar
+                    </a>
+                    <form action="{{ route('dashboard.coupons.destroy', $coupon) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cupom?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn-outline h-9 px-3 text-xs text-destructive">
+                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endforeach
+        @if($coupons->count() > 0)
+            <div class="coupon-filter-no-results col-span-full text-center text-muted-foreground py-8"
+                 x-show="search && showNoResults"
+                 x-cloak
+                 x-transition>
+                <div class="flex flex-col items-center gap-2">
+                    <i data-lucide="search-x" class="w-10 h-10 opacity-40"></i>
+                    <p class="text-sm">Nenhum cupom encontrado para "<span x-text="search"></span>"</p>
+                </div>
+            </div>
+        @else
+            <div class="col-span-full text-center text-muted-foreground py-8">
+                Nenhum cupom encontrado.
+            </div>
+        @endif
+    </div>
 </div>
+
+@push('styles')
+<style>[x-cloak]{display:none!important}</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', function () {
+    Alpine.data('couponsLiveSearch', function (initialQ) {
+        return {
+            search: (typeof initialQ === 'string' ? initialQ : '') || '',
+            showNoResults: false,
+            loading: false,
+            searchTimeout: null,
+            allCoupons: [],
+
+            init: function () {
+                this.saveInitialCoupons();
+            },
+
+            saveInitialCoupons: function () {
+                var grid = document.getElementById('coupons-grid');
+                if (!grid) return;
+                var cards = grid.querySelectorAll('.coupon-card');
+                this.allCoupons = Array.from(cards).map(function(card) {
+                    return {
+                        element: card.cloneNode(true),
+                        code: card.getAttribute('data-search-code') || ''
+                    };
+                });
+            },
+            
+            restoreInitialCoupons: function () {
+                var grid = document.getElementById('coupons-grid');
+                if (!grid) return;
+                
+                grid.innerHTML = '';
+                this.allCoupons.forEach(function(item) {
+                    if (item.element) {
+                        grid.appendChild(item.element.cloneNode(true));
+                    }
+                });
+                
+                // Reativar botões de copiar
+                document.querySelectorAll('.copy-coupon-btn').forEach(function(button) {
+                    button.addEventListener('click', async function() {
+                        var code = button.getAttribute('data-code');
+                        if (!code) return;
+                        try {
+                            await navigator.clipboard.writeText(code);
+                        } catch (error) {
+                            console.error('Erro ao copiar cupom:', error);
+                        }
+                    });
+                });
+                
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            },
+
+            filterCoupons: function () {
+                var self = this;
+                
+                if (self.searchTimeout) {
+                    clearTimeout(self.searchTimeout);
+                }
+
+                var searchTerm = self.search.trim();
+                
+                if (!searchTerm) {
+                    self.restoreInitialCoupons();
+                    self.showNoResults = false;
+                    return;
+                }
+
+                self.searchTimeout = setTimeout(function() {
+                    self.loading = true;
+                    
+                    fetch('{{ route("dashboard.coupons.index") }}?search=' + encodeURIComponent(searchTerm), {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        self.loading = false;
+                        if (data.coupons && data.coupons.length > 0) {
+                            self.renderSearchResults(data.coupons);
+                            self.showNoResults = false;
+                        } else {
+                            self.clearCoupons();
+                            self.showNoResults = true;
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Erro na busca:', error);
+                        self.loading = false;
+                        self.filterLocal();
+                    });
+                }, 300);
+            },
+
+
+            renderSearchResults: function (coupons) {
+                var self = this;
+                var grid = document.getElementById('coupons-grid');
+                if (!grid) return;
+
+                grid.innerHTML = '';
+
+                coupons.forEach(function(coupon) {
+                    var statusClass = coupon.is_active ? 'status-badge-completed' : 'status-badge-pending';
+                    var statusLabel = coupon.is_active ? 'Ativo' : 'Inativo';
+                    var editUrl = '{{ route("dashboard.coupons.edit", ":id") }}'.replace(':id', coupon.id);
+                    var deleteUrl = '{{ route("dashboard.coupons.destroy", ":id") }}'.replace(':id', coupon.id);
+                    var csrfToken = '{{ csrf_token() }}';
+                    
+                    var card = document.createElement('div');
+                    card.className = 'coupon-card border border-border rounded-xl p-4 hover:shadow-md transition-all';
+                    
+                    card.innerHTML = 
+                        '<div class="flex items-start justify-between mb-4">' +
+                            '<div class="flex items-center gap-3">' +
+                                '<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">' +
+                                    '<i data-lucide="ticket" class="h-5 w-5 text-primary"></i>' +
+                                '</div>' +
+                                '<div>' +
+                                    '<div class="flex items-center gap-2">' +
+                                        '<h3 class="font-bold font-mono">' + (coupon.code || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</h3>' +
+                                        '<button type="button" class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted copy-coupon-btn" data-code="' + (coupon.code || '').replace(/"/g, '&quot;') + '">' +
+                                            '<i data-lucide="copy" class="h-3 w-3"></i>' +
+                                        '</button>' +
+                                    '</div>' +
+                                    '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="space-y-2 text-sm">' +
+                            '<div class="flex justify-between">' +
+                                '<span class="text-muted-foreground">Desconto</span>' +
+                                '<span class="font-semibold text-accent">' + (coupon.formatted_value || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+                            '</div>' +
+                            '<div class="flex justify-between">' +
+                                '<span class="text-muted-foreground">Usos</span>' +
+                                '<span>' + (coupon.used_count || 0) + ' / ' + (coupon.usage_limit || '∞') + '</span>' +
+                            '</div>' +
+                            '<div class="flex justify-between">' +
+                                '<span class="text-muted-foreground">Expira em</span>' +
+                                '<span>' + (coupon.expires_at || 'Sem validade').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="flex gap-2 mt-4 pt-4 border-t border-border">' +
+                            '<a href="' + editUrl + '" class="btn-outline flex-1 h-9 text-xs gap-1">' +
+                                '<i data-lucide="edit" class="h-4 w-4"></i>' +
+                                'Editar' +
+                            '</a>' +
+                            '<form action="' + deleteUrl + '" method="POST" onsubmit="return confirm(\'Tem certeza que deseja excluir este cupom?\');">' +
+                                '<input type="hidden" name="_token" value="' + csrfToken + '">' +
+                                '<input type="hidden" name="_method" value="DELETE">' +
+                                '<button type="submit" class="btn-outline h-9 px-3 text-xs text-destructive">' +
+                                    '<i data-lucide="trash-2" class="h-4 w-4"></i>' +
+                                '</button>' +
+                            '</form>' +
+                        '</div>';
+                    
+                    grid.appendChild(card);
+                });
+                
+                // Reativar botões de copiar
+                document.querySelectorAll('.copy-coupon-btn').forEach(function(button) {
+                    button.addEventListener('click', async function() {
+                        var code = button.getAttribute('data-code');
+                        if (!code) return;
+                        try {
+                            await navigator.clipboard.writeText(code);
+                        } catch (error) {
+                            console.error('Erro ao copiar cupom:', error);
+                        }
+                    });
+                });
+                
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            },
+
+            clearCoupons: function () {
+                var grid = document.getElementById('coupons-grid');
+                if (grid) {
+                    grid.innerHTML = '';
+                }
+            },
+
+            filterLocal: function () {
+                var self = this;
+                var q = self.search.trim().toLowerCase();
+                if (!q) {
+                    self.restoreInitialCoupons();
+                    self.showNoResults = false;
+                    return;
+                }
+                
+                var visible = 0;
+                this.allCoupons.forEach(function(item) {
+                    if (item.element) {
+                        var code = item.code.toLowerCase();
+                        var codeNorm = code.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        
+                        if (code.includes(q) || codeNorm.includes(qNorm)) {
+                            item.element.style.display = '';
+                            visible++;
+                        } else {
+                            item.element.style.display = 'none';
+                        }
+                    }
+                });
+                
+                self.showNoResults = visible === 0;
+            }
+        };
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.copy-coupon-btn').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const code = button.getAttribute('data-code');
+            if (!code) return;
+            try {
+                await navigator.clipboard.writeText(code);
+            } catch (error) {
+                console.error('Erro ao copiar cupom:', error);
+            }
+        });
+    });
+    
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+});
+</script>
+@endpush
 @endsection

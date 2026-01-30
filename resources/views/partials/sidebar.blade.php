@@ -66,12 +66,6 @@
             <i class="fas fa-cog mr-3"></i>
             Configurações
         </a>
-        
-        <a href="{{ route('dashboard.pdv.index') }}" 
-           class="flex items-center px-6 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition {{ request()->is('pdv*') ? 'bg-orange-50 text-orange-600' : '' }}">
-            <i class="fas fa-cash-register mr-3"></i>
-            PDV
-        </a>
     </nav>
     
     <!-- Logout -->

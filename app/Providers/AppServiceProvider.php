@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Config;
 use App\Models\CustomerDebt;
+use App\Models\Order;
 use App\Observers\CustomerDebtObserver;
+use App\Observers\OrderFinancialObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -68,6 +70,11 @@ class AppServiceProvider extends ServiceProvider
         // Registrar observer para atualizar saldo de débitos (apenas se a classe existir)
         if (class_exists(CustomerDebtObserver::class)) {
             CustomerDebt::observe(CustomerDebtObserver::class);
+        }
+
+        // Registrar observer para receita automática de pedidos pagos (Finanças)
+        if (class_exists(OrderFinancialObserver::class)) {
+            Order::observe(OrderFinancialObserver::class);
         }
     }
 }

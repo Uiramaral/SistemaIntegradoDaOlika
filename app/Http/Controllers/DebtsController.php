@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\FinancialTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class DebtsController extends Controller
 {
@@ -66,13 +70,100 @@ class DebtsController extends Controller
 
             DB::table('customer_debts')->insert([
                 'customer_id'=>$d->customer_id,
-                'order_id'=>null,
+                'order_id'=>$d->order_id ?? null,
                 'amount'=>$d->amount,
                 'type'=>'credit',
                 'status'=>'settled',
                 'description'=>'Baixa de fiado ref. #'.$d->id,
                 'created_at'=>now(),'updated_at'=>now(),
             ]);
+
+            // Marcar pedido como pago e registrar receita quando fiado é quitado
+            if ($d->order_id) {
+                $order = Order::find($d->order_id);
+                if ($order) {
+                    // Marcar pedido como pago se ainda não estiver pago
+                    if ($order->payment_status !== 'paid') {
+                        $order->payment_status = 'paid';
+                        $order->save();
+                        // O Observer vai criar a receita automaticamente quando payment_status muda para 'paid'
+                        Log::info('DebtsController (legacy): Pedido marcado como pago ao quitar fiado', [
+                            'debt_id' => $d->id,
+                            'order_id' => $order->id,
+                        ]);
+                    } else {
+                        // Se já estava pago, verificar se a receita existe e criar se não existir
+                        if (Schema::hasTable('financial_transactions')) {
+                            // Garantir que temos um client_id válido
+                            $clientId = $order->client_id ?? currentClientId();
+                            
+                            // Validar que client_id é um inteiro válido (não null, não 0, não string vazia)
+                            $clientIdValid = false;
+                            if ($clientId && is_numeric($clientId)) {
+                                $clientIdInt = (int) $clientId;
+                                if ($clientIdInt > 0) {
+                                    $clientId = $clientIdInt;
+                                    $clientIdValid = true;
+                                }
+                            }
+                            
+                            if (!$clientIdValid) {
+                                Log::warning('DebtsController (legacy): Não foi possível determinar client_id válido para criar receita', [
+                                    'debt_id' => $d->id,
+                                    'order_id' => $order->id,
+                                    'order_client_id' => $order->client_id,
+                                    'order_client_id_type' => gettype($order->client_id),
+                                    'current_client_id' => currentClientId(),
+                                    'current_client_id_type' => gettype(currentClientId()),
+                                    'client_id_raw' => $clientId,
+                                ]);
+                            } else {
+                                
+                                $alreadyExists = FinancialTransaction::withoutGlobalScopes()
+                                    ->where('order_id', $order->id)
+                                    ->where('type', 'revenue')
+                                    ->exists();
+                                
+                                if (!$alreadyExists) {
+                                    $amount = (float) ($order->final_amount ?? $order->total_amount ?? $d->amount);
+                                    
+                                    // Verificação final: garantir que client_id é válido antes de criar
+                                    if ($amount > 0 && $clientId && is_int($clientId) && $clientId > 0) {
+                                        try {
+                                            // Criar transação garantindo que client_id seja definido explicitamente
+                                            $transaction = new FinancialTransaction();
+                                            $transaction->client_id = $clientId;
+                                            $transaction->type = 'revenue';
+                                            $transaction->amount = $amount;
+                                            $transaction->description = 'Pedido ' . ($order->order_number ?? '#' . $order->id) . ' - Pagamento de fiado';
+                                            $transaction->transaction_date = now()->format('Y-m-d');
+                                            $transaction->category = 'Pedidos';
+                                            $transaction->order_id = $order->id;
+                                            $transaction->save();
+                                            
+                                            Log::info('DebtsController (legacy): Receita financeira criada ao quitar fiado (pedido já estava pago)', [
+                                                'debt_id' => $d->id,
+                                                'order_id' => $order->id,
+                                                'amount' => $amount,
+                                                'client_id' => $clientId,
+                                            ]);
+                                        } catch (\Throwable $e) {
+                                            Log::error('Erro ao criar receita financeira ao quitar fiado (legacy)', [
+                                                'debt_id' => $d->id,
+                                                'order_id' => $order->id,
+                                                'client_id' => $clientId,
+                                                'amount' => $amount,
+                                                'error' => $e->getMessage(),
+                                                'trace' => $e->getTraceAsString(),
+                                            ]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         return response()->json(['ok'=>true]);

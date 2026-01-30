@@ -14,10 +14,6 @@
             <i class="fa fa-home mi-ico"></i> Visão Geral
         </a>
         
-        <a href="{{ route('dashboard.pdv.index') }}" class="mi {{ request()->routeIs('dashboard.pdv.*') ? 'active' : '' }}">
-            <i class="fa fa-cash-register mi-ico"></i> PDV
-        </a>
-        
         <a href="{{ route('dashboard.orders.index') }}" class="mi {{ request()->routeIs('dashboard.orders.*') ? 'active' : '' }}">
             <i class="fa fa-receipt mi-ico"></i> Pedidos
         </a>

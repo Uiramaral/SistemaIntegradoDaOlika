@@ -309,13 +309,128 @@ class FiscalPrinterService
     }
     
     /**
+     * Gera comandos ESC/POS para recibo de conferência (SEM PREÇOS)
+     */
+    public function generateCheckReceiptEscPos(Order $order): string
+    {
+        $order->load(['customer', 'items.product', 'items.variant']);
+        
+        $commands = [];
+        
+        // Inicializar impressora
+        $commands[] = "\x1B\x40"; // ESC @ - Reset
+        $commands[] = "\x1B\x45\x01"; // Bold ON
+        $commands[] = "\x1B\x47\x01"; // Double Strike ON
+        $commands[] = "\x1B\x4D\x00"; // Font A
+        $commands[] = "\x1D\x28\x4B\x02\x00\x31\x03"; // Densidade máxima
+        $commands[] = "\x1B\x61\x01"; // Centralizar
+        
+        // Cabeçalho
+        $commands[] = str_repeat("=", 48) . "\n";
+        $commands[] = "\x1D\x21\x11"; // Double size
+        $commands[] = $this->removeAccents("RECIBO DE CONFERENCIA") . "\n";
+        $commands[] = "\x1D\x21\x00"; // Normal size
+        $commands[] = $this->removeAccents("(SEM VALORES)") . "\n";
+        $commands[] = "\x1B\x61\x00"; // Alinhar à esquerda
+        $commands[] = str_repeat("=", 48) . "\n";
+        $commands[] = "\n";
+        
+        // Data e pedido
+        $commands[] = "DATA: " . $order->created_at->format('d/m/Y H:i:s') . "\n";
+        $commands[] = "PEDIDO: #" . $order->order_number . "\n";
+        $commands[] = str_repeat("-", 48) . "\n";
+        $commands[] = "\n";
+        
+        // Cliente
+        if ($order->customer) {
+            $commands[] = "\x1B\x45\x01"; // BOLD ON
+            $commands[] = $this->removeAccents("CLIENTE") . "\n";
+            $commands[] = "\x1B\x45\x00"; // BOLD OFF
+            $commands[] = $this->wrapText($this->removeAccents($order->customer->name), 46) . "\n";
+            if ($order->customer->phone) {
+                $commands[] = "TEL: " . $order->customer->phone . "\n";
+            }
+            $commands[] = "\n";
+        }
+        
+        // Itens - APENAS NOME E QUANTIDADE (SEM PREÇOS)
+        $commands[] = str_repeat("-", 48) . "\n";
+        $commands[] = "\x1B\x45\x01"; // BOLD ON
+        $commands[] = str_pad($this->removeAccents("ITEM"), 40) . str_pad("QTD", 8, ' ', STR_PAD_LEFT) . "\n";
+        $commands[] = "\x1B\x45\x00"; // BOLD OFF
+        $commands[] = str_repeat("-", 48) . "\n";
+        
+        foreach ($order->items as $item) {
+            $itemName = $item->custom_name ?? ($item->product ? $item->product->name : 'Produto');
+            $variantName = null;
+            $weight = null;
+            
+            if ($item->variant_id && $item->variant) {
+                $variantName = $item->variant->name;
+                $weight = $item->variant->weight_grams;
+            }
+            
+            if (!$weight && $item->product) {
+                $weight = $item->product->weight_grams;
+            }
+            
+            $displayName = $itemName;
+            if ($variantName) {
+                $displayName .= ' (' . $variantName . ')';
+            }
+            if ($weight) {
+                $displayName .= ' - ' . number_format($weight / 1000, 1, ',', '.') . 'kg';
+            }
+            
+            $itemName = $this->truncateText($this->removeAccents($displayName), 38);
+            $qty = str_pad((string)$item->quantity, 5, ' ', STR_PAD_LEFT);
+            
+            $commands[] = str_pad($itemName, 40) . $qty . "\n";
+            
+            // Observações
+            if ($item->special_instructions) {
+                $commands[] = "  " . $this->removeAccents("Obs: ") . $this->wrapText($this->removeAccents($item->special_instructions), 42) . "\n";
+            }
+        }
+        
+        $commands[] = str_repeat("-", 48) . "\n";
+        $commands[] = "\n";
+        
+        // Aviso importante
+        $commands[] = "\x1B\x61\x01"; // Centralizar
+        $commands[] = "\x1B\x45\x01"; // BOLD ON
+        $commands[] = $this->removeAccents("ATENCAO") . "\n";
+        $commands[] = "\x1B\x45\x00"; // BOLD OFF
+        $commands[] = $this->wrapText($this->removeAccents("Este e um recibo de conferencia."), 46) . "\n";
+        $commands[] = $this->wrapText($this->removeAccents("Nao contem valores, endereco ou forma de pagamento."), 46) . "\n";
+        $commands[] = "\x1B\x61\x00"; // Alinhar à esquerda
+        $commands[] = "\n";
+        
+        // Rodapé
+        $commands[] = str_repeat("-", 48) . "\n";
+        $commands[] = "\x1B\x61\x01"; // Centralizar
+        $commands[] = $this->removeAccents("OLIKA - PAES ARTESANAIS") . "\n";
+        $commands[] = "\x1B\x61\x00"; // Alinhar à esquerda
+        $commands[] = str_repeat("-", 48) . "\n";
+        $commands[] = "\n\n\n"; // Espaço para corte
+        $commands[] = "\x1D\x56\x01"; // Cortar papel
+        
+        return implode('', $commands);
+    }
+    
+    /**
      * Envia recibo para impressora via JavaScript (navegador)
      */
-    public function sendToPrinter(Order $order, $printerType = 'thermal'): array
+    public function sendToPrinter(Order $order, $printerType = 'thermal', $receiptType = 'normal'): array
     {
         try {
             if ($printerType === 'thermal') {
-                $commands = $this->generateEscPosReceipt($order);
+                // Gerar recibo baseado no tipo
+                if ($receiptType === 'check') {
+                    $commands = $this->generateCheckReceiptEscPos($order); // Recibo de conferência (sem preços)
+                } else {
+                    $commands = $this->generateEscPosReceipt($order); // Recibo fiscal (com preços)
+                }
                 
                 // Garantir que os comandos sejam uma string binária limpa
                 // Usar base64_encode que preserva os bytes binários corretamente

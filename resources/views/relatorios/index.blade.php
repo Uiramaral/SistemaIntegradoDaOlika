@@ -23,7 +23,6 @@
       @endforeach
     </select>
     <button class="btn-primary">Aplicar</button>
-    <a class="pill" href="{{ route('relatorios.export', request()->query()) }}">Exportar CSV</a>
   </form>
 @endsection
 

@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'simple.auth' => \App\Http\Middleware\SimpleAuth::class,
         'check.plan' => \App\Http\Middleware\CheckPlan::class, // ✅ NOVO: Middleware para verificar plano do cliente
         'api.token' => \App\Http\Middleware\ApiTokenMiddleware::class, // ✅ NOVO: Middleware para autenticação via api_tokens
+        'identify.tenant' => \App\Http\Middleware\IdentifyTenant::class, // ✅ NOVO: Middleware para identificar tenant via subdomínio
     ];
 }

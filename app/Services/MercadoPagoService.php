@@ -17,13 +17,13 @@ class MercadoPagoService
     public function __construct()
     {
         $settings = Setting::getSettings();
-        
+
         $this->accessToken = $settings->mercadopago_access_token;
         $this->publicKey = $settings->mercadopago_public_key;
         $this->environment = $settings->mercadopago_env;
-        
-        $this->baseUrl = $this->environment === 'production' 
-            ? 'https://api.mercadopago.com' 
+
+        $this->baseUrl = $this->environment === 'production'
+            ? 'https://api.mercadopago.com'
             : 'https://api.mercadopago.com';
     }
 
@@ -72,7 +72,7 @@ class MercadoPagoService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 $order->update([
                     'preference_id' => $data['id'],
                     'payment_link' => $data['init_point'],
@@ -137,7 +137,7 @@ class MercadoPagoService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 $order->update([
                     'preference_id' => $data['id'],
                     'payment_link' => $data['init_point'],
@@ -169,17 +169,26 @@ class MercadoPagoService
             }
 
             $order = Order::where('order_number', $externalReference)->first();
-            
+
             if (!$order) {
                 return false;
             }
 
             $paymentStatus = $this->mapStatus($status);
-            
+
+            // Buscar detalhes completos do pagamento para obter taxas e valor líquido
+            $paymentDetails = $data;
+            if (isset($data['id'])) {
+                $fetchedPayment = $this->getPayment($data['id']);
+                if ($fetchedPayment) {
+                    $paymentDetails = $fetchedPayment;
+                }
+            }
+
             $order->update([
                 'payment_status' => $paymentStatus,
                 'payment_id' => $data['id'] ?? null,
-                'payment_raw_response' => $data,
+                'payment_raw_response' => $paymentDetails,
             ]);
 
             // Se aprovado, confirma o pedido

@@ -288,6 +288,153 @@
         </form>
     </div>
 
+    {{-- APIs & Integrações (gestão única no Master) --}}
+    <div class="rounded-lg border border-border bg-card shadow-sm">
+        <div class="p-6 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">APIs & Integrações</h3>
+            <p class="text-sm text-muted-foreground">OpenAI, Google Maps e Gemini. Gestão centralizada para todo o sistema.</p>
+        </div>
+        <form action="{{ route('master.settings.update') }}" method="POST" class="p-6 space-y-6">
+            @csrf
+            <div class="space-y-4">
+                <div>
+                    <label for="gemini_api_key" class="block text-sm font-medium text-foreground mb-1">Gemini API Key</label>
+                    <input type="password" name="gemini_api_key" id="gemini_api_key" value="{{ old('gemini_api_key', $settings['gemini_api_key'] ?? '') }}"
+                           class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="AIza...">
+                    <p class="text-xs text-muted-foreground mt-1">Usada pelo Assistente IA, marketing e respostas automáticas.</p>
+                </div>
+                <div>
+                    <label for="openai_api_key" class="block text-sm font-medium text-foreground mb-1">OpenAI API Key</label>
+                    <input type="password" name="openai_api_key" id="openai_api_key" value="{{ old('openai_api_key', $settings['openai_api_key'] ?? '') }}"
+                           class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="sk-...">
+                </div>
+                <div>
+                    <label for="openai_model" class="block text-sm font-medium text-foreground mb-1">OpenAI Model</label>
+                    <input type="text" name="openai_model" id="openai_model" value="{{ old('openai_model', $settings['openai_model'] ?? 'gpt-4o-mini') }}"
+                           class="w-full max-w-xs px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="gpt-4o-mini">
+                </div>
+                <div>
+                    <label for="google_maps_api_key" class="block text-sm font-medium text-foreground mb-1">Google Maps API Key</label>
+                    <input type="password" name="google_maps_api_key" id="google_maps_api_key" value="{{ old('google_maps_api_key', $settings['google_maps_api_key'] ?? '') }}"
+                           class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="AIza...">
+                    <p class="text-xs text-muted-foreground mt-1">Cálculo de distância, geocoding e taxas de entrega.</p>
+                </div>
+            </div>
+            <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition font-medium">
+                Salvar APIs & Integrações
+            </button>
+        </form>
+    </div>
+
+    {{-- Personalização do Sistema (apenas Master) --}}
+    <div class="rounded-lg border border-border bg-card shadow-sm">
+        <div class="p-6 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">🎨 Personalização do Sistema</h3>
+            <p class="text-sm text-muted-foreground">Personalize logo, nome e mensagem de boas-vindas (apenas Master)</p>
+        </div>
+        <form action="{{ route('master.settings.update') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
+            @csrf
+            
+            <div>
+                <label for="system_logo" class="block text-sm font-medium text-foreground mb-2">
+                    Logo do Sistema
+                </label>
+                @if($settings['system_logo_url'] ?? null)
+                    <div class="mb-3">
+                        <img src="{{ $settings['system_logo_url'] }}" alt="Logo atual" class="w-32 h-32 object-contain border border-gray-200 rounded-lg">
+                    </div>
+                @endif
+                <input type="file" name="system_logo" id="system_logo" accept="image/*" 
+                       class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <p class="text-xs text-muted-foreground mt-1">Formatos aceitos: PNG, JPG, SVG. Tamanho recomendado: 512x512px</p>
+            </div>
+
+            <div>
+                <label for="system_favicon" class="block text-sm font-medium text-foreground mb-2">
+                    Favicon do Sistema
+                </label>
+                @if($settings['system_favicon_url'] ?? null)
+                    <div class="mb-3">
+                        <img src="{{ $settings['system_favicon_url'] }}" alt="Favicon atual" class="w-16 h-16 object-contain border border-gray-200 rounded-lg">
+                    </div>
+                @endif
+                <input type="file" name="system_favicon" id="system_favicon" accept="image/*" 
+                       class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <p class="text-xs text-muted-foreground mt-1">Formatos aceitos: PNG, ICO. Tamanho recomendado: 32x32px ou 64x64px</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="generate_favicon_from_logo" id="generate_favicon_from_logo" value="1" class="rounded border-gray-300">
+                <label for="generate_favicon_from_logo" class="text-sm font-medium">Gerar favicon automaticamente a partir da logo</label>
+            </div>
+
+            <div>
+                <label for="system_name" class="block text-sm font-medium text-foreground mb-1">
+                    Nome do Sistema
+                </label>
+                <input type="text" name="system_name" id="system_name" 
+                       value="{{ old('system_name', $settings['system_name'] ?? 'OLIKA') }}"
+                       class="w-full max-w-md px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                       placeholder="OLIKA">
+                <p class="text-xs text-muted-foreground mt-1">Nome exibido nas telas de login e cadastro</p>
+            </div>
+
+            <div>
+                <label for="system_welcome_message" class="block text-sm font-medium text-foreground mb-1">
+                    Mensagem de Boas-Vindas
+                </label>
+                <input type="text" name="system_welcome_message" id="system_welcome_message" 
+                       value="{{ old('system_welcome_message', $settings['system_welcome_message'] ?? 'Bem-vindo ao OLIKA') }}"
+                       class="w-full max-w-md px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                       placeholder="Bem-vindo ao OLIKA">
+                <p class="text-xs text-muted-foreground mt-1">Mensagem exibida na tela de login</p>
+            </div>
+
+            <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition font-medium">
+                Salvar Personalização
+            </button>
+        </form>
+    </div>
+
+    {{-- Termos de Uso e Política de Privacidade --}}
+    <div class="rounded-lg border border-border bg-card shadow-sm">
+        <div class="p-6 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">📄 Termos de Uso e Política de Privacidade</h3>
+            <p class="text-sm text-muted-foreground">Gerencie os documentos legais exibidos no cadastro</p>
+        </div>
+        <form action="{{ route('master.settings.update') }}" method="POST" class="p-6 space-y-6">
+            @csrf
+            
+            <div>
+                <label for="terms_of_use" class="block text-sm font-medium text-foreground mb-2">
+                    Termos de Uso
+                </label>
+                <textarea name="terms_of_use" id="terms_of_use" rows="15"
+                          class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                          placeholder="Digite os termos de uso aqui...">{{ old('terms_of_use', $settings['terms_of_use'] ?? '') }}</textarea>
+                <p class="text-xs text-muted-foreground mt-1">Conteúdo exibido quando o usuário clicar em "Termos de Uso"</p>
+            </div>
+
+            <div>
+                <label for="privacy_policy" class="block text-sm font-medium text-foreground mb-2">
+                    Política de Privacidade
+                </label>
+                <textarea name="privacy_policy" id="privacy_policy" rows="15"
+                          class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                          placeholder="Digite a política de privacidade aqui...">{{ old('privacy_policy', $settings['privacy_policy'] ?? '') }}</textarea>
+                <p class="text-xs text-muted-foreground mt-1">Conteúdo exibido quando o usuário clicar em "Política de Privacidade"</p>
+            </div>
+
+            <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition font-medium">
+                Salvar Termos e Políticas
+            </button>
+        </form>
+    </div>
+
     {{-- Informações do Sistema --}}
     <div class="rounded-lg border border-border bg-card shadow-sm">
         <div class="p-6 border-b border-border">

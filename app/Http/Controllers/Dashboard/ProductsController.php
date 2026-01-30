@@ -21,22 +21,22 @@ class ProductsController extends Controller
     public function index(Request $request)
     {
         $query = Product::with(['category', 'allergens', 'images'])->latest();
-        
+
         // Busca
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+        $searchTerm = $request->input('q') ?? $request->input('search');
+        if (!empty($searchTerm)) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                    ->orWhere('sku', 'like', "%{$searchTerm}%")
+                    ->orWhere('description', 'like', "%{$searchTerm}%");
             });
         }
-        
+
         // Filtro por categoria
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
-        
+
         // Filtro por status
         if ($request->has('status')) {
             if ($request->status === 'active') {
@@ -45,10 +45,28 @@ class ProductsController extends Controller
                 $query->where('is_active', false);
             }
         }
-        
+
+        // Se for requisição AJAX, retornar JSON sem paginação
+        if ($request->ajax() || $request->wantsJson()) {
+            $allProducts = $query->get();
+            return response()->json([
+                'products' => $allProducts->map(function ($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'category_name' => $product->category->name ?? 'Sem categoria',
+                        'price' => (float) ($product->price ?? 0),
+                        'stock' => (int) ($product->stock ?? $product->inventory ?? 0),
+                        'is_active' => $product->is_active ?? true,
+                        'cover_image' => $product->cover_image,
+                    ];
+                })
+            ]);
+        }
+
         $products = $query->paginate(20)->withQueryString();
         $categories = Category::active()->ordered()->get();
-        
+
         return view('dashboard.products.index', compact('products', 'categories'));
     }
 
@@ -63,7 +81,14 @@ class ProductsController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:100|unique:products,sku',
+            'sku' => [
+                'nullable',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('products')->where(function ($query) {
+                    return $query->where('client_id', auth()->user()->client_id);
+                })
+            ],
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'weight_grams' => 'nullable|integer|min:0',
@@ -87,14 +112,22 @@ class ProductsController extends Controller
             'allergen_ids.*' => 'exists:allergens,id',
             'nutritional_info' => 'nullable|array',
             'ingredients' => 'nullable|string',
+            'uses_baker_percentage' => 'boolean',
         ]);
+
+        // ✅ Inject client_id for multi-tenancy
+        if (auth()->check() && auth()->user()->client_id) {
+            $validated['client_id'] = auth()->user()->client_id;
+        }
 
         try {
             DB::beginTransaction();
 
             // Incorporar lista de ingredientes em nutritional_info
             $nutri = $validated['nutritional_info'] ?? [];
-            if ($request->filled('ingredients')) { $nutri['ingredients'] = $request->input('ingredients'); }
+            if ($request->filled('ingredients')) {
+                $nutri['ingredients'] = $request->input('ingredients');
+            }
             $validated['nutritional_info'] = $nutri;
 
             $coverImagePath = null;
@@ -104,11 +137,11 @@ class ProductsController extends Controller
             if ($request->hasFile('cover_image')) {
                 try {
                     $ext = $request->file('cover_image')->getClientOriginalExtension();
-                    $base = Str::slug($validated['name'] ?? ('produto-'.time()));
-                    $filename = $base.'-cover-'.time().'.'.$ext;
+                    $base = Str::slug($validated['name'] ?? ('produto-' . time()));
+                    $filename = $base . '-cover-' . time() . '.' . $ext;
                     $coverImagePath = $request->file('cover_image')->storeAs('uploads/products', $filename, 'public');
                     $validated['cover_image'] = $coverImagePath;
-                    
+
                     // Otimizar imagem: gerar WebP e thumbnails
                     try {
                         ImageOptimizer::optimize($coverImagePath);
@@ -129,39 +162,39 @@ class ProductsController extends Controller
 
             // Auto-IA ao criar: SEMPRE gera na criação (primeira vez)
             $ingredientsText = $nutri['ingredients'] ?? ($request->input('ingredients') ?? '');
-            $weightGrams = (int)($validated['weight_grams'] ?? 0);
-            
+            $weightGrams = (int) ($validated['weight_grams'] ?? 0);
+
             // Na criação: se usar "Criar + IA", gera descrições e SEO. Caso contrário, só gera se tiver ingredientes
             $useAi = $request->input('action') === 'save_ai';
-            
-            if ($useAi || trim((string)$ingredientsText) !== '') {
+
+            if ($useAi || trim((string) $ingredientsText) !== '') {
                 $ai = new OpenAIService();
                 if ($ai->isConfigured()) {
                     // Preparar variantes do formulário (se houver, antes de salvar)
                     $variants = [];
-                    $variantNames = (array)$request->input('variant_name', []);
-                    $variantWeights = (array)$request->input('variant_weight', []);
-                    $variantPrices = (array)$request->input('variant_price', []);
+                    $variantNames = (array) $request->input('variant_name', []);
+                    $variantWeights = (array) $request->input('variant_weight', []);
+                    $variantPrices = (array) $request->input('variant_price', []);
                     foreach ($variantNames as $idx => $name) {
-                        if (trim((string)$name) !== '') {
+                        if (trim((string) $name) !== '') {
                             $variants[] = [
                                 'name' => trim($name),
-                                'weight_grams' => (int)($variantWeights[$idx] ?? 0),
-                                'price' => (float)($variantPrices[$idx] ?? 0)
+                                'weight_grams' => (int) ($variantWeights[$idx] ?? 0),
+                                'price' => (float) ($variantPrices[$idx] ?? 0)
                             ];
                         }
                     }
-                    
+
                     // Preparar alergênicos dos selecionados
-                    $allergenIds = array_map('intval', (array)$request->input('allergen_ids', []));
+                    $allergenIds = array_map('intval', (array) $request->input('allergen_ids', []));
                     $allergenNames = [];
                     if (!empty($allergenIds)) {
                         $allergens = \App\Models\Allergen::whereIn('id', $allergenIds)->pluck('name')->all();
                         $allergenNames = array_filter($allergens);
                     }
-                    
-                    $existingDesc = trim((string)($validated['description'] ?? ''));
-                    
+
+                    $existingDesc = trim((string) ($validated['description'] ?? ''));
+
                     $gen = $ai->generateProductDescriptions(
                         $validated['name'],
                         $ingredientsText,
@@ -170,7 +203,7 @@ class ProductsController extends Controller
                         $variants,
                         $allergenNames
                     );
-                    
+
                     // Na criação, sempre sobrescreve se gerado (ou mantém se já tinha)
                     if (!empty($gen['description'])) {
                         $validated['description'] = $gen['description'];
@@ -178,7 +211,7 @@ class ProductsController extends Controller
                     if (!empty($gen['label'])) {
                         $validated['label_description'] = $gen['label'];
                     }
-                    
+
                     // Gerar SEO quando usar "Criar + IA"
                     if ($useAi) {
                         $categoryName = null;
@@ -186,20 +219,20 @@ class ProductsController extends Controller
                             $category = Category::find($validated['category_id']);
                             $categoryName = $category ? $category->name : null;
                         }
-                        
+
                         $ingredients = [];
                         if (!empty($ingredientsText)) {
                             $ingredients = array_filter(array_map('trim', preg_split('/[,\n]+/', $ingredientsText)));
                         }
-                        
+
                         $seoResult = $ai->generateSEO(
                             $validated['name'],
                             $validated['description'] ?? '',
                             $categoryName,
-                            (float)($validated['price'] ?? 0),
+                            (float) ($validated['price'] ?? 0),
                             $ingredients
                         );
-                        
+
                         if ($seoResult['seo_title']) {
                             $validated['seo_title'] = $seoResult['seo_title'];
                         }
@@ -211,10 +244,10 @@ class ProductsController extends Controller
             }
 
             // Sanitização de descrições com valores inválidos ocasionais
-            foreach (['description','label_description'] as $k) {
+            foreach (['description', 'label_description'] as $k) {
                 if (isset($validated[$k]) && is_string($validated[$k])) {
                     $val = trim($validated[$k]);
-                    if (in_array($val, ['json','"json"','{','['])) {
+                    if (in_array($val, ['json', '"json"', '{', '['])) {
                         $validated[$k] = null;
                     }
                 }
@@ -225,14 +258,14 @@ class ProductsController extends Controller
             // Se only_pdv = false ou não enviado, então show_in_catalog = true (aparece no catálogo)
             $validated['show_in_catalog'] = !$request->boolean('only_pdv', false);
             unset($validated['only_pdv']); // Remover do array antes de criar
-            
+
             // Definir valores padrão para campos booleanos se não foram enviados
-            $validated['is_active'] = $request->has('is_active') ? (bool)$validated['is_active'] : true;
-            $validated['is_available'] = $request->has('is_available') ? (bool)$validated['is_available'] : true;
-            $validated['is_featured'] = $request->has('is_featured') ? (bool)($validated['is_featured'] ?? false) : false;
-            $validated['gluten_free'] = $request->has('gluten_free') ? (bool)($validated['gluten_free'] ?? false) : false;
-            $validated['contamination_risk'] = $request->has('contamination_risk') ? (bool)($validated['contamination_risk'] ?? false) : false;
-            
+            $validated['is_active'] = $request->has('is_active') ? (bool) $validated['is_active'] : true;
+            $validated['is_available'] = $request->has('is_available') ? (bool) $validated['is_available'] : true;
+            $validated['is_featured'] = $request->has('is_featured') ? (bool) ($validated['is_featured'] ?? false) : false;
+            $validated['gluten_free'] = $request->has('gluten_free') ? (bool) ($validated['gluten_free'] ?? false) : false;
+            $validated['contamination_risk'] = $request->has('contamination_risk') ? (bool) ($validated['contamination_risk'] ?? false) : false;
+
             // Criar produto ANTES de fazer upload das imagens adicionais
             $product = Product::create($validated);
 
@@ -240,10 +273,10 @@ class ProductsController extends Controller
             $this->syncVariants($request, $product);
 
             // Se o produto ficou com price 0 e existirem variações, usar o menor preço
-            if ((float)$product->price <= 0) {
+            if ((float) $product->price <= 0) {
                 $minVar = \App\Models\ProductVariant::where('product_id', $product->id)->min('price');
                 if ($minVar !== null) {
-                    $product->price = (float)$minVar;
+                    $product->price = (float) $minVar;
                     $product->save();
                 }
             }
@@ -254,17 +287,17 @@ class ProductsController extends Controller
                     foreach ($request->file('images') as $index => $image) {
                         $ext = $image->getClientOriginalExtension();
                         $base = Str::slug($product->name ?: 'produto');
-                        $filename = $base.'-'.$product->id.'-'.($index+1).'-'.time().'.'.$ext;
+                        $filename = $base . '-' . $product->id . '-' . ($index + 1) . '-' . time() . '.' . $ext;
                         $path = $image->storeAs('uploads/products', $filename, 'public');
                         $uploadedImages[] = $path;
-                        
+
                         ProductImage::create([
                             'product_id' => $product->id,
                             'path' => $path,
                             'is_primary' => $index === 0 && !$product->cover_image,
                             'sort_order' => $index,
                         ]);
-                        
+
                         // Otimizar imagem: gerar WebP e thumbnails
                         try {
                             ImageOptimizer::optimize($path);
@@ -296,11 +329,11 @@ class ProductsController extends Controller
             // Sincronizar alérgenos (sempre a partir do array, mesmo que vazio)
             try {
                 $ids = array_map('intval', (array) $request->input('allergen_ids', []));
-                Log::info('Products.store:allergens:received', ['product'=>$validated['name'] ?? null, 'ids'=>$ids]);
+                Log::info('Products.store:allergens:received', ['product' => $validated['name'] ?? null, 'ids' => $ids]);
                 $validIds = \App\Models\Allergen::whereIn('id', $ids)->pluck('id')->all();
                 $product->allergens()->sync($ids);
                 $savedCount = \DB::table('product_allergen')->where('product_id', $product->id)->count();
-                Log::info('Products.store:allergens:synced', ['product_id'=>$product->id, 'saved_count'=>$savedCount, 'valid_ids'=>$validIds]);
+                Log::info('Products.store:allergens:synced', ['product_id' => $product->id, 'saved_count' => $savedCount, 'valid_ids' => $validIds]);
             } catch (\Exception $e) {
                 DB::rollBack();
                 return redirect()
@@ -319,7 +352,7 @@ class ProductsController extends Controller
                 ->with('success', 'Produto criado com sucesso!');
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             // Limpar imagens em caso de erro geral
             if (isset($coverImagePath) && $coverImagePath && Storage::disk('public')->exists($coverImagePath)) {
                 Storage::disk('public')->delete($coverImagePath);
@@ -331,12 +364,12 @@ class ProductsController extends Controller
                     }
                 }
             }
-            
+
             Log::error('Erro ao criar produto', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return redirect()
                 ->back()
                 ->withInput()
@@ -347,7 +380,8 @@ class ProductsController extends Controller
     public function show(Request $request, Product $product)
     {
         try {
-            $product->load(['category', 'allergens', 'images', 'variants' => function($q){ $q->orderBy('sort_order'); }]);
+            $product->load(['category', 'allergens', 'images', 'variants' => function ($q) {
+                $q->orderBy('sort_order'); }]);
 
             // Resposta JSON para modal
             if ($request->wantsJson() || $request->ajax() || str_contains($request->header('Accept'), 'application/json')) {
@@ -355,7 +389,7 @@ class ProductsController extends Controller
                     'id' => $product->id,
                     'name' => $product->name,
                     'sku' => $product->sku,
-                    'price' => (float)$product->price,
+                    'price' => (float) $product->price,
                     'stock' => $product->stock,
                     'description' => $product->description,
                     'category' => $product->category ? [
@@ -363,35 +397,35 @@ class ProductsController extends Controller
                         'name' => $product->category->name,
                     ] : null,
                     'cover_image' => $product->cover_image,
-                    'images' => ($product->images ?? collect())->map(function($img) {
+                    'images' => ($product->images ?? collect())->map(function ($img) {
                         return [
                             'id' => $img->id,
                             'path' => $img->path,
-                            'is_primary' => (bool)$img->is_primary,
+                            'is_primary' => (bool) $img->is_primary,
                         ];
                     })->values(),
-                    'allergens' => ($product->allergens ?? collect())->map(function($alg) {
+                    'allergens' => ($product->allergens ?? collect())->map(function ($alg) {
                         return [
                             'id' => $alg->id,
                             'name' => $alg->name,
                             'group_name' => $alg->group_name,
                         ];
                     })->values(),
-                    'variants' => ($product->variants ?? collect())->map(function($v){
+                    'variants' => ($product->variants ?? collect())->map(function ($v) {
                         return [
                             'id' => $v->id,
                             'name' => $v->name,
-                            'price' => (float)$v->price,
+                            'price' => (float) $v->price,
                             'sku' => $v->sku,
-                            'is_active' => (bool)$v->is_active,
-                            'sort_order' => (int)$v->sort_order,
+                            'is_active' => (bool) $v->is_active,
+                            'sort_order' => (int) $v->sort_order,
                         ];
                     })->values(),
-                    'gluten_free' => (bool)$product->gluten_free,
-                    'contamination_risk' => (bool)$product->contamination_risk,
-                    'is_active' => (bool)$product->is_active,
-                    'is_available' => (bool)$product->is_available,
-                    'is_featured' => (bool)$product->is_featured,
+                    'gluten_free' => (bool) $product->gluten_free,
+                    'contamination_risk' => (bool) $product->contamination_risk,
+                    'is_active' => (bool) $product->is_active,
+                    'is_available' => (bool) $product->is_available,
+                    'is_featured' => (bool) $product->is_featured,
                     'preparation_time' => $product->preparation_time,
                 ]);
             }
@@ -407,7 +441,7 @@ class ProductsController extends Controller
             }
             return view('dashboard.products.show', compact('product'));
         } catch (\Throwable $e) {
-            \Log::error('Erro ao carregar produto para modal', ['id'=>$product->id, 'error'=>$e->getMessage()]);
+            \Log::error('Erro ao carregar produto para modal', ['id' => $product->id, 'error' => $e->getMessage()]);
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['error' => 'failed'], 500);
             }
@@ -418,10 +452,10 @@ class ProductsController extends Controller
     public function edit(Product $product)
     {
         // Garante dados frescos do banco, incluindo variantes
-        $product = $product->fresh(['category','allergens','images','variants']);
+        $product = $product->fresh(['category', 'allergens', 'images', 'variants']);
         $categories = Category::active()->ordered()->get();
         $allergens = Allergen::orderBy('group_name')->orderBy('name')->get()->groupBy('group_name');
-        
+
         // Garantir que selectedAllergens seja sempre um array, mesmo se não houver alérgenicos
         $selectedAllergens = [];
         try {
@@ -429,19 +463,19 @@ class ProductsController extends Controller
             if (!$product->relationLoaded('allergens')) {
                 $product->load('allergens');
             }
-            
+
             // Tentar acessar de forma segura
             if ($product->allergens && is_countable($product->allergens)) {
                 $selectedAllergens = $product->allergens->pluck('id')->toArray();
             }
-            \Log::info('Products.edit:selectedAllergens', ['product_id'=>$product->id, 'ids'=>$selectedAllergens]);
+            \Log::info('Products.edit:selectedAllergens', ['product_id' => $product->id, 'ids' => $selectedAllergens]);
             // Se ainda vazio, buscar diretamente no pivô
             if (empty($selectedAllergens)) {
                 $selectedAllergens = \DB::table('product_allergen')
                     ->where('product_id', $product->id)
                     ->pluck('allergen_id')
                     ->toArray();
-                \Log::info('Products.edit:selectedAllergens:pivot', ['product_id'=>$product->id, 'ids'=>$selectedAllergens]);
+                \Log::info('Products.edit:selectedAllergens:pivot', ['product_id' => $product->id, 'ids' => $selectedAllergens]);
             }
         } catch (\Exception $e) {
             // Em caso de erro, tentar via query direta
@@ -460,7 +494,7 @@ class ProductsController extends Controller
                 ]);
             }
         }
-        
+
         return view('dashboard.products.edit', compact('product', 'categories', 'allergens', 'selectedAllergens'));
     }
 
@@ -468,7 +502,14 @@ class ProductsController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:100|unique:products,sku,' . $product->id,
+            'sku' => [
+                'nullable',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('products')->ignore($product->id)->where(function ($query) {
+                    return $query->where('client_id', auth()->user()->client_id);
+                })
+            ],
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'weight_grams' => 'nullable|integer|min:0',
@@ -492,6 +533,7 @@ class ProductsController extends Controller
             'allergen_ids.*' => 'exists:allergens,id',
             'nutritional_info' => 'nullable|array',
             'ingredients' => 'nullable|string',
+            'uses_baker_percentage' => 'boolean',
         ]);
 
         try {
@@ -499,7 +541,9 @@ class ProductsController extends Controller
 
             // Mesclar ingredientes em nutritional_info
             $nutri = $validated['nutritional_info'] ?? ($product->nutritional_info ?? []);
-            if ($request->filled('ingredients')) { $nutri['ingredients'] = $request->input('ingredients'); }
+            if ($request->filled('ingredients')) {
+                $nutri['ingredients'] = $request->input('ingredients');
+            }
             $validated['nutritional_info'] = $nutri;
 
             // Upload da nova imagem de capa (se houver)
@@ -510,22 +554,22 @@ class ProductsController extends Controller
                     'file_size' => $request->file('cover_image')->getSize(),
                     'file_mime' => $request->file('cover_image')->getMimeType(),
                 ]);
-                
+
                 // Deletar imagem antiga se existir
                 if ($product->cover_image && Storage::disk('public')->exists($product->cover_image)) {
                     Storage::disk('public')->delete($product->cover_image);
                     Log::info('Products.update:cover_image:deleted_old', ['path' => $product->cover_image]);
                 }
-                
+
                 $ext = $request->file('cover_image')->getClientOriginalExtension();
-                $base = Str::slug($validated['name'] ?? $product->name ?? ('produto-'.$product->id));
-                $filename = $base.'-cover-'.time().'.'.$ext;
+                $base = Str::slug($validated['name'] ?? $product->name ?? ('produto-' . $product->id));
+                $filename = $base . '-cover-' . time() . '.' . $ext;
                 $validated['cover_image'] = $request->file('cover_image')->storeAs('uploads/products', $filename, 'public');
-                
+
                 Log::info('Products.update:cover_image:saved', [
                     'new_path' => $validated['cover_image'],
                 ]);
-                
+
                 // Otimizar imagem: gerar WebP e thumbnails
                 try {
                     ImageOptimizer::optimize($validated['cover_image']);
@@ -545,43 +589,43 @@ class ProductsController extends Controller
 
             // Auto-IA no update: apenas se usar "Salvar + IA" OU se informações relevantes mudarem
             $useAi = $request->input('action') === 'save_ai';
-            $oldIngredients = (string)($product->nutritional_info['ingredients'] ?? '');
-            $newIngredients = (string)($nutri['ingredients'] ?? '');
-            $oldWeight = (int)($product->weight_grams ?? 0);
-            $newWeight = (int)($validated['weight_grams'] ?? 0);
+            $oldIngredients = (string) ($product->nutritional_info['ingredients'] ?? '');
+            $newIngredients = (string) ($nutri['ingredients'] ?? '');
+            $oldWeight = (int) ($product->weight_grams ?? 0);
+            $newWeight = (int) ($validated['weight_grams'] ?? 0);
             $ingredientsChanged = trim($oldIngredients) !== trim($newIngredients);
             $weightChanged = $oldWeight !== $newWeight;
-            
+
             if ($useAi || ($ingredientsChanged && trim($newIngredients) !== '') || $weightChanged) {
                 $ai = new OpenAIService();
                 if ($ai->isConfigured()) {
                     // Se usar "Salvar + IA", ignorar descrições do formulário para usar apenas a gerada
                     if ($useAi) {
                         // Guardar descrição atual apenas como contexto, mas não usar no validated
-                        $existingDescForContext = trim((string)($validated['description'] ?? $product->description ?? ''));
+                        $existingDescForContext = trim((string) ($validated['description'] ?? $product->description ?? ''));
                     } else {
-                        $existingDescForContext = trim((string)($product->description ?? ''));
+                        $existingDescForContext = trim((string) ($product->description ?? ''));
                     }
                     // Buscar variantes do produto
                     $variants = [];
                     if ($product->relationLoaded('variants')) {
-                        $variants = $product->variants->map(function($v) {
+                        $variants = $product->variants->map(function ($v) {
                             return [
                                 'name' => $v->name ?? '',
-                                'weight_grams' => (int)($v->weight_grams ?? 0),
-                                'price' => (float)($v->price ?? 0)
+                                'weight_grams' => (int) ($v->weight_grams ?? 0),
+                                'price' => (float) ($v->price ?? 0)
                             ];
                         })->filter(fn($v) => !empty($v['name']))->values()->all();
                     } else {
-                        $variants = $product->variants()->get(['name', 'weight_grams', 'price'])->map(function($v) {
+                        $variants = $product->variants()->get(['name', 'weight_grams', 'price'])->map(function ($v) {
                             return [
                                 'name' => $v->name ?? '',
-                                'weight_grams' => (int)($v->weight_grams ?? 0),
-                                'price' => (float)($v->price ?? 0)
+                                'weight_grams' => (int) ($v->weight_grams ?? 0),
+                                'price' => (float) ($v->price ?? 0)
                             ];
                         })->filter(fn($v) => !empty($v['name']))->values()->all();
                     }
-                    
+
                     // Buscar alergênicos do produto
                     $allergenNames = [];
                     if ($product->relationLoaded('allergens') && $product->allergens) {
@@ -589,7 +633,7 @@ class ProductsController extends Controller
                     } else {
                         $allergenNames = $product->allergens()->pluck('name')->filter()->values()->all();
                     }
-                    
+
                     $gen = $ai->generateProductDescriptions(
                         $validated['name'],
                         trim($newIngredients) !== '' ? $newIngredients : $oldIngredients,
@@ -598,16 +642,16 @@ class ProductsController extends Controller
                         $variants,
                         $allergenNames
                     );
-                    
+
                     // No update: se usar "Salvar + IA", sempre sobrescreve. Caso contrário, só preenche se vazio
                     if ($useAi) {
                         // Se usou "Salvar + IA", SEMPRE substitui com o resultado gerado (ignora o que veio do formulário)
                         Log::info('Products.update:save_ai_applying', [
-                            'product_id'=>$product->id,
-                            'gen_description'=>!empty($gen['description']),
-                            'gen_label'=>!empty($gen['label']),
-                            'desc_len'=>mb_strlen($gen['description'] ?? ''),
-                            'label_len'=>mb_strlen($gen['label'] ?? '')
+                            'product_id' => $product->id,
+                            'gen_description' => !empty($gen['description']),
+                            'gen_label' => !empty($gen['label']),
+                            'desc_len' => mb_strlen($gen['description'] ?? ''),
+                            'label_len' => mb_strlen($gen['label'] ?? '')
                         ]);
                         if (!empty($gen['description'])) {
                             $validated['description'] = $gen['description'];
@@ -615,27 +659,27 @@ class ProductsController extends Controller
                         if (!empty($gen['label'])) {
                             $validated['label_description'] = $gen['label'];
                         }
-                        
+
                         // Gerar SEO quando usar "Salvar + IA"
                         $categoryName = null;
                         if ($product->category_id) {
                             $category = Category::find($product->category_id);
                             $categoryName = $category ? $category->name : null;
                         }
-                        
+
                         $ingredients = [];
                         if (!empty($newIngredients)) {
                             $ingredients = array_filter(array_map('trim', preg_split('/[,\n]+/', $newIngredients)));
                         }
-                        
+
                         $seoResult = $ai->generateSEO(
                             $validated['name'],
                             $validated['description'] ?? '',
                             $categoryName,
-                            (float)($validated['price'] ?? $product->price ?? 0),
+                            (float) ($validated['price'] ?? $product->price ?? 0),
                             $ingredients
                         );
-                        
+
                         if ($seoResult['seo_title']) {
                             $validated['seo_title'] = $seoResult['seo_title'];
                         }
@@ -655,10 +699,10 @@ class ProductsController extends Controller
             }
 
             // Sanitização de descrições com valores inválidos ocasionais
-            foreach (['description','label_description'] as $k) {
+            foreach (['description', 'label_description'] as $k) {
                 if (isset($validated[$k]) && is_string($validated[$k])) {
                     $val = trim($validated[$k]);
-                    if (in_array($val, ['json','"json"','{','['])) {
+                    if (in_array($val, ['json', '"json"', '{', '['])) {
                         $validated[$k] = null;
                     }
                 }
@@ -666,21 +710,19 @@ class ProductsController extends Controller
 
             // Atualizar produto
             // Converter only_pdv para show_in_catalog (invertido)
-            // Se only_pdv = true, então show_in_catalog = false (não aparece no catálogo)
-            // Se only_pdv = false ou não enviado, então show_in_catalog = true (aparece no catálogo)
             $validated['show_in_catalog'] = !$request->boolean('only_pdv', false);
-            unset($validated['only_pdv']); // Remover do array antes de atualizar
-            
+            unset($validated['only_pdv']);
+
             $product->update($validated);
 
             // Variantes (opcional)
             $this->syncVariants($request, $product);
 
             // Se price permanecer 0 e houver variações, sincronizar com o menor preço
-            if ((float)$product->price <= 0) {
+            if ((float) $product->price <= 0) {
                 $minVar = \App\Models\ProductVariant::where('product_id', $product->id)->min('price');
                 if ($minVar !== null) {
-                    $product->price = (float)$minVar;
+                    $product->price = (float) $minVar;
                     $product->save();
                 }
             }
@@ -691,7 +733,7 @@ class ProductsController extends Controller
                 foreach ($request->file('images') as $index => $image) {
                     $ext = $image->getClientOriginalExtension();
                     $base = Str::slug($product->name ?: 'produto');
-                    $filename = $base.'-'.$product->id.'-'.($existingCount + $index + 1).'-'.time().'.'.$ext;
+                    $filename = $base . '-' . $product->id . '-' . ($existingCount + $index + 1) . '-' . time() . '.' . $ext;
                     $path = $image->storeAs('uploads/products', $filename, 'public');
                     ProductImage::create([
                         'product_id' => $product->id,
@@ -699,7 +741,7 @@ class ProductsController extends Controller
                         'is_primary' => false,
                         'sort_order' => $existingCount + $index,
                     ]);
-                    
+
                     // Otimizar imagem: gerar WebP e thumbnails
                     try {
                         ImageOptimizer::optimize($path);
@@ -714,11 +756,11 @@ class ProductsController extends Controller
 
             // Sincronizar alérgenos (sempre a partir do array, mesmo que vazio)
             $ids = array_map('intval', (array) $request->input('allergen_ids', []));
-            Log::info('Products.update:allergens:received', ['product_id'=>$product->id, 'ids'=>$ids]);
+            Log::info('Products.update:allergens:received', ['product_id' => $product->id, 'ids' => $ids]);
             $validIds = \App\Models\Allergen::whereIn('id', $ids)->pluck('id')->all();
             $product->allergens()->sync($ids);
             $savedCount = \DB::table('product_allergen')->where('product_id', $product->id)->count();
-            Log::info('Products.update:allergens:synced', ['product_id'=>$product->id, 'saved_count'=>$savedCount, 'valid_ids'=>$validIds]);
+            Log::info('Products.update:allergens:synced', ['product_id' => $product->id, 'saved_count' => $savedCount, 'valid_ids' => $validIds]);
 
             DB::commit();
 
@@ -742,33 +784,37 @@ class ProductsController extends Controller
      */
     private function syncVariants(Request $request, Product $product): void
     {
-        $names  = (array)$request->input('variant_name', []);
-        $prices = (array)$request->input('variant_price', []);
-        $weights= (array)$request->input('variant_weight', []);
-        $skus   = (array)$request->input('variant_sku', []);
-        $actives= (array)$request->input('variant_active', []); // array de indices marcados "on"
-        $orders = (array)$request->input('variant_sort', []);
-        $ids    = (array)$request->input('variant_id', []);
+        $names = (array) $request->input('variant_name', []);
+        $prices = (array) $request->input('variant_price', []);
+        $weights = (array) $request->input('variant_weight', []);
+        $skus = (array) $request->input('variant_sku', []);
+        $actives = (array) $request->input('variant_active', []); // array de indices marcados "on"
+        $orders = (array) $request->input('variant_sort', []);
+        $ids = (array) $request->input('variant_id', []);
 
         $keptIds = [];
         foreach ($names as $idx => $name) {
-            $name = trim((string)$name);
-            if ($name === '') continue;
+            $name = trim((string) $name);
+            if ($name === '')
+                continue;
             // Se o checkbox está presente no array, está marcado (true), caso contrário false
             $isActive = isset($actives[$idx]) && $actives[$idx] !== null && $actives[$idx] !== '0' && $actives[$idx] !== '';
             $data = [
                 'product_id' => $product->id,
                 'name' => $name,
-                'price' => (float)($prices[$idx] ?? 0),
-                'weight_grams' => ($wg = (int)($weights[$idx] ?? 0)) > 0 ? $wg : null,
-                'sku' => trim((string)($skus[$idx] ?? '')) ?: null,
+                'price' => (float) ($prices[$idx] ?? 0),
+                'weight_grams' => ($wg = (int) ($weights[$idx] ?? 0)) > 0 ? $wg : null,
+                'sku' => trim((string) ($skus[$idx] ?? '')) ?: null,
                 'is_active' => $isActive,
-                'sort_order' => (int)($orders[$idx] ?? 0),
+                'sort_order' => (int) ($orders[$idx] ?? 0),
             ];
-            $rowId = (int)($ids[$idx] ?? 0);
+            $rowId = (int) ($ids[$idx] ?? 0);
             if ($rowId > 0) {
-                $variant = ProductVariant::where('product_id',$product->id)->where('id',$rowId)->first();
-                if ($variant) { $variant->update($data); $keptIds[] = $variant->id; }
+                $variant = ProductVariant::where('product_id', $product->id)->where('id', $rowId)->first();
+                if ($variant) {
+                    $variant->update($data);
+                    $keptIds[] = $variant->id;
+                }
             } else {
                 $variant = ProductVariant::create($data);
                 $keptIds[] = $variant->id;
@@ -776,10 +822,10 @@ class ProductsController extends Controller
         }
         // excluir variantes removidas
         if (!empty($keptIds)) {
-            ProductVariant::where('product_id',$product->id)->whereNotIn('id',$keptIds)->delete();
+            ProductVariant::where('product_id', $product->id)->whereNotIn('id', $keptIds)->delete();
         } else {
             // se nenhum enviado, remove todas
-            ProductVariant::where('product_id',$product->id)->delete();
+            ProductVariant::where('product_id', $product->id)->delete();
         }
     }
 
@@ -787,33 +833,33 @@ class ProductsController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             // Copiar dados básicos do produto
             $newProductData = $product->toArray();
-            
+
             // Remover campos que não devem ser copiados
             unset($newProductData['id']);
             unset($newProductData['created_at']);
             unset($newProductData['updated_at']);
-            
+
             // Modificar nome para indicar que é cópia (remover sufixo " (Cópia)" se existir)
             $baseName = preg_replace('/\s*\(Cópia\)\s*$/', '', $product->name);
             $newProductData['name'] = $baseName . ' (Cópia)';
-            
+
             // Criar SKU único se houver
             if (!empty($newProductData['sku'])) {
                 $newProductData['sku'] = $newProductData['sku'] . '-COPY-' . time();
             }
-            
+
             // Criar novo produto
             $newProduct = Product::create($newProductData);
-            
+
             // Copiar alérgenos
             if ($product->allergens && $product->allergens->count() > 0) {
                 $allergenIds = $product->allergens->pluck('id')->toArray();
                 $newProduct->allergens()->attach($allergenIds);
             }
-            
+
             // Copiar variantes
             if ($product->variants && $product->variants->count() > 0) {
                 foreach ($product->variants as $variant) {
@@ -822,29 +868,29 @@ class ProductsController extends Controller
                     unset($variantData['product_id']);
                     unset($variantData['created_at']);
                     unset($variantData['updated_at']);
-                    
+
                     // Modificar SKU da variante se houver
                     if (!empty($variantData['sku'])) {
                         $variantData['sku'] = $variantData['sku'] . '-COPY-' . time();
                     }
-                    
+
                     $variantData['product_id'] = $newProduct->id;
                     ProductVariant::create($variantData);
                 }
             }
-            
+
             // Copiar imagem de capa
             if ($product->cover_image && Storage::disk('public')->exists($product->cover_image)) {
                 $extension = pathinfo($product->cover_image, PATHINFO_EXTENSION);
                 $originalPath = pathinfo($product->cover_image, PATHINFO_DIRNAME) . '/' . pathinfo($product->cover_image, PATHINFO_FILENAME);
                 $newFilename = Str::slug($newProduct->name) . '-cover-' . time() . '.' . $extension;
                 $newPath = 'uploads/products/' . $newFilename;
-                
+
                 // Copiar arquivo
                 Storage::disk('public')->copy($product->cover_image, $newPath);
                 $newProduct->update(['cover_image' => $newPath]);
             }
-            
+
             // Copiar imagens adicionais
             if ($product->images && $product->images->count() > 0) {
                 foreach ($product->images as $image) {
@@ -852,10 +898,10 @@ class ProductsController extends Controller
                         $extension = pathinfo($image->path, PATHINFO_EXTENSION);
                         $newFilename = Str::slug($newProduct->name) . '-' . $newProduct->id . '-' . time() . '-' . uniqid() . '.' . $extension;
                         $newPath = 'uploads/products/' . $newFilename;
-                        
+
                         // Copiar arquivo
                         Storage::disk('public')->copy($image->path, $newPath);
-                        
+
                         // Criar registro da imagem
                         ProductImage::create([
                             'product_id' => $newProduct->id,
@@ -866,13 +912,13 @@ class ProductsController extends Controller
                     }
                 }
             }
-            
+
             DB::commit();
-            
+
             return redirect()
                 ->route('dashboard.products.edit', $newProduct)
                 ->with('success', 'Produto duplicado com sucesso! Você pode editar as informações agora.');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erro ao duplicar produto', [
@@ -880,7 +926,7 @@ class ProductsController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return redirect()
                 ->route('dashboard.products.show', $product)
                 ->with('error', 'Erro ao duplicar produto: ' . $e->getMessage());
@@ -903,7 +949,7 @@ class ProductsController extends Controller
                 }
             }
 
-        $product->delete();
+            $product->delete();
 
             DB::commit();
 
@@ -926,9 +972,9 @@ class ProductsController extends Controller
             if ($variant->product_id !== $product->id) {
                 return response()->json(['success' => false, 'message' => 'Variante não pertence a este produto'], 403);
             }
-            
+
             $variant->delete();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Variante excluída com sucesso'
@@ -939,7 +985,7 @@ class ProductsController extends Controller
                 'variant_id' => $variant->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao excluir variante: ' . $e->getMessage()
@@ -976,7 +1022,7 @@ class ProductsController extends Controller
 
             // Remover primary de todas
             $product->images()->update(['is_primary' => false]);
-            
+
             // Definir como primary
             $image->update(['is_primary' => true]);
 
@@ -1043,7 +1089,7 @@ class ProductsController extends Controller
                 $request->name,
                 $request->description ?? '',
                 $categoryName,
-                $request->price ? (float)$request->price : null,
+                $request->price ? (float) $request->price : null,
                 $ingredients
             );
 

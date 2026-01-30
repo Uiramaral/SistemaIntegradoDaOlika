@@ -7,7 +7,7 @@
     overflow-x: hidden;
 }
 
-.dashboard-wrapper .space-y-3 > * {
+.dashboard-wrapper .space-y-3>* {
     min-width: 0;
     flex-shrink: 0;
 }
@@ -19,7 +19,7 @@
     overflow-x: hidden;
 }
 
-.dashboard-wrapper .space-y-2 > * {
+.dashboard-wrapper .space-y-2>* {
     min-width: 0;
     flex-shrink: 0;
 }
@@ -38,11 +38,11 @@
 
 /* Em mobile, manter ordem: Pedidos primeiro, depois Produtos e Categorias */
 @media (max-width: 1023px) {
-    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > .order-1 {
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3>.order-1 {
         order: 1;
     }
-    
-    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > .order-2 {
+
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3>.order-2 {
         order: 2;
     }
 }
@@ -68,4 +68,43 @@
 .dashboard-wrapper .space-y-3::-webkit-scrollbar-thumb:hover,
 .dashboard-wrapper .space-y-2::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
+}
+
+/* Correção global para ícones em campos de busca e inputs */
+.relative>i.absolute.left-3 {
+    pointer-events: none;
+    left: 1rem !important;
+}
+
+@media (min-width: 1024px) {
+    .relative>i.absolute.left-3 {
+        left: 1.25rem !important;
+    }
+}
+
+.relative>input.pl-10,
+.relative>input.form-input.pl-10,
+.relative>input.input-copycat.pl-10 {
+    padding-left: 3.5rem !important;
+}
+
+@media (min-width: 1024px) {
+    .relative>input.pl-10,
+    .relative>input.form-input.pl-10,
+    .relative>input.input-copycat.pl-10 {
+        padding-left: 4.5rem !important;
+    }
+}
+
+/* Classes utilitárias faltantes no admin layout */
+.top-1\/2 {
+    top: 50% !important;
+}
+
+.\-translate-y-1\/2 {
+    transform: translateY(-50%) !important;
+}
+
+.pointer-events-none {
+    pointer-events: none !important;
 }

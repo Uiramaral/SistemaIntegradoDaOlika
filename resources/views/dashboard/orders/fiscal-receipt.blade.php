@@ -531,7 +531,7 @@ async function printViaEscPos() {
         
         console.log('🖨️ Usando impressora:', printer);
         
-        const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
+        const response = await fetch(`/orders/${orderId}/fiscal-receipt/escpos`, {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',

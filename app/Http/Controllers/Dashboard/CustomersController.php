@@ -12,26 +12,70 @@ class CustomersController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->get('q', '');
-        
-        // Usar Model Customer que já tem o global scope de client_id
+        $search = trim((string) $request->get('q', ''));
+        $fiado = trim((string) $request->get('fiado', ''));
+        $revenda = trim((string) $request->get('revenda', ''));
+        $ordenar = trim((string) $request->get('ordenar', 'nome')) ?: 'nome';
+
         $query = \App\Models\Customer::query();
-        
-        if ($search) {
-            $query->where(function($q) use ($search) {
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%");
             });
         }
+
+        // Só filtra por tipo quando for explicitamente "1" (Revenda) ou "0" (Consumidor). "Todos" / vazio = não filtra.
+        if ($revenda === '1') {
+            $query->where('is_wholesale', 1);
+        } elseif ($revenda === '0') {
+            $query->where('is_wholesale', 0);
+        }
+
+        $clientId = currentClientId();
+        $debtSub = '(SELECT COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0) FROM customer_debts WHERE customer_debts.customer_id = customers.id AND status = "open")';
         
-        $customers = $query->select('customers.*', 
-                DB::raw('(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.payment_status IN ("paid", "approved")) as total_orders'),
-                DB::raw('(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND payment_status IN ("paid", "approved")) as total_spent'),
-                DB::raw('(SELECT COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0) FROM customer_debts WHERE customer_debts.customer_id = customers.id AND status = "open") as total_debts')
-            )
-            ->orderByDesc('id')
-            ->paginate(30);
+        // Construir condições para filtrar por client_id se existir
+        // Usar cast para int para segurança (client_id é sempre inteiro)
+        $clientIdSafe = $clientId ? (int)$clientId : null;
+        
+        if ($clientIdSafe) {
+            $query->select(
+                'customers.*',
+                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe}) as total_orders"),
+                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe}) as total_spent"),
+                DB::raw("{$debtSub} as total_debts")
+            );
+        } else {
+            $query->select(
+                'customers.*',
+                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id) as total_orders"),
+                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id) as total_spent"),
+                DB::raw("{$debtSub} as total_debts")
+            );
+        }
+
+        // Só filtra por fiado quando for explicitamente "com" ou "sem". "Todos" / vazio = não filtra.
+        if ($fiado === 'com') {
+            $query->whereRaw("({$debtSub}) > 0");
+        } elseif ($fiado === 'sem') {
+            $query->whereRaw("({$debtSub}) <= 0");
+        }
+
+        if ($ordenar === 'nome') {
+            $query->orderBy('name', 'asc');
+        } elseif ($ordenar === 'ultimo') {
+            $query->orderByRaw('last_order_at IS NULL ASC')->orderByDesc('last_order_at')->orderByDesc('id');
+        } elseif ($ordenar === 'gasto') {
+            $query->orderByRaw('total_spent DESC')->orderBy('name', 'asc');
+        } elseif ($ordenar === 'pedidos') {
+            $query->orderByRaw('total_orders DESC')->orderBy('name', 'asc');
+        } else {
+            $query->orderBy('name', 'asc');
+        }
+
+        $customers = $query->paginate(30)->withQueryString();
 
         return view('dashboard.customers.index', compact('customers', 'search'));
     }
@@ -102,10 +146,14 @@ class CustomersController extends Controller
             }
         }
 
-        $orders = DB::table('orders')
-            ->where('customer_id', $id)
-            ->orderByDesc('id')
-            ->paginate(10);
+        $clientId = currentClientId();
+        
+        // Buscar pedidos considerando client_id
+        $ordersQuery = DB::table('orders')->where('customer_id', $id);
+        if ($clientId) {
+            $ordersQuery->where('client_id', $clientId);
+        }
+        $orders = $ordersQuery->orderByDesc('id')->paginate(10);
 
         $openDebts = \App\Models\CustomerDebt::with('order')
             ->where('customer_id', $id)
@@ -121,14 +169,18 @@ class CustomersController extends Controller
             ->limit(50)
             ->get();
 
-        // Calcular estatísticas de pedidos
-        $totalOrders = DB::table('orders')
-            ->where('customer_id', $id)
-            ->count();
+        // Calcular estatísticas de pedidos considerando client_id
+        $totalOrdersQuery = DB::table('orders')->where('customer_id', $id);
+        if ($clientId) {
+            $totalOrdersQuery->where('client_id', $clientId);
+        }
+        $totalOrders = $totalOrdersQuery->count();
         
-        $totalOrdersValue = DB::table('orders')
-            ->where('customer_id', $id)
-            ->sum('final_amount');
+        $totalOrdersValueQuery = DB::table('orders')->where('customer_id', $id);
+        if ($clientId) {
+            $totalOrdersValueQuery->where('client_id', $clientId);
+        }
+        $totalOrdersValue = $totalOrdersValueQuery->sum('final_amount');
         
         $averageOrderValue = $totalOrders > 0 ? ($totalOrdersValue / $totalOrders) : 0;
 
@@ -201,7 +253,29 @@ class CustomersController extends Controller
 
     public function destroy($id)
     {
-        DB::table('customers')->where('id', $id)->delete();
+        $customer = \App\Models\Customer::findOrFail($id);
+
+        try {
+            DB::transaction(function () use ($customer) {
+                // Remover débitos (fiado) antes do cliente – evita violação de FK
+                if (\Illuminate\Support\Facades\Schema::hasTable('customer_debts')) {
+                    \App\Models\CustomerDebt::where('customer_id', $customer->id)->delete();
+                }
+                // Ajustes de débito referenciam customers; se existir tabela, remover primeiro por segurança
+                if (\Illuminate\Support\Facades\Schema::hasTable('customer_debt_adjustments')) {
+                    DB::table('customer_debt_adjustments')->where('customer_id', $customer->id)->delete();
+                }
+                $customer->delete();
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::warning('CustomersController::destroy – erro ao excluir cliente', [
+                'customer_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->route('dashboard.customers.index')
+                ->with('error', 'Não foi possível excluir o cliente. Ele pode ter pedidos, débitos ou outros vínculos. Remova-os antes ou entre em contato com o suporte.');
+        }
+
         return redirect()->route('dashboard.customers.index')->with('success', 'Cliente excluído com sucesso!');
     }
 

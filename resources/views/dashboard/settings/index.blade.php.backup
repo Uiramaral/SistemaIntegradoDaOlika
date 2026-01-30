@@ -1,0 +1,479 @@
+@extends('dashboard.layouts.app')
+
+@section('page_title', 'Configurações')
+@section('page_subtitle', 'Ajuste integrações e chaves de API do sistema')
+
+@push('styles')
+<style>
+    .tab-button {
+        @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all;
+    }
+    .tab-button.active {
+        @apply bg-white text-foreground shadow-sm border border-gray-200;
+    }
+    .tab-button.inactive {
+        @apply bg-transparent text-gray-600 hover:text-foreground;
+    }
+    input[type="color"] {
+        cursor: pointer;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        border: none;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch {
+        border: 2px solid #d1d5db;
+        border-radius: 0.5rem;
+    }
+    input[type="color"]::-moz-color-swatch {
+        border: 2px solid #d1d5db;
+        border-radius: 0.5rem;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="space-y-6">
+    @if(session('success'))
+        <div class="rounded-lg border bg-green-50 text-green-900 px-4 py-3">{{ session('success') }}</div>
+    @endif
+
+    @if($errors->any())
+        <div class="rounded-lg border bg-red-50 text-red-900 px-4 py-3">
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <!-- Abas de Navegação -->
+    <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+        <button class="tab-button active" data-tab="geral" id="tab-geral">
+            Geral
+        </button>
+        <button class="tab-button inactive" data-tab="personalizacao" id="tab-personalizacao">
+            Personalização
+        </button>
+    </div>
+
+    <!-- Conteúdo da Aba Geral -->
+    <div id="content-geral" class="tab-content">
+        <div class="space-y-6">
+            <!-- Informações da Empresa -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div class="flex flex-col space-y-1.5 p-6 border-b">
+                    <h3 class="text-xl font-semibold leading-none tracking-tight">📋 Informações da Empresa</h3>
+                    <p class="text-sm text-muted-foreground">Dados básicos da sua empresa/confeitaria</p>
+                </div>
+                <form action="{{ route('dashboard.settings.general.save') }}" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="company_name">Nome da Empresa / Confeitaria *</label>
+                            <input name="company_name" id="company_name" value="{{ $generalSettings['company_name'] ?? '' }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   placeholder="Ex.: Confeitaria Pro" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="company_phone">Telefone / WhatsApp *</label>
+                            <input name="company_phone" id="company_phone" value="{{ $generalSettings['company_phone'] ?? '' }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   placeholder="(11) 99999-9999" required>
+                            <p class="text-xs text-muted-foreground">Usado para notificações via WhatsApp</p>
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-sm font-medium" for="company_email">E-mail *</label>
+                            <input type="email" name="company_email" id="company_email" value="{{ $generalSettings['company_email'] ?? '' }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   placeholder="contato@confeitaria.com" required>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6">Salvar Informações</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Configurações Regionais -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div class="flex flex-col space-y-1.5 p-6 border-b">
+                    <h3 class="text-xl font-semibold leading-none tracking-tight">🌍 Configurações Regionais</h3>
+                    <p class="text-sm text-muted-foreground">Idioma e moeda do sistema</p>
+                </div>
+                <form action="{{ route('dashboard.settings.general.save') }}" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="language">Idioma</label>
+                            <select name="language" id="language" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                <option value="pt-BR" {{ ($generalSettings['language'] ?? 'pt-BR') === 'pt-BR' ? 'selected' : '' }}>Português (Brasil)</option>
+                                <option value="en" {{ ($generalSettings['language'] ?? '') === 'en' ? 'selected' : '' }}>English</option>
+                                <option value="es" {{ ($generalSettings['language'] ?? '') === 'es' ? 'selected' : '' }}>Español</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="currency">Moeda</label>
+                            <select name="currency" id="currency" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                <option value="BRL" {{ ($generalSettings['currency'] ?? 'BRL') === 'BRL' ? 'selected' : '' }}>Real (R$)</option>
+                                <option value="USD" {{ ($generalSettings['currency'] ?? '') === 'USD' ? 'selected' : '' }}>Dólar (US$)</option>
+                                <option value="EUR" {{ ($generalSettings['currency'] ?? '') === 'EUR' ? 'selected' : '' }}>Euro (€)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6">Salvar Configurações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo da Aba Personalização -->
+    <div id="content-personalizacao" class="tab-content hidden">
+        <div class="space-y-6">
+            <!-- Cor do Tema -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div class="flex flex-col space-y-1.5 p-6 border-b">
+                    <h3 class="text-xl font-semibold leading-none tracking-tight">🎨 Cor do Tema</h3>
+                    <p class="text-sm text-muted-foreground">Escolha a cor principal do seu sistema</p>
+                </div>
+                <form action="{{ route('dashboard.settings.personalization.save') }}" method="POST" class="p-6 space-y-6">
+                    @csrf
+                    @php
+                        $selectedColor = $personalizationSettings['theme_color'] ?? '#f59e0b';
+                    @endphp
+                    
+                    <!-- Color Picker Visual -->
+                    <div class="space-y-3">
+                        <label class="text-sm font-medium block">Escolha uma cor personalizada</label>
+                        <div class="flex items-center gap-4">
+                            <input type="color" 
+                                   id="custom_color_picker" 
+                                   value="{{ $selectedColor }}"
+                                   class="w-20 h-20 rounded-lg border-2 border-gray-300 cursor-pointer hover:border-gray-400 transition-all"
+                                   onchange="updateColorFromPicker(this.value)">
+                            <div class="flex-1">
+                                <input type="text" 
+                                       id="theme_color_input" 
+                                       name="theme_color" 
+                                       value="{{ $selectedColor }}"
+                                       pattern="^#[0-9A-Fa-f]{6}$"
+                                       class="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                                       placeholder="#f59e0b"
+                                       onchange="updateColorFromInput(this.value)">
+                                <p class="text-xs text-muted-foreground mt-1">Digite o código hexadecimal da cor (ex: #f59e0b)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cores Pré-definidas -->
+                    <div class="space-y-3">
+                        <label class="text-sm font-medium block">Ou escolha uma cor pré-definida</label>
+                        <div class="grid grid-cols-4 md:grid-cols-8 gap-3">
+                            @php
+                                $colors = [
+                                    ['name' => 'Rosa', 'value' => '#f472b6'],
+                                    ['name' => 'Azul', 'value' => '#3b82f6'],
+                                    ['name' => 'Verde', 'value' => '#10b981'],
+                                    ['name' => 'Roxo', 'value' => '#8b5cf6'],
+                                    ['name' => 'Laranja', 'value' => '#f97316'],
+                                    ['name' => 'Vermelho', 'value' => '#ef4444'],
+                                    ['name' => 'Amarelo', 'value' => '#eab308'],
+                                    ['name' => 'Turquesa', 'value' => '#14b8a6'],
+                                ];
+                            @endphp
+                            @foreach($colors as $color)
+                                <button type="button" 
+                                        class="relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-110 {{ $selectedColor === $color['value'] ? 'border-gray-800 ring-2 ring-offset-2' : 'border-gray-300 hover:border-gray-400' }}" 
+                                        style="background-color: {{ $color['value'] }}"
+                                        data-color="{{ $color['value'] }}" 
+                                        onclick="selectPresetColor('{{ $color['value'] }}')"
+                                        title="{{ $color['name'] }}">
+                                    @if($selectedColor === $color['value'])
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Preview da Cor -->
+                    <div class="space-y-2 p-4 bg-gray-50 rounded-lg border">
+                        <p class="text-sm font-medium text-gray-700">Preview da cor selecionada:</p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-16 h-16 rounded-lg border-2 border-gray-300" id="color_preview" style="background-color: {{ $selectedColor }}"></div>
+                            <div>
+                                <p class="text-sm font-mono text-gray-600" id="color_code">{{ $selectedColor }}</p>
+                                <p class="text-xs text-gray-500">Esta cor será aplicada em botões, links e elementos principais</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6">Salvar Cor do Tema</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Logo e Favicon -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div class="flex flex-col space-y-1.5 p-6 border-b">
+                    <h3 class="text-xl font-semibold leading-none tracking-tight">🖼️ Logo e Favicon</h3>
+                    <p class="text-sm text-muted-foreground">Personalize a identidade visual do seu estabelecimento</p>
+                </div>
+                <form action="{{ route('dashboard.settings.personalization.save') }}" method="POST" enctype="multipart/form-data" class="p-6 pt-0 space-y-4">
+                    @csrf
+                    <div class="space-y-4">
+                        <!-- Upload de Logo -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="logo">Logo</label>
+                            <div class="flex items-center gap-4">
+                                @if(isset($personalizationSettings['logo']) && $personalizationSettings['logo'])
+                                    <img src="{{ asset('storage/' . $personalizationSettings['logo']) }}" alt="Logo atual" class="w-32 h-32 object-contain border border-gray-200 rounded-lg">
+                                @endif
+                                <div class="flex-1">
+                                    <input type="file" name="logo" id="logo" accept="image/*" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">Formatos aceitos: PNG, JPG, SVG. Tamanho recomendado: 512x512px</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upload de Favicon -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="favicon">Favicon</label>
+                            <div class="flex items-center gap-4">
+                                @if(isset($personalizationSettings['favicon']) && $personalizationSettings['favicon'])
+                                    <img src="{{ asset('storage/' . $personalizationSettings['favicon']) }}" alt="Favicon atual" class="w-16 h-16 object-contain border border-gray-200 rounded-lg">
+                                @endif
+                                <div class="flex-1">
+                                    <input type="file" name="favicon" id="favicon" accept="image/*" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <p class="text-xs text-muted-foreground mt-1">Formatos aceitos: PNG, ICO. Tamanho recomendado: 32x32px ou 64x64px</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opção de gerar favicon automaticamente -->
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="generate_favicon_from_logo" id="generate_favicon_from_logo" value="1" class="rounded border-gray-300">
+                            <label for="generate_favicon_from_logo" class="text-sm font-medium">Gerar favicon automaticamente a partir da logo</label>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Salvar Logo e Favicon</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Outras Configurações (mantidas da versão anterior) -->
+            <div class="grid gap-4 md:grid-cols-2 mt-6">
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Pedidos</h3>
+                        <p class="text-sm text-muted-foreground">Numeração e referência externa</p>
+                    </div>
+                    <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 pt-0 space-y-4">
+                        @csrf
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="order_number_prefix">Prefixo do Número do Pedido</label>
+                            <input name="order_number_prefix" id="order_number_prefix" value="{{ $apiSettings['order_number_prefix'] ?? 'OLK-' }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="Ex.: OLK-">
+                            <p class="text-xs text-muted-foreground">Será usado na exibição e como external_reference no Mercado Pago.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="next_order_number">Próximo Número</label>
+                            <input name="next_order_number" id="next_order_number" type="number" min="1" value="{{ (int)($apiSettings['next_order_number'] ?? 1) }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            <p class="text-xs text-muted-foreground">A contagem seguirá a partir deste valor.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="free_shipping_min_total">Frete Grátis a partir de (R$)</label>
+                            <input name="free_shipping_min_total" id="free_shipping_min_total" type="number" step="0.01" min="0" value="{{ isset($apiSettings['free_shipping_min_total']) ? (float)$apiSettings['free_shipping_min_total'] : 200 }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="Ex.: 200.00">
+                            <p class="text-xs text-muted-foreground">Ao atingir este mínimo no subtotal, a entrega fica gratuita.</p>
+                        </div>
+                        <div>
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Assistente IA</h3>
+                        <p class="text-sm text-muted-foreground">Nome exibido no assistente (ex.: ChefIA, Assistente)</p>
+                    </div>
+                    <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 pt-0 space-y-4">
+                        @csrf
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="assistente_ia_nome">Nome do assistente</label>
+                            <input name="assistente_ia_nome" id="assistente_ia_nome" value="{{ old('assistente_ia_nome', $assistenteIaNome ?? 'ChefIA') }}" class="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="ChefIA">
+                        </div>
+                        <div>
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Taxas de Entrega</h3>
+                        <p class="text-sm text-muted-foreground">Configure faixas de distância e taxas</p>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <a href="{{ route('dashboard.delivery-pricing.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Gerenciar Taxas de Entrega</a>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Cashback</h3>
+                        <p class="text-sm text-muted-foreground">Programa de fidelidade e recompensas</p>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <a href="{{ route('dashboard.cashback.index') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Abrir Configurações de Cashback</a>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Mercado Pago</h3>
+                        <p class="text-sm text-muted-foreground">Integração de pagamentos</p>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <a href="{{ route('dashboard.settings.mp') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Abrir Configurações</a>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div class="flex flex-col space-y-1.5 p-6">
+                        <h3 class="text-2xl font-semibold leading-none tracking-tight">Agendamento de Entrega</h3>
+                        <p class="text-sm text-muted-foreground">Capacidade e prazos</p>
+                    </div>
+                    <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 pt-0 space-y-4">
+                        @csrf
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-sm font-medium" for="delivery_slot_capacity">Capacidade por slot (30min)</label>
+                                <input name="delivery_slot_capacity" id="delivery_slot_capacity" type="number" min="1" max="20" value="{{ $apiSettings['delivery_slot_capacity'] ?? 2 }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium" for="advance_order_days">Dias de antecedência mínimos</label>
+                                <input name="advance_order_days" id="advance_order_days" type="number" min="0" max="30" value="{{ $apiSettings['advance_order_days'] ?? 2 }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium" for="default_cutoff_time">Cutoff diário (hh:mm)</label>
+                                <input name="default_cutoff_time" id="default_cutoff_time" type="time" value="{{ $apiSettings['default_cutoff_time'] ?? '' }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('dashboard.settings.delivery.schedules.index') }}" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border h-10 px-4">Gerenciar dias e horários</a>
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle entre abas
+    const tabs = document.querySelectorAll('[data-tab]');
+    const contents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+            
+            // Atualizar botões
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                t.classList.add('inactive');
+            });
+            this.classList.remove('inactive');
+            this.classList.add('active');
+            
+            // Atualizar conteúdos
+            contents.forEach(c => c.classList.add('hidden'));
+            document.getElementById('content-' + targetTab).classList.remove('hidden');
+        });
+    });
+    
+    // Inicializar ícones Lucide
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+});
+
+function updateColorFromPicker(color) {
+    document.getElementById('theme_color_input').value = color;
+    updateColorPreview(color);
+    updatePresetButtons(color);
+}
+
+function updateColorFromInput(color) {
+    // Validar formato hexadecimal
+    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        document.getElementById('custom_color_picker').value = color;
+        updateColorPreview(color);
+        updatePresetButtons(color);
+    } else {
+        // Se inválido, restaurar cor anterior
+        const currentColor = document.getElementById('custom_color_picker').value;
+        document.getElementById('theme_color_input').value = currentColor;
+    }
+}
+
+function selectPresetColor(color) {
+    document.getElementById('theme_color_input').value = color;
+    document.getElementById('custom_color_picker').value = color;
+    updateColorPreview(color);
+    updatePresetButtons(color);
+}
+
+function updateColorPreview(color) {
+    document.getElementById('color_preview').style.backgroundColor = color;
+    document.getElementById('color_code').textContent = color;
+}
+
+function updatePresetButtons(selectedColor) {
+    document.querySelectorAll('[data-color]').forEach(btn => {
+        const btnColor = btn.getAttribute('data-color');
+        if (btnColor === selectedColor) {
+            btn.classList.add('border-gray-800', 'ring-2', 'ring-offset-2');
+            btn.classList.remove('border-gray-300');
+            // Adicionar checkmark
+            if (!btn.querySelector('svg')) {
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('class', 'w-6 h-6 text-white drop-shadow-lg absolute inset-0 m-auto');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', 'currentColor');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('stroke-width', '3');
+                path.setAttribute('d', 'M5 13l4 4L19 7');
+                svg.appendChild(path);
+                btn.appendChild(svg);
+            }
+        } else {
+            btn.classList.remove('border-gray-800', 'ring-2', 'ring-offset-2');
+            btn.classList.add('border-gray-300');
+            // Remover checkmark
+            const svg = btn.querySelector('svg');
+            if (svg) svg.remove();
+        }
+    });
+}
+</script>
+@endpush
+@endsection

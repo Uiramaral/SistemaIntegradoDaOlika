@@ -1,0 +1,207 @@
+/* Copycat Design System - Referência ui-copycat-helper / Confeitaria Pro
+ * Cópia fiel: botões, sombras, hover, transições. Responsivo (mobile/tablet).
+ */
+
+/* === Variáveis adicionais (complementam layout) === */
+:root {
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+    --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --shadow-sidebar: 4px 0 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* === Stat Cards (dashboard) === */
+.stat-card {
+    background: hsl(var(--card, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 220 13% 91%));
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+@media (min-width: 768px) {
+    .stat-card { padding: 1.5rem; }
+}
+.stat-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+}
+
+.stat-card-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (min-width: 768px) {
+    .stat-card-icon { width: 3rem; height: 3rem; }
+}
+
+/* === Sidebar nav (modelo referência) === */
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: hsl(var(--sidebar-foreground) / 0.7);
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.sidebar-nav-item:hover {
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-foreground));
+}
+.sidebar-nav-item.active,
+.sidebar-nav-item.active-item {
+    background: hsl(var(--sidebar-primary));
+    color: hsl(var(--sidebar-primary-foreground));
+}
+
+.sidebar-submenu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 3rem;
+    font-size: 0.875rem;
+    color: hsl(var(--sidebar-foreground) / 0.6);
+    border-radius: 0.5rem;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.sidebar-submenu-item:hover {
+    color: hsl(var(--sidebar-foreground));
+    background: hsl(var(--sidebar-accent) / 0.5);
+}
+.sidebar-submenu-item.active {
+    color: hsl(var(--sidebar-primary-foreground));
+    background: hsl(var(--sidebar-primary) / 0.7);
+}
+
+/* === Botões === */
+.btn-copycat-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    transition: background 0.2s ease;
+}
+.btn-copycat-primary:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+.btn-copycat-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    transition: background 0.2s ease;
+}
+.btn-copycat-secondary:hover {
+    background: hsl(var(--secondary) / 0.8);
+}
+
+.btn-copycat-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    background: transparent;
+    transition: background 0.2s ease;
+}
+.btn-copycat-outline:hover {
+    background: hsl(var(--muted));
+}
+
+/* === Cards === */
+.card-copycat {
+    background: hsl(var(--card, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 220 13% 91%));
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s ease;
+}
+.card-copycat:hover {
+    box-shadow: var(--shadow-card-hover);
+}
+
+/* === Inputs === */
+.input-copycat {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background: hsl(var(--background));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-copycat:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* === Scrollbar === */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* === Animações === */
+@keyframes copycat-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes copycat-fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes copycat-slide-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.animate-copycat-fade-in { animation: copycat-fade-in 0.3s ease-out; }
+.animate-copycat-fade-up { animation: copycat-fade-up 0.4s ease-out; }
+.animate-copycat-slide-in { animation: copycat-slide-in 0.3s ease-out; }
+
+/* === Responsivo: mobile / tablet === */
+@media (max-width: 1023px) {
+    .stat-card { padding: 1rem; }
+    .sidebar-nav-item,
+    .sidebar-submenu-item { padding-left: 1rem; padding-right: 1rem; }
+    .sidebar-submenu-item { padding-left: 2.5rem; }
+}
+
+@media (max-width: 639px) {
+    .btn-copycat-primary,
+    .btn-copycat-secondary,
+    .btn-copycat-outline {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+}

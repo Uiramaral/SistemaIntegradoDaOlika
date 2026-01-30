@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Scopes\ClientScope;
+use App\Models\Traits\BelongsToClient;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToClient;
 
     protected $fillable = [
         'client_id', // ✅ NOVO: Multi-instância
@@ -22,6 +22,7 @@ class Product extends Model
         'price',
         'stock',
         'is_active',
+        'wholesale_only', // 1 = exclusivo revenda (só is_wholesale=1)
         'show_in_catalog',
         'gluten_free',
         'contamination_risk',
@@ -43,29 +44,15 @@ class Product extends Model
         'is_featured' => 'boolean',
         'is_available' => 'boolean',
         'is_active' => 'boolean',
+        'wholesale_only' => 'boolean',
         'show_in_catalog' => 'boolean',
         'gluten_free' => 'boolean',
         'contamination_risk' => 'boolean',
         'nutritional_info' => 'array',
         'price' => 'decimal:2',
         'weight_grams' => 'integer',
+        'variants' => 'array',
     ];
-
-    /**
-     * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
-     */
-    protected static function booted()
-    {
-        static::addGlobalScope(new ClientScope());
-    }
-
-    /**
-     * ✅ NOVO: Relacionamento com cliente (multi-instância)
-     */
-    public function client(): BelongsTo
-    {
-        return $this->belongsTo(Client::class);
-    }
 
     /**
      * Relacionamento com categoria
@@ -144,15 +131,15 @@ class Product extends Model
      */
     public function scopePurchasable($query)
     {
-        return $query->where(function($q){
+        return $query->where(function ($q) {
             $q->where('price', '>', 0)
-              ->orWhereExists(function($sq){
-                  $sq->selectRaw('1')
-                      ->from('product_variants as pv')
-                      ->whereColumn('pv.product_id', 'products.id')
-                      ->where('pv.is_active', true)
-                      ->where('pv.price', '>', 0);
-              });
+                ->orWhereExists(function ($sq) {
+                    $sq->selectRaw('1')
+                        ->from('product_variants as pv')
+                        ->whereColumn('pv.product_id', 'products.id')
+                        ->where('pv.is_active', true)
+                        ->where('pv.price', '>', 0);
+                });
         });
     }
 
@@ -180,10 +167,10 @@ class Product extends Model
         if ($value && !str_starts_with($value, 'http')) {
             return asset('storage/' . $value);
         }
-        
+
         return $value;
     }
-    
+
     /**
      * Obtém a URL da imagem principal do produto
      */
@@ -193,12 +180,12 @@ class Product extends Model
         if ($this->cover_image) {
             return $this->cover_image;
         }
-        
+
         $firstImage = $this->images()->first();
         if ($firstImage) {
             return $firstImage->path;
         }
-        
+
         if ($this->image_url) {
             // Se image_url é uma URL completa, retornar null (não é path local)
             if (str_starts_with($this->image_url, 'http')) {
@@ -206,17 +193,17 @@ class Product extends Model
             }
             return str_replace(asset('storage/'), '', $this->image_url);
         }
-        
+
         return null;
     }
-    
+
     /**
      * Obtém URLs otimizadas para a imagem (WebP e fallback)
      */
     public function getOptimizedImageUrls($size = 'thumb')
     {
         $originalPath = $this->getMainImagePath();
-        
+
         if (!$originalPath) {
             $placeholder = asset('images/produto-placeholder.jpg');
             return [
@@ -225,23 +212,23 @@ class Product extends Model
                 'jpg' => $placeholder,
             ];
         }
-        
+
         $disk = Storage::disk('public');
         $pathInfo = pathinfo($originalPath);
         $directory = $pathInfo['dirname'];
         $filename = $pathInfo['filename'];
-        
+
         $urls = [
             'original' => asset('storage/' . $originalPath),
             'webp' => null,
             'jpg' => null,
         ];
-        
+
         // URLs de thumbnail WebP e JPG
         if ($size) {
             $webpThumb = $directory . '/thumbs/' . $filename . '-' . $size . '.webp';
             $jpgThumb = $directory . '/thumbs/' . $filename . '-' . $size . '.jpg';
-            
+
             if ($disk->exists($webpThumb)) {
                 $urls['webp'] = asset('storage/' . $webpThumb);
             }
@@ -249,7 +236,7 @@ class Product extends Model
                 $urls['jpg'] = asset('storage/' . $jpgThumb);
             }
         }
-        
+
         // Fallback para WebP original se não houver thumbnail
         if (!$urls['webp']) {
             $webpPath = $directory . '/' . $filename . '.webp';
@@ -257,7 +244,7 @@ class Product extends Model
                 $urls['webp'] = asset('storage/' . $webpPath);
             }
         }
-        
+
         // Se não houver WebP, usar original como fallback
         if (!$urls['webp']) {
             $urls['webp'] = $urls['original'];
@@ -265,7 +252,7 @@ class Product extends Model
         if (!$urls['jpg']) {
             $urls['jpg'] = $urls['original'];
         }
-        
+
         return $urls;
     }
 
@@ -275,18 +262,18 @@ class Product extends Model
     public function getAllergenTextAttribute()
     {
         $parts = [];
-        
+
         // Verificar se o relacionamento está carregado e tem dados
         if ($this->relationLoaded('allergens') && $this->allergens) {
             $names = $this->allergens->pluck('name')->filter()->values()->all();
             if (!empty($names)) {
-                $parts[] = 'Contém: '.implode(', ', $names).'.';
+                $parts[] = 'Contém: ' . implode(', ', $names) . '.';
             }
         } elseif (!$this->relationLoaded('allergens')) {
             // Se não estiver carregado, tentar carregar
             $names = $this->allergens()->pluck('name')->filter()->values()->all();
             if (!empty($names)) {
-                $parts[] = 'Contém: '.implode(', ', $names).'.';
+                $parts[] = 'Contém: ' . implode(', ', $names) . '.';
             }
         }
 
@@ -308,11 +295,11 @@ class Product extends Model
     public function generateDefaultDescription(?array $override = null): string
     {
         // valores atuais do produto (ou overrides vindos do form)
-        $name   = $override['name']   ?? $this->name;
-        $price  = $override['price']  ?? $this->price;
-        $cat    = ($override['category'] ?? null) ? ($override['category']->name ?? null) : optional($this->category)->name;
-        $gf     = array_key_exists('gluten_free', $override ?? []) ? (bool)$override['gluten_free'] : (bool)$this->gluten_free;
-        $risk   = array_key_exists('contamination_risk', $override ?? []) ? (bool)$override['contamination_risk'] : (bool)$this->contamination_risk;
+        $name = $override['name'] ?? $this->name;
+        $price = $override['price'] ?? $this->price;
+        $cat = ($override['category'] ?? null) ? ($override['category']->name ?? null) : optional($this->category)->name;
+        $gf = array_key_exists('gluten_free', $override ?? []) ? (bool) $override['gluten_free'] : (bool) $this->gluten_free;
+        $risk = array_key_exists('contamination_risk', $override ?? []) ? (bool) $override['contamination_risk'] : (bool) $this->contamination_risk;
 
         // nomes dos alérgenos (override -> current)
         $allergenNames = [];
@@ -328,12 +315,13 @@ class Product extends Model
 
         // linha 1 — nome + categoria
         $headline = $name;
-        if ($cat) $headline .= " — {$cat}";
+        if ($cat)
+            $headline .= " — {$cat}";
         $lines[] = $headline;
 
         // linha 2 — preço (opcional)
         if (is_numeric($price)) {
-            $lines[] = 'Preço de referência: R$ '.number_format((float)$price, 2, ',', '.');
+            $lines[] = 'Preço de referência: R$ ' . number_format((float) $price, 2, ',', '.');
         }
 
         // linha 3 — flags
@@ -343,7 +331,7 @@ class Product extends Model
 
         // linha 4 — alérgenos
         if (!empty($allergenNames)) {
-            $lines[] = 'Contém: '.implode(', ', $allergenNames).'.';
+            $lines[] = 'Contém: ' . implode(', ', $allergenNames) . '.';
         }
 
         // linha 5 — contaminação
@@ -360,7 +348,7 @@ class Product extends Model
     public function getLabelTextAttribute(): ?string
     {
         // se houver texto salvo, prioriza
-        if (trim((string)$this->label_description) !== '') {
+        if (trim((string) $this->label_description) !== '') {
             return $this->label_description;
         }
         // senão, gera na hora
@@ -373,9 +361,9 @@ class Product extends Model
     public function generateLabelText(?array $override = null): string
     {
         $name = $override['name'] ?? $this->name;
-        $cat  = ($override['category'] ?? null) ? ($override['category']->name ?? null) : optional($this->category)->name;
-        $gf   = array_key_exists('gluten_free', $override ?? []) ? (bool)$override['gluten_free'] : (bool)$this->gluten_free;
-        $risk = array_key_exists('contamination_risk', $override ?? []) ? (bool)$override['contamination_risk'] : (bool)$this->contamination_risk;
+        $cat = ($override['category'] ?? null) ? ($override['category']->name ?? null) : optional($this->category)->name;
+        $gf = array_key_exists('gluten_free', $override ?? []) ? (bool) $override['gluten_free'] : (bool) $this->gluten_free;
+        $risk = array_key_exists('contamination_risk', $override ?? []) ? (bool) $override['contamination_risk'] : (bool) $this->contamination_risk;
 
         $allergenNames = [];
         if (isset($override['allergen_names'])) {
@@ -390,14 +378,18 @@ class Product extends Model
 
         // linha 1 — nome + categoria (curto)
         $headline = $name;
-        if ($cat) $headline .= " — {$cat}";
+        if ($cat)
+            $headline .= " — {$cat}";
         $parts[] = $headline;
 
         // sem preço aqui
 
-        if ($gf) $parts[] = 'Produto sem glúten.';
-        if (!empty($allergenNames)) $parts[] = 'Contém: '.implode(', ', $allergenNames).'.';
-        if ($risk) $parts[] = '⚠️ Pode conter traços de glúten devido ao ambiente de produção.';
+        if ($gf)
+            $parts[] = 'Produto sem glúten.';
+        if (!empty($allergenNames))
+            $parts[] = 'Contém: ' . implode(', ', $allergenNames) . '.';
+        if ($risk)
+            $parts[] = '⚠️ Pode conter traços de glúten devido ao ambiente de produção.';
 
         return implode(' ', $parts);
     }

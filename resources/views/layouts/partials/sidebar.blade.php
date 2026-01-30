@@ -4,9 +4,6 @@
     <a href="{{ route('dashboard.index') }}" class="{{ request()->routeIs('dashboard.index') ? 'active' : '' }}">
       <i class="ph-bold ph-house"></i> Dashboard
     </a>
-    <a href="{{ route('dashboard.pdv.index') }}" class="{{ request()->routeIs('dashboard.pdv.*') ? 'active' : '' }}">
-      <i class="ph-bold ph-shopping-cart"></i> PDV
-    </a>
     <a href="{{ route('dashboard.orders.index') }}" class="{{ request()->routeIs('dashboard.orders.*') ? 'active' : '' }}">
       <i class="ph-bold ph-receipt"></i> Pedidos
     </a>

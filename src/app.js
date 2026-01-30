@@ -160,6 +160,36 @@ app.get('/instance/connect/:instance', async (req, res) => {
     }
 });
 
+// Disconnect instance (formato Evolution API)
+app.post('/api/whatsapp/disconnect', async (req, res) => {
+    const { disconnectSock, isConnected } = require('./services/socket');
+    
+    if (!isConnected()) {
+        return res.json({ 
+            success: true, 
+            status: 'ALREADY_DISCONNECTED',
+            message: 'Instância já desconectada'
+        });
+    }
+    
+    try {
+        logger.info('🔴 [DISCONNECT] Recebida solicitação de desconexão');
+        await disconnectSock();
+        logger.info('✅ [DISCONNECT] Instância desconectada com sucesso');
+        res.json({ 
+            success: true, 
+            status: 'DISCONNECTED',
+            message: 'Instância desconectada com sucesso'
+        });
+    } catch (error) {
+        logger.error(`[DISCONNECT] Erro ao desconectar: ${error.message}`);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 app.listen(PORT, () => {
     logger.info(` Servidor rodando na porta ${PORT}`);
 });

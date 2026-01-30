@@ -51,7 +51,7 @@ class ApiIntegration extends Model
                     'default' => 'gemini-2.5-flash'
                 ],
                 'temperature' => ['label' => 'Temperature', 'type' => 'number', 'min' => 0, 'max' => 1, 'step' => 0.1, 'default' => 0.7],
-                'max_tokens' => ['label' => 'Max Tokens', 'type' => 'number', 'default' => 500],
+                'max_tokens' => ['label' => 'Max Tokens', 'type' => 'number', 'default' => 5000],
             ],
         ],
         'openai' => [

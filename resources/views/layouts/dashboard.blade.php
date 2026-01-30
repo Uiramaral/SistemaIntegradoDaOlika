@@ -26,7 +26,6 @@
         <p class="text-xs uppercase text-[var(--sidebar-foreground)]/70 mb-2 px-2">Menu Principal</p>
         <ul class="space-y-1">
           <li><a href="{{ route('dashboard.index') }}" class="{{ request()->routeIs('dashboard.index') ? 'active' : '' }}"><i data-lucide="layout-dashboard"></i> Visão Geral</a></li>
-          <li><a href="{{ route('dashboard.pdv.index') }}" class="{{ request()->routeIs('dashboard.pdv.*') ? 'active' : '' }}"><i data-lucide="monitor"></i> PDV</a></li>
           <li><a href="{{ route('dashboard.orders.index') }}" class="{{ request()->routeIs('dashboard.orders.*') ? 'active' : '' }}"><i data-lucide="receipt"></i> Pedidos</a></li>
           <li><a href="{{ route('dashboard.customers.index') }}" class="{{ request()->routeIs('dashboard.customers.*') ? 'active' : '' }}"><i data-lucide="users"></i> Clientes</a></li>
           <li><a href="{{ route('dashboard.deliveries.index') }}" class="{{ request()->routeIs('dashboard.deliveries.*') ? 'active' : '' }}"><i data-lucide="truck"></i> Entregas</a></li>

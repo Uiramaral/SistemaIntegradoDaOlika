@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\FinancialTransaction;
 use App\Models\Scopes\ClientScope;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +25,9 @@ class DashboardController extends Controller
             
             // Calcular período baseado no filtro
             $periodDays = match($period) {
-                '3months' => 90,
+                'year' => 365,
                 '30days' => 30,
+                '15days' => 15,
                 '7days' => 7,
                 default => 7
             };
@@ -202,12 +204,99 @@ class DashboardController extends Controller
             $faturamento = (float)($stats->faturamento ?? 0);
             $ticketMedio = $totalPedidos > 0 ? ($faturamento / $totalPedidos) : 0;
             
+            // Calcular receitas e despesas do mês atual
+            $monthStart = now()->startOfMonth();
+            $monthEnd = now()->endOfMonth();
+            $receitasMes = FinancialTransaction::query()
+                ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+                ->where('type', 'revenue');
+            $despesasMes = FinancialTransaction::query()
+                ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+                ->where('type', 'expense');
+            if ($clientId) {
+                $receitasMes->where('client_id', $clientId);
+                $despesasMes->where('client_id', $clientId);
+            }
+            $receitasMes = (float) $receitasMes->sum('amount');
+            $despesasMes = (float) $despesasMes->sum('amount');
+            $lucroMes = $receitasMes - $despesasMes;
+            
             $statusCount = [
                 'pending' => (int)($stats->pending_count ?? 0),
                 'confirmed' => (int)($stats->confirmed_count ?? 0),
                 'preparing' => (int)($stats->preparing_count ?? 0),
                 'delivered' => (int)($stats->delivered_count ?? 0),
             ];
+
+            // 7. Dados para o Gráfico de Vendas (Dinâmico por período)
+            $salesData = [];
+            $salesLabels = [];
+            Carbon::setLocale('pt_BR');
+
+            if ($period === 'year') {
+                // Para o ano, mostrar os últimos 12 meses
+                for ($i = 11; $i >= 0; $i--) {
+                    $date = now()->subMonths($i);
+                    $salesLabels[] = ucfirst($date->translatedFormat('M'));
+                    
+                    $monthlyTotal = Order::withoutGlobalScope(ClientScope::class)
+                        ->whereMonth('created_at', $date->month)
+                        ->whereYear('created_at', $date->year)
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) {
+                            $q->whereIn('status', ['delivered', 'confirmed', 'preparing', 'ready'])
+                              ->orWhere(function($subQ) {
+                                  $subQ->where('status', 'pending')
+                                       ->where('payment_status', 'paid');
+                              });
+                        });
+                    $applyClientFilter($monthlyTotal, 'client_id');
+                    $salesData[] = (float)$monthlyTotal->sum(DB::raw('COALESCE(final_amount, total_amount, 0)'));
+                }
+            } else {
+                // Para 7, 15 ou 30 dias, mostrar dia a dia
+                $days = $periodDays;
+                for ($i = $days - 1; $i >= 0; $i--) {
+                    $date = now()->subDays($i);
+                    // Mostrar data formatada se for mais que 7 dias para não embolar
+                    $salesLabels[] = $days > 7 ? $date->format('d/m') : ucfirst($date->translatedFormat('D'));
+                    
+                    $dailyTotal = Order::withoutGlobalScope(ClientScope::class)
+                        ->whereDate('created_at', $date->toDateString())
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) {
+                            $q->whereIn('status', ['delivered', 'confirmed', 'preparing', 'ready'])
+                              ->orWhere(function($subQ) {
+                                  $subQ->where('status', 'pending')
+                                       ->where('payment_status', 'paid');
+                              });
+                        });
+                    $applyClientFilter($dailyTotal, 'client_id');
+                    $salesData[] = (float)$dailyTotal->sum(DB::raw('COALESCE(final_amount, total_amount, 0)'));
+                }
+            }
+
+            // 8. Dados para o Gráfico de Categorias
+            $categoryDataQuery = OrderItem::query()
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->join('categories', 'products.category_id', '=', 'categories.id')
+                ->whereBetween('orders.created_at', [$periodStart, $periodEnd])
+                ->where('orders.status', '!=', 'cancelled');
+            
+            $applyClientFilter($categoryDataQuery, 'orders.client_id');
+            
+            $categoryStats = $categoryDataQuery->select(
+                    'categories.name',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->groupBy('categories.name')
+                ->orderByDesc('total')
+                ->limit(5)
+                ->get();
+
+            $categoryLabels = $categoryStats->pluck('name')->toArray();
+            $categoryValues = $categoryStats->pluck('total')->toArray();
 
             // Próximos agendamentos
             $nextScheduled = Order::withoutGlobalScope(ClientScope::class)
@@ -220,7 +309,8 @@ class DashboardController extends Controller
             return view('dashboard.dashboard.index', compact(
                 'totalPedidos', 'faturamento', 'novosClientes', 'ticketMedio', 'statusCount',
                 'recentOrders', 'topProducts', 'topBuyers', 'period', 'todayStats', 'nextScheduled',
-                'selectedMonth', 'selectedYear'
+                'selectedMonth', 'selectedYear', 'salesData', 'salesLabels', 'categoryLabels', 'categoryValues',
+                'receitasMes', 'despesasMes', 'lucroMes'
             ));
 
         } catch (\Exception $e) {

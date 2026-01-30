@@ -30,8 +30,8 @@ class SettingsController extends Controller
         
         // Chaves de API + loja (free shipping) salvas em settings
         // Nota: cashback_percent removido - agora gerenciado na aba dedicada de Cashback
+        // APIs (OpenAI, Google Maps, Gemini) movidas para Master → /master/settings
         $apiSettings = $this->getSettingsFromFlexibleTable([
-            'openai_api_key','openai_model','google_maps_api_key',
             'free_shipping_min_total',
             'order_number_prefix','next_order_number',
             // BotConversa
@@ -58,9 +58,6 @@ class SettingsController extends Controller
         }
         // Fallback para .env/config quando não houver no banco
         $envDefaults = [
-            'openai_api_key' => config('services.openai.key', env('OPENAI_API_KEY')),
-            'openai_model' => config('services.openai.model', env('OPENAI_MODEL', 'gpt-5-nano')),
-            'google_maps_api_key' => (config('services.google.maps_key') ?? env('GOOGLE_MAPS_API_KEY')),
             'free_shipping_min_total' => env('FREE_SHIPPING_MIN_TOTAL'),
             // cashback_percent removido - agora gerenciado na aba dedicada de Cashback
             // BotConversa do .env
@@ -89,7 +86,41 @@ class SettingsController extends Controller
             }
         }
 
-        return view('dashboard.settings.index', compact('whatsappSettings', 'paymentSettings', 'storeSettings','apiSettings'));
+        $assistenteIaNome = \App\Models\PaymentSetting::getValue('assistente_ia_nome', 'ChefIA');
+        
+        // Buscar configurações de produção
+        $clientId = currentClientId();
+        $productionSettings = \App\Models\Setting::getSettings($clientId);
+
+        // Buscar configurações gerais
+        $generalSettings = $this->getSettingsFromFlexibleTable([
+            'language', 'currency', 'company_name', 'company_phone', 'company_email'
+        ]);
+
+        // Buscar configurações de personalização
+        $personalizationSettings = $this->getSettingsFromFlexibleTable([
+            'theme_color', 'logo', 'favicon'
+        ]);
+
+        // Adicionar URLs completas para logo e favicon se existirem
+        if (isset($personalizationSettings['logo']) && $personalizationSettings['logo']) {
+            $personalizationSettings['logo_url'] = asset('storage/' . $personalizationSettings['logo']);
+        }
+        if (isset($personalizationSettings['favicon']) && $personalizationSettings['favicon']) {
+            $personalizationSettings['favicon_url'] = asset('storage/' . $personalizationSettings['favicon']);
+        }
+
+        // Buscar configurações de impressão
+        $printingSettings = (object) [
+            'printer_type' => $this->getSettingValue('printer_type', 'thermal'),
+            'receipt_size' => $this->getSettingValue('receipt_size', 'half-page'),
+            'default_copies' => $this->getSettingValue('default_copies', 1),
+            'page_orientation' => $this->getSettingValue('page_orientation', 'portrait'),
+            'show_logo' => $this->getSettingValue('show_logo', true),
+            'show_qrcode' => $this->getSettingValue('show_qrcode', true),
+        ];
+
+        return view('dashboard.settings.index', compact('whatsappSettings', 'paymentSettings', 'storeSettings', 'apiSettings', 'assistenteIaNome', 'productionSettings', 'generalSettings', 'personalizationSettings', 'printingSettings'));
     }
 
     public function apisSave(Request $r)
@@ -111,13 +142,10 @@ class SettingsController extends Controller
         }
 
         $data = $r->validate([
-            'openai_api_key' => 'nullable|string',
-            'openai_model' => 'nullable|string',
-            'google_maps_api_key' => 'nullable|string',
             'free_shipping_min_total' => 'nullable|numeric|min:0',
-            // cashback_percent removido da validação - agora gerenciado na aba dedicada de Cashback
             'order_number_prefix' => 'nullable|string|max:12',
             'next_order_number' => 'nullable|integer|min:1',
+            'assistente_ia_nome' => 'nullable|string|max:64',
             // BotConversa - validar URL apenas se não estiver vazio (removido FILTER_VALIDATE_URL muito restritivo)
             'botconversa_webhook_url' => 'nullable|string|max:500',
             'botconversa_paid_webhook_url' => 'nullable|string|max:500',
@@ -1436,6 +1464,256 @@ class SettingsController extends Controller
 
         // Caso tenha mais de 13 dígitos (55 + 11), já está normalizado
         return $phone;
+    }
+
+    public function productionSave(Request $request)
+    {
+        $validated = $request->validate([
+            'sales_multiplier' => 'required|numeric|min:0',
+            'resale_multiplier' => 'required|numeric|min:0',
+            'fixed_cost' => 'nullable|numeric|min:0',
+            'tax_percentage' => 'nullable|numeric|min:0|max:100',
+            'card_fee_percentage' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $clientId = currentClientId();
+        $settings = \App\Models\Setting::getSettings($clientId);
+        
+        $settings->update([
+            'sales_multiplier' => $validated['sales_multiplier'],
+            'resale_multiplier' => $validated['resale_multiplier'],
+            'fixed_cost' => $validated['fixed_cost'] ?? 0,
+            'tax_percentage' => $validated['tax_percentage'] ?? 0,
+            'card_fee_percentage' => $validated['card_fee_percentage'] ?? 6.0,
+        ]);
+
+        return back()->with('success', 'Configurações de produção salvas com sucesso!');
+    }
+
+    /**
+     * Salvar configurações gerais (idioma, moeda, informações da empresa)
+     */
+    public function generalSave(Request $request)
+    {
+        $data = $request->validate([
+            'language' => 'nullable|string|max:10',
+            'currency' => 'nullable|string|max:10',
+            'company_name' => 'nullable|string|max:255',
+            'company_phone' => 'nullable|string|max:50',
+            'company_email' => 'nullable|email|max:255',
+        ]);
+
+        $this->saveSettingsIntoFlexibleTable($data);
+
+        return back()->with('success', 'Configurações gerais salvas com sucesso!');
+    }
+
+    /**
+     * Salvar configurações de personalização (cores, logo, favicon)
+     */
+    public function personalizationSave(Request $request)
+    {
+        $data = $request->validate([
+            'theme_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+            'favicon' => 'nullable|image|mimes:jpeg,png,jpg,ico|max:1024',
+            'generate_favicon_from_logo' => 'nullable|boolean',
+        ]);
+
+        $clientId = currentClientId();
+
+        // Processar upload de logo
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $logoPath;
+
+            // Se solicitado, gerar favicon automaticamente a partir da logo
+            if ($request->input('generate_favicon_from_logo')) {
+                $faviconPath = $this->generateFaviconFromLogo($request->file('logo'), $clientId);
+                if ($faviconPath) {
+                    $data['favicon'] = $faviconPath;
+                }
+            }
+        } else {
+            unset($data['logo']);
+        }
+
+        // Processar upload de favicon (se não foi gerado automaticamente)
+        if ($request->hasFile('favicon') && !$request->input('generate_favicon_from_logo')) {
+            $faviconPath = $request->file('favicon')->store('favicons', 'public');
+            $data['favicon'] = $faviconPath;
+        } else {
+            unset($data['favicon']);
+        }
+
+        unset($data['generate_favicon_from_logo']);
+
+        $clientId = currentClientId();
+        
+        // Salvar na tabela payment_settings (chave-valor)
+        $this->saveSettingsIntoFlexibleTable($data);
+        
+        // Também salvar no Setting model para uso no layout
+        $settings = \App\Models\Setting::getSettings($clientId);
+        
+        $updateData = [];
+        if (isset($data['logo']) && $data['logo']) {
+            $updateData['theme_logo_url'] = asset('storage/' . $data['logo']);
+            $updateData['logo_url'] = asset('storage/' . $data['logo']);
+        }
+        if (isset($data['favicon']) && $data['favicon']) {
+            $updateData['theme_favicon_url'] = asset('storage/' . $data['favicon']);
+        }
+        if (isset($data['theme_color']) && $data['theme_color']) {
+            $updateData['theme_primary_color'] = $data['theme_color'];
+        }
+        
+        if (!empty($updateData)) {
+            $settings->update($updateData);
+        }
+
+        // Limpar cache para garantir que as mudanças sejam refletidas
+        \Illuminate\Support\Facades\Cache::forget('theme_settings');
+        \Illuminate\Support\Facades\Cache::flush();
+        
+        // Limpar ícones PWA antigos para forçar regeneração
+        if (isset($data['logo']) || isset($data['favicon'])) {
+            $pwaIconsDir = storage_path('app/public/pwa-icons');
+            if (file_exists($pwaIconsDir)) {
+                $files = glob($pwaIconsDir . '/' . $clientId . '_*.png');
+                foreach ($files as $file) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        return back()->with('success', 'Configurações de personalização salvas com sucesso!');
+    }
+
+    /**
+     * Gerar favicon automaticamente a partir da logo
+     */
+    private function generateFaviconFromLogo($logoFile, $clientId)
+    {
+        try {
+            $imageInfo = getimagesize($logoFile->getRealPath());
+            if (!$imageInfo) {
+                Log::warning('Não foi possível ler informações da imagem');
+                return null;
+            }
+
+            $sourceImage = null;
+            switch ($imageInfo[2]) {
+                case IMAGETYPE_JPEG:
+                    $sourceImage = imagecreatefromjpeg($logoFile->getRealPath());
+                    break;
+                case IMAGETYPE_PNG:
+                    $sourceImage = imagecreatefrompng($logoFile->getRealPath());
+                    break;
+                case IMAGETYPE_GIF:
+                    $sourceImage = imagecreatefromgif($logoFile->getRealPath());
+                    break;
+                default:
+                    Log::warning('Formato de imagem não suportado para geração de favicon');
+                    return null;
+            }
+
+            if (!$sourceImage) {
+                Log::warning('Não foi possível criar recurso de imagem');
+                return null;
+            }
+
+            // Criar favicon 32x32
+            $favicon = imagecreatetruecolor(32, 32);
+            imagealphablending($favicon, false);
+            imagesavealpha($favicon, true);
+            
+            // Preencher com transparência
+            $transparent = imagecolorallocatealpha($favicon, 0, 0, 0, 127);
+            imagefill($favicon, 0, 0, $transparent);
+            
+            // Redimensionar mantendo proporção
+            imagecopyresampled($favicon, $sourceImage, 0, 0, 0, 0, 32, 32, $imageInfo[0], $imageInfo[1]);
+            
+            // Salvar favicon
+            $faviconPath = 'favicons/' . $clientId . '_' . time() . '.png';
+            $fullPath = storage_path('app/public/' . $faviconPath);
+            
+            $faviconsDir = storage_path('app/public/favicons');
+            if (!file_exists($faviconsDir)) {
+                mkdir($faviconsDir, 0755, true);
+            }
+            
+            imagealphablending($favicon, false);
+            imagesavealpha($favicon, true);
+            imagepng($favicon, $fullPath);
+            imagedestroy($favicon);
+            imagedestroy($sourceImage);
+
+            Log::info('Favicon gerado com sucesso', ['path' => $faviconPath]);
+            return $faviconPath;
+        } catch (\Exception $e) {
+            Log::error('Erro ao gerar favicon: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return null;
+        }
+    }
+
+    /**
+     * Exibir página de configurações de impressão
+     */
+    public function printing()
+    {
+        $clientId = currentClientId();
+        
+        // Buscar configurações de impressão
+        $settings = (object) [
+            'printer_type' => $this->getSettingValue('printer_type', 'thermal'),
+            'receipt_size' => $this->getSettingValue('receipt_size', 'half-page'),
+            'default_copies' => $this->getSettingValue('default_copies', 1),
+            'page_orientation' => $this->getSettingValue('page_orientation', 'portrait'),
+            'show_logo' => $this->getSettingValue('show_logo', true),
+            'show_qrcode' => $this->getSettingValue('show_qrcode', true),
+        ];
+        
+        return view('dashboard.settings.printing', compact('settings'));
+    }
+
+    /**
+     * Salvar configurações de impressão
+     */
+    public function printingSave(Request $request)
+    {
+        $data = $request->validate([
+            'printer_type' => 'required|in:thermal,regular',
+            'receipt_size' => 'nullable|in:half-page,quarter-page,80mm,full-page',
+            'default_copies' => 'nullable|integer|min:1|max:5',
+            'page_orientation' => 'nullable|in:portrait,landscape',
+            'show_logo' => 'nullable|boolean',
+            'show_qrcode' => 'nullable|boolean',
+        ]);
+        
+        // Converter checkboxes
+        $data['show_logo'] = $request->has('show_logo') ? 1 : 0;
+        $data['show_qrcode'] = $request->has('show_qrcode') ? 1 : 0;
+        
+        // Salvar usando o método existente
+        $this->saveSettingsIntoFlexibleTable($data);
+        
+        Log::info('Configurações de impressão salvas', $data);
+        
+        return back()->with('success', 'Configurações de impressão salvas com sucesso!');
+    }
+
+    /**
+     * Obter valor de uma configuração individual
+     */
+    private function getSettingValue(string $key, $default = null)
+    {
+        if (Schema::hasTable('payment_settings')) {
+            $value = DB::table('payment_settings')->where('key', $key)->value('value');
+            return $value !== null ? $value : $default;
+        }
+        return $default;
     }
 }
 

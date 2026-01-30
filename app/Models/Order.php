@@ -53,8 +53,13 @@ class Order extends Model
         'scheduled_delivery_at',
         'print_requested_at',
         'printed_at',
+        'print_type', // ✅ NOVO: Tipo de recibo ('normal' ou 'check')
         'notified_paid_at',
         'payment_review_notified_at',
+        'tracking_enabled',
+        'tracking_started_at',
+        'tracking_stopped_at',
+        'tracking_token',
     ];
 
     protected $casts = [
@@ -69,6 +74,9 @@ class Order extends Model
         'printed_at' => 'datetime',
         'notified_paid_at' => 'datetime',
         'payment_review_notified_at' => 'datetime',
+        'tracking_enabled' => 'boolean',
+        'tracking_started_at' => 'datetime',
+        'tracking_stopped_at' => 'datetime',
     ];
 
     /**
@@ -151,6 +159,14 @@ class Order extends Model
     }
 
     /**
+     * Débitos/fiado vinculados ao pedido (customer_debts com order_id)
+     */
+    public function debts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerDebt::class, 'order_id');
+    }
+
+    /**
      * Relacionamento com taxa de entrega
      */
     public function orderDeliveryFee()
@@ -217,5 +233,13 @@ class Order extends Model
         ];
 
         return $statuses[$this->payment_status] ?? $this->payment_status;
+    }
+
+    /**
+     * Relacionamento com histórico de tracking GPS
+     */
+    public function trackingLocations()
+    {
+        return $this->hasMany(DeliveryTracking::class)->orderBy('tracked_at', 'desc');
     }
 }

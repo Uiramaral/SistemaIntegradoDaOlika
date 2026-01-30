@@ -176,24 +176,17 @@ class DeliveryFeeService
 
             // Distância null é erro, mas 0 é válido (mesmo CEP = frete grátis)
             if ($distance === null) {
-                Log::error('DeliveryFeeService: Não foi possível calcular distância', [
+                Log::warning('DeliveryFeeService: Não foi possível calcular distância, usando valor padrão', [
                     'store_cep' => $storeCep,
                     'destination_zipcode' => $zipcode,
+                    'last_error' => $distanceCalculator->getLastError(),
                 ]);
-                $distanceError = method_exists($distanceCalculator, 'getLastError')
-                    ? $distanceCalculator->getLastError()
-                    : null;
-                $friendlyError = $this->translateDistanceError($distanceError);
                 
-                return [
-                    'success' => false,
-                    'delivery_fee' => 0.00,
-                    'distance_km' => null,
-                    'free' => false,
-                    'custom' => false,
-                    'message' => $friendlyError['message'],
-                    'error_code' => $friendlyError['code'],
-                ];
+                // Fallback: usar distância padrão de 10km quando não conseguir calcular
+                $distance = 10.0;
+                Log::info('DeliveryFeeService: Usando distância padrão de 10km', [
+                    'distance_km' => $distance,
+                ]);
             }
             
             // Distância 0 significa mesmo local (frete grátis)

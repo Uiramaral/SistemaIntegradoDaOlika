@@ -20,50 +20,51 @@
     </div>
     @endif
 
-    <!-- Barra superior: Cliente + Buscar Produto -->
-    <div class="rounded-xl border bg-white shadow-sm p-4">
-        <div class="grid gap-4 lg:grid-cols-2">
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-semibold">Cliente</h3>
-                    <button type="button" id="btn-new-customer" class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                        <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
-                        Novo
+    <!-- Cliente e Buscar Produto - Mesma linha -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <!-- Cliente -->
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold">Cliente</h3>
+                <button type="button" id="btn-new-customer" class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
+                    Novo
+                </button>
+            </div>
+            <div class="relative">
+                <i data-lucide="user" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+                <input type="text" id="customer-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm h-10" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off">
+            </div>
+            <div id="customer-results" class="hidden max-h-60 overflow-y-auto border rounded-md bg-background mt-2"></div>
+            <input type="hidden" id="customer-id" name="customer_id" required>
+            <div id="selected-customer" class="hidden p-3 rounded-md bg-muted mt-2">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="font-semibold truncate" id="selected-customer-name"></p>
+                        <p class="text-sm truncate text-muted-foreground" id="selected-customer-info"></p>
+                    </div>
+                    <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
+                        <i data-lucide="x" class="h-5 w-5"></i>
                     </button>
                 </div>
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
-                    <input type="text" id="customer-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" placeholder="Buscar ou cadastrar cliente" autocomplete="off">
-                </div>
-                <div id="customer-results" class="hidden max-h-60 overflow-y-auto border rounded-md bg-background mt-2"></div>
-                <input type="hidden" id="customer-id" name="customer_id" required>
-                <div id="selected-customer" class="hidden p-3 rounded-md bg-muted mt-2">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="font-semibold truncate" id="selected-customer-name"></p>
-                            <p class="text-sm truncate text-muted-foreground" id="selected-customer-info"></p>
-                        </div>
-                        <button type="button" id="btn-clear-customer" class="text-muted-foreground hover:text-foreground">
-                            <i data-lucide="x" class="h-5 w-5"></i>
-                        </button>
-                    </div>
-                </div>
             </div>
-            <div>
-                <h3 class="text-sm font-semibold mb-2">Buscar Produto</h3>
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
-                    <input type="text" id="product-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm" placeholder="Digite o nome do produto..." autocomplete="off">
-                </div>
-                <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg"></div>
+        </div>
+        
+        <!-- Buscar Produto -->
+        <div>
+            <h3 class="text-sm font-semibold mb-2">Buscar Produto</h3>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+                <input type="text" id="product-search" class="w-full pl-10 rounded-md border border-input bg-background text-sm h-10" placeholder="Digite o nome do produto..." autocomplete="off">
             </div>
+            <div id="product-results" class="mt-2 hidden max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg"></div>
         </div>
     </div>
 
-    <!-- Filtros de categorias -->
-    <div class="flex flex-wrap gap-2">
-        <button type="button" data-category="all" class="category-filter inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 text-primary text-sm font-medium px-3 h-8">
-            <i data-lucide="tags" class="h-3.5 w-3.5"></i>
+    <!-- Filtros de Categorias -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <button type="button" data-category="all" class="category-filter inline-flex items-center justify-center gap-2 rounded-md border border-primary bg-primary text-primary-foreground text-sm font-medium px-4 h-10 whitespace-nowrap">
+            <i data-lucide="tags" class="h-4 w-4"></i>
             Todos
         </button>
         @php
@@ -72,8 +73,8 @@
             })->unique()->values();
         @endphp
         @foreach($categoryFilters as $cat)
-            <button type="button" data-category="{{ $cat }}" class="category-filter inline-flex items-center gap-1 rounded-full border border-border bg-white text-foreground text-sm font-medium px-3 h-8">
-                <i data-lucide="tag" class="h-3.5 w-3.5"></i>
+            <button type="button" data-category="{{ $cat }}" class="category-filter inline-flex items-center justify-center gap-2 rounded-md border border-border bg-white text-foreground text-sm font-medium px-4 h-10 whitespace-nowrap hover:bg-accent">
+                <i data-lucide="tag" class="h-4 w-4"></i>
                 {{ $cat }}
             </button>
         @endforeach
@@ -81,9 +82,9 @@
 
     <!-- Seção Completa do PDV - Sempre visível -->
     <div id="pdv-full-interface">
-        <div class="flex flex-col gap-4 lg:items-start lg:flex-row-reverse">
-            <!-- Coluna Resumo -->
-            <div class="dashboard-aside flex flex-col gap-4 lg:flex-shrink-0 lg:w-[380px] lg:max-w-[380px]">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 max-w-full">
+            <!-- Coluna Resumo - 1/3 da largura -->
+            <div class="dashboard-aside flex flex-col gap-4 lg:col-span-1 min-w-0">
                 <!-- Carrinho -->
                 <div class="rounded-xl border bg-white shadow-sm">
                     <div class="flex items-center justify-between p-4 border-b">
@@ -98,9 +99,7 @@
                     <div class="p-4">
                         <div id="pdv-items-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
                             <div class="flex flex-col items-center justify-center gap-2 py-8 text-center text-muted-foreground">
-                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <i data-lucide="shopping-cart" class="h-5 w-5"></i>
-                                </div>
+                                <i data-lucide="shopping-cart" class="h-12 w-12 text-muted-foreground/30"></i>
                                 <div class="text-sm font-medium">Carrinho vazio</div>
                                 <div class="text-xs">Clique nos produtos para adicionar</div>
                             </div>
@@ -108,12 +107,14 @@
                     </div>
                 </div>
 
-                <!-- Entrega -->
-                <div class="rounded-xl border bg-white shadow-sm p-4 space-y-3">
-                    <button type="button" id="btn-toggle-delivery" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white text-sm font-medium h-10">
-                        <i data-lucide="truck" class="h-4 w-4"></i>
-                        Entrega Ativada
-                    </button>
+                <!-- Botão Adicionar Entrega -->
+                <button type="button" id="btn-toggle-delivery" class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-white hover:bg-accent hover:text-accent-foreground text-sm font-medium h-10">
+                    <i data-lucide="truck" class="h-4 w-4"></i>
+                    Adicionar Entrega
+                </button>
+                
+                <!-- Seção de Entrega (oculta inicialmente) -->
+                <div id="delivery-section" class="hidden rounded-xl border bg-white shadow-sm p-4 space-y-3">
                     <select id="delivery-type" class="hidden">
                         <option value="delivery" selected>Entrega</option>
                         <option value="pickup">Retirada</option>
@@ -139,31 +140,34 @@
                                 <span>Subtotal</span>
                                 <span id="summary-subtotal">R$ 0,00</span>
                             </div>
-                            <div class="flex justify-between text-muted-foreground">
-                                <span>Total</span>
-                                <span id="summary-total" class="text-primary font-semibold">R$ 0,00</span>
-                            </div>
                             <div class="flex justify-between text-sm text-green-600 hidden" id="discount-row">
                                 <span>Desconto</span>
-                                <span id="summary-discount">- R$ 0,00</span>
+                                <span id="summary-discount">-R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between text-base font-semibold pt-2 border-t border-border">
+                                <span>Total</span>
+                                <span id="summary-total" class="text-primary">R$ 0,00</span>
                             </div>
                             <span id="summary-items-count" class="hidden">0</span>
                             <span id="summary-delivery-fee" class="hidden">R$ 0,00</span>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-3 gap-2">
                             <button type="button" id="btn-payment-pix" class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-600 bg-blue-50 text-blue-700 text-sm font-medium h-10">
                                 <i data-lucide="qr-code" class="h-4 w-4"></i>
                                 PIX
                             </button>
-                            <button type="button" id="btn-payment-link" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium h-10">
-                                <i data-lucide="link" class="h-4 w-4"></i>
-                                Link MP
+                            <button type="button" id="btn-payment-card" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium h-10">
+                                <i data-lucide="credit-card" class="h-4 w-4"></i>
+                                Cartão
+                            </button>
+                            <button type="button" id="btn-payment-cash" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium h-10">
+                                <i data-lucide="banknote" class="h-4 w-4"></i>
+                                Dinheiro
                             </button>
                         </div>
 
-                        <button type="button" id="btn-finalize-order" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 text-white text-sm font-medium h-10 disabled:opacity-70 disabled:cursor-not-allowed" disabled>
-                            <i data-lucide="credit-card" class="h-4 w-4"></i>
+                        <button type="button" id="btn-finalize-order" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium h-10 disabled:opacity-70 disabled:cursor-not-allowed" disabled>
                             Finalizar Venda
                         </button>
                     </div>
@@ -215,10 +219,8 @@
                 </details>
         </div>
 
-        <!-- Coluna Conteúdo (Produtos) -->
-        <div class="dashboard-main flex flex-col space-y-6 lg:flex-1">
-
-            <div id="products-section">
+            <!-- Coluna Produtos - 2/3 da largura -->
+            <div id="products-section" class="lg:col-span-2 min-w-0">
                 <!-- Grid de Produtos - Estilo do Site -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" id="products-grid">
                     @foreach($products as $product)
@@ -573,8 +575,9 @@ const pdvState = {
     scheduled_delivery_date: '',
     scheduled_delivery_slot: '',
 };
-const availableDates = @json($availableDates ?? []);
 
+// Carregar slots disponíveis ao iniciar
+window.availableDates = [];
 // Funções de busca de cliente
 let customerSearchTimeout;
 document.getElementById('customer-search')?.addEventListener('input', function(e) {
@@ -954,11 +957,13 @@ document.getElementById('product-search')?.addEventListener('input', function(e)
                     resultsEl.innerHTML = data.products.map(p => {
                         const hasVariants = p.has_variants && p.variants && p.variants.length > 0;
                         const displayPrice = hasVariants ? (p.variants[0]?.price || p.price) : p.price;
+                        const category = p.category?.name || p.category_name || 'Produto';
                         return `
                             <button type="button" class="product-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
                                     data-product-id="${p.id}" 
                                     data-product-name="${p.name}"
                                     data-product-price="${displayPrice}"
+                                    data-category="${category}"
                                     data-has-variants="${hasVariants ? 'true' : 'false'}"
                                     data-variants='${JSON.stringify(p.variants || [])}'>
                                 <p class="font-medium">${p.name}</p>
@@ -1003,7 +1008,7 @@ document.querySelectorAll('.category-filter').forEach(btn => {
 });
 
 // Modal de seleção de quantidade
-function showQuantityModal(productName, productPrice, callback) {
+function showQuantityModal(productName, productPrice, productCategory, callback) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
     modal.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
@@ -1026,7 +1031,7 @@ function showQuantityModal(productName, productPrice, callback) {
                         <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">Pães</p>
+                        <p class="text-xs text-muted-foreground">${productCategory}</p>
                         <h3 class="text-lg font-semibold">${productName}</h3>
                         <p class="text-blue-600 font-semibold">R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
                     </div>
@@ -1109,7 +1114,7 @@ function showQuantityModal(productName, productPrice, callback) {
 }
 
 // Modal de seleção de variante
-function showVariantModal(productId, productName, variants) {
+function showVariantModal(productId, productName, productCategory, variants) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
     modal.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
@@ -1126,7 +1131,7 @@ function showVariantModal(productId, productName, variants) {
                         <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">Pães</p>
+                        <p class="text-xs text-muted-foreground">${productCategory}</p>
                         <h3 class="text-lg font-semibold">${productName}</h3>
                         <p class="text-blue-600 font-semibold">R$ <span id="variant-price">${initialPrice.toFixed(2).replace('.', ',')}</span></p>
                     </div>
@@ -1240,6 +1245,7 @@ document.addEventListener('click', function(e) {
         const productId = btn.dataset.productId;
         const productName = btn.dataset.productName;
         const productPrice = parseFloat(btn.dataset.productPrice);
+        const productCategory = btn.dataset.category || btn.getAttribute('data-category') || 'Produto';
         const hasVariants = btn.dataset.hasVariants === 'true';
         const variantsJson = btn.dataset.variants || '[]';
         
@@ -1248,7 +1254,7 @@ document.addEventListener('click', function(e) {
             try {
                 const variants = JSON.parse(variantsJson);
                 if (variants && variants.length > 0) {
-                    showVariantModal(productId, productName, variants);
+                    showVariantModal(productId, productName, productCategory, variants);
                     return;
                 }
             } catch(err) {
@@ -1257,7 +1263,7 @@ document.addEventListener('click', function(e) {
         }
         
         // Sem variantes, mostrar modal de quantidade
-        showQuantityModal(productName, productPrice, (qty, notes) => {
+        showQuantityModal(productName, productPrice, productCategory, (qty, notes) => {
             addItem({
                 product_id: productId,
                 variant_id: null,
@@ -1440,6 +1446,9 @@ function updateSummary() {
     if (cartCountEl) {
         cartCountEl.textContent = itemsCount;
     }
+    
+    // Atualizar botões de pagamento
+    updatePaymentButtons();
     const summarySubtotalEl = document.getElementById('summary-subtotal');
     if (summarySubtotalEl) {
         summarySubtotalEl.textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
@@ -1457,7 +1466,7 @@ function updateSummary() {
     
     if (totalDiscount > 0) {
         document.getElementById('discount-row').classList.remove('hidden');
-        document.getElementById('summary-discount').textContent = '- R$ ' + totalDiscount.toFixed(2).replace('.', ',');
+        document.getElementById('summary-discount').textContent = '-R$ ' + totalDiscount.toFixed(2).replace('.', ',');
     } else {
         document.getElementById('discount-row').classList.add('hidden');
     }
@@ -1679,16 +1688,7 @@ document.getElementById('delivery-type')?.addEventListener('change', function(e)
     pdvState.deliveryType = e.target.value;
 });
 
-document.getElementById('btn-toggle-delivery')?.addEventListener('click', function() {
-    const deliverySelect = document.getElementById('delivery-type');
-    if (!deliverySelect) {
-        return;
-    }
-    const nextValue = deliverySelect.value === 'delivery' ? 'pickup' : 'delivery';
-    deliverySelect.value = nextValue;
-    pdvState.deliveryType = nextValue;
-    this.textContent = nextValue === 'delivery' ? 'Entrega Ativada' : 'Retirada';
-});
+// Removido - substituído pelo novo código abaixo
 
 document.getElementById('delivery-address')?.addEventListener('input', function(e) {
     if (pdvState.customer) {
@@ -1712,6 +1712,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Atualizar resumo inicial
     updateSummary();
+    
+    // Carregar slots de entrega disponíveis
+    loadDeliverySlots();
     
     // Inicializar ícones Lucide
     if (window.lucide) {
@@ -1739,6 +1742,60 @@ document.getElementById('btn-send-order')?.addEventListener('click', function() 
     document.getElementById('btn-finalize-order')?.click();
 });
 
+// Carregar slots de entrega disponíveis
+async function loadDeliverySlots() {
+    try {
+        console.log('🔍 Carregando slots de entrega para PDV...');
+        const response = await fetch('/dashboard/orders/delivery-slots', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Erro ao carregar slots:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Slots carregados:', data);
+        
+        if (data.success && data.slots) {
+            window.availableDates = data.slots;
+            populateDateOptions();
+        } else {
+            console.warn('⚠️ Nenhum slot disponível ou erro na resposta');
+            window.availableDates = [];
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar slots de entrega:', error);
+        window.availableDates = [];
+        alert('Erro ao carregar horários de entrega disponíveis. Tente novamente.');
+    }
+}
+
+// Preencher opções de data
+function populateDateOptions() {
+    const dateSelect = document.getElementById('scheduled_delivery_date');
+    if (!dateSelect) return;
+    
+    dateSelect.innerHTML = '<option value="">Selecione uma data</option>';
+    
+    if (!window.availableDates || window.availableDates.length === 0) {
+        return;
+    }
+    
+    window.availableDates.forEach(dateObj => {
+        const option = document.createElement('option');
+        option.value = dateObj.date;
+        option.textContent = `${dateObj.day_name}, ${dateObj.label}`;
+        option.dataset.slots = JSON.stringify(dateObj.slots || []);
+        dateSelect.appendChild(option);
+    });
+}
+
 // Atualizar slots de agendamento
 function updateScheduleSlots() {
     const dateSelect = document.getElementById('scheduled_delivery_date');
@@ -1746,28 +1803,47 @@ function updateScheduleSlots() {
     if (!dateSelect || !slotSelect) return;
 
     const selectedDate = dateSelect.value;
-    const dateObj = availableDates.find(d => d.date === selectedDate);
+    const selectedOption = dateSelect.options[dateSelect.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.dataset.slots) {
+        slotSelect.innerHTML = '<option value="">Selecione primeiro uma data</option>';
+        slotSelect.disabled = true;
+        return;
+    }
 
-    if (!dateObj || !dateObj.slots || dateObj.slots.length === 0) {
+    const slots = JSON.parse(selectedOption.dataset.slots);
+    
+    if (!slots || slots.length === 0) {
         slotSelect.innerHTML = '<option value="">Nenhum horário disponível</option>';
         slotSelect.disabled = true;
         return;
     }
 
-    slotSelect.innerHTML = '<option value="">Selecione um horário</option>' + dateObj.slots.map(slot => {
-        const label = `${slot.label} (${slot.available} vagas)`;
-        return `<option value="${slot.value}">${label}</option>`;
-    }).join('');
-    slotSelect.disabled = false;
+    slotSelect.innerHTML = '<option value="">Selecione um horário</option>';
+    slots.forEach(slot => {
+        if (slot.available > 0) {
+            const option = document.createElement('option');
+            option.value = slot.value;
+            option.textContent = `${slot.label} (${slot.available} vagas)`;
+            slotSelect.appendChild(option);
+        }
+    });
+    
+    slotSelect.disabled = slotSelect.options.length <= 1; // Desabilita se só tem a opção "Selecione"
 }
 
 document.getElementById('scheduled_delivery_date')?.addEventListener('change', updateScheduleSlots);
 
 // Finalizar pedido (abre agendamento)
-document.getElementById('btn-finalize-order')?.addEventListener('click', function() {
+document.getElementById('btn-finalize-order')?.addEventListener('click', async function() {
+    // Garantir que os slots estejam carregados
+    if (!window.availableDates || window.availableDates.length === 0) {
+        await loadDeliverySlots();
+    }
+    
     const dateSelect = document.getElementById('scheduled_delivery_date');
-    if (dateSelect && !dateSelect.value && availableDates.length > 0) {
-        dateSelect.value = availableDates[0].date;
+    if (dateSelect && !dateSelect.value && window.availableDates && window.availableDates.length > 0) {
+        dateSelect.value = window.availableDates[0].date;
         updateScheduleSlots();
     }
     document.getElementById('finalize-modal').classList.remove('hidden');
@@ -1791,16 +1867,21 @@ function updatePaymentButtons() {
     const inactiveClasses = ['border-gray-300', 'bg-white', 'text-gray-700'];
 
     if (method === 'pix') {
-        btnPix.classList.add(...activeClasses);
         btnPix.classList.remove(...inactiveClasses);
-        btnLink.classList.add(...inactiveClasses);
+        btnPix.classList.add(...activeClasses);
         btnLink.classList.remove(...activeClasses);
+        btnLink.classList.add(...inactiveClasses);
     } else {
-        btnLink.classList.add(...activeClasses);
         btnLink.classList.remove(...inactiveClasses);
-        btnPix.classList.add(...inactiveClasses);
+        btnLink.classList.add(...activeClasses);
         btnPix.classList.remove(...activeClasses);
+        btnPix.classList.add(...inactiveClasses);
     }
+    
+    // Habilitar botões se houver itens no carrinho
+    const hasItems = pdvState.items && pdvState.items.length > 0;
+    if (btnPix) btnPix.disabled = !hasItems;
+    if (btnLink) btnLink.disabled = !hasItems;
 }
 
 function setPaymentMethod(method) {
@@ -1821,6 +1902,22 @@ document.getElementById('btn-payment-link')?.addEventListener('click', function 
 
 // Inicializar seleção de pagamento no carregamento
 updatePaymentButtons();
+
+// Toggle seção de entrega
+document.getElementById('btn-toggle-delivery')?.addEventListener('click', function() {
+    const deliverySection = document.getElementById('delivery-section');
+    if (deliverySection) {
+        deliverySection.classList.toggle('hidden');
+        if (deliverySection.classList.contains('hidden')) {
+            this.innerHTML = '<i data-lucide="truck" class="h-4 w-4"></i> Adicionar Entrega';
+        } else {
+            this.innerHTML = '<i data-lucide="truck" class="h-4 w-4"></i> Ocultar Entrega';
+        }
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+});
 
 function calculateOrderTotals() {
     const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);

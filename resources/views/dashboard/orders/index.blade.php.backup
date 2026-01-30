@@ -1,0 +1,978 @@
+@extends('dashboard.layouts.app')
+
+@section('page_title', 'Pedidos')
+@section('page_subtitle', 'Gerenciamento de pedidos')
+
+@push('styles')
+<style>
+    /* Estilos específicos para a página de pedidos */
+    .view-btn {
+        @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all;
+    }
+    .view-btn.active {
+        @apply bg-white text-foreground shadow-sm border border-gray-200;
+    }
+    .view-btn.inactive {
+        @apply bg-transparent text-gray-600 hover:text-foreground;
+    }
+    .status-tab {
+        @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2;
+    }
+    .status-tab.active {
+        @apply bg-white text-foreground shadow-sm border border-gray-200;
+    }
+    .status-tab.inactive {
+        @apply bg-transparent text-gray-600 hover:text-foreground;
+    }
+    
+    /* Responsividade para mobile */
+    @media (max-width: 768px) {
+        #orders-list-view table {
+            font-size: 0.875rem;
+        }
+        
+        /* Garantir que o menu dropdown fique acima de outros elementos */
+        [id^="order-actions-menu-"] {
+            position: absolute;
+            z-index: 1000;
+        }
+    }
+    
+    /* Menu de ações dropdown */
+    [id^="order-actions-menu-"] {
+        position: absolute;
+        right: 0;
+        z-index: 1000;
+        min-width: 200px;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="space-y-6">
+    <!-- Header com título e botões de visualização -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-foreground mb-0">Pedidos</h1>
+                </div>
+
+        <div class="flex items-center gap-3">
+            <!-- Botões de visualização -->
+            <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                <button class="view-btn active" id="btn-view-list">
+                    <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                    </svg>
+                    Lista
+                </button>
+                <button class="view-btn inactive" id="btn-view-cards">
+                    <i data-lucide="grid" class="w-4 h-4 inline-block mr-2"></i>
+                    Cartões
+                </button>
+                <button class="view-btn inactive" id="btn-view-calendar">
+                    <i data-lucide="calendar" class="w-4 h-4 inline-block mr-2"></i>
+                    Calendário
+                </button>
+            </div>
+
+            <!-- Botão Nova Encomenda -->
+            <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-sm" id="btn-nova-encomenda">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Nova encomenda
+            </button>
+        </div>
+    </div>
+
+    <!-- Barra de Busca e Filtros -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <!-- Barra de Busca -->
+        <div class="flex-1 relative">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+            <input type="text" 
+                   name="q" 
+                   id="search-orders"
+                   value="{{ request('q') }}"
+                   placeholder="Buscar por cliente, número do pedido..." 
+                   class="pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg h-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+        </div>
+
+        <!-- Filtro de Status -->
+        <div class="flex items-center gap-2">
+            <select name="status" id="status-filter" class="h-10 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                <option value="all" {{ request('status') == 'all' || !request('status') ? 'selected' : '' }}>Todos</option>
+                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Ativos (Confirmados + Aguardando)</option>
+                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Aguardando Pagamento</option>
+                <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmados</option>
+                <option value="preparing" {{ request('status') == 'preparing' ? 'selected' : '' }}>Em Preparo</option>
+                <option value="ready" {{ request('status') == 'ready' ? 'selected' : '' }}>Prontos</option>
+                <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>Entregues</option>
+                <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelados</option>
+            </select>
+            
+            <button type="button" id="clear-filters" class="h-10 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Limpar
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabela de Pedidos -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" id="orders-list-view">
+        @if($orders->count() > 0)
+            <!-- Desktop: Tabela completa -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">CLIENTE</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">DATA</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">VALOR</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">STATUS</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($orders as $order)
+                            @php
+                                // Extrair apenas o número do pedido (ex: "OLK-0227-5DXZ3W" -> "0227")
+                                $orderNumberDisplay = $order->order_number ?? '#' . $order->id;
+                                if (preg_match('/OLK-(\d+)-/', $orderNumberDisplay, $matches)) {
+                                    $orderNumberDisplay = $matches[1];
+                                }
+                                
+                                // Nome: apenas primeiro e último
+                                $customerName = $order->customer->name ?? 'Cliente';
+                                $nameParts = explode(' ', trim($customerName));
+                                if (count($nameParts) > 1) {
+                                    $customerName = $nameParts[0] . ' ' . end($nameParts);
+                                }
+                                
+                                // Data formatada - apenas dia, sem hora
+                                $orderDate = $order->scheduled_delivery_at ?? $order->created_at;
+                                $formattedDate = $orderDate->format('d/m/Y');
+                                
+                                // Valor total
+                                $totalAmount = $order->final_amount ?? $order->total_amount ?? 0;
+                                
+                                // Status - badge verde para "Confirmado" como na imagem
+                                $statusMap = [
+                                    'pending' => ['label' => 'Pendente', 'class' => 'bg-yellow-100 text-yellow-800'],
+                                    'confirmed' => ['label' => 'Confirmado', 'class' => 'bg-green-100 text-green-800'],
+                                    'preparing' => ['label' => 'Preparando', 'class' => 'bg-blue-100 text-blue-800'],
+                                    'ready' => ['label' => 'Pronto', 'class' => 'bg-indigo-100 text-indigo-800'],
+                                    'delivered' => ['label' => 'Entregue', 'class' => 'bg-green-100 text-green-800'],
+                                    'cancelled' => ['label' => 'Cancelado', 'class' => 'bg-red-100 text-red-800'],
+                                ];
+                                $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'bg-gray-100 text-gray-800'];
+                            @endphp
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" 
+                                       class="text-sm font-medium text-gray-900 hover:text-primary transition-colors cursor-pointer">
+                                        {{ $orderNumberDisplay }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" 
+                                       class="text-sm font-medium text-gray-900 hover:text-primary transition-colors cursor-pointer">
+                                        {{ $customerName }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $formattedDate }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <div class="text-sm font-medium text-gray-900">R$ {{ number_format($totalAmount, 2, ',', '.') }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $statusData['class'] }}">
+                                        {{ $statusData['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <div class="relative inline-block">
+                                        <button type="button" 
+                                                class="order-actions-btn-{{ $order->id }} inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
+                                                onclick="toggleOrderActions({{ $order->id }}, event)">
+                                            <i data-lucide="menu" class="w-5 h-5"></i>
+                                        </button>
+                                        
+                                        <!-- Menu Dropdown de Ações -->
+                                        <div id="order-actions-menu-{{ $order->id }}" 
+                                             class="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                                            <button type="button"
+                                                    onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event)"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                <i data-lucide="printer" class="w-4 h-4"></i>
+                                                <span>Imprimir Recibo</span>
+                                            </button>
+                                            
+                                            <button type="button"
+                                                    onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event, true)"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                                                <span>Imprimir Recibo de Conferência</span>
+                                            </button>
+                                            
+                                            @if($order->status === 'cancelled')
+                                            {{-- Pedido Cancelado: Opção de Duplicar --}}
+                                            <form method="POST" action="{{ route('dashboard.orders.duplicate', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        onclick="return confirm('Deseja duplicar este pedido? Um novo pedido será criado com os mesmos itens.')"
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left">
+                                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                                    <span>Duplicar Pedido</span>
+                                                </button>
+                                            </form>
+                                            @else
+                                            {{-- Pedido Ativo: Opções Normais --}}
+                                            <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}" class="inline">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="status" value="cancelled">
+                                                <button type="submit" 
+                                                        onclick="return confirm('Tem certeza que deseja cancelar este pedido?')"
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left">
+                                                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                                                    <span>Cancelar</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                            
+                                            @if($order->payment_status === 'pending')
+                                            <a href="{{ route('dashboard.orders.show', $order->id) }}#payment" 
+                                               class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50">
+                                                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                                <span>Confirmar Pagamento</span>
+                                            </a>
+                                            @endif
+                                            
+                                            @if($order->payment_status !== 'refunded' && optional($order->customer)->phone)
+                                            <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left">
+                                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                                    <span>Enviar Recibo (WhatsApp)</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                            
+                                            @if($order->payment_status === 'pending' && optional($order->customer)->phone)
+                                            <form method="POST" action="{{ route('dashboard.orders.sendPaymentCharge', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 text-left">
+                                                    <i data-lucide="credit-card" class="w-4 h-4"></i>
+                                                    <span>Enviar Cobrança</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile: Tabela simplificada -->
+            <div class="md:hidden">
+                <table class="w-full text-xs">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase">#</th>
+                            <th class="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase">NOME</th>
+                            <th class="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase">STATUS</th>
+                            <th class="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase">VALOR</th>
+                            <th class="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($orders as $order)
+                            @php
+                                // Extrair apenas o número do pedido (ex: "OLK-0227-5DXZ3W" -> "0227")
+                                $orderNumberDisplay = $order->order_number ?? '#' . $order->id;
+                                if (preg_match('/OLK-(\d+)-/', $orderNumberDisplay, $matches)) {
+                                    $orderNumberDisplay = $matches[1];
+                                }
+                                
+                                // Nome: apenas primeiro e último
+                                $customerName = $order->customer->name ?? 'Cliente';
+                                $nameParts = explode(' ', trim($customerName));
+                                if (count($nameParts) > 1) {
+                                    $customerName = $nameParts[0] . ' ' . end($nameParts);
+                                }
+                                
+                                // Valor total
+                                $totalAmount = $order->final_amount ?? $order->total_amount ?? 0;
+                                
+                                // Status - badge verde para "Confirmado" como na imagem
+                                $statusMap = [
+                                    'pending' => ['label' => 'Pendente', 'class' => 'bg-yellow-100 text-yellow-800'],
+                                    'confirmed' => ['label' => 'Confirmado', 'class' => 'bg-green-100 text-green-800'],
+                                    'preparing' => ['label' => 'Preparando', 'class' => 'bg-blue-100 text-blue-800'],
+                                    'ready' => ['label' => 'Pronto', 'class' => 'bg-indigo-100 text-indigo-800'],
+                                    'delivered' => ['label' => 'Entregue', 'class' => 'bg-green-100 text-green-800'],
+                                    'cancelled' => ['label' => 'Cancelado', 'class' => 'bg-red-100 text-red-800'],
+                                ];
+                                $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'bg-gray-100 text-gray-800'];
+                            @endphp
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-2 py-2 whitespace-nowrap">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" 
+                                       class="text-[11px] font-medium text-gray-900 hover:text-primary transition-colors cursor-pointer">
+                                        {{ $orderNumberDisplay }}
+                                    </a>
+                                </td>
+                                <td class="px-2 py-2">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" 
+                                       class="text-[11px] font-medium text-gray-900 hover:text-primary transition-colors cursor-pointer truncate max-w-[80px] block">
+                                        {{ $customerName }}
+                                    </a>
+                                </td>
+                                <td class="px-2 py-2 whitespace-nowrap text-right">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold {{ $statusData['class'] }}">
+                                        {{ $statusData['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-2 py-2 whitespace-nowrap text-right">
+                                    <div class="text-[11px] font-medium text-gray-900">R$ {{ number_format($totalAmount, 2, ',', '.') }}</div>
+                                </td>
+                                <td class="px-2 py-2 whitespace-nowrap text-right">
+                                    <div class="relative inline-block">
+                                        <button type="button" 
+                                                class="order-actions-btn-{{ $order->id }} inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
+                                                onclick="toggleOrderActions({{ $order->id }}, event)"
+                                                style="-webkit-tap-highlight-color: transparent;">
+                                            <i data-lucide="menu" class="w-5 h-5"></i>
+                                        </button>
+                                        
+                                        <!-- Menu Dropdown de Ações -->
+                                        <div id="order-actions-menu-{{ $order->id }}" 
+                                             class="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                                            <button type="button"
+                                                    onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event)"
+                                                    class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                                <span>Imprimir Recibo</span>
+                                            </button>
+                                            
+                                            <button type="button"
+                                                    onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event, true)"
+                                                    class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i>
+                                                <span>Imprimir Recibo Conferência</span>
+                                            </button>
+                                            
+                                            @if($order->status === 'cancelled')
+                                            {{-- Pedido Cancelado: Opção de Duplicar --}}
+                                            <form method="POST" action="{{ route('dashboard.orders.duplicate', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        onclick="return confirm('Deseja duplicar este pedido? Um novo pedido será criado com os mesmos itens.')"
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 text-left">
+                                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                                    <span>Duplicar Pedido</span>
+                                                </button>
+                                            </form>
+                                            @else
+                                            {{-- Pedido Ativo: Opções Normais --}}
+                                            <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}" class="inline">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="status" value="cancelled">
+                                                <button type="submit" 
+                                                        onclick="return confirm('Tem certeza que deseja cancelar este pedido?')"
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-600 hover:bg-red-50 text-left">
+                                                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                                                    <span>Cancelar</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                            
+                                            @if($order->payment_status === 'pending')
+                                            <a href="{{ route('dashboard.orders.show', $order->id) }}#payment" 
+                                               class="flex items-center gap-2 px-4 py-2 text-xs text-green-600 hover:bg-green-50">
+                                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                                                <span>Confirmar Pagamento</span>
+                                            </a>
+                                            @endif
+                                            
+                                            @if($order->payment_status !== 'refunded' && optional($order->customer)->phone)
+                                            <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 text-left">
+                                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                                    <span>Enviar Recibo (WhatsApp)</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                            
+                                            @if($order->payment_status === 'pending' && optional($order->customer)->phone)
+                                            <form method="POST" action="{{ route('dashboard.orders.sendPaymentCharge', $order->id) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        class="w-full flex items-center gap-2 px-4 py-2 text-xs text-orange-600 hover:bg-orange-50 text-left">
+                                                    <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
+                                                    <span>Enviar Cobrança</span>
+                                                </button>
+                                            </form>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <div class="text-center py-12">
+                <i data-lucide="inbox" class="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
+                <p class="text-gray-500 text-lg">Nenhum pedido encontrado</p>
+            </div>
+        @endif
+    </div>
+
+    <!-- Paginação -->
+    @if($orders->hasPages())
+        <div class="flex justify-center items-center gap-2 mt-6">
+                    @if($orders->onFirstPage())
+                <button class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-400 cursor-not-allowed" disabled>
+                    <i data-lucide="chevron-left" class="w-4 h-4 inline-block"></i>
+                    Anterior
+                        </button>
+                    @else
+                <a href="{{ $orders->appends(request()->query())->previousPageUrl() }}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                    <i data-lucide="chevron-left" class="w-4 h-4 inline-block"></i>
+                    Anterior
+                        </a>
+                    @endif
+            
+            <span class="text-sm text-gray-600">
+                Página {{ $orders->currentPage() }} de {{ $orders->lastPage() }}
+            </span>
+                    
+                    @if($orders->hasMorePages())
+                <a href="{{ $orders->appends(request()->query())->nextPageUrl() }}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                    Próximo
+                    <i data-lucide="chevron-right" class="w-4 h-4 inline-block"></i>
+                        </a>
+                    @else
+                <button class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-400 cursor-not-allowed" disabled>
+                    Próximo
+                    <i data-lucide="chevron-right" class="w-4 h-4 inline-block"></i>
+                        </button>
+                    @endif
+                </div>
+    @endif
+
+    <!-- Visualização de Calendário (oculta por padrão) -->
+    <div class="hidden" id="orders-calendar-view">
+        <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <p class="text-gray-500 text-lg">Visualização de calendário em desenvolvimento</p>
+            </div>
+        </div>
+
+    <!-- Visualização em Cartões (oculta por padrão) -->
+    <div class="hidden" id="orders-cards-view">
+        <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                @foreach($orders as $order)
+                    @php
+                        // Extrair apenas o número do pedido
+                        $orderNumberDisplay = $order->order_number ?? '#' . $order->id;
+                        if (preg_match('/OLK-(\d+)-/', $orderNumberDisplay, $matches)) {
+                            $orderNumberDisplay = $matches[1];
+                        }
+                        
+                        // Nome: apenas primeiro e último
+                        $customerName = $order->customer->name ?? 'Cliente';
+                        $nameParts = explode(' ', trim($customerName));
+                        if (count($nameParts) > 1) {
+                            $customerName = $nameParts[0] . ' ' . end($nameParts);
+                        }
+                        
+                        // Data formatada
+                        $orderDate = $order->scheduled_delivery_at ?? $order->created_at;
+                        $formattedDate = $orderDate->format('d/m/Y');
+                        $formattedTime = $orderDate->format('H:i');
+                        
+                        // Valor total
+                        $totalAmount = $order->final_amount ?? $order->total_amount ?? 0;
+                        
+                        // Status
+                        $statusMap = [
+                            'pending' => ['label' => 'Pendente', 'class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'clock'],
+                            'confirmed' => ['label' => 'Confirmado', 'class' => 'bg-green-100 text-green-800', 'icon' => 'check-circle'],
+                            'preparing' => ['label' => 'Preparando', 'class' => 'bg-blue-100 text-blue-800', 'icon' => 'chef-hat'],
+                            'ready' => ['label' => 'Pronto', 'class' => 'bg-indigo-100 text-indigo-800', 'icon' => 'package-check'],
+                            'delivered' => ['label' => 'Entregue', 'class' => 'bg-green-100 text-green-800', 'icon' => 'check-circle-2'],
+                            'cancelled' => ['label' => 'Cancelado', 'class' => 'bg-red-100 text-red-800', 'icon' => 'x-circle'],
+                        ];
+                        $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'bg-gray-100 text-gray-800', 'icon' => 'circle'];
+                        
+                        // Cores para avatar
+                        $colors = [
+                            'bg-blue-100 text-blue-600',
+                            'bg-purple-100 text-purple-600',
+                            'bg-pink-100 text-pink-600',
+                            'bg-green-100 text-green-600',
+                            'bg-orange-100 text-orange-600',
+                            'bg-indigo-100 text-indigo-600',
+                        ];
+                        $colorIndex = crc32($customerName) % count($colors);
+                        $avatarColor = $colors[$colorIndex];
+                        
+                        // Iniciais
+                        $initials = strtoupper(substr($customerName, 0, 1));
+                        if (preg_match_all('/\b\w/', $customerName, $matches)) {
+                            $initials = strtoupper(implode('', array_slice($matches[0], 0, 2)));
+                        }
+                    @endphp
+                    <div class="bg-white border border-border rounded-xl p-3 sm:p-4 hover:shadow-md transition-all">
+                        <!-- Header: Pedido + Ações -->
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <div class="w-10 h-10 rounded-full {{ $avatarColor }} flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                    {{ $initials }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" class="block group">
+                                        <h3 class="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+                                            #{{ $orderNumberDisplay }}
+                                        </h3>
+                                        <p class="text-xs text-muted-foreground mt-0.5 truncate">{{ $customerName }}</p>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="relative inline-block flex-shrink-0">
+                                <button type="button" 
+                                        class="order-actions-btn-card-{{ $order->id }} inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
+                                        onclick="toggleOrderActions({{ $order->id }}, event)">
+                                    <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                                </button>
+                                
+                                <!-- Menu Dropdown de Ações -->
+                                <div id="order-actions-menu-{{ $order->id }}" 
+                                     class="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                                    <button type="button"
+                                            onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event)"
+                                            class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left">
+                                        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                        <span>Imprimir Recibo</span>
+                                    </button>
+                                    
+                                    <button type="button"
+                                            onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event, true)"
+                                            class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left">
+                                        <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i>
+                                        <span>Imprimir Recibo Conferência</span>
+                                    </button>
+                                    
+                                    @if($order->status === 'cancelled')
+                                    {{-- Pedido Cancelado: Opção de Duplicar --}}
+                                    <form method="POST" action="{{ route('dashboard.orders.duplicate', $order->id) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                onclick="return confirm('Deseja duplicar este pedido? Um novo pedido será criado com os mesmos itens.')"
+                                                class="w-full flex items-center gap-2 px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 text-left">
+                                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                            <span>Duplicar Pedido</span>
+                                        </button>
+                                    </form>
+                                    @else
+                                    {{-- Pedido Ativo: Opções Normais --}}
+                                    <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}" class="inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="cancelled">
+                                        <button type="submit" 
+                                                onclick="return confirm('Tem certeza que deseja cancelar este pedido?')"
+                                                class="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-600 hover:bg-red-50 text-left">
+                                            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                                            <span>Cancelar</span>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    
+                                    @if($order->payment_status === 'pending')
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}#payment" 
+                                       class="flex items-center gap-2 px-4 py-2 text-xs text-green-600 hover:bg-green-50">
+                                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                                        <span>Confirmar Pagamento</span>
+                                    </a>
+                                    @endif
+                                    
+                                    @if($order->payment_status !== 'refunded' && optional($order->customer)->phone)
+                                    <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                class="w-full flex items-center gap-2 px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 text-left">
+                                            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                            <span>Enviar Recibo (WhatsApp)</span>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    
+                                    @if($order->payment_status === 'pending' && optional($order->customer)->phone)
+                                    <form method="POST" action="{{ route('dashboard.orders.sendPaymentCharge', $order->id) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                class="w-full flex items-center gap-2 px-4 py-2 text-xs text-orange-600 hover:bg-orange-50 text-left">
+                                            <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
+                                            <span>Enviar Cobrança</span>
+                                        </button>
+                                    </form>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Badge -->
+                        <div class="mb-3">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusData['class'] }} gap-1.5">
+                                <i data-lucide="{{ $statusData['icon'] }}" class="w-3.5 h-3.5"></i>
+                                {{ $statusData['label'] }}
+                            </span>
+                        </div>
+
+                        <!-- Info: Data/Hora -->
+                        <div class="mb-3 space-y-1.5">
+                            <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                                <span>{{ $formattedDate }} às {{ $formattedTime }}</span>
+                            </div>
+                            @if($order->payment_method)
+                            <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                                <i data-lucide="credit-card" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                                <span>{{ ucfirst($order->payment_method) }}</span>
+                            </div>
+                            @endif
+                        </div>
+
+                        <!-- Footer: Valor -->
+                        <div class="pt-3 border-t border-border">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Valor Total</p>
+                                <p class="text-base font-bold text-primary">R$ {{ number_format($totalAmount, 2, ',', '.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Nova Encomenda --}}
+@include('dashboard.orders.partials.nova-encomenda-modal')
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle entre Lista, Cartões e Calendário
+    const btnList = document.getElementById('btn-view-list');
+    const btnCards = document.getElementById('btn-view-cards');
+    const btnCalendar = document.getElementById('btn-view-calendar');
+    const listView = document.getElementById('orders-list-view');
+    const cardsView = document.getElementById('orders-cards-view');
+    const calendarView = document.getElementById('orders-calendar-view');
+    
+    // Função para ativar uma visualização
+    function activateView(viewToShow, buttonToActivate) {
+        // Esconder todas as views
+        listView.classList.add('hidden');
+        cardsView.classList.add('hidden');
+        calendarView.classList.add('hidden');
+        
+        // Remover active de todos os botões
+        [btnList, btnCards, btnCalendar].forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('inactive');
+        });
+        
+        // Mostrar view selecionada
+        viewToShow.classList.remove('hidden');
+        
+        // Ativar botão selecionado
+        buttonToActivate.classList.remove('inactive');
+        buttonToActivate.classList.add('active');
+        
+        // Re-inicializar ícones Lucide
+        if (window.lucide) {
+            setTimeout(() => {
+                lucide.createIcons();
+            }, 100);
+        }
+    }
+    
+    btnList?.addEventListener('click', function() {
+        activateView(listView, btnList);
+    });
+    
+    btnCards?.addEventListener('click', function() {
+        activateView(cardsView, btnCards);
+    });
+    
+    btnCalendar?.addEventListener('click', function() {
+        activateView(calendarView, btnCalendar);
+    });
+    
+    // Botão Nova Encomenda - Abrir modal popup
+    document.getElementById('btn-nova-encomenda')?.addEventListener('click', function() {
+        // Disparar evento para abrir o modal
+        window.dispatchEvent(new CustomEvent('open-nova-encomenda', { 
+            detail: { userInitiated: true } 
+        }));
+    });
+    
+    // Filtro de Status
+    const statusFilter = document.getElementById('status-filter');
+    const searchInput = document.getElementById('search-orders');
+    const clearFilters = document.getElementById('clear-filters');
+    
+    function applyFilters() {
+        const params = new URLSearchParams(window.location.search);
+        const status = statusFilter.value;
+        const search = searchInput.value.trim();
+        
+        if (status && status !== 'all') {
+            params.set('status', status);
+        } else {
+            params.delete('status');
+        }
+        
+        if (search) {
+            params.set('q', search);
+        } else {
+            params.delete('q');
+        }
+        
+        window.location.href = '{{ route("dashboard.orders.index") }}?' + params.toString();
+    }
+    
+    statusFilter?.addEventListener('change', applyFilters);
+    
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+    
+    clearFilters?.addEventListener('click', function() {
+        window.location.href = '{{ route("dashboard.orders.index") }}';
+    });
+    
+    // Toggle menu de ações do pedido (desktop, mobile e cartões)
+    window.toggleOrderActions = function(orderId, event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        
+        // Buscar TODOS os menus com esse ID (desktop, mobile e cartões)
+        const menus = document.querySelectorAll('#order-actions-menu-' + orderId);
+        if (!menus || menus.length === 0) {
+            console.warn('Menu não encontrado para pedido:', orderId);
+            return;
+        }
+        
+        // Encontrar o menu que está visível
+        let visibleMenu = null;
+        menus.forEach(menu => {
+            // Verificar se o menu está dentro de um container visível
+            const parentContainer = menu.closest('#orders-list-view, #orders-cards-view');
+            if (parentContainer && !parentContainer.classList.contains('hidden')) {
+                // Se estiver na lista, verificar desktop/mobile
+                if (parentContainer.id === 'orders-list-view') {
+                    const isInDesktopSection = menu.closest('.hidden.md\\:block');
+                    const isInMobileSection = menu.closest('.md\\:hidden');
+                    
+                    // Desktop: largura >= 768px
+                    if (window.innerWidth >= 768 && isInDesktopSection) {
+                        visibleMenu = menu;
+                    }
+                    // Mobile: largura < 768px
+                    else if (window.innerWidth < 768 && isInMobileSection) {
+                        visibleMenu = menu;
+                    }
+                } else {
+                    // Se estiver nos cartões, usar diretamente
+                    visibleMenu = menu;
+                }
+            }
+        });
+        
+        if (!visibleMenu) {
+            console.warn('Menu visível não encontrado para pedido:', orderId);
+            return;
+        }
+        
+        const isHidden = visibleMenu.classList.contains('hidden');
+        
+        // Fechar todos os menus primeiro
+        document.querySelectorAll('[id^="order-actions-menu-"]').forEach(m => {
+            m.classList.add('hidden');
+        });
+        
+        // Se estava escondido, mostrar
+        if (isHidden) {
+            visibleMenu.classList.remove('hidden');
+            // Re-inicializar ícones apenas se necessário
+            if (window.lucide) {
+                try {
+                    lucide.createIcons();
+                } catch (e) {
+                    console.error('Erro ao criar ícones:', e);
+                }
+            }
+        }
+    };
+    
+    // Fechar menus ao clicar fora (apenas uma vez - usando flag global)
+    if (!window.orderActionsHandlerAdded) {
+        window.orderActionsHandlerAdded = true;
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('[id^="order-actions-menu-"]') && 
+                !e.target.closest('[class*="order-actions-btn-"]') &&
+                !e.target.closest('button[onclick*="toggleOrderActions"]')) {
+                document.querySelectorAll('[id^="order-actions-menu-"]').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        }, true);
+    }
+    
+    // Inicializar ícones Lucide apenas uma vez
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+    
+    // Função global para solicitar impressão centralizada
+    window.requestPrint = async function(orderId, orderNumber, event, isCheckReceipt = false) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        console.log('🟢 requestPrint chamado:', { orderId, orderNumber, isCheckReceipt });
+        
+        // Mostrar feedback visual
+        const btnElement = event?.target?.closest('button');
+        let originalHTML = null;
+        if (btnElement) {
+            originalHTML = btnElement.innerHTML;
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Enviando...</span>';
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        try {
+            // Fechar menu de ações
+            document.querySelectorAll('[id^="order-actions-menu-"]').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+            
+            // Fazer requisição para adicionar à fila
+            const endpoint = isCheckReceipt 
+                ? `/orders/${orderId}/request-print-check`
+                : `/orders/${orderId}/request-print`;
+            
+            console.log('🔵 Enviando requisição para:', endpoint);
+                
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include'
+            });
+            
+            console.log('🔵 Status HTTP:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Erro HTTP:', response.status, errorText);
+                throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Resposta JSON:', result);
+            
+            if (result.success) {
+                // Mostrar notificação de sucesso
+                const receiptType = isCheckReceipt ? 'Recibo de Conferência' : 'Recibo';
+                showNotification(
+                    '✅ ' + receiptType + ' #' + orderNumber + ' adicionado à fila de impressão!',
+                    'O recibo será impresso automaticamente no dispositivo central.',
+                    'success'
+                );
+            } else {
+                throw new Error(result.message || 'Erro ao solicitar impressão');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao solicitar impressão:', error);
+            showNotification(
+                '❌ Erro ao adicionar à fila',
+                error.message || 'Tente novamente ou contate o suporte.',
+                'error'
+            );
+        } finally {
+            // Restaurar botão original
+            if (btnElement && originalHTML) {
+                btnElement.disabled = false;
+                btnElement.innerHTML = originalHTML;
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+    };
+    
+    // Função para mostrar notificações
+    function showNotification(title, message, type = 'info') {
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-[9999] max-w-md p-4 rounded-lg shadow-lg border animate-in slide-in-from-right duration-300`;
+        
+        // Cores baseadas no tipo
+        const colors = {
+            success: 'bg-green-50 border-green-200 text-green-900',
+            error: 'bg-red-50 border-red-200 text-red-900',
+            info: 'bg-blue-50 border-blue-200 text-blue-900'
+        };
+        
+        notification.className += ' ' + (colors[type] || colors.info);
+        
+        notification.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="flex-1">
+                    <p class="font-semibold text-sm">${title}</p>
+                    <p class="text-xs mt-1 opacity-90">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-current opacity-50 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slide-out-to-right 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+});
+</script>
+@endpush
+@endsection

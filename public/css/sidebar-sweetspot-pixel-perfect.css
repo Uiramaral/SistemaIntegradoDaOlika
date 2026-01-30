@@ -21,7 +21,12 @@ aside#sidebar {
     display: flex !important;
     flex-direction: column !important;
     height: 100vh !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
     color: hsl(var(--sidebar-foreground)) !important;
+    z-index: 40 !important;
 }
 
 /* Logo section */
@@ -31,9 +36,9 @@ aside#sidebar {
 }
 
 .sidebar-logo-area img {
-    width: 2.5rem !important;
-    height: 2.5rem !important;
-    border-radius: 0.75rem !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    border-radius: 0.625rem !important;
     object-fit: contain !important;
 }
 
@@ -41,29 +46,30 @@ aside#sidebar {
 .sidebar-logo-circle {
     background-color: hsl(var(--primary)) !important;
     color: white !important;
-    width: 2.5rem !important; /* h-10 */
-    height: 2.5rem !important; /* w-10 */
-    border-radius: 0.75rem !important; /* rounded-xl (12px) */
+    width: 2.25rem !important; /* 36px */
+    height: 2.25rem !important; /* 36px */
+    border-radius: 0.625rem !important; /* 10px */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-weight: 700 !important;
-    font-size: 1.125rem !important; /* text-lg */
+    font-size: 1rem !important; /* text-base */
     flex-shrink: 0 !important;
 }
 
 /* Brand Name */
 .sidebar-brand-name {
     color: hsl(var(--sidebar-foreground)) !important;
-    font-size: 1.125rem !important; /* text-lg */
+    font-size: 0.9375rem !important; /* ~15px */
     font-weight: 700 !important; /* font-bold */
     line-height: 1.2 !important;
+    letter-spacing: -0.01em !important;
 }
 
 /* Sub Brand (Host) */
 .sidebar-sub-brand {
     color: hsl(var(--sidebar-muted)) !important;
-    font-size: 0.75rem !important; /* text-xs */
+    font-size: 0.6875rem !important; /* ~11px */
     font-weight: 400 !important;
     line-height: 1.4 !important;
 }
@@ -71,23 +77,25 @@ aside#sidebar {
 /* Navigation Container */
 aside#sidebar nav {
     padding: 1rem 0.75rem !important; /* py-4 px-3 */
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+aside#sidebar nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+aside#sidebar nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
 }
 
 /* Group Headers */
 .sidebar-group-label {
-    font-size: 0.75rem !important; /* text-xs */
-    font-weight: 500 !important;
-    color: hsl(var(--sidebar-muted)) !important;
-    padding: 0 1rem !important; /* px-4 */
-    margin-top: 1.25rem !important; /* space-y-5 container margin */
-    margin-bottom: 0.5rem !important; /* mb-2 */
-    text-transform: none !important;
-    letter-spacing: 0.3px !important;
-}
-
-/* First Group Label margin adjustment */
-aside#sidebar nav > div:first-child .sidebar-group-label {
-    margin-top: 0 !important;
+    display: none !important;
 }
 
 /* Menu Items */
@@ -120,10 +128,62 @@ aside#sidebar nav > div:first-child .sidebar-group-label {
 
 /* Icons */
 .sidebar-item i, .sidebar-item svg {
-    width: 1.25rem !important; /* h-5 */
-    height: 1.25rem !important; /* w-5 */
+    width: 1.125rem !important; /* 18px */
+    height: 1.125rem !important; /* 18px */
     flex-shrink: 0 !important;
     color: inherit !important;
+}
+
+/* Accordion */
+.sidebar-accordion summary {
+    list-style: none !important;
+    cursor: pointer !important;
+}
+
+.sidebar-accordion summary::-webkit-details-marker {
+    display: none !important;
+}
+
+.sidebar-chevron {
+    transition: transform 0.2s ease !important;
+}
+
+.sidebar-accordion[open] .sidebar-chevron {
+    transform: rotate(180deg) !important;
+}
+
+.sidebar-accordion[open] > summary {
+    background: hsl(var(--sidebar-accent)) !important;
+    color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Submenu Items */
+.sidebar-submenu-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.45rem 1rem 0.45rem 2.5rem !important;
+    font-size: 0.75rem !important;
+    color: rgba(249, 250, 251, 0.65) !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+}
+
+.sidebar-submenu-item i,
+.sidebar-submenu-item svg {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+}
+
+.sidebar-submenu-item:hover {
+    color: hsl(var(--sidebar-foreground)) !important;
+    background: hsl(var(--sidebar-accent)) !important;
+}
+
+.sidebar-submenu-item.active {
+    background: hsl(var(--sidebar-primary) / 0.7) !important;
+    color: hsl(var(--sidebar-primary-foreground)) !important;
 }
 
 /* User Footer Section */
@@ -169,6 +229,9 @@ aside#sidebar nav::-webkit-scrollbar-track {
     background: transparent;
 }
 aside#sidebar nav::-webkit-scrollbar-thumb {
-    background: hsla(var(--sidebar-foreground), 0.1);
+    background: hsla(210, 20%, 98%, 0.15) !important;
     border-radius: 10px;
+}
+aside#sidebar nav::-webkit-scrollbar-thumb:hover {
+    background: hsla(210, 20%, 98%, 0.25) !important;
 }

@@ -1,756 +1,912 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Pedidos')
-@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
+@section('page_subtitle', 'Gerenciamento de pedidos')
 
-@section('page_actions')
-    <div class="flex items-center gap-2">
-        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-            </svg>
-        </button>
-        <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
-            </svg>
-        </button>
-    </div>
-    <a href="{{ route('dashboard.pdv.index') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"></path>
-            <path d="M12 5v14"></path>
-        </svg>
-        + Agendar pedido
-    </a>
-@endsection
+@push('styles')
+    <style>
+        /* Estilos específicos para a página de pedidos */
+        .view-btn {
+            @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all;
+        }
+
+        .view-btn.active {
+            @apply bg-white text-foreground shadow-sm border border-gray-200;
+        }
+
+        .view-btn.inactive {
+            @apply bg-transparent text-gray-600 hover:text-foreground;
+        }
+
+        .status-tab {
+            @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2;
+        }
+
+        .status-tab.active {
+            @apply bg-white text-foreground shadow-sm border border-gray-200;
+        }
+
+        .status-tab.inactive {
+            @apply bg-transparent text-gray-600 hover:text-foreground;
+        }
+
+        /* Prevenir overflow horizontal nos cards */
+        .order-card {
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Responsividade para mobile */
+        @media (max-width: 768px) {
+            #orders-list-view table {
+                font-size: 0.875rem;
+            }
+
+            /* Garantir que o card não extrapole */
+            .order-card {
+                min-width: 0;
+            }
+
+            /* Garantir que o menu dropdown fique acima de outros elementos */
+            [id^="order-actions-menu-"] {
+                position: absolute;
+                z-index: 1000;
+            }
+        }
+
+        /* Menu de ações dropdown */
+        [id^="order-actions-menu-"] {
+            position: absolute;
+            right: 0;
+            z-index: 1000;
+            min-width: 200px;
+        }
+    </style>
+@endpush
 
 @section('content')
-<div class="space-y-6">
-    <!-- Busca e Filtros -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col sm:flex-row gap-4">
-            <!-- Campo de Busca -->
-            <div class="flex-1">
-                <input type="text" 
-                       name="q" 
-                       value="{{ request('q') }}" 
-                       placeholder="Buscar por cliente ou número do pedido..." 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-            </div>
-            <!-- Manter filtro de status na URL -->
-            @if(request('status'))
-                <input type="hidden" name="status" value="{{ request('status') }}">
-            @endif
-            <!-- Botões -->
-            <div class="flex gap-2">
-                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
-                    Buscar
-                </button>
-                @if(request('q') || request('status'))
-                    <a href="{{ route('dashboard.orders.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                        Limpar
+    <div class="bg-card rounded-xl border border-border animate-fade-in max-w-full" id="orders-page"
+        x-data="ordersLiveSearch('{{ request('q') ?? '' }}', '{{ request('status') ?? 'all' }}')">
+        <!-- Card Header: Busca, Filtros e Botão -->
+        <div class="p-3 sm:p-4 md:p-6 border-b border-border overflow-visible">
+            <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col gap-3">
+                <!-- Desktop: Busca, Filtro e Botões na mesma linha -->
+                <div class="hidden lg:flex items-center gap-3">
+                    <!-- Barra de Busca -->
+                    <div class="relative flex-1">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
+                        <input type="text" name="q" x-model="search"
+                            @input.debounce.500ms="$event.target.form && $event.target.form.submit()"
+                            placeholder="Buscar por cliente, número do pedido..."
+                            class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
+                            autocomplete="off">
+                    </div>
+
+                    <!-- Filtro Status -->
+                    <select name="status" x-model="statusFilter" @change="$event.target.form && $event.target.form.submit()"
+                        class="h-10 rounded-lg border border-input bg-muted/30 text-sm px-3 focus:ring-2 focus:ring-primary/20 focus:border-primary w-[160px] shrink-0">
+                        <option value="all">Todos Status</option>
+                        <option value="active">Ativos</option>
+                        <option value="pending">Pendente</option>
+                        <option value="confirmed">Confirmado</option>
+                        <option value="preparing">Em Preparo</option>
+                        <option value="ready">Pronto</option>
+                        <option value="delivered">Entregue</option>
+                        <option value="cancelled">Cancelado</option>
+                    </select>
+
+                    <!-- Botões -->
+                    <a href="{{ route('dashboard.orders.index') }}"
+                        class="h-10 px-4 rounded-lg text-sm font-medium gap-2 bg-muted/30 border border-input hover:bg-muted inline-flex items-center justify-center shrink-0"
+                        title="Limpar filtros">
+                        <i data-lucide="eraser" class="w-4 h-4 shrink-0"></i>
+                        <span>Limpar</span>
                     </a>
+
+                    <button type="button"
+                        class="btn-primary gap-2 h-10 px-4 rounded-lg shadow-sm inline-flex items-center justify-center shrink-0"
+                        id="btn-nova-encomenda">
+                        <i data-lucide="plus" class="h-4 w-4 text-white"></i>
+                        <span class="font-bold text-white text-sm">Novo pedido</span>
+                    </button>
+                </div>
+
+                <!-- Mobile: Layout empilhado -->
+                <div class="flex lg:hidden flex-col gap-3">
+                    <!-- Barra de Busca -->
+                    <div class="relative w-full">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
+                        <input type="text" name="q" x-model="search"
+                            @input.debounce.500ms="$event.target.form && $event.target.form.submit()"
+                            placeholder="Buscar por cliente, número do pedido..."
+                            class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
+                            autocomplete="off">
+                    </div>
+
+                    <!-- Filtro Status -->
+                    <select name="status" x-model="statusFilter" @change="$event.target.form && $event.target.form.submit()"
+                        class="h-10 rounded-lg border border-input bg-muted/30 text-sm px-3 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full">
+                        <option value="all">Todos Status</option>
+                        <option value="active">Ativos</option>
+                        <option value="pending">Pendente</option>
+                        <option value="confirmed">Confirmado</option>
+                        <option value="preparing">Em Preparo</option>
+                        <option value="ready">Pronto</option>
+                        <option value="delivered">Entregue</option>
+                        <option value="cancelled">Cancelado</option>
+                    </select>
+
+                    <!-- Botões Limpar e Novo Pedido lado a lado, 50/50 -->
+                    <div class="flex items-center gap-2 w-full">
+                        <a href="{{ route('dashboard.orders.index') }}"
+                            class="h-10 px-3 rounded-lg text-sm font-medium gap-1.5 bg-muted/30 border border-input hover:bg-muted inline-flex items-center justify-center flex-1"
+                            title="Limpar filtros">
+                            <i data-lucide="eraser" class="w-4 h-4 shrink-0"></i>
+                            <span>Limpar</span>
+                        </a>
+
+                        <button type="button"
+                            class="btn-primary gap-2 h-10 px-4 rounded-lg shadow-sm inline-flex items-center justify-center flex-1"
+                            id="btn-nova-encomenda-mobile">
+                            <i data-lucide="plus" class="h-4 w-4 text-white"></i>
+                            <span class="font-bold text-white text-sm">Novo pedido</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Orders Grid -->
+        <div class="p-3 sm:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                @forelse($orders as $order)
+                    @php
+                        // Extrair apenas o número do pedido
+                        $orderNumberDisplay = $order->order_number ?? '#' . $order->id;
+                        if (preg_match('/OLK-(\d+)-/', $orderNumberDisplay, $matches)) {
+                            $orderNumberDisplay = $matches[1];
+                        }
+
+                        // Nome COMPLETO do cliente
+                        $customerName = $order->customer->name ?? 'Cliente';
+
+                        // Data formatada
+                        $orderDate = $order->scheduled_delivery_at ?? $order->created_at;
+                        $formattedDate = $orderDate->format('d/m/Y');
+
+                        // Valor total
+                        $totalAmount = $order->final_amount ?? $order->total_amount ?? 0;
+
+                        // Status
+                        $statusMap = [
+                            'pending' => ['label' => 'Pendente', 'class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'clock'],
+                            'confirmed' => ['label' => 'Confirmado', 'class' => 'bg-green-100 text-green-800', 'icon' => 'check-circle'],
+                            'preparing' => ['label' => 'Preparando', 'class' => 'bg-blue-100 text-blue-800', 'icon' => 'chef-hat'],
+                            'ready' => ['label' => 'Pronto', 'class' => 'bg-indigo-100 text-indigo-800', 'icon' => 'package-check'],
+                            'delivered' => ['label' => 'Entregue', 'class' => 'bg-green-100 text-green-800', 'icon' => 'check'],
+                            'cancelled' => ['label' => 'Cancelado', 'class' => 'bg-red-100 text-red-800', 'icon' => 'x-circle'],
+                        ];
+                        $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'bg-gray-100 text-gray-800', 'icon' => 'circle'];
+
+
+
+                        $searchCustomer = mb_strtolower($customerName, 'UTF-8');
+                        $searchOrder = mb_strtolower($orderNumberDisplay, 'UTF-8');
+                        $searchStatus = mb_strtolower($statusData['label'], 'UTF-8');
+                    @endphp
+
+                    <div class="order-card bg-white border border-border rounded-xl p-3 sm:p-4 hover:shadow-md transition-all"
+                        data-search-customer="{{ $searchCustomer }}" data-search-order="{{ $searchOrder }}"
+                        data-search-status="{{ $searchStatus }}" data-order-status="{{ $order->status }}"
+                        x-show="matchesCard($el)">
+                        <!-- Header: Avatar, Nome, Status, Ações -->
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                <div class="flex-1 overflow-hidden">
+                                    <a href="{{ route('dashboard.orders.show', $order->id) }}" class="block group">
+                                        <h3 class="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate"
+                                            title="{{ $customerName }}">{{ $customerName }}</h3>
+                                        <p class="text-xs text-muted-foreground mt-0.5 truncate">Pedido
+                                            #{{ $orderNumberDisplay }}</p>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold {{ $statusData['class'] }} shrink-0 whitespace-nowrap">
+                                    <i data-lucide="{{ $statusData['icon'] }}" class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0"></i>
+                                    <span class="hidden md:inline xl:hidden 2xl:inline">{{ $statusData['label'] }}</span>
+                                </span>
+                                <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                                    <button type="button" @click.stop="closeAllMenus(); open = true"
+                                        class="inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                        title="Ações">
+                                        <i data-lucide="more-vertical" class="h-4 w-4"></i>
+                                    </button>
+                                    <div x-show="open" x-cloak x-transition
+                                        class="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-border z-[100] py-1 max-h-[80vh] overflow-y-auto">
+                                        <a href="{{ route('dashboard.orders.show', $order->id) }}"
+                                            class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
+                                            <i data-lucide="eye" class="w-4 h-4 shrink-0"></i>
+                                            <span>Ver detalhes</span>
+                                        </a>
+
+                                        {{-- AÇÕES GENÉRICAS PARA TODOS OS STATUS --}}
+                                        <button type="button"
+                                            onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event)"
+                                            class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
+                                            <i data-lucide="printer" class="w-4 h-4 shrink-0"></i>
+                                            <span>Imprimir Recibo</span>
+                                        </button>
+
+                                        <button type="button"
+                                            onclick="requestPrint({{ $order->id }}, '{{ $order->order_number }}', event, true)"
+                                            class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
+                                            <i data-lucide="clipboard-check" class="w-4 h-4 shrink-0"></i>
+                                            <span>Imprimir Recibo Conferência</span>
+                                        </button>
+
+                                        @if(optional($order->customer)->phone)
+                                            <form method="POST" action="{{ route('dashboard.orders.sendReceipt', $order->id) }}"
+                                                class="w-full">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 w-full text-left">
+                                                    <i data-lucide="send" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Enviar pelo WhatsApp</span>
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if($order->delivery_type === 'delivery' && $order->delivery_address)
+                                            <button type="button"
+                                                onclick="openMaps('{{ addslashes($order->delivery_address) }}', '{{ addslashes(optional($order->address)->neighborhood ?? $order->delivery_neighborhood ?? '') }}', '{{ addslashes(optional($order->address)->city ?? '') }}')"
+                                                class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
+                                                <i data-lucide="map-pin" class="w-4 h-4 shrink-0"></i>
+                                                <span>Abrir no Maps</span>
+                                            </button>
+                                        @endif
+
+                                        @if(!$order->scheduled_delivery_at)
+                                            <button type="button"
+                                                onclick="openScheduleModal({{ $order->id }}, '{{ $order->order_number }}')"
+                                                class="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 w-full text-left">
+                                                <i data-lucide="calendar-clock" class="w-4 h-4 shrink-0"></i>
+                                                <span>Programar Entrega</span>
+                                            </button>
+                                        @endif
+
+                                        @if(in_array($order->status, ['out_for_delivery', 'delivering']))
+                                            <button type="button"
+                                                onclick="openDeliveryNoteModal({{ $order->id }}, '{{ $order->order_number }}')"
+                                                class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
+                                                <i data-lucide="message-square" class="w-4 h-4 shrink-0"></i>
+                                                <span>Observação da Entrega</span>
+                                            </button>
+                                        @endif
+
+                                        @if($order->status === 'cancelled')
+                                            {{-- PEDIDO CANCELADO: Duplicar --}}
+                                            <div class="border-t border-border my-1"></div>
+                                            <form method="POST" action="{{ route('dashboard.orders.duplicate', $order->id) }}"
+                                                class="w-full">
+                                                @csrf
+                                                <button type="submit"
+                                                    onclick="return confirm('Deseja duplicar este pedido? Um novo pedido será criado com os mesmos itens.')"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 w-full text-left">
+                                                    <i data-lucide="copy" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Duplicar Pedido</span>
+                                                </button>
+                                            </form>
+                                        @elseif(in_array($order->status, ['pending', 'awaiting_payment', 'awaiting_review']))
+                                            {{-- PEDIDO PENDENTE, AGUARDANDO PAGAMENTO OU REVISÃO --}}
+                                            <div class="border-t border-border my-1"></div>
+
+                                            @if(isset($order->payment_status) && $order->payment_status === 'pending')
+                                                <a href="{{ route('dashboard.orders.show', $order->id) }}#payment"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left">
+                                                    <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Confirmar Pagamento</span>
+                                                </a>
+                                            @endif
+
+                                            <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}"
+                                                class="w-full">
+                                                @csrf
+                                                <input type="hidden" name="status" value="confirmed">
+                                                <button type="submit"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left">
+                                                    <i data-lucide="check" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Confirmar Pedido (fiado)</span>
+                                                </button>
+                                            </form>
+
+                                            <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}"
+                                                class="w-full">
+                                                @csrf
+                                                <input type="hidden" name="status" value="cancelled">
+                                                <button type="submit"
+                                                    onclick="return confirm('Tem certeza que deseja cancelar este pedido?')"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left">
+                                                    <i data-lucide="x-circle" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Cancelar Pedido</span>
+                                                </button>
+                                            </form>
+
+                                            @if(isset($order->payment_status) && $order->payment_status === 'pending' && optional($order->customer)->phone)
+                                                <form method="POST"
+                                                    action="{{ route('dashboard.orders.sendPaymentCharge', $order->id) }}"
+                                                    class="w-full">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 w-full text-left">
+                                                        <i data-lucide="credit-card" class="w-4 h-4 shrink-0"></i>
+                                                        <span>Enviar Cobrança WhatsApp</span>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        @elseif(in_array($order->status, ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivering', 'delivered', 'paid']))
+                                            {{-- PEDIDOS PAGOS, ENTREGUES, EM PREPARAÇÃO, CONFIRMADO, SAIU PARA ENTREGA, PRONTO,
+                                            ENTREGANDO --}}
+                                            <div class="border-t border-border my-1"></div>
+                                            <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}"
+                                                class="w-full">
+                                                @csrf
+                                                <input type="hidden" name="status" value="cancelled">
+                                                <button type="submit"
+                                                    onclick="return confirm('Tem certeza que deseja cancelar este pedido?')"
+                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left">
+                                                    <i data-lucide="x-circle" class="w-4 h-4 shrink-0"></i>
+                                                    <span>Cancelar Pedido</span>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer: Valor e Data -->
+                        <div class="pt-2 border-t border-border">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p>
+                                    <p class="text-sm font-bold text-primary mt-0.5">R$
+                                        {{ number_format($totalAmount, 2, ',', '.') }}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p>
+                                    <p class="text-xs font-medium text-foreground mt-0.5">{{ $formattedDate }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="col-span-full text-center text-muted-foreground py-12">
+                        <div class="flex flex-col items-center gap-2">
+                            <i data-lucide="inbox" class="w-12 h-12 opacity-20"></i>
+                            <p class="text-sm">Nenhum pedido encontrado</p>
+                        </div>
+                    </div>
+                @endforelse
+                @if($orders->count() > 0)
+                    <div class="order-filter-no-results col-span-full text-center text-muted-foreground py-8"
+                        x-show="search && showNoResults" x-cloak x-transition>
+                        <div class="flex flex-col items-center gap-2">
+                            <i data-lucide="search-x" class="w-10 h-10 opacity-40"></i>
+                            <p class="text-sm">Nenhum pedido encontrado para "<span x-text="search"></span>"</p>
+                        </div>
+                    </div>
                 @endif
             </div>
-        </form>
+        </div>
     </div>
-    
-    <!-- Filtros de Status -->
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'all'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ (request('status', 'all') === 'all') ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Todos
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'active'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'active' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Ativos
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'pending'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'pending' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Pendentes
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'confirmed'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'confirmed' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Confirmados
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'preparing'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'preparing' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Em Preparo
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'ready'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'ready' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Prontos
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'delivered'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'delivered' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Entregues
-        </a>
-        <a href="{{ route('dashboard.orders.index', array_merge(request()->except('status'), ['status' => 'cancelled'])) }}" 
-           class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'cancelled' ? 'bg-primary text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}">
-            Cancelados
-        </a>
-    </div>
-    
-    <div class="rounded-lg border bg-white shadow-sm border-gray-200">
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                            <tr class="border-b">
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">DATA</th>
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORIA</th>
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">VALOR</th>
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
-                                <th class="h-12 px-4 text-left align-middle text-xs font-medium text-gray-500 uppercase tracking-wider">AÇÕES</th>
-                            </tr>
-                        </thead>
-                        <tbody class="[&_tr:last-child]:border-0" id="orders-tbody">
-                            @php
-                                $orders = $orders ?? collect();
-                            @endphp
-                            @forelse($orders as $order)
-                                @php
-                                    $statusColors = [
-                                        'pending' => 'bg-muted text-muted-foreground',
-                                        'confirmed' => 'bg-primary text-primary-foreground',
-                                        'preparing' => 'bg-warning text-warning-foreground',
-                                        'ready' => 'bg-primary/80 text-primary-foreground',
-                                        'delivered' => 'bg-success text-success-foreground',
-                                        'cancelled' => 'bg-destructive text-destructive-foreground',
-                                    ];
-                                    $statusLabel = [
-                                        'pending' => 'Pendente',
-                                        'confirmed' => 'Confirmado',
-                                        'preparing' => 'Em Preparo',
-                                        'ready' => 'Pronto',
-                                        'delivered' => 'Entregue',
-                                        'cancelled' => 'Cancelado',
-                                    ];
-                                    $paymentStatusColors = [
-                                        'pending' => 'bg-muted text-muted-foreground',
-                                        'paid' => 'bg-success text-success-foreground',
-                                        'failed' => 'bg-destructive text-destructive-foreground',
-                                        'refunded' => 'bg-warning text-warning-foreground',
-                                    ];
-                                    $paymentStatusLabel = [
-                                        'pending' => 'Pendente',
-                                        'paid' => 'Pago',
-                                        'failed' => 'Falhou',
-                                        'refunded' => 'Reembolsado',
-                                    ];
-                                    $statusColor = $statusColors[$order->status] ?? 'bg-muted text-muted-foreground';
-                                    $statusText = $statusLabel[$order->status] ?? ucfirst($order->status);
-                                    $paymentColor = $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
-                                    $paymentText = $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status);
-                                @endphp
-                                <tr class="border-b hover:bg-gray-50">
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="font-semibold text-gray-900">{{ $order->customer->name ?? 'Cliente não informado' }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $order->created_at->format('d/m/y, H:i') }}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Padaria</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-semibold text-gray-900">R$ {{ number_format($order->final_amount ?? $order->total_amount ?? 0, 2, ',', '.') }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                            {{ $statusText }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <a href="{{ route('dashboard.orders.show', $order->id) }}" class="text-gray-400 hover:text-gray-600" title="Ver detalhes">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                            </svg>
-                                        </a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="p-8 text-center text-gray-500">
-                                        Nenhum pedido encontrado.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+@endsection
+
+{{-- Modal Nova Encomenda --}}
+@include('dashboard.orders.partials.nova-encomenda-modal')
+
+@push('styles')
+    <style>
+        [x-cloak] {
+            display: none !important
+        }
+    </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('alpine:init', function () {
+            Alpine.data('ordersLiveSearch', function (initialQ, initialStatus) {
+                return {
+                    search: (typeof initialQ === 'string' ? initialQ : '') || '',
+                    statusFilter: (typeof initialStatus === 'string' ? initialStatus : 'all') || 'all',
+                    showNoResults: false,
+
+                    init: function () {
+                        var self = this;
+                        function updateNoResults() {
+                            self.$nextTick(function () {
+                                var root = document.getElementById('orders-page');
+                                var cards = root ? root.querySelectorAll('.order-card') : [];
+                                var visible = 0;
+                                cards.forEach(function (el) {
+                                    if (self.matchesCard(el)) visible++;
+                                });
+                                self.showNoResults = self.search.trim() !== '' && visible === 0;
+                            });
+                        }
+                        this.$watch('search', updateNoResults);
+                        this.$watch('statusFilter', updateNoResults);
+                        updateNoResults();
+                    },
+
+                    matchesCard: function (el) {
+                        var q = this.search.trim().toLowerCase();
+                        var statusFilter = this.statusFilter;
+
+                        // Filtro de status
+                        var orderStatus = el.getAttribute('data-order-status') || '';
+                        if (statusFilter === 'active') {
+                            if (orderStatus !== 'confirmed' && orderStatus !== 'pending') return false;
+                        } else if (statusFilter !== 'all') {
+                            if (orderStatus !== statusFilter) return false;
+                        }
+
+                        // Se não há busca de texto, mostrar
+                        if (!q) return true;
+
+                        // Busca de texto
+                        var customer = (el.getAttribute('data-search-customer') || '').toLowerCase();
+                        var order = (el.getAttribute('data-search-order') || '').toLowerCase();
+                        var status = (el.getAttribute('data-search-status') || '').toLowerCase();
+
+                        var customerNorm = customer.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var orderNorm = order.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var statusNorm = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                        if (customer.includes(q) || customerNorm.includes(qNorm)) return true;
+                        if (order.includes(q) || orderNorm.includes(qNorm)) return true;
+                        if (status.includes(q) || statusNorm.includes(qNorm)) return true;
+
+                        return false;
+                    }
+                };
+            });
+        });
+
+        // Função global para fechar todos os menus
+        window.closeAllMenus = function () {
+            document.querySelectorAll('[x-data]').forEach(function (el) {
+                try {
+                    const alpineData = Alpine.$data(el);
+                    if (alpineData && typeof alpineData.open !== 'undefined') {
+                        alpineData.open = false;
+                    }
+                } catch (e) {
+                    // Ignorar elementos sem Alpine
+                }
+            });
+        };
+
+        // Botão Nova Encomenda (desktop e mobile)
+        document.addEventListener('DOMContentLoaded', function () {
+            const btnDesktop = document.getElementById('btn-nova-encomenda');
+            const btnMobile = document.getElementById('btn-nova-encomenda-mobile');
+
+            const openNovaEncomenda = function () {
+                window.dispatchEvent(new CustomEvent('open-nova-encomenda', {
+                    detail: { userInitiated: true }
+                }));
+            };
+
+            if (btnDesktop) {
+                btnDesktop.addEventListener('click', openNovaEncomenda);
+            }
+
+            if (btnMobile) {
+                btnMobile.addEventListener('click', openNovaEncomenda);
+            }
+
+            // Inicializar ícones Lucide
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+
+        // Função global para solicitar impressão
+        window.requestPrint = async function (orderId, orderNumber, event, isCheckReceipt = false) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            console.log('🟢 requestPrint chamado:', { orderId, orderNumber, isCheckReceipt });
+
+            // Mostrar feedback visual
+            const btnElement = event?.target?.closest('button');
+            let originalHTML = null;
+            if (btnElement) {
+                originalHTML = btnElement.innerHTML;
+                btnElement.disabled = true;
+                btnElement.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Carregando...</span>';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            try {
+                // Rotas de API para solicitar impressão na fila (servidor de impressão)
+                const url = isCheckReceipt
+                    ? `/orders/${orderId}/request-print-check`
+                    : `/orders/${orderId}/request-print`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao solicitar impressão');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Pedido enviado para a fila de impressão!');
+                } else {
+                    alert(data.message || 'Erro ao enviar para impressão');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao solicitar impressão. Tente novamente.');
+            } finally {
+                if (btnElement && originalHTML) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = originalHTML;
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+        };
+
+        // Função para abrir Maps/Waze
+        window.openMaps = function (address, neighborhood, city) {
+            const fullAddress = `${address}, ${neighborhood}, ${city}`.trim();
+            const encodedAddress = encodeURIComponent(fullAddress);
+
+            // Detectar se é iOS
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // iOS - Tentar abrir Waze, depois Google Maps, depois Apple Maps
+                window.location.href = `waze://?q=${encodedAddress}`;
+                setTimeout(() => {
+                    window.location.href = `comgooglemaps://?q=${encodedAddress}`;
+                }, 500);
+                setTimeout(() => {
+                    window.location.href = `maps://maps.apple.com/?q=${encodedAddress}`;
+                }, 1000);
+            } else {
+                // Android/Desktop - Abrir Google Maps no navegador
+                window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+            }
+        };
+
+        // Função para abrir modal de programação de entrega
+        window.openScheduleModal = async function (orderId, orderNumber) {
+            const modal = document.getElementById('schedule-delivery-modal');
+            if (!modal) {
+                console.error('❌ Modal não encontrado');
+                return;
+            }
+
+            document.getElementById('schedule-order-id').value = orderId;
+            document.getElementById('schedule-order-number').textContent = orderNumber;
+
+            // Buscar slots disponíveis
+            try {
+                console.log('🔍 Buscando slots de entrega...');
+                const response = await fetch('/orders/delivery-slots', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('👉 Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('✅ Dados recebidos:', data);
+
+                const dateSelect = document.getElementById('schedule-delivery-date');
+                const slotSelect = document.getElementById('schedule-delivery-slot');
+
+                dateSelect.innerHTML = '<option value="">Selecione uma data</option>';
+                slotSelect.innerHTML = '<option value="">Selecione primeiro uma data</option>';
+                slotSelect.disabled = true;
+
+                if (data.slots && data.slots.length > 0) {
+                    console.log(`📅 ${data.slots.length} datas disponíveis`);
+                    data.slots.forEach(dateData => {
+                        const option = document.createElement('option');
+                        option.value = dateData.date;
+                        option.textContent = `${dateData.label} (${dateData.day_name})`;
+                        option.dataset.slots = JSON.stringify(dateData.slots);
+                        dateSelect.appendChild(option);
+                    });
+                } else {
+                    console.warn('⚠️ Nenhum slot disponível');
+                    alert('Nenhum horário disponível no momento. Configure os horários de entrega nas configurações.');
+                }
+
+                modal.classList.remove('hidden');
+            } catch (error) {
+                console.error('❌ Erro detalhado:', error);
+                alert('Erro ao carregar horários disponíveis: ' + error.message);
+            }
+        };
+
+        window.closeScheduleModal = function () {
+            const modal = document.getElementById('schedule-delivery-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        };
+
+        window.submitScheduleDelivery = async function () {
+            const orderId = document.getElementById('schedule-order-id').value;
+            const date = document.getElementById('schedule-delivery-date').value;
+            const slot = document.getElementById('schedule-delivery-slot').value;
+            const offHours = document.getElementById('schedule-off-hours').checked;
+            const genericDate = document.getElementById('schedule-generic-date').value;
+            const genericTime = document.getElementById('schedule-generic-time').value;
+
+            let scheduledDeliveryAt = null;
+
+            if (offHours && genericDate && genericTime) {
+                scheduledDeliveryAt = `${genericDate} ${genericTime}:00`;
+            } else if (!offHours && slot) {
+                scheduledDeliveryAt = slot + ':00';
+            } else {
+                alert('Por favor, selecione uma data e horário');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/orders/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        _method: 'PUT',
+                        scheduled_delivery_at: scheduledDeliveryAt
+                    })
+                });
+
+                if (response.ok) {
+                    closeScheduleModal();
+                    location.reload();
+                } else {
+                    alert('Erro ao agendar entrega');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao agendar entrega');
+            }
+        };
+
+        // Função para abrir modal de observação de entrega
+        window.openDeliveryNoteModal = function (orderId, orderNumber) {
+            const modal = document.getElementById('delivery-note-modal');
+            if (!modal) return;
+
+            document.getElementById('note-order-id').value = orderId;
+            document.getElementById('note-order-number').textContent = orderNumber;
+            document.getElementById('delivery-note-text').value = '';
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closeDeliveryNoteModal = function () {
+            const modal = document.getElementById('delivery-note-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        };
+
+        window.submitDeliveryNote = async function () {
+            const orderId = document.getElementById('note-order-id').value;
+            const note = document.getElementById('delivery-note-text').value.trim();
+
+            if (!note) {
+                alert('Por favor, digite uma observação');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        delivery_instructions: note
+                    })
+                });
+
+                if (response.ok) {
+                    closeDeliveryNoteModal();
+                    alert('Observação salva com sucesso!');
+                } else {
+                    alert('Erro ao salvar observação');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao salvar observação');
+            }
+        };
+
+        // Event listener para mudança de data no modal de agendamento
+        document.addEventListener('DOMContentLoaded', function () {
+            const dateSelect = document.getElementById('schedule-delivery-date');
+            const slotSelect = document.getElementById('schedule-delivery-slot');
+            const offHoursCheckbox = document.getElementById('schedule-off-hours');
+            const slotsContainer = document.getElementById('slots-container');
+            const genericContainer = document.getElementById('generic-container');
+
+            if (dateSelect) {
+                dateSelect.addEventListener('change', function () {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (!selectedOption || !selectedOption.dataset.slots) {
+                        slotSelect.innerHTML = '<option value="">Selecione primeiro uma data</option>';
+                        slotSelect.disabled = true;
+                        return;
+                    }
+
+                    const slots = JSON.parse(selectedOption.dataset.slots);
+                    slotSelect.innerHTML = '<option value="">Selecione um horário</option>';
+
+                    slots.forEach(slot => {
+                        if (slot.available > 0) {
+                            const option = document.createElement('option');
+                            option.value = slot.value;
+                            option.textContent = slot.label;
+                            slotSelect.appendChild(option);
+                        }
+                    });
+
+                    slotSelect.disabled = false;
+                });
+            }
+
+            if (offHoursCheckbox && slotsContainer && genericContainer) {
+                offHoursCheckbox.addEventListener('change', function () {
+                    if (this.checked) {
+                        slotsContainer.classList.add('hidden');
+                        genericContainer.classList.remove('hidden');
+                    } else {
+                        slotsContainer.classList.remove('hidden');
+                        genericContainer.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
+@endpush
+
+{{-- Modal: Programar Entrega --}}
+<div id="schedule-delivery-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">Programar Entrega</h3>
+                <button type="button" onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="schedule-order-id">
+            <p class="text-sm text-muted-foreground mb-4">Pedido #<span id="schedule-order-number"></span></p>
+
+            <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="schedule-off-hours" class="h-4 w-4 text-primary rounded border-input">
+                    <label for="schedule-off-hours" class="text-sm font-medium">Programar fora dos horários
+                        disponíveis</label>
+                </div>
+
+                <div id="slots-container" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Data *</label>
+                        <select id="schedule-delivery-date"
+                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                            <option value="">Selecione uma data</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Horário *</label>
+                        <select id="schedule-delivery-slot"
+                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" disabled>
+                            <option value="">Selecione primeiro uma data</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="generic-container" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Data *</label>
+                        <input type="date" id="schedule-generic-date"
+                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Horário *</label>
+                        <input type="time" id="schedule-generic-time"
+                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeScheduleModal()"
+                        class="flex-1 px-4 py-2 rounded-lg border border-input hover:bg-muted text-sm font-medium">Cancelar</button>
+                    <button type="button" onclick="submitScheduleDelivery()"
+                        class="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium">Agendar</button>
                 </div>
             </div>
         </div>
-        @if(isset($orders) && method_exists($orders, 'links'))
-            <div class="mt-4 flex justify-center">
-                {{ $orders->onEachSide(1)->links('vendor.pagination.compact') }}
-            </div>
-        @endif
     </div>
 </div>
 
-@push('scripts')
-<script>
-(function() {
-    'use strict';
-    
-    // Configurações
-    const POLL_INTERVAL = 5000; // 5 segundos
-    const ANIMATION_DURATION = 500;
-    
-    // Estado da atualização
-    let lastOrderId = {{ ($orders && $orders->isNotEmpty()) ? $orders->first()->id : 0 }};
-    let lastOrderCreatedAt = '{{ ($orders && $orders->isNotEmpty()) ? $orders->first()->created_at->toIso8601String() : '' }}';
-    let pollingInterval = null;
-    let isPolling = false;
-    let knownOrderIds = new Set();
-    let orderDataMap = new Map(); // Armazenar dados dos pedidos para comparar mudanças
-    
-    // Inicializar IDs conhecidos e dados
-    @if($orders && $orders->isNotEmpty())
-        @foreach($orders as $order)
-            knownOrderIds.add({{ $order->id }});
-            orderDataMap.set({{ $order->id }}, {
-                status: '{{ $order->status }}',
-                payment_status: '{{ $order->payment_status }}',
-                updated_at: '{{ $order->updated_at->toIso8601String() }}'
-            });
-        @endforeach
-    @endif
-    
-    // Função para criar uma linha de pedido
-    function createOrderRow(order) {
-        const row = document.createElement('tr');
-        row.className = 'border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50 new-order-highlight';
-        row.dataset.orderId = order.id;
-        
-        row.innerHTML = `
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">${order.order_number}</td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+{{-- Modal: Observação da Entrega --}}
+<div id="delivery-note-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">Observação da Entrega</h3>
+                <button type="button" onclick="closeDeliveryNoteModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="note-order-id">
+            <p class="text-sm text-muted-foreground mb-4">Pedido #<span id="note-order-number"></span></p>
+
+            <div class="space-y-4">
                 <div>
-                    <div class="font-medium">${escapeHtml(order.customer_name)}</div>
-                    ${order.customer_phone ? `<div class="text-xs text-muted-foreground">${escapeHtml(order.customer_phone)}</div>` : ''}
+                    <label class="block text-sm font-medium mb-2">Observação para notificação</label>
+                    <textarea id="delivery-note-text" rows="4"
+                        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                        placeholder="Ex.: Chegaremos em 10 minutos..."></textarea>
+                    <p class="text-xs text-muted-foreground mt-1">Esta mensagem será enviada junto com a notificação de
+                        status</p>
                 </div>
-            </td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-semibold">R$ ${formatMoney(order.total_amount)}</td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${order.status_color}">${escapeHtml(order.status_label)}</div>
-            </td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${order.payment_color}">${escapeHtml(order.payment_label)}</div>
-            </td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
-                ${order.created_at_human}
-                <div class="text-xs">${order.created_at_formatted}</div>
-            </td>
-            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
-                <div class="flex gap-2 justify-end">
-                    <button type="button" class="btn-print-receipt-direct inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3" title="Imprimir Recibo Fiscal" data-order-id="${order.id}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer">
-                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                            <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path>
-                            <rect x="6" y="14" width="12" height="8"></rect>
-                        </svg>
-                    </button>
-                    <a href="${order.show_url}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3">Ver detalhes</a>
+
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeDeliveryNoteModal()"
+                        class="flex-1 px-4 py-2 rounded-lg border border-input hover:bg-muted text-sm font-medium">Cancelar</button>
+                    <button type="button" onclick="submitDeliveryNote()"
+                        class="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium">Salvar</button>
                 </div>
-            </td>
-        `;
-        
-        return row;
-    }
-    
-    // Função para escapar HTML
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // Função para formatar dinheiro
-    function formatMoney(value) {
-        return parseFloat(value).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
-    
-    // Função para buscar novos pedidos
-    async function fetchNewOrders() {
-        if (isPolling) return;
-        
-        isPolling = true;
-        
-        try {
-            // Coletar IDs dos pedidos exibidos na página
-            const displayedOrderIds = Array.from(knownOrderIds);
-            
-            const params = new URLSearchParams({
-                last_order_id: lastOrderId,
-                last_order_created_at: lastOrderCreatedAt,
-            });
-            
-            // Adicionar IDs conhecidos para verificar atualizações
-            displayedOrderIds.forEach(id => {
-                params.append('known_order_ids[]', id);
-            });
-            
-            // Adicionar filtros da página se houver
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('q')) {
-                params.append('q', urlParams.get('q'));
-            }
-            if (urlParams.has('status')) {
-                params.append('status', urlParams.get('status'));
-            }
-            
-            const response = await fetch('{{ route("dashboard.orders.newOrders") }}?' + params.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                },
-                credentials: 'same-origin'
-            });
-            
-            if (!response.ok) {
-                throw new Error('Erro ao buscar novos pedidos');
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                const tbody = document.querySelector('tbody');
-                if (!tbody) {
-                    isPolling = false;
-                    return;
-                }
-                
-                // Log para debug (remover em produção se necessário)
-                if (data.updated_orders && data.updated_orders.length > 0) {
-                    console.log('Pedidos atualizados detectados:', data.updated_orders.length);
-                }
-                
-                let newOrdersCount = 0;
-                let updatedOrdersCount = 0;
-                
-                // Processar novos pedidos
-                if (data.orders && data.orders.length > 0) {
-                    const trulyNewOrders = data.orders.filter(order => !knownOrderIds.has(order.id));
-                    
-                    if (trulyNewOrders.length > 0) {
-                        // Adicionar novos pedidos no topo da tabela
-                        trulyNewOrders.reverse().forEach(order => {
-                            const row = createOrderRow(order);
-                            tbody.insertBefore(row, tbody.firstChild);
-                            knownOrderIds.add(order.id);
-                            orderDataMap.set(order.id, {
-                                status: order.status,
-                                payment_status: order.payment_status,
-                                updated_at: order.updated_at
-                            });
-                            newOrdersCount++;
-                        });
-                        
-                        // Atualizar referências
-                        if (trulyNewOrders.length > 0) {
-                            const newestOrder = trulyNewOrders[trulyNewOrders.length - 1];
-                            lastOrderId = Math.max(lastOrderId, newestOrder.id);
-                            lastOrderCreatedAt = newestOrder.created_at;
-                        }
-                        
-                        // Mostrar notificação
-                        if (newOrdersCount > 0) {
-                            showNotification(`${newOrdersCount} novo${newOrdersCount > 1 ? 's' : ''} pedido${newOrdersCount > 1 ? 's' : ''}!`);
-                        }
-                    }
-                }
-                
-                // Processar pedidos atualizados
-                if (data.updated_orders && data.updated_orders.length > 0) {
-                    data.updated_orders.forEach(order => {
-                        const existingRow = tbody.querySelector(`tr[data-order-id="${order.id}"]`);
-                        const oldData = orderDataMap.get(order.id);
-                        
-                        // Verificar se houve mudança - sempre atualizar se houver diferença
-                        const hasChanged = !oldData || (
-                            oldData.status !== order.status ||
-                            oldData.payment_status !== order.payment_status ||
-                            oldData.updated_at !== order.updated_at
-                        );
-                        
-                        if (hasChanged) {
-                            if (existingRow) {
-                                // Atualizar linha existente
-                                const newRow = createOrderRow(order);
-                                newRow.classList.add('updated-order-highlight');
-                                existingRow.replaceWith(newRow);
-                                updatedOrdersCount++;
-                                
-                                // Animação de atualização
-                                setTimeout(() => {
-                                    newRow.style.animation = 'highlightUpdatedOrder 1s ease-out';
-                                    setTimeout(() => {
-                                        newRow.classList.remove('updated-order-highlight');
-                                        newRow.style.animation = '';
-                                    }, 1000);
-                                }, 100);
-                                
-                                // Reconfigurar botões após atualizar
-                                setupPrintButtons();
-                            }
-                            
-                            // Atualizar dados no mapa (sempre atualizar, mesmo se não existir)
-                            orderDataMap.set(order.id, {
-                                status: order.status,
-                                payment_status: order.payment_status,
-                                updated_at: order.updated_at
-                            });
-                        }
-                    });
-                }
-                
-                // Remover linha vazia se existir
-                const emptyRow = tbody.querySelector('td[colspan="6"]');
-                if (emptyRow && emptyRow.closest('tr')) {
-                    emptyRow.closest('tr').remove();
-                }
-                
-                // Animação de destaque para novos pedidos
-                const newRows = tbody.querySelectorAll('.new-order-highlight');
-                newRows.forEach((row, index) => {
-                    setTimeout(() => {
-                        row.style.animation = 'highlightNewOrder 2s ease-out';
-                        setTimeout(() => {
-                            row.classList.remove('new-order-highlight');
-                            row.style.animation = '';
-                        }, 2000);
-                    }, index * 100);
-                });
-
-                document.dispatchEvent(new Event('dashboard:table-refresh'));
-            }
-        } catch (error) {
-            console.error('Erro ao buscar novos pedidos:', error);
-        } finally {
-            isPolling = false;
-        }
-    }
-    
-    // Função para mostrar notificação
-    function showNotification(message) {
-        // Criar elemento de notificação
-        const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-right';
-        notification.textContent = message;
-        notification.style.animation = 'slideInRight 0.3s ease-out';
-        
-        document.body.appendChild(notification);
-        
-        // Remover após 3 segundos
-        setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease-out';
-            setTimeout(() => {
-                notification.remove();
-            }, 300);
-        }, 3000);
-    }
-    
-    // Iniciar polling quando a página carregar
-    function startPolling() {
-        if (pollingInterval) {
-            clearInterval(pollingInterval);
-        }
-        
-        // Primeira verificação após 2 segundos
-        setTimeout(fetchNewOrders, 2000);
-        
-        // Depois verificar a cada X segundos
-        pollingInterval = setInterval(fetchNewOrders, POLL_INTERVAL);
-    }
-    
-    // Parar polling quando a página perder foco (economizar recursos)
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
-        } else {
-            if (!pollingInterval) {
-                startPolling();
-            }
-        }
-    });
-    
-    // Iniciar quando DOM estiver pronto
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startPolling);
-    } else {
-        startPolling();
-    }
-    
-    // Adicionar estilos CSS para animação
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes highlightNewOrder {
-            0% { background-color: rgba(34, 197, 94, 0.3); }
-            100% { background-color: transparent; }
-        }
-        @keyframes highlightUpdatedOrder {
-            0% { background-color: rgba(59, 130, 246, 0.3); }
-            50% { background-color: rgba(59, 130, 246, 0.5); }
-            100% { background-color: transparent; }
-        }
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        @keyframes slideOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-        }
-        .new-order-highlight {
-            animation: highlightNewOrder 2s ease-out;
-        }
-    `;
-    document.head.appendChild(style);
-})();
-</script>
-@endpush
-
-<!-- QZ Tray Script para impressão direta -->
-<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
-<script>
-    // Função para verificar se QZ Tray está conectado
-    function isQZTrayConnected() {
-        try {
-            return typeof qz !== 'undefined' && 
-                   qz !== null && 
-                   qz.websocket !== null && 
-                   qz.websocket.isActive();
-        } catch (error) {
-            return false;
-        }
-    }
-
-    // Conectar ao QZ Tray
-    async function connectQZTray() {
-        try {
-            if (typeof qz === 'undefined' || qz === null) {
-                throw new Error('QZ Tray não está carregado. Verifique se o QZ Tray está instalado e rodando.');
-            }
-            
-            if (isQZTrayConnected()) {
-                console.log('✅ QZ Tray já estava conectado');
-                return true;
-            }
-            
-            await qz.websocket.connect();
-            
-            if (isQZTrayConnected()) {
-                console.log('✅ QZ Tray conectado com sucesso');
-                return true;
-            } else {
-                throw new Error('Falha ao verificar conexão após tentativa de conexão');
-            }
-        } catch (error) {
-            console.error('❌ Erro ao conectar QZ Tray:', error);
-            return false;
-        }
-    }
-
-    // Detectar se é dispositivo móvel
-    function isMobileDevice() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               (window.innerWidth <= 768);
-    }
-
-    // Imprimir recibo diretamente
-    async function printReceiptDirect(orderId) {
-        // Se for mobile, adicionar à fila de impressão
-        if (isMobileDevice()) {
-            const clickedBtn = document.querySelector(`.btn-print-receipt-direct[data-order-id="${orderId}"]`);
-            if (clickedBtn) {
-                const originalHTML = clickedBtn.innerHTML;
-                clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
-                clickedBtn.disabled = true;
-            }
-            
-            try {
-                const response = await fetch(`/dashboard/orders/${orderId}/request-print`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    if (clickedBtn) {
-                        clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg>';
-                        clickedBtn.classList.add('bg-success');
-                        setTimeout(() => {
-                            clickedBtn.innerHTML = originalHTML;
-                            clickedBtn.disabled = false;
-                            clickedBtn.classList.remove('bg-success');
-                        }, 2000);
-                    }
-                    alert('✅ Pedido adicionado à fila de impressão!\n\nO recibo será impresso automaticamente no desktop.');
-                } else {
-                    throw new Error(data.message || 'Erro ao adicionar à fila');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao solicitar impressão:', error);
-                alert('❌ Erro ao solicitar impressão: ' + (error.message || 'Erro desconhecido'));
-                if (clickedBtn) {
-                    clickedBtn.innerHTML = originalHTML;
-                    clickedBtn.disabled = false;
-                }
-            }
-            return;
-        }
-        
-        // Desktop: imprimir diretamente via QZ Tray
-        const PRINTER_NAME = "EPSON TM-T20X";
-        
-        if (typeof qz === 'undefined') {
-            alert('❌ QZ Tray não está carregado.\n\nPor favor, instale e inicie o QZ Tray antes de imprimir.');
-            return;
-        }
-        
-        if (!isQZTrayConnected()) {
-            try {
-                const connected = await connectQZTray();
-                if (!connected) {
-                    alert('❌ Não foi possível conectar ao QZ Tray.\n\nCertifique-se de que o QZ Tray está instalado e rodando.');
-                    return;
-                }
-            } catch (error) {
-                alert('❌ Erro ao conectar ao QZ Tray:\n\n' + error.message);
-                return;
-            }
-        }
-        
-        try {
-            const printers = await qz.printers.find();
-            if (!printers || printers.length === 0) {
-                alert('Nenhuma impressora encontrada.');
-                return;
-            }
-            
-            // Buscar impressora EPSON TM-20X
-            const printer = printers.find(p => 
-                p.toUpperCase().includes('EPSON') && 
-                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
-            ) || printers[0];
-            
-            if (!printer) {
-                alert(`❌ Impressora "${PRINTER_NAME}" não encontrada.\nVerifique se está conectada.`);
-                return;
-            }
-            
-            console.log('🖨️ Usando impressora:', printer);
-            
-            const response = await fetch(`/dashboard/orders/${orderId}/fiscal-receipt/escpos`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Erro ao buscar dados: ${response.status}`);
-            }
-            
-            const orderData = await response.json();
-            if (!orderData.success || !orderData.data) {
-                throw new Error('Dados inválidos do servidor.');
-            }
-            
-            console.log('📦 Base64 recebido (ESC/POS), tamanho:', orderData.data.length);
-            
-            const printConfig = qz.configs.create(printer);
-            
-            // Enviar para impressão
-            await qz.print(printConfig, [{
-                type: 'raw',
-                format: 'base64',
-                data: orderData.data
-            }]);
-            
-            console.log('✅ Recibo enviado para impressora:', printer);
-            
-            // Mostrar feedback visual
-            const clickedBtn = document.querySelector(`.btn-print-receipt-direct[data-order-id="${orderId}"]`);
-            if (clickedBtn) {
-                const originalHTML = clickedBtn.innerHTML;
-                clickedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg>';
-                clickedBtn.disabled = true;
-                clickedBtn.classList.add('bg-success');
-                setTimeout(() => {
-                    clickedBtn.innerHTML = originalHTML;
-                    clickedBtn.disabled = false;
-                    clickedBtn.classList.remove('bg-success');
-                }, 2000);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao imprimir:', error);
-            alert('❌ Erro ao imprimir: ' + (error.message || 'Erro desconhecido'));
-        }
-    }
-
-    // Função para configurar botões de impressão (usado em inicialização e após atualizações)
-    function setupPrintButtons() {
-        const printButtons = document.querySelectorAll('.btn-print-receipt-direct');
-        printButtons.forEach(btn => {
-            // Remover listeners antigos para evitar duplicação
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const orderId = this.getAttribute('data-order-id');
-                if (orderId) {
-                    printReceiptDirect(orderId);
-                }
-            });
-        });
-    }
-
-    // Botões de impressão direta (inicialização e após atualizações dinâmicas)
-    document.addEventListener('DOMContentLoaded', function() {
-        setupPrintButtons();
-        if (window.applyTableMobileLabels) {
-            window.applyTableMobileLabels();
-        }
-        
-        // Observar mudanças na tabela para reconectar botões após atualizações dinâmicas
-        const tableBody = document.querySelector('#orders-tbody');
-        if (tableBody) {
-            const observer = new MutationObserver(function(mutations) {
-                setupPrintButtons();
-                const table = tableBody.closest('table');
-                if (table && window.applyTableMobileLabels) {
-                    window.applyTableMobileLabels(table);
-                }
-            });
-            
-            observer.observe(tableBody, {
-                childList: true,
-                subtree: true
-            });
-        }
-    });
-</script>
-@endsection
+            </div>
+        </div>
+    </div>
+</div>

@@ -10,15 +10,50 @@ use Illuminate\Support\Facades\Gate;
 
 class DeliveryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with(['customer', 'address', 'items.product'])
-            ->whereIn('status', ['confirmed', 'preparing', 'ready', 'out_for_delivery'])
-            ->whereNotNull('scheduled_delivery_at')
-            ->orderBy('scheduled_delivery_at')
-            ->get();
-
-        return view('dashboard.deliveries.index', compact('orders'));
+        $view = $request->get('view', 'lista'); // 'lista' ou 'calendario'
+        $tab = $request->get('tab', 'pendentes'); // 'pendentes' ou 'entregues'
+        
+        $query = Order::with(['customer', 'address', 'items.product']);
+        
+        // Filtrar por tab
+        if ($tab === 'pendentes') {
+            $query->whereIn('status', ['confirmed', 'preparing', 'ready', 'out_for_delivery']);
+        } else {
+            $query->where('status', 'delivered')
+                ->whereDate('updated_at', today());
+        }
+        
+        // Ordenar
+        if ($tab === 'pendentes') {
+            $query->orderByRaw('scheduled_delivery_at IS NULL, scheduled_delivery_at ASC')
+                  ->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('updated_at', 'desc');
+        }
+        
+        $orders = $query->get();
+        
+        // Contadores para os cards
+        $pendingCount = Order::whereIn('status', ['confirmed', 'preparing', 'ready', 'out_for_delivery'])
+            ->count();
+        
+        $inTransitCount = Order::where('status', 'out_for_delivery')
+            ->count();
+        
+        $deliveredTodayCount = Order::where('status', 'delivered')
+            ->whereDate('updated_at', today())
+            ->count();
+        
+        return view('dashboard.deliveries.index', compact(
+            'orders', 
+            'view', 
+            'tab',
+            'pendingCount',
+            'inTransitCount',
+            'deliveredTodayCount'
+        ));
     }
 
     public function updateStatus(Request $request, Order $order, OrderStatusService $statusService)

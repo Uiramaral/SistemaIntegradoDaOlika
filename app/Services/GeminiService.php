@@ -17,7 +17,7 @@ class GeminiService
     private string $model = 'gemini-2.5-flash'; // Modelo principal 2026
     private string $fallbackModel = 'gemini-2.5-flash-lite'; // Fallback econômico
     private float $temperature = 0.7;
-    private int $maxTokens = 500;
+    private int $maxTokens = 5000; // Aumentado para permitir respostas completas e detalhadas
     private string $apiVersion = 'v1'; // API estável
     private ?int $currentClientId = null; // Para tracking de uso
     private string $currentTaskType = 'chat'; // Tipo de tarefa atual
@@ -54,13 +54,15 @@ class GeminiService
                 // Validar e migrar modelo se necessário
                 $this->model = $this->migrateModelName($configuredModel);
                 $this->temperature = (float) ($this->integration ? $this->integration->getSetting('temperature', 0.7) : 0.7);
-                $this->maxTokens = (int) ($this->integration ? $this->integration->getSetting('max_tokens', 500) : 500);
+                $this->maxTokens = (int) ($this->integration ? $this->integration->getSetting('max_tokens', 5000) : 5000);
                 
                 $this->enabled = true;
                 Log::info('GeminiService: Configurado com sucesso', [
                     'model' => $this->model,
                     'api_version' => $this->apiVersion,
                     'token_source' => 'master_settings',
+                    'max_tokens' => $this->maxTokens,
+                    'temperature' => $this->temperature,
                 ]);
             }
         } catch (\Throwable $e) {
@@ -207,6 +209,118 @@ PROMPT;
         ]);
 
         return $this->callGeminiApi($this->fallbackModel, $prompt);
+    }
+
+    /**
+     * Gerar conteúdo com instrução de sistema (persona/contexto)
+     * Usado pelo Assistente IA com variações (Cardápio, Marketing, etc.)
+     */
+    public function generateWithSystemInstruction(string $systemInstruction, string $userPrompt): ?string
+    {
+        if (!$this->enabled) {
+            return null;
+        }
+
+        $result = $this->callGeminiApiWithSystemInstruction($this->model, $systemInstruction, $userPrompt);
+        if ($result !== null) {
+            return $result;
+        }
+
+        Log::warning('GeminiService: Modelo principal falhou (systemInstruction), tentando fallback', [
+            'modelo_principal' => $this->model,
+            'modelo_fallback' => $this->fallbackModel,
+        ]);
+        return $this->callGeminiApiWithSystemInstruction($this->fallbackModel, $systemInstruction, $userPrompt);
+    }
+
+    /**
+     * Chamada à API do Gemini com systemInstruction (Assistente IA)
+     */
+    private function callGeminiApiWithSystemInstruction(string $model, string $systemInstruction, string $userPrompt): ?string
+    {
+        try {
+            $version = 'v1beta'; // systemInstruction suportado em v1beta
+            $url = "https://generativelanguage.googleapis.com/{$version}/models/{$model}:generateContent?key={$this->apiKey}";
+            $payload = [
+                'systemInstruction' => [
+                    'parts' => [['text' => $systemInstruction]],
+                ],
+                'contents' => [
+                    ['parts' => [['text' => $userPrompt]]],
+                ],
+                'generationConfig' => [
+                    'temperature' => $this->temperature,
+                    'maxOutputTokens' => $this->maxTokens,
+                    'topP' => 0.8,
+                    'topK' => 10,
+                ],
+            ];
+
+            Log::info('GeminiService: chamando API (systemInstruction)', ['model' => $model]);
+            $response = Http::timeout(60)->post($url, $payload);
+            $fullPrompt = $systemInstruction . "\n\n---\n\n" . $userPrompt;
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Extrair texto de todas as partes do primeiro candidato
+                $text = '';
+                if (!empty($data['candidates'][0]['content']['parts'])) {
+                    foreach ($data['candidates'][0]['content']['parts'] as $part) {
+                        if (isset($part['text'])) {
+                            $text .= $part['text'];
+                        }
+                    }
+                }
+                
+                // Verificar finishReason para ver se a resposta foi completada
+                $finishReason = $data['candidates'][0]['finishReason'] ?? null;
+                if ($finishReason === 'MAX_TOKENS') {
+                    Log::warning('GeminiService: Resposta truncada por limite de tokens', [
+                        'model' => $model,
+                        'reply_len' => strlen($text),
+                        'max_tokens' => $this->maxTokens,
+                    ]);
+                }
+                
+                if (empty($text)) {
+                    Log::warning('GeminiService: resposta sem texto (systemInstruction)', [
+                        'model' => $model,
+                        'has_candidates' => !empty($data['candidates']),
+                        'finish_reason' => $finishReason,
+                        'body_preview' => substr(json_encode($data), 0, 500),
+                    ]);
+                } else {
+                    Log::info('GeminiService: API ok (systemInstruction)', [
+                        'model' => $model,
+                        'reply_len' => strlen($text),
+                        'finish_reason' => $finishReason,
+                    ]);
+                }
+                $inputTokens = $data['usageMetadata']['promptTokenCount'] ?? $this->estimateTokens($fullPrompt);
+                $outputTokens = $data['usageMetadata']['candidatesTokenCount'] ?? $this->estimateTokens($text ?? '');
+                if ($this->currentClientId && $text) {
+                    $this->logUsage($model, $inputTokens, $outputTokens, $fullPrompt, $text, true);
+                }
+                return $text ? trim($text) : null;
+            }
+
+            if ($this->currentClientId) {
+                $this->logUsage($model, $this->estimateTokens($fullPrompt), 0, $fullPrompt, null, false, $response->body());
+            }
+            Log::error('GeminiService: Erro na API (systemInstruction)', [
+                'model' => $model,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return null;
+        } catch (\Exception $e) {
+            if ($this->currentClientId) {
+                $this->logUsage($model, $this->estimateTokens($systemInstruction . $userPrompt), 0, $userPrompt, null, false, $e->getMessage());
+            }
+            Log::error('GeminiService: Exception generateWithSystemInstruction', ['model' => $model, 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**

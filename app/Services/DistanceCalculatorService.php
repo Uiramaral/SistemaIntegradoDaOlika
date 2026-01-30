@@ -520,14 +520,22 @@ class DistanceCalculatorService
 
     /**
      * Obtém a chave da API do Google Maps
+     * Prioridade: Master (APIs centralizadas) → payment_settings → settings → .env
      */
     private function getGoogleMapsApiKey(): ?string
     {
-        // Tentar buscar de payment_settings
+        try {
+            $key = \App\Models\MasterSetting::get('google_maps_api_key', '');
+            if ($key && trim((string) $key) !== '') {
+                return trim((string) $key);
+            }
+        } catch (\Exception $e) {
+            Log::debug('Erro ao buscar Google Maps API key em MasterSetting', ['error' => $e->getMessage()]);
+        }
+
         try {
             $key = DB::table('payment_settings')->where('key', 'google_maps_api_key')->value('value');
             if ($key && trim($key) !== '') {
-                Log::info('Google Maps API Key encontrada em payment_settings');
                 return trim($key);
             }
         } catch (\Exception $e) {

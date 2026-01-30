@@ -33,6 +33,25 @@ class CouponsController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
+        // Se for requisição AJAX, retornar JSON sem paginação
+        if ($request->ajax() || $request->wantsJson()) {
+            $allCoupons = $query->orderBy('created_at', 'desc')->get();
+            return response()->json([
+                'coupons' => $allCoupons->map(function($coupon) {
+                    return [
+                        'id' => $coupon->id,
+                        'code' => $coupon->code,
+                        'name' => $coupon->name ?? '',
+                        'is_active' => $coupon->is_active ?? true,
+                        'formatted_value' => $coupon->formatted_value ?? '',
+                        'used_count' => $coupon->used_count ?? 0,
+                        'usage_limit' => $coupon->usage_limit,
+                        'expires_at' => $coupon->expires_at ? $coupon->expires_at->format('d/m/Y') : null,
+                    ];
+                })
+            ]);
+        }
+        
         $coupons = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
         
         // Estatísticas

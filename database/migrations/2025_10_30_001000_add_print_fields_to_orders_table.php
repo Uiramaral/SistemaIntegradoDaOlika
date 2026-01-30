@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             $table->timestamp('print_requested_at')->nullable()->after('scheduled_delivery_at');
             $table->timestamp('printed_at')->nullable()->after('print_requested_at');
+            $table->string('print_type', 20)->nullable()->default('normal')->after('printed_at'); // 'normal' ou 'check'
             
             $table->index('print_requested_at');
             $table->index('printed_at');
@@ -28,7 +29,7 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             $table->dropIndex(['print_requested_at']);
             $table->dropIndex(['printed_at']);
-            $table->dropColumn(['print_requested_at', 'printed_at']);
+            $table->dropColumn(['print_requested_at', 'printed_at', 'print_type']);
         });
     }
 };

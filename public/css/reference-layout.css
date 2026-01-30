@@ -1,0 +1,180 @@
+/* Layout Referência Confeitaria Pro - ui-copycat-helper
+ * Sidebar clara, header light, background warm. Todas as páginas seguem este modelo.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* === Tokens globais referência === */
+.layout-reference {
+    --background: 30 20% 96%;
+    --foreground: 20 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 20% 15%;
+    --border: 30 20% 90%;
+    --muted: 30 20% 94%;
+    --muted-foreground: 20 10% 50%;
+    --primary: 340 82% 72%;
+    --primary-foreground: 0 0% 100%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 20 20% 15%;
+    --sidebar-primary: 340 82% 72%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 30% 96%;
+    --sidebar-accent-foreground: 20 20% 15%;
+    --sidebar-border: 30 20% 90%;
+    --sidebar-muted: 20 10% 50%;
+}
+
+.layout-reference,
+.layout-reference .bg-background {
+    background-color: hsl(30 20% 96%) !important;
+}
+
+.layout-reference {
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Cards genéricos no conteúdo (todas as páginas) */
+.layout-reference .dashboard-content .bg-card.rounded-xl,
+.layout-reference .dashboard-content .rounded-2xl.bg-card {
+    background-color: hsl(0 0% 100%) !important;
+    border: 1px solid hsl(30 20% 90%);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+.layout-reference .dashboard-content .bg-card.rounded-xl:hover,
+.layout-reference .dashboard-content .rounded-2xl.bg-card:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+/* === Sidebar clara (Confeitaria Pro) === */
+.layout-reference #sidebar {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(20 20% 15%) !important;
+    border-right: 1px solid hsl(30 20% 90%) !important;
+    box-shadow: 4px 0 6px -1px rgb(0 0 0 / 0.06) !important;
+}
+
+.layout-reference .sidebar-logo-area {
+    padding: 1.25rem 1.5rem !important;
+    border-bottom-color: hsl(30 20% 90%) !important;
+}
+
+.layout-reference .sidebar-brand-name {
+    color: hsl(20 20% 15%) !important;
+}
+
+.layout-reference .sidebar-sub-brand {
+    color: hsl(20 10% 50%) !important;
+}
+
+.layout-reference aside#sidebar nav {
+    scrollbar-color: hsl(20 10% 50% / 0.25) transparent;
+}
+
+.layout-reference aside#sidebar nav::-webkit-scrollbar-thumb {
+    background: hsl(20 10% 50% / 0.25) !important;
+}
+
+/* Itens inativos: texto cinza */
+.layout-reference .sidebar-item {
+    color: hsl(20 10% 50%) !important;
+}
+
+.layout-reference .sidebar-item:hover {
+    background-color: hsl(30 30% 96%) !important;
+    color: hsl(20 20% 15%) !important;
+}
+
+/* Ativo: fundo rosa (primary), texto branco */
+.layout-reference .sidebar-item.active-item {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(0 0% 100%) !important;
+}
+
+/* Accordion aberto (parent) */
+.layout-reference .sidebar-accordion[open] > summary {
+    background-color: hsl(30 30% 96%) !important;
+    color: hsl(20 20% 15%) !important;
+}
+
+.layout-reference .sidebar-accordion[open] > summary.active-item {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(0 0% 100%) !important;
+}
+
+/* Submenu */
+.layout-reference .sidebar-submenu-item {
+    color: hsl(20 10% 50%) !important;
+}
+
+.layout-reference .sidebar-submenu-item:hover {
+    background-color: hsl(30 30% 96% / 0.7) !important;
+    color: hsl(20 20% 15%) !important;
+}
+
+.layout-reference .sidebar-submenu-item.active {
+    background-color: hsl(var(--primary) / 0.15) !important;
+    color: hsl(var(--primary)) !important;
+    font-weight: 500;
+}
+
+/* Logout */
+.layout-reference .sidebar-logout-btn {
+    color: hsl(20 10% 50%) !important;
+}
+
+.layout-reference .sidebar-logout-btn:hover {
+    background-color: hsl(30 30% 96%) !important;
+    color: hsl(20 20% 15%) !important;
+}
+
+.layout-reference .p-4.border-t.border-sidebar-border {
+    border-color: hsl(30 20% 90%) !important;
+}
+
+/* Botão mobile hamburger: card clara */
+.layout-reference #sidebar-open {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(20 20% 15%) !important;
+    border: 1px solid hsl(30 20% 90%);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08);
+}
+
+/* Logo ícone: gradiente rosa/laranja como referência */
+.layout-reference .sidebar-logo-area .rounded-xl.bg-gradient-to-br {
+    background: linear-gradient(to bottom right, hsl(340 82% 85%), hsl(30 80% 75%)) !important;
+}
+
+.layout-reference .sidebar-logo-area .rounded-xl.bg-gradient-to-br i {
+    color: hsl(340 82% 55%) !important;
+}
+
+/* === Header === */
+.layout-reference header.bg-card {
+    background-color: hsl(0 0% 100%) !important;
+    border-bottom-color: hsl(30 20% 90%) !important;
+    box-shadow: 0 1px 0 0 hsl(30 20% 90%);
+}
+
+/* === Cards e conteúdo === */
+.layout-reference .stat-card,
+.layout-reference .card-copycat {
+    background-color: hsl(0 0% 100%) !important;
+    border: 1px solid hsl(30 20% 90%);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+.layout-reference .stat-card:hover,
+.layout-reference .card-copycat:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+.layout-reference .data-table th {
+    background-color: hsl(30 20% 94% / 0.6) !important;
+    color: hsl(20 10% 50%);
+}
+
+.layout-reference .data-table tr:hover td {
+    background-color: hsl(30 20% 94% / 0.35);
+}

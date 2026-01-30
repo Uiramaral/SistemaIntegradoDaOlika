@@ -109,9 +109,6 @@
                 <a href='{{ route("dashboard.index") }}' class='mi {{ request()->routeIs("dashboard.index") ? "active" : "" }}'>
                     <i class="fa fa-home"></i> Dashboard
                 </a>
-                <a href='{{ route("dashboard.pdv.index") }}' class='mi {{ request()->routeIs("dashboard.pdv.*") ? "active" : "" }}'>
-                    <i class="fa fa-cash-register"></i> PDV
-                </a>
                 <a href='{{ route("dashboard.orders.index") }}' class='mi {{ request()->routeIs("dashboard.orders.*") ? "active" : "" }}'>
                     <i class="fa fa-receipt"></i> Pedidos
                 </a>

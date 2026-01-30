@@ -9,12 +9,34 @@ use Illuminate\Support\Facades\Storage;
 
 class CategoriesController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::withCount('products')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $query = Category::withCount('products');
+        
+        // Busca
+        $searchTerm = $request->input('q');
+        if (!empty($searchTerm)) {
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('description', 'like', "%{$searchTerm}%");
+            });
+        }
+        
+        $categories = $query->orderBy('sort_order')->orderBy('name')->get();
+        
+        // Se for requisição AJAX, retornar JSON sem paginação
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'categories' => $categories->map(function($category) {
+                    return [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'description' => $category->description ?? '',
+                        'products_count' => $category->products_count ?? 0,
+                    ];
+                })
+            ]);
+        }
         
         // Buscar produtos para cada categoria (para gerenciamento)
         $allProducts = \App\Models\Product::orderBy('name')->get(['id', 'name', 'category_id']);

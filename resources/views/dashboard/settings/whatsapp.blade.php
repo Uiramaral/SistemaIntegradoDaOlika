@@ -1182,7 +1182,34 @@ async function disconnectInstance(instanceId) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        // Atualizar status no banco
+        // 1. Buscar dados da instância
+        const instanceResponse = await fetch(`{{ route("dashboard.settings.whatsapp.instances.show", ":id") }}`.replace(':id', instanceId));
+        const instance = await instanceResponse.json();
+        
+        // 2. Enviar comando de desconexão para o Node.js (Railway)
+        if (instance.api_url) {
+            try {
+                console.log('🔴 Enviando comando de desconexão para:', instance.api_url);
+                const disconnectResponse = await fetch(`${instance.api_url}/api/whatsapp/disconnect`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Olika-Token': instance.api_token || '{{ $whatsappApiKey }}'
+                    }
+                });
+                
+                if (disconnectResponse.ok) {
+                    console.log('✅ Desconectado do Node.js com sucesso');
+                } else {
+                    console.warn('⚠️ Falha ao desconectar do Node.js, status:', disconnectResponse.status);
+                }
+            } catch (nodeError) {
+                console.error('❌ Erro ao desconectar do Node.js:', nodeError);
+                // Continua para atualizar o banco mesmo se falhar no Node.js
+            }
+        }
+        
+        // 3. Atualizar status no banco
         const response = await fetch(`{{ route("dashboard.settings.whatsapp.instances.update", ":id") }}`.replace(':id', instanceId), {
             method: 'PUT',
             headers: {
@@ -1194,10 +1221,10 @@ async function disconnectInstance(instanceId) {
         });
         
         if (response.ok) {
-            alert('✅ Instância desconectada');
+            alert('✅ Instância desconectada com sucesso!');
             location.reload(); // Recarregar para atualizar status
         } else {
-            alert('❌ Erro ao desconectar');
+            alert('❌ Erro ao atualizar status no banco');
         }
     } catch (error) {
         console.error('Erro ao desconectar:', error);

@@ -22,5 +22,7 @@ class VerifyCsrfToken extends Middleware
         'api/botconversa/*',
         'dashboard/customers/debts/*/settle',
         'customers/debts/*/settle',
+        'assistente-ia/ask',
+        'assistente-ia/test',
     ];
 }

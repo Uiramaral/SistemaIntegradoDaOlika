@@ -184,6 +184,43 @@ const isConnected = () => {
 };
 
 /**
+ * Desconecta e logout da sessão WhatsApp
+ * @returns {Promise<void>}
+ */
+const disconnectSock = async () => {
+  const logger = P({ level: "info" });
+  
+  if (!globalSock) {
+    logger.warn('⚠️  Socket já está desconectado');
+    return;
+  }
+  
+  try {
+    logger.info('🔴 Iniciando desconexão do WhatsApp...');
+    
+    // 1. Fazer logout para invalidar a sessão
+    await globalSock.logout();
+    logger.info('✅ Logout realizado com sucesso');
+    
+    // 2. Fechar a conexão WebSocket
+    if (globalSock.ws) {
+      globalSock.ws.close();
+      logger.info('✅ WebSocket fechado');
+    }
+    
+    // 3. Limpar referência global
+    globalSock = null;
+    logger.info('✅ Instância desconectada completamente');
+    
+  } catch (error) {
+    logger.error(`❌ Erro ao desconectar: ${error.message}`);
+    // Forçar limpeza mesmo com erro
+    globalSock = null;
+    throw error;
+  }
+};
+
+/**
  * Obtém a instância do socket
  * @returns {object|null}
  */
@@ -196,4 +233,5 @@ module.exports = {
   isConnected,
   getSocket,
   startSock,
+  disconnectSock,
 };

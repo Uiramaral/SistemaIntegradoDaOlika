@@ -53,6 +53,11 @@ class Setting extends Model
         'theme_font_family',
         'theme_border_radius',
         'theme_shadow_style',
+        'sales_multiplier',
+        'resale_multiplier',
+        'fixed_cost',
+        'tax_percentage',
+        'card_fee_percentage',
     ];
 
     protected $casts = [
@@ -67,6 +72,11 @@ class Setting extends Model
         'loyalty_points_per_real' => 'decimal:2',
         'cashback_percentage' => 'decimal:2',
         'order_cutoff_time' => 'datetime:H:i',
+        'sales_multiplier' => 'decimal:2',
+        'resale_multiplier' => 'decimal:2',
+        'fixed_cost' => 'decimal:2',
+        'tax_percentage' => 'decimal:2',
+        'card_fee_percentage' => 'decimal:2',
     ];
 
     /**

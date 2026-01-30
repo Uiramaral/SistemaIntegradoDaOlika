@@ -32,10 +32,10 @@ class PDVController extends Controller
         $products = Product::where('products.is_active', true)
             ->with(['variants', 'wholesalePrices'])
             ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('orders', function($join) {
+            ->leftJoin('orders', function ($join) {
                 $join->on('order_items.order_id', '=', 'orders.id')
-                     ->where('orders.payment_status', 'paid')
-                     ->where('orders.created_at', '>=', now()->subDays(90));
+                    ->where('orders.payment_status', 'paid')
+                    ->where('orders.created_at', '>=', now()->subDays(90));
             })
             ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
             ->groupBy('products.id')
@@ -61,11 +61,12 @@ class PDVController extends Controller
                 if (Schema::hasColumn('settings', 'advance_order_days')) {
                     $advanceDays = (int) (DB::table('settings')->value('advance_order_days') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'advance_order_days')->value($valCol);
-                        if ($val !== null) $advanceDays = (int) $val;
+                        if ($val !== null)
+                            $advanceDays = (int) $val;
                     }
                 }
             }
@@ -84,11 +85,12 @@ class PDVController extends Controller
                 if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
                     $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
-                        if ($val !== null) $slotCapacity = (int) $val;
+                        if ($val !== null)
+                            $slotCapacity = (int) $val;
                     }
                 }
             }
@@ -149,16 +151,16 @@ class PDVController extends Controller
     public function searchCustomers(Request $request)
     {
         $query = $request->get('q', '');
-        
+
         if (strlen($query) < 2) {
             return response()->json(['customers' => []]);
         }
 
         $customers = Customer::with('addresses')
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('phone', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
             })
             ->orderBy('name')
             ->distinct('id')
@@ -166,7 +168,7 @@ class PDVController extends Controller
             ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
 
         // Adicionar endereço principal (primeiro endereço da tabela addresses) se existir
-        $customers->each(function($customer) {
+        $customers->each(function ($customer) {
             if ($customer->addresses && $customer->addresses->isNotEmpty()) {
                 $mainAddress = $customer->addresses->first();
                 // Se o cliente não tem endereço nos campos diretos, usar o da tabela addresses
@@ -195,90 +197,162 @@ class PDVController extends Controller
 
     public function searchProducts(Request $request)
     {
-        $query = $request->get('q', '');
-        $customerId = $request->get('customer_id');
-        $productId = $request->get('product_id'); // Para buscar produto específico
-        $isWholesale = false;
-        
-        // Verificar se o cliente é de revenda
-        if ($customerId) {
-            $customer = Customer::find($customerId);
-            $isWholesale = $customer && $customer->is_wholesale;
-        }
-        
-        $productsQuery = Product::where('products.is_active', true);
-        
-        // Se foi passado product_id, buscar produto específico
-        if ($productId) {
-            $productsQuery->where('id', $productId);
-        } elseif ($query) {
-            // Caso contrário, buscar por nome/descrição
-            $productsQuery->where(function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%");
-            });
-        }
-        
-        $products = $productsQuery
-            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('orders', function($join) {
-                $join->on('order_items.order_id', '=', 'orders.id')
-                     ->where('orders.payment_status', 'paid')
-                     ->where('orders.created_at', '>=', now()->subDays(90));
-            })
-            ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
-            ->groupBy('products.id')
-            ->orderBy('total_sold', 'desc')
-            ->orderBy('products.name', 'asc')
-            ->with(['variants' => function($q) {
-                $q->where('is_active', true)->orderBy('sort_order');
-            }, 'wholesalePrices' => function($q) {
-                $q->where('is_active', true)->orderBy('min_quantity');
-            }])
-            ->limit(20)
-            ->get(['id', 'name', 'price', 'description']);
+        try {
+            $query = $request->get('q', '');
+            $customerId = $request->get('customer_id');
+            $productId = $request->get('product_id'); // Para buscar produto específico
+            $isWholesale = false;
 
-        // Formatar produtos com variantes e preços diferenciados
-        $formattedProducts = $products->map(function($product) use ($isWholesale) {
-            $variants = $product->variants->map(function($variant) use ($product, $isWholesale) {
-                $price = (float)$variant->price;
-                
-                // Se for wholesale, buscar preço diferenciado
-                if ($isWholesale) {
-                    $wholesalePrice = \App\Models\ProductWholesalePrice::getWholesalePrice($product->id, $variant->id, 1);
-                    if ($wholesalePrice !== null) {
-                        $price = $wholesalePrice;
+            // Verificar se o cliente é de revenda (is_wholesale = 1). Sem cliente = não revenda.
+            if ($customerId) {
+                $customer = Customer::find($customerId);
+                $isWholesale = $customer && (bool) $customer->is_wholesale;
+            }
+
+            $productsQuery = Product::where('products.is_active', true);
+
+            if ($productId) {
+                $productsQuery->where('id', $productId);
+            } elseif ($query) {
+                $productsQuery->where(function ($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                        ->orWhere('description', 'like', "%{$query}%");
+                });
+            }
+
+            // TENTATIVA DE DEBUG: Simplificando a query para ver se as variantes aparecem
+            // JOINs complexos removidos temporariamente para isolar o problema das variantes vazias.
+
+            /*
+            $products = $productsQuery
+                ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+                ->leftJoin('orders', function ($join) {
+                    $join->on('order_items.order_id', '=', 'orders.id')
+                        ->where('orders.payment_status', 'paid')
+                        ->where('orders.created_at', '>=', now()->subDays(90));
+                })
+                ->select('products.*', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sold'))
+                ->groupBy('products.id')
+                ->orderBy('total_sold', 'desc')
+                ->orderBy('products.name', 'asc')
+                ->with(['variants', 'wholesalePrices'])
+                ->limit(50)
+                ->get();
+             */
+
+            $products = $productsQuery
+                ->orderBy('name', 'asc')
+                ->with(['variants', 'wholesalePrices'])
+                ->limit(50)
+                ->get();
+
+            // Ordenar coleções filhas em memória e Logar para debug
+            $products->each(function ($p) {
+                if ($p->relationLoaded('variants')) {
+                    $variants = $p->getRelation('variants');
+                    // Debug temporário
+                    if (config('app.debug')) {
+                        \Illuminate\Support\Facades\Log::info("PDV Search - Produto PID: {$p->id} - Variantes (Relation): " . ($variants ? $variants->count() : 'NULL'));
+                    }
+
+                    if ($variants instanceof \Illuminate\Support\Collection) {
+                        $p->setRelation('variants', $variants->sortBy('sort_order')->values());
                     }
                 }
-                
-                return [
-                    'id' => $variant->id,
-                    'name' => $variant->name,
-                    'price' => $price,
-                ];
-            })->toArray();
-            
-            $price = (float)$product->price;
-            
-            // Se for wholesale, buscar preço diferenciado do produto
-            if ($isWholesale) {
-                $wholesalePrice = \App\Models\ProductWholesalePrice::getWholesalePrice($product->id, null, 1);
-                if ($wholesalePrice !== null) {
-                    $price = $wholesalePrice;
-                }
-            }
-            
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $price,
-                'description' => $product->description,
-                'has_variants' => count($variants) > 0,
-                'variants' => $variants,
-            ];
-        });
 
-        return response()->json(['products' => $formattedProducts]);
+                if ($p->relationLoaded('wholesalePrices')) {
+                    $wholesalePrices = $p->getRelation('wholesalePrices');
+                    if ($wholesalePrices instanceof \Illuminate\Support\Collection) {
+                        $p->setRelation('wholesalePrices', $wholesalePrices->sortBy('min_quantity')->values());
+                    }
+                }
+            });
+
+            $wholesalePriceModel = \App\Models\ProductWholesalePrice::class;
+            $hasWholesaleColumn = \Illuminate\Support\Facades\Schema::hasColumn('products', 'wholesale_only');
+
+            $formattedProducts = $products
+                ->map(function ($product) use ($isWholesale, $wholesalePriceModel, $hasWholesaleColumn) {
+                    $wholesaleRows = $product->relationLoaded('wholesalePrices') ? $product->getRelation('wholesalePrices') : collect();
+                    $fromColumn = $hasWholesaleColumn && ($product->wholesale_only ?? false);
+                    $showInCatalog = (int) ($product->show_in_catalog ?? 1);
+                    $exclusiveRevenda = $fromColumn || ($showInCatalog === 0);
+                    // Sem cliente ou cliente não-revenda: ocultar só exclusivos de revenda (wholesale_only=1 ou show_in_catalog=0).
+                    if (!$isWholesale && $exclusiveRevenda) {
+                        return null;
+                    }
+
+                    // Tentar carregar variações da relação (tabela product_variants)
+                    // IMPORTANTE: Usar getRelation para evitar conflito com coluna 'variants' (JSON legado)
+                    $dbVariants = $product->relationLoaded('variants') ? $product->getRelation('variants') : collect();
+                    $variants = [];
+
+                    if ($dbVariants && $dbVariants->isNotEmpty()) {
+                        foreach ($dbVariants as $variant) {
+                            $price = (float) $variant->price;
+                            if ($isWholesale) {
+                                $wp = $wholesalePriceModel::getWholesalePrice($product->id, $variant->id, 1);
+                                if ($wp !== null) {
+                                    $price = $wp;
+                                }
+                            }
+                            $variants[] = [
+                                'id' => $variant->id,
+                                'name' => (string) $variant->name,
+                                'price' => (float) $price,
+                                'wholesale_only' => false,
+                            ];
+                        }
+                    } else {
+                        // Fallback legado: coluna JSON 'variants' 
+                        $jsonVariants = $product->getAttributes()['variants'] ?? null;
+                        if ($jsonVariants) {
+                            $decoded = is_string($jsonVariants) ? json_decode($jsonVariants, true) : $jsonVariants;
+                            if (is_array($decoded)) {
+                                $basePrice = (float) ($product->price ?? 0);
+                                foreach ($decoded as $i => $v) {
+                                    if (empty($v['name'] ?? null))
+                                        continue;
+                                    $variants[] = [
+                                        'id' => 'j' . $i,
+                                        'name' => (string) $v['name'],
+                                        'price' => isset($v['price']) ? (float) $v['price'] : $basePrice,
+                                        'wholesale_only' => false,
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
+                    $price = (float) $product->price;
+                    if ($isWholesale) {
+                        $wp = $wholesalePriceModel::getWholesalePrice($product->id, null, 1);
+                        if ($wp !== null) {
+                            $price = $wp;
+                        }
+                    }
+
+                    $hasVariants = count($variants) > 0;
+
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'price' => $price,
+                        'description' => (string) ($product->description ?? ''),
+                        'has_variants' => $hasVariants,
+                        'variants' => $variants,
+                        'wholesale_only' => $exclusiveRevenda,
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all();
+
+            return response()->json(['products' => $formattedProducts]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Erro na busca de produtos PDV: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(['error' => 'Erro interno ao buscar produtos', 'details' => $e->getMessage()], 500);
+        }
     }
 
     public function storeCustomer(Request $request)
@@ -313,11 +387,11 @@ class PDVController extends Controller
             if ($request->filled('address')) {
                 $addressData = $request->address;
                 $zipCode = !empty($addressData['zip_code']) ? preg_replace('/\D/', '', $addressData['zip_code']) : null;
-                
+
                 if ($zipCode) {
                     $customerData['zip_code'] = $zipCode;
                 }
-                
+
                 // Montar endereço completo para salvar no cliente
                 if (!empty($addressData['street'])) {
                     $fullAddress = trim($addressData['street']);
@@ -329,7 +403,7 @@ class PDVController extends Controller
                     }
                     $customerData['address'] = $fullAddress;
                 }
-                
+
                 if (!empty($addressData['neighborhood'])) {
                     $customerData['neighborhood'] = $addressData['neighborhood'];
                 }
@@ -347,7 +421,7 @@ class PDVController extends Controller
             if ($request->filled('address') && !empty($request->address['street'])) {
                 $addressData = $request->address;
                 $zipCode = !empty($addressData['zip_code']) ? preg_replace('/\D/', '', $addressData['zip_code']) : '';
-                
+
                 // Validar se tem dados mínimos para criar endereço
                 if (!empty($addressData['street']) && !empty($zipCode) && !empty($addressData['city']) && !empty($addressData['state'])) {
                     Address::create([
@@ -360,7 +434,7 @@ class PDVController extends Controller
                         'city' => $addressData['city'],
                         'state' => strtoupper($addressData['state']),
                     ]);
-                    
+
                     Log::info('PDV: Endereço criado para novo cliente', [
                         'customer_id' => $customer->id,
                         'zip_code' => $zipCode,
@@ -423,14 +497,38 @@ class PDVController extends Controller
         ]);
     }
 
+    /**
+     * Alias para rota api.pdv.orders.store
+     */
+    public function storeOrder(Request $request)
+    {
+        return $this->store($request);
+    }
+
     public function store(Request $request)
     {
+        // Se vier data e hora separados, compor o slot
+        if (!$request->has('scheduled_delivery_slot') && $request->filled('scheduled_date') && $request->filled('scheduled_time')) {
+            $request->merge([
+                'scheduled_delivery_slot' => $request->scheduled_date . ' ' . $request->scheduled_time
+            ]);
+        }
+
+        // Se não vier delivery_type, determinar pelo endereço
+        if (!$request->has('delivery_type')) {
+            $request->merge([
+                'delivery_type' => ($request->filled('delivery_address') || $request->filled('delivery_cep')) ? 'delivery' : 'pickup'
+            ]);
+        }
+
         $request->validate([
-            'customer_id' => 'required|integer|exists:customers,id',
+            'customer_id' => 'nullable|integer|exists:customers,id',
+            'customer_name' => 'required_without:customer_id|string|max:255',
+            'customer_phone' => 'nullable|string|max:30',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|integer|exists:products,id',
             'items.*.name' => 'required|string|max:255',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price' => 'nullable|numeric|min:0',
             'items.*.quantity' => 'required|integer|min:1',
             'delivery_type' => 'required|in:delivery,pickup',
             'address_id' => 'nullable|integer|exists:addresses,id',
@@ -440,80 +538,96 @@ class PDVController extends Controller
             'manual_discount_fixed' => 'nullable|numeric|min:0',
             'manual_discount_percent' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string|max:1000',
-            'send_payment_link' => 'nullable|boolean', // Se deve enviar link de pagamento ao cliente
-            'payment_method' => 'nullable|in:pix,credit_card,debit_card', // Método se enviar link
-            'create_as_paid' => 'nullable|boolean', // Criar pedido já como pago
-            'skip_notification' => 'nullable|boolean', // Pular notificações
-            'scheduled_delivery_slot' => 'required|string', // Agendamento (obrigatório)
+            'send_payment_link' => 'nullable|boolean',
+            'payment_method' => 'nullable|string',
+            'create_as_paid' => 'nullable|boolean',
+            'skip_notification' => 'nullable|boolean',
+            'scheduled_delivery_slot' => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $customer = Customer::findOrFail($request->customer_id);
+            // Buscar ou criar cliente
+            if ($request->filled('customer_id')) {
+                $customer = Customer::findOrFail($request->customer_id);
+            } else {
+                // Tentar buscar por telefone antes de criar
+                $customer = null;
+                if ($request->filled('customer_phone')) {
+                    $cleanPhone = preg_replace('/\D/', '', $request->customer_phone);
+                    $customer = Customer::where('phone', 'like', "%{$cleanPhone}%")->first();
+                }
 
-            // Calcular totais
-            $subtotal = collect($request->items)->sum(function($item) {
-                return (float)$item['price'] * (int)$item['quantity'];
+                if (!$customer) {
+                    $customer = Customer::create([
+                        'name' => $request->customer_name,
+                        'phone' => $request->customer_phone,
+                    ]);
+                }
+            }
+
+            // ... (resto da lógica de cálculo de totais)
+            $subtotal = collect($request->items)->sum(function ($item) {
+                $price = (float) str_replace(',', '.', $item['price'] ?? 0);
+                return $price * (int) $item['quantity'];
             });
 
-            $deliveryFee = (float)($request->delivery_fee ?? 0);
-            
-            // Desconto do cupom
+            $deliveryFee = (float) str_replace(',', '.', $request->delivery_fee ?? 0);
+
+            // ... (cupom e descontos)
             $couponDiscount = 0;
             $couponCode = $request->coupon_code;
             if ($couponCode) {
-                // Usar scopes do modelo Coupon (valid e available usam starts_at e expires_at)
                 $coupon = Coupon::where('code', strtoupper($couponCode))
-                    ->active()
-                    ->valid()
-                    ->available()
-                    ->first();
-                
+                    ->active()->valid()->available()->first();
                 if ($coupon && $coupon->canBeUsedBy($customer->id)) {
                     $couponDiscount = $coupon->calculateDiscount($subtotal);
-                    $couponCode = $coupon->code;
                 } else {
                     $couponCode = null;
                 }
             }
-            
-            // Desconto manual (fixo e porcentagem)
-            $manualDiscountFixed = (float)($request->manual_discount_fixed ?? 0);
-            $manualDiscountPercent = (float)($request->manual_discount_percent ?? 0);
+
+            $manualDiscountFixed = (float) ($request->manual_discount_fixed ?? 0);
+            $manualDiscountPercent = (float) ($request->manual_discount_percent ?? 0);
             $manualDiscountFromPercent = $subtotal * ($manualDiscountPercent / 100);
-            
-            // Total de desconto (cupom + manual fixo + manual porcentagem)
-            // Se discount_amount foi enviado diretamente, usar ele (já calculado no frontend)
-            $totalDiscount = (float)($request->discount_amount ?? 0);
+
+            $totalDiscount = (float) ($request->discount_amount ?? 0);
             if ($totalDiscount == 0) {
-                // Se não foi enviado, calcular aqui
                 $totalDiscount = $couponDiscount + $manualDiscountFixed + $manualDiscountFromPercent;
             }
-            
-            $finalAmount = max(0, $subtotal + $deliveryFee - $totalDiscount);
 
-            // Gerar número do pedido
+            $finalAmount = max(0, $subtotal + $deliveryFee - $totalDiscount);
             $orderNumber = $this->generateOrderNumber();
-            
-            // Determinar status inicial e payment_status
+
             $createAsPaid = $request->has('create_as_paid') && $request->create_as_paid;
-            $initialStatus = $createAsPaid ? 'confirmed' : 'pending';
-            $initialPaymentStatus = $createAsPaid ? 'paid' : 'pending';
+            $pm = $request->payment_method;
+
+            // Se for fiado ou pix direto, marcar status
+            $initialStatus = 'pending';
+            $initialPaymentStatus = 'pending';
+
+            if ($pm === 'fiado' || $createAsPaid) {
+                $initialStatus = 'confirmed';
+                if ($createAsPaid)
+                    $initialPaymentStatus = 'paid';
+            }
 
             // Processar agendamento
             $scheduledDeliveryAt = null;
-            try {
-                $scheduledDeliveryAt = Carbon::createFromFormat('Y-m-d H:i', $request->scheduled_delivery_slot);
-            } catch (\Exception $e) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'scheduled_delivery_slot' => ['Horário de entrega inválido.']
-                ]);
+            $input = $request->input('scheduled_delivery_at') ?? $request->input('scheduled_delivery_slot');
+            if ($input) {
+                try {
+                    if (strlen($input) == 16)
+                        $input .= ':00';
+                    $scheduledDeliveryAt = Carbon::parse($input);
+                } catch (\Exception $e) {
+                    // Silencioso ou fallback
+                }
             }
 
             $clientId = currentClientId();
-            // Criar pedido
-            $order = Order::create([
+            $orderData = [
                 'client_id' => $clientId,
                 'customer_id' => $customer->id,
                 'address_id' => $request->address_id,
@@ -524,19 +638,25 @@ class PDVController extends Controller
                 'discount_amount' => $totalDiscount,
                 'coupon_code' => $couponCode,
                 'final_amount' => $finalAmount,
-                'payment_method' => $request->payment_method ?? 'pix',
+                'payment_method' => $pm ?? 'pix',
                 'payment_status' => $initialPaymentStatus,
                 'delivery_type' => $request->delivery_type,
                 'scheduled_delivery_at' => $scheduledDeliveryAt,
                 'notes' => $request->notes,
-            ]);
-            
+                'delivery_address' => $request->delivery_address,
+                'delivery_neighborhood' => $request->delivery_neighborhood,
+                'delivery_zip_code' => $request->delivery_cep,
+            ];
+
+            $order = Order::create($orderData);
+
+
             // Se criar como pago, marcar como já notificado e solicitar impressão automática
             if ($createAsPaid) {
                 $order->notified_paid_at = now();
                 $order->print_requested_at = now(); // Solicitar impressão automática
                 $order->save();
-                
+
                 Log::info('PDV: Pedido criado como pago - impressão automática solicitada', [
                     'order_id' => $order->id,
                     'order_number' => $orderNumber,
@@ -545,14 +665,16 @@ class PDVController extends Controller
 
             // Criar itens
             foreach ($request->items as $itemData) {
+                $price = (float) str_replace(',', '.', $itemData['price'] ?? 0);
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $itemData['product_id'] ?? null,
-                    'quantity' => (int)$itemData['quantity'],
-                    'unit_price' => (float)$itemData['price'],
-                    'total_price' => (float)$itemData['price'] * (int)$itemData['quantity'],
+                    'variant_id' => $itemData['variant_id'] ?? null,
+                    'quantity' => (int) $itemData['quantity'],
+                    'unit_price' => $price,
+                    'total_price' => $price * (int) $itemData['quantity'],
                     'custom_name' => $itemData['name'],
-                    'special_instructions' => $itemData['special_instructions'] ?? null,
+                    'special_instructions' => $itemData['notes'] ?? null,
                 ]);
             }
 
@@ -575,8 +697,13 @@ class PDVController extends Controller
                 ]);
             }
 
-            // Se não enviar link de pagamento, criar como débito
-            if (!$request->send_payment_link) {
+            // Verificar opção de pagamento antes do processamento
+            $paymentMethod = $request->payment_method ?? 'pix';
+            $pixOption = $request->input('pix_option'); // null, 'display_qr', ou 'send_whatsapp'
+
+            // Se o método for fiado, criar como débito
+            if ($pm === 'fiado') {
+
                 CustomerDebt::create([
                     'customer_id' => $customer->id,
                     'order_id' => $order->id,
@@ -596,25 +723,25 @@ class PDVController extends Controller
                 // Criar link de pagamento via Mercado Pago
                 try {
                     $mpApi = new MercadoPagoApi();
-                    
+
                     // Preparar itens para Mercado Pago
-                    $mpItems = collect($request->items)->map(function($item) {
+                    $mpItems = collect($request->items)->map(function ($item) {
                         return [
                             'title' => $item['name'],
-                            'quantity' => (int)$item['quantity'],
-                            'unit_price' => (float)$item['price'],
+                            'quantity' => (int) $item['quantity'],
+                            'unit_price' => (float) $item['price'],
                         ];
                     })->toArray();
 
                     // Verificar opção PIX (display_qr ou send_whatsapp)
                     $pixOption = $request->input('pix_option'); // null, 'display_qr', ou 'send_whatsapp'
                     $paymentMethod = $request->payment_method ?? 'pix';
-                    
+
                     // Se PIX, criar pagamento PIX diretamente
                     if ($paymentMethod === 'pix' && ($pixOption === 'display_qr' || $pixOption === 'send_whatsapp')) {
                         // Criar pagamento PIX diretamente (não link genérico)
                         $pixPayment = $mpApi->createPixPreference($order, $customer, $mpItems);
-                        
+
                         $order->update([
                             'payment_provider' => 'mercadopago',
                             'payment_id' => $pixPayment['preference_id'] ?? null,
@@ -623,12 +750,12 @@ class PDVController extends Controller
                             'pix_expires_at' => !empty($pixPayment['expires_at']) ? Carbon::parse($pixPayment['expires_at']) : null,
                             'payment_status' => 'pending',
                         ]);
-                        
+
                         // Se opção for send_whatsapp, enviar QR Code via WhatsApp
                         if ($pixOption === 'send_whatsapp' && $customer->phone) {
                             $this->sendPixViaWhatsApp($order, $customer, $finalAmount, $orderNumber);
                         }
-                        
+
                         Log::info('PDV: Pagamento PIX criado', [
                             'order_id' => $order->id,
                             'order_number' => $orderNumber,
@@ -655,32 +782,29 @@ class PDVController extends Controller
                                 if ($whatsappService->isEnabled()) {
                                     $message = "Olá, {$customer->name}! 🛒\n\n";
                                     $message .= "Seu pedido #{$orderNumber} foi criado!\n\n";
-                                    $message .= "Total: R$ " . number_format($finalAmount, 2, ',', '.') . "\n\n";
-                                    
-                                    if ($request->payment_method === 'pix') {
-                                        $message .= "Para pagar via PIX, acesse:\n";
-                                    } else {
-                                        $message .= "Para finalizar o pagamento, acesse:\n";
+                                    $message .= "Total: *R$ " . number_format($finalAmount, 2, ',', '.') . "*\n\n";
+                                    $message .= "Para pagar com *cartão* ou *PIX* (Mercado Pago), acesse:\n\n";
+
+                                    $paymentUrl = $pref['checkout_url'] ?? $order->payment_link ?? null;
+                                    if (!$paymentUrl) {
+                                        $phoneParam = urlencode(preg_replace('/\D/', '', $customer->phone));
+                                        $paymentUrl = route('customer.orders.show', [
+                                            'order' => $orderNumber,
+                                            'phone' => $phoneParam
+                                        ]);
                                     }
-                                    
-                                    $phoneParam = urlencode(preg_replace('/\D/', '', $customer->phone));
-                                    $paymentUrl = route('customer.orders.show', [
-                                        'order' => $orderNumber,
-                                        'phone' => $phoneParam
-                                    ]);
-                                    
                                     $message .= $paymentUrl . "\n\n";
-                                    $message .= "Após pagar, você poderá escolher o agendamento de entrega e finalizar o pedido.";
+                                    $message .= "Após pagar, o pedido será confirmado automaticamente.";
 
                                     // Normalizar telefone antes de enviar
                                     $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
                                     if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
                                         $phoneNormalized = '55' . $phoneNormalized;
                                     }
-                                    
+
                                     // Enviar mensagem via WhatsApp
                                     $result = $whatsappService->sendText($phoneNormalized, $message);
-                                    
+
                                     if (isset($result['success']) && $result['success']) {
                                         Log::info('PDV: Mensagem enviada ao cliente via WhatsApp', [
                                             'order_id' => $order->id,
@@ -736,16 +860,16 @@ class PDVController extends Controller
                     'payment_link' => $order->payment_link,
                     'is_debt' => !$request->send_payment_link,
                 ],
-                'message' => $request->send_payment_link 
-                    ? 'Pedido criado e link de pagamento enviado ao cliente!' 
+                'message' => $request->send_payment_link
+                    ? 'Pedido criado e link de pagamento enviado ao cliente!'
                     : 'Pedido criado como débito!',
             ];
-            
+
             // Se PIX display_qr, incluir flag
             if ($paymentMethod === 'pix' && $pixOption === 'display_qr') {
                 $responseData['pix_display_qr'] = true;
             }
-            
+
             return response()->json($responseData);
 
         } catch (\Exception $e) {
@@ -759,6 +883,104 @@ class PDVController extends Controller
                 'success' => false,
                 'message' => 'Erro ao criar pedido: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * API: retorna QR Code e código PIX para exibição em tela (modal Nova Encomenda / PDV).
+     */
+    public function getPixQr(Order $order)
+    {
+        $qr = $order->pix_qr_base64 ?? null;
+        $copy = $order->pix_copy_paste ?? null;
+        $amount = (float) ($order->final_amount ?? 0);
+
+        return response()->json([
+            'qr_code_base64' => $qr,
+            'copy_paste' => $copy,
+            'amount' => $amount,
+        ]);
+    }
+
+    /**
+     * API: envia cobrança PIX ao cliente via WhatsApp (usado no modal QR em tela).
+     */
+    public function sendPixWhatsApp(Order $order)
+    {
+        $order->load('customer');
+        $customer = $order->customer;
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Pedido sem cliente associado.'], 400);
+        }
+        if (!$customer->phone) {
+            return response()->json(['success' => false, 'message' => 'Cliente sem telefone cadastrado.'], 400);
+        }
+        $finalAmount = (float) ($order->final_amount ?? $order->total_amount ?? 0);
+        $orderNumber = $order->order_number ?? '#' . $order->id;
+
+        $this->sendPixViaWhatsApp($order, $customer, $finalAmount, $orderNumber);
+
+        return response()->json(['success' => true, 'message' => 'Cobrança PIX enviada via WhatsApp.']);
+    }
+
+    /**
+     * Envia cobrança PIX (código copia e cola) ao cliente via WhatsApp.
+     */
+    protected function sendPixViaWhatsApp(Order $order, Customer $customer, float $finalAmount, string $orderNumber): void
+    {
+        $copy = $order->pix_copy_paste ?? null;
+        if (!$copy) {
+            Log::warning('PDV: sendPixViaWhatsApp - pedido sem pix_copy_paste', ['order_id' => $order->id]);
+            return;
+        }
+
+        $phone = preg_replace('/\D/', '', $customer->phone ?? '');
+        if (strlen($phone) < 10) {
+            Log::warning('PDV: sendPixViaWhatsApp - cliente sem telefone', ['customer_id' => $customer->id]);
+            return;
+        }
+        if (!str_starts_with($phone, '55')) {
+            $phone = '55' . $phone;
+        }
+
+        $msgIntro = "Olá, " . ($customer->name ?? 'Cliente') . "! 🧾\n\n";
+        $msgIntro .= "Cobrança PIX – Pedido *{$orderNumber}*\n";
+        $msgIntro .= "Total: *R$ " . number_format($finalAmount, 2, ',', '.') . "*\n\n";
+        $msgIntro .= "Código PIX (copiar e colar) na próxima mensagem:\n\n";
+        $msgIntro .= "Após pagar, o pedido será confirmado automaticamente.";
+
+        try {
+            $ws = new WhatsAppService();
+            if (!$ws->isEnabled()) {
+                Log::warning('PDV: sendPixViaWhatsApp - WhatsApp não configurado');
+                return;
+            }
+            $res1 = $ws->sendText($phone, $msgIntro);
+            if (empty($res1['success'])) {
+                Log::warning('PDV: Falha ao enviar intro PIX via WhatsApp', [
+                    'order_id' => $order->id,
+                    'error' => $res1['error'] ?? 'unknown',
+                ]);
+                return;
+            }
+            $res2 = $ws->sendText($phone, $copy);
+            if (!empty($res2['success'])) {
+                Log::info('PDV: Cobrança PIX enviada via WhatsApp (2 msgs)', [
+                    'order_id' => $order->id,
+                    'customer_id' => $customer->id,
+                    'phone' => $phone,
+                ]);
+            } else {
+                Log::warning('PDV: Intro enviada, falha ao enviar código PIX', [
+                    'order_id' => $order->id,
+                    'error' => $res2['error'] ?? 'unknown',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('PDV: sendPixViaWhatsApp exception', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -797,12 +1019,12 @@ class PDVController extends Controller
                     'message' => 'Cliente não possui telefone cadastrado para receber o pedido.',
                 ], 400);
             }
-            
+
             // Atualizar CEP e endereço do cliente se fornecido
             if ($request->filled('zip_code')) {
                 $zipCode = preg_replace('/\D/', '', $request->zip_code);
                 $customer->zip_code = $zipCode;
-                
+
                 // Se houver dados de endereço, atualizar também
                 if ($request->filled('address')) {
                     $addressData = $request->address;
@@ -819,14 +1041,14 @@ class PDVController extends Controller
                         $customer->state = $addressData['state'];
                     }
                 }
-                
+
                 $customer->save();
-                
+
                 // Criar ou atualizar endereço na tabela addresses se fornecido
                 if ($request->filled('address') && !empty($request->address['street'])) {
                     $addressData = $request->address;
                     $zipCodeClean = preg_replace('/\D/', '', $request->zip_code);
-                    
+
                     $address = \App\Models\Address::updateOrCreate(
                         [
                             'customer_id' => $customer->id,
@@ -845,12 +1067,12 @@ class PDVController extends Controller
             }
 
             // Calcular totais
-            $subtotal = collect($request->items)->sum(function($item) {
-                return (float)$item['price'] * (int)$item['quantity'];
+            $subtotal = collect($request->items)->sum(function ($item) {
+                return (float) $item['price'] * (int) $item['quantity'];
             });
 
-            $deliveryFee = (float)($request->delivery_fee ?? 0);
-            $discountAmount = (float)($request->discount_amount ?? 0);
+            $deliveryFee = (float) ($request->delivery_fee ?? 0);
+            $discountAmount = (float) ($request->discount_amount ?? 0);
             $finalAmount = max(0, $subtotal + $deliveryFee - $discountAmount);
 
             // Validar cupom se fornecido
@@ -862,7 +1084,7 @@ class PDVController extends Controller
                     ->valid()
                     ->available()
                     ->first();
-                
+
                 if ($coupon && $coupon->canBeUsedBy($customer->id)) {
                     $discountFromCoupon = $coupon->calculateDiscount($subtotal);
                     $discountAmount = max($discountAmount, $discountFromCoupon);
@@ -875,7 +1097,7 @@ class PDVController extends Controller
 
             // Gerar número do pedido
             $orderNumber = $this->generateOrderNumber();
-            
+
             // Buscar address_id se foi criado acima ou usar o fornecido
             $addressId = $request->address_id;
             if (empty($addressId) && isset($address)) {
@@ -906,9 +1128,10 @@ class PDVController extends Controller
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $itemData['product_id'] ?? null,
-                    'quantity' => (int)$itemData['quantity'],
-                    'unit_price' => (float)$itemData['price'],
-                    'total_price' => (float)$itemData['price'] * (int)$itemData['quantity'],
+                    'variant_id' => $itemData['variant_id'] ?? null,
+                    'quantity' => (int) $itemData['quantity'],
+                    'unit_price' => (float) $itemData['price'],
+                    'total_price' => (float) $itemData['price'] * (int) $itemData['quantity'],
                     'custom_name' => $itemData['name'],
                     'special_instructions' => $itemData['special_instructions'] ?? null,
                 ]);
@@ -942,7 +1165,7 @@ class PDVController extends Controller
             // Enviar mensagem via WhatsApp
             try {
                 $whatsappService = new WhatsAppService();
-                
+
                 // Verificar se há instâncias configuradas
                 $instancesCount = \App\Models\WhatsappInstance::whereNotNull('api_url')->count();
                 Log::info('PDV: Verificando WhatsApp antes de enviar', [
@@ -951,19 +1174,19 @@ class PDVController extends Controller
                     'instances_count' => $instancesCount,
                     'is_enabled' => $whatsappService->isEnabled(),
                 ]);
-                
+
                 if ($whatsappService->isEnabled()) {
                     // Construir resumo do pedido
                     $message = "Olá, {$customer->name}! 🛒\n\n";
                     $message .= "Seu pedido foi criado!\n\n";
                     $message .= "*Pedido #{$orderNumber}*\n\n";
-                    
+
                     // Lista de itens
                     $message .= "*Itens:*\n";
                     foreach ($request->items as $item) {
                         $message .= "👉 {$item['quantity']}x {$item['name']} - R$ " . number_format($item['price'] * $item['quantity'], 2, ',', '.') . "\n";
                     }
-                    
+
                     $message .= "\n";
                     $message .= "Subtotal: R$ " . number_format($subtotal, 2, ',', '.') . "\n";
                     if ($deliveryFee > 0) {
@@ -973,7 +1196,7 @@ class PDVController extends Controller
                         $message .= "Desconto: -R$ " . number_format($discountAmount, 2, ',', '.') . "\n";
                     }
                     $message .= "*Total: R$ " . number_format($finalAmount, 2, ',', '.') . "*\n\n";
-                    
+
                     $message .= "Para finalizar seu pedido, escolher data/hora de entrega e forma de pagamento, acesse:\n";
                     $message .= $completeUrl . "\n\n";
                     $message .= "Após finalizar, você será direcionado para o pagamento.";
@@ -996,7 +1219,7 @@ class PDVController extends Controller
                             'whatsapp_error' => true,
                         ]);
                     }
-                    
+
                     // Log do telefone original do cliente - VALIDAR que é o correto
                     Log::info('PDV: Preparando envio WhatsApp', [
                         'order_id' => $order->id,
@@ -1005,14 +1228,14 @@ class PDVController extends Controller
                         'customer_phone_original' => $customer->phone,
                         'customer_phone_length' => strlen($customer->phone),
                     ]);
-                    
+
                     // Normalizar telefone (adicionar código do país se necessário)
                     // IMPORTANTE: Usar o telefone do cliente do banco, não alterar
                     $phoneNormalized = preg_replace('/\D/', '', $customer->phone);
                     if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
                         $phoneNormalized = '55' . $phoneNormalized;
                     }
-                    
+
                     // VALIDAÇÃO: Garantir que o número normalizado não está vazio
                     if (empty($phoneNormalized) || strlen($phoneNormalized) < 10) {
                         Log::error('PDV: Telefone normalizado inválido', [
@@ -1032,7 +1255,7 @@ class PDVController extends Controller
                             'whatsapp_error' => true,
                         ]);
                     }
-                    
+
                     // Log do telefone normalizado - VALIDAR antes de enviar
                     Log::info('PDV: Telefone normalizado para envio', [
                         'order_id' => $order->id,
@@ -1045,7 +1268,7 @@ class PDVController extends Controller
                     // Enviar mensagem via WhatsApp - GARANTIR que usa o número correto do cliente
                     // IMPORTANTE: $phoneNormalized deve ser o número do cliente, não outro
                     $result = $whatsappService->sendText($phoneNormalized, $message);
-                    
+
                     if (isset($result['success']) && $result['success']) {
                         Log::info('PDV: Pedido enviado ao cliente via WhatsApp', [
                             'order_id' => $order->id,
@@ -1126,7 +1349,7 @@ class PDVController extends Controller
                 'message' => 'Pedido criado e enviado ao cliente com sucesso!',
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('PDV: Erro ao enviar pedido', [
                 'error' => $e->getMessage(),
@@ -1143,41 +1366,41 @@ class PDVController extends Controller
     private function generateOrderNumber(): string
     {
         $prefix = 'OLK';
-        
+
         // Buscar o último número sequencial usado (formato OLK-0144-XXXXXX)
         // Extrair o número sequencial do segundo segmento (após OLK-)
         $lastOrder = \App\Models\Order::where('order_number', 'like', 'OLK-%')
             ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
             ->first();
-        
+
         $sequenceNumber = 144; // Último pedido do sistema antigo
-        
+
         if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
-            $lastSequence = (int)$matches[1];
+            $lastSequence = (int) $matches[1];
             if ($lastSequence >= 144) {
                 $sequenceNumber = $lastSequence + 1;
             }
         }
-        
+
         // Gerar 6 caracteres aleatórios (letras maiúsculas e números)
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         $randomSuffix = '';
         for ($i = 0; $i < 6; $i++) {
             $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
         }
-        
+
         // Formato: OLK-0145-ABC123
-        $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
-        
+        $orderNumber = $prefix . '-' . str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+
         // Verificar se já existe (muito improvável, mas por segurança)
         while (\App\Models\Order::where('order_number', $orderNumber)->exists()) {
             $randomSuffix = '';
             for ($i = 0; $i < 6; $i++) {
                 $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
             }
-            $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+            $orderNumber = $prefix . '-' . str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
         }
-        
+
         return $orderNumber;
     }
 
@@ -1195,7 +1418,7 @@ class PDVController extends Controller
 
         try {
             $destinationCep = preg_replace('/\D/', '', $request->cep);
-            $subtotal = (float)$request->subtotal;
+            $subtotal = (float) $request->subtotal;
 
             // Buscar dados do cliente se fornecido
             $customerPhone = null;
@@ -1302,16 +1525,16 @@ class PDVController extends Controller
 
             // Atualizar payment_status para 'paid'
             $order->payment_status = 'paid';
-            
+
             // Atualizar status para 'confirmed' (aceito na produção)
             // O status "Pago/Confirmado" é representado por payment_status='paid' + status='confirmed'
             $order->status = 'confirmed';
-            
+
             // Marcar como já notificado para evitar notificações futuras
             if (empty($order->notified_paid_at)) {
                 $order->notified_paid_at = now();
             }
-            
+
             $order->save();
 
             // Usar OrderStatusService para atualizar histórico, mas SEM notificações

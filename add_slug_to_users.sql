@@ -1,0 +1,3 @@
+-- Arquivo limpo. A coluna railway_url não é necessária pois já existe a tabela whatsapp_instance_urls.
+-- A coluna slug já existe na tabela users.
+-- Nenhum comando SQL é necessário neste momento.

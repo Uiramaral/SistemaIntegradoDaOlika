@@ -10,82 +10,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Payment;
 use App\Models\Scopes\ClientScope;
 
+use App\Models\Traits\BelongsToClient;
+
 class Order extends Model
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'client_id', // ✅ NOVO: Multi-instância
-        'customer_id',
-        'address_id',
-        'visitor_id',
-        'order_number',
-        'status',
-        'total_amount',
-        'delivery_fee',
-        'discount_amount',
-        'coupon_code',
-        'discount_type',
-        'discount_original_value',
-        'manual_discount_type',
-        'manual_discount_value',
-        'cashback_used',
-        'cashback_earned',
-        'final_amount',
-        'payment_method',
-        'payment_provider',
-        'preference_id',
-        'payment_id',
-        'payment_link',
-        'pix_copy_paste',
-        'pix_qr_base64',
-        'pix_expires_at',
-        'payment_raw_response',
-        'payment_status',
-        'delivery_type',
-        'delivery_address',
-        'delivery_instructions',
-        'estimated_time',
-        'notes',
-        'delivery_complement',
-        'delivery_neighborhood',
-        'observations',
-        'scheduled_delivery_at',
-        'print_requested_at',
-        'printed_at',
-        'print_type', // ✅ NOVO: Tipo de recibo ('normal' ou 'check')
-        'notified_paid_at',
-        'payment_review_notified_at',
-        'tracking_enabled',
-        'tracking_started_at',
-        'tracking_stopped_at',
-        'tracking_token',
-    ];
-
-    protected $casts = [
-        'total_amount' => 'decimal:2',
-        'delivery_fee' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'final_amount' => 'decimal:2',
-        'pix_expires_at' => 'datetime',
-        'scheduled_delivery_at' => 'datetime',
-        'payment_raw_response' => 'array',
-        'print_requested_at' => 'datetime',
-        'printed_at' => 'datetime',
-        'notified_paid_at' => 'datetime',
-        'payment_review_notified_at' => 'datetime',
-        'tracking_enabled' => 'boolean',
-        'tracking_started_at' => 'datetime',
-        'tracking_stopped_at' => 'datetime',
-    ];
-
-    /**
-     * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
-     */
-    protected static function booted()
-    {
-        static::addGlobalScope(new ClientScope());
-    }
+    use HasFactory, BelongsToClient;
 
     /**
      * Mutator para normalizar valores de status para o ENUM válido da tabela orders.

@@ -4,8 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\Client;
+use Illuminate\Support\Facades\View;
 
 class IdentifyTenant
 {
@@ -42,9 +43,10 @@ class IdentifyTenant
 
             // Ignora subdomínios reservados
             if (!in_array($slug, self::RESERVED_SUBDOMAINS)) {
-                // Busca o tenant (usuário) pelo slug
-                $tenant = User::where('slug', $slug)
-                    ->where('status', 'active')
+                // Busca o cliente pelo slug (usando tabela clients)
+                // O tenant agora é a entidade Client, não mais User
+                $tenant = Client::where('slug', $slug)
+                    ->active() // Scope do model Client
                     ->first();
 
                 if (!$tenant) {
@@ -54,14 +56,14 @@ class IdentifyTenant
                 // Adiciona o tenant ao request para uso posterior
                 $request->merge(['tenant_id' => $tenant->id]);
                 $request->attributes->set('tenant', $tenant);
-                
-                // Compartilha com todas as views
-                \View::share('tenant', $tenant);
+                $request->attributes->set('client', $tenant); // Compatibilidade com helper
+                $request->attributes->set('client_id', $tenant->id); // Compatibilidade com helper
 
-                // Define o client_id na sessão se o tenant tiver um
-                if ($tenant->client_id) {
-                    session(['client_id' => $tenant->client_id]);
-                }
+                // Compartilha com todas as views
+                View::share('tenant', $tenant);
+
+                // Injeta _client_id na requisição (para Trait, se usar input)
+                $request->merge(['_client_id' => $tenant->id]);
             }
         }
 

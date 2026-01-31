@@ -51,9 +51,17 @@ class ProfileController extends Controller
     /**
      * Atualiza o slug (URL personalizada) do usuário
      */
+    /**
+     * Atualiza o slug (URL personalizada) do estabelecimento (Client)
+     */
     public function updateSlug(Request $request)
     {
         $user = Auth::user();
+        $client = $user->client;
+
+        if (!$client) {
+            return back()->with('error', 'Usuário não está vinculado a um estabelecimento.');
+        }
 
         // Validação
         $validated = $request->validate([
@@ -63,7 +71,7 @@ class ProfileController extends Controller
                 'min:3',
                 'max:30',
                 'lowercase', // Força minúsculas
-                Rule::unique('users', 'slug')->ignore($user->id), // Único, ignorando o próprio ID
+                Rule::unique('clients', 'slug')->ignore($client->id), // Único na tabela clients, ignorando o próprio ID
                 function ($attribute, $value, $fail) {
                     // Valida se não é um slug proibido
                     if (in_array(strtolower($value), self::PROHIBITED_SLUGS)) {
@@ -94,10 +102,10 @@ class ProfileController extends Controller
         $slug = strtolower($validated['slug']);
 
         // Salva o slug antigo para mensagem
-        $oldSlug = $user->slug;
+        $oldSlug = $client->slug;
 
-        // Atualiza o usuário
-        $user->update(['slug' => $slug]);
+        // Atualiza o cliente (loja)
+        $client->update(['slug' => $slug]);
 
         // Monta a URL completa
         $newUrl = $slug . '.cozinhapro.app.br';
@@ -105,7 +113,7 @@ class ProfileController extends Controller
         // Mensagem de sucesso
         $message = 'Sua URL foi atualizada com sucesso! ';
         $message .= 'Seu novo link é: <strong>' . $newUrl . '</strong>';
-        
+
         if ($oldSlug && $oldSlug !== $slug) {
             $message .= '<br><small class="text-warning">⚠️ Atenção: Ao mudar sua URL, links antigos enviados no WhatsApp de clientes não funcionarão mais.</small>';
         }
@@ -128,9 +136,20 @@ class ProfileController extends Controller
                 'max:255',
                 Rule::unique('users')->ignore($user->id)
             ],
+            // Adicionar validação opcional para o nome da loja se vier no request
+            'store_name' => 'nullable|string|max:255',
         ]);
 
-        $user->update($validated);
+        // Atualiza usuário
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
+
+        // Se tiver nome da loja e usuário tem client, atualiza também
+        if ($request->has('store_name') && $user->client) {
+            $user->client->update(['name' => $request->input('store_name')]);
+        }
 
         return back()->with('success', 'Perfil atualizado com sucesso!');
     }
@@ -141,7 +160,17 @@ class ProfileController extends Controller
     public function checkSlugAvailability(Request $request)
     {
         $slug = strtolower($request->input('slug'));
-        $userId = Auth::id();
+        $user = Auth::user();
+
+        // Se usuário não tem client, não pode verificar disponibilidade de slug de loja
+        if (!$user->client) {
+            return response()->json([
+                'available' => false,
+                'message' => 'Usuário sem vínculo com estabelecimento.'
+            ]);
+        }
+
+        $clientId = $user->client->id;
 
         // Verifica se é proibido
         if (in_array($slug, self::PROHIBITED_SLUGS)) {
@@ -151,9 +180,9 @@ class ProfileController extends Controller
             ]);
         }
 
-        // Verifica se já existe
-        $exists = \App\Models\User::where('slug', $slug)
-            ->where('id', '!=', $userId)
+        // Verifica se já existe na tabela CLIENTS
+        $exists = \App\Models\Client::where('slug', $slug)
+            ->where('id', '!=', $clientId)
             ->exists();
 
         if ($exists) {

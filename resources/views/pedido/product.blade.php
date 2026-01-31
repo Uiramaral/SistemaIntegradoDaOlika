@@ -296,6 +296,11 @@ async function addToCart(productId, productName, price) {
             }
             
             showNotification(`${qty}x ${productName} adicionado${qty > 1 ? 's' : ''} ao carrinho!`);
+            
+            // Redirecionar para o cardápio após adicionar
+            setTimeout(() => {
+                window.location.href = '{{ route("pedido.index") }}';
+            }, 1000);
         } else {
             showNotification(data.message || 'Não foi possível adicionar este produto agora.', 'error');
         }

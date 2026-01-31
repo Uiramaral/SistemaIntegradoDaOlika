@@ -1,7 +1,7 @@
 {{-- Modal Nova Encomenda (Novo PDV) – Estilo Confeitaria Pro. Popup sobre popup: PIX. --}}
 <div id="nova-encomenda-root" class="fixed inset-0 z-[100]" aria-hidden="true" style="display: none;"
     x-data="novaEncomendaModal()" x-show="open" x-cloak x-init="open = false"
-    @open-nova-encomenda.window="if ($event.detail?.userInitiated) { customerId = null; customerIsWholesale = false; customerName = ''; customerPhone = ''; deliveryAddress = ''; deliveryCep = ''; addressId = null; deliveryOffHours = false; deliverySlotsList = []; selectedDeliveryDate = ''; selectedDeliverySlot = ''; deliveryDate = new Date().toISOString().slice(0, 10); deliveryTime = ''; open = true; clearCurrentItem(); $nextTick(() => { fetchModalProducts(); fetchDeliverySlots(); }); }"
+    @open-nova-encomenda.window="if ($event.detail?.userInitiated) { customerId = null; customerIsWholesale = false; customerName = ''; customerPhone = ''; deliveryAddress = ''; deliveryNumber = ''; deliveryAddressObservation = ''; deliveryCep = ''; addressId = null; deliveryOffHours = false; deliverySlotsList = []; selectedDeliveryDate = ''; selectedDeliverySlot = ''; deliveryDate = new Date().toISOString().slice(0, 10); deliveryTime = ''; open = true; clearCurrentItem(); $nextTick(() => { fetchModalProducts(); fetchDeliverySlots(); }); }"
     @keydown.escape.window="if (currentItem.dropdownOpen) closeProductDropdown(); else if (pixQrOpen) closePixQr(); else if (pixOpen) closePix(); else close()"
     x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
     x-transition:leave="ease-out duration-150" x-transition:leave-start="opacity-100"
@@ -34,13 +34,17 @@
                 {{-- Cliente --}}
                 <div class="space-y-4">
                     <div class="space-y-2" x-show="!customerId">
-                        <label class="block text-sm font-medium text-foreground">Nome do Cliente <span
-                                class="text-destructive">*</span></label>
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-medium text-foreground">Nome do Consumidor <span
+                                    class="text-destructive">*</span></label>
+                            <button type="button" @click="createCustomerModalOpen = true"
+                                class="text-xs text-primary font-bold hover:underline mb-1">+ Novo Consumidor</button>
+                        </div>
                         <div class="relative">
                             <i data-lucide="search"
                                 class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
                             <input type="text" x-model="customerName" @input.debounce.300ms="searchCustomers()"
-                                placeholder="Buscar cliente..."
+                                placeholder="Buscar consumidor..."
                                 class="input-copycat w-full pl-10 h-10 rounded-xl border border-border bg-muted/30 focus:bg-white">
 
                             <div x-show="customerSuggestions.length" x-cloak
@@ -321,20 +325,42 @@
                             </div>
                         </div>
                     </template>
-                    <div>
-                        <label class="block text-xs font-medium text-muted-foreground mb-1">Endereço</label>
-                        <input type="text" x-model="deliveryAddress" placeholder="Ex: Rua das Flores, 123"
-                            class="input-copycat w-full h-10 rounded-xl">
-                    </div>
-                    <div class="flex gap-3">
-                        <div class="flex-1">
-                            <label class="block text-xs font-medium text-muted-foreground mb-1">CEP</label>
-                            <input type="text" x-model="deliveryCep" placeholder="CEP"
+                    {{-- Endereço reorganizado --}}
+                    <div class="space-y-3">
+                        <label class="block text-xs font-medium text-muted-foreground mb-1">Endereço de Entrega</label>
+
+                        {{-- Linha 1: CEP, Número, Taxa --}}
+                        <div class="grid grid-cols-12 gap-3">
+                            <div class="col-span-5 sm:col-span-4">
+                                <label class="block text-[10px] font-medium text-muted-foreground mb-1">CEP</label>
+                                <input type="text" x-model="deliveryCep" placeholder="00000-000"
+                                    class="input-copycat w-full h-10 rounded-xl">
+                            </div>
+                            <div class="col-span-3 sm:col-span-3">
+                                <label class="block text-[10px] font-medium text-muted-foreground mb-1">Número</label>
+                                <input type="text" x-model="deliveryNumber" placeholder="Nº"
+                                    class="input-copycat w-full h-10 rounded-xl">
+                            </div>
+                            <div class="col-span-4 sm:col-span-5">
+                                <label class="block text-[10px] font-medium text-muted-foreground mb-1">Taxa</label>
+                                <input type="text" x-model="deliveryFee" placeholder="0,00"
+                                    class="input-copycat w-full h-10 rounded-xl text-right">
+                            </div>
+                        </div>
+
+                        {{-- Linha 2: Endereço (Logradouro) --}}
+                        <div>
+                            <label class="block text-[10px] font-medium text-muted-foreground mb-1">Endereço</label>
+                            <input type="text" x-model="deliveryAddress" placeholder="Rua, Avenida, etc."
                                 class="input-copycat w-full h-10 rounded-xl">
                         </div>
-                        <div class="w-24">
-                            <label class="block text-xs font-medium text-muted-foreground mb-1">Taxa</label>
-                            <input type="text" x-model="deliveryFee" placeholder="0,00"
+
+                        {{-- Linha 3: Observação do Endereço --}}
+                        <div>
+                            <label class="block text-[10px] font-medium text-muted-foreground mb-1">Observação do
+                                endereço</label>
+                            <input type="text" x-model="deliveryAddressObservation"
+                                placeholder="Ponto de referência, complemento, etc."
                                 class="input-copycat w-full h-10 rounded-xl">
                         </div>
                     </div>
@@ -353,7 +379,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
                         <button type="button" @click="openPix('qr')" :disabled="submitting"
                             class="flex flex-col items-center justify-center gap-2 py-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-colors">
-                            <i data-lucide="qrcode" class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground"></i>
+                            <i data-lucide="qr-code" class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground"></i>
                             <span class="text-xs sm:text-sm font-medium text-foreground">PIX</span>
                         </button>
                         <button type="button" @click="submitOrderWithLink()" :disabled="submitting"
@@ -395,7 +421,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-border">
                 <div class="flex items-center gap-2">
-                    <i data-lucide="qrcode" class="w-5 h-5 text-muted-foreground"></i>
+                    <i data-lucide="qr-code" class="w-5 h-5 text-muted-foreground"></i>
                     <h3 class="text-lg font-semibold text-foreground">Pagamento via PIX</h3>
                 </div>
                 <button type="button" @click="closePix()" class="p-2 rounded-lg text-muted-foreground hover:bg-muted">
@@ -408,7 +434,7 @@
                     <label class="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors"
                         :class="pixOption === 'qr' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'">
                         <input type="radio" x-model="pixOption" value="qr" class="sr-only">
-                        <i data-lucide="qrcode" class="w-6 h-6 text-muted-foreground"></i>
+                        <i data-lucide="qr-code" class="w-6 h-6 text-muted-foreground"></i>
                         <div>
                             <span class="font-medium text-foreground block">Gerar QR Code em tela</span>
                             <span class="text-xs text-muted-foreground">Cliente escaneia o QR Code na tela</span>
@@ -431,7 +457,7 @@
                 </button>
                 <button type="button" @click="confirmPixAndSubmit()" class="btn-copycat-primary gap-2"
                     :disabled="submitting">
-                    <i data-lucide="qrcode" class="w-4 h-4" x-show="!submitting && pixOption === 'qr'"></i>
+                    <i data-lucide="qr-code" class="w-4 h-4" x-show="!submitting && pixOption === 'qr'"></i>
                     <i data-lucide="send" class="w-4 h-4" x-show="!submitting && pixOption === 'whatsapp'"></i>
                     <span x-show="!submitting"
                         x-text="pixOption === 'whatsapp' ? 'Enviar cobrança' : 'Gerar QR Code'"></span>
@@ -546,7 +572,44 @@
             </div>
         </div>
     </div>
+    {{-- Modal: Novo Consumidor Rápido --}}
+    <div x-show="createCustomerModalOpen" x-cloak
+        class="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        @click.self="createCustomerModalOpen = false">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4" @click.stop>
+            <h3 class="text-lg font-bold text-foreground">Novo Consumidor</h3>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Nome *</label>
+                    <input type="text" x-model="newCustomerName" x-ref="newCustomerNameInput"
+                        class="w-full rounded-lg border-input bg-background px-3 py-2 text-sm"
+                        placeholder="Nome do consumidor" @keydown.enter="submitCreateCustomer()">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Telefone</label>
+                    <input type="text" x-model="newCustomerPhone"
+                        class="w-full rounded-lg border-input bg-background px-3 py-2 text-sm"
+                        placeholder="Ex: 71 99999-9999" @keydown.enter="submitCreateCustomer()">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" @click="createCustomerModalOpen = false"
+                    class="flex-1 px-4 py-2 rounded-lg border border-input hover:bg-muted text-sm font-medium">
+                    Cancelar
+                </button>
+                <button type="button" @click="submitCreateCustomer()" :disabled="creatingCustomer"
+                    class="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium flex items-center justify-center gap-2">
+                    <span x-show="!creatingCustomer">Salvar</span>
+                    <i x-show="creatingCustomer" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+
 
 @push('scripts')
     <script>
@@ -565,6 +628,12 @@
                 sendingPixWhatsApp: false,
                 confirmingPixPayment: false,
 
+                // Novo Cliente Rápido
+                createCustomerModalOpen: false,
+                creatingCustomer: false,
+                newCustomerName: '',
+                newCustomerPhone: '',
+
                 // Cliente
                 customerId: null,
                 customerName: '',
@@ -580,6 +649,8 @@
 
                 // Entrega
                 deliveryAddress: '',
+                deliveryNumber: '',
+                deliveryAddressObservation: '',
                 deliveryNeighborhood: '',
                 deliveryCep: '',
                 deliveryInstructions: '',
@@ -676,6 +747,8 @@
                     // Preencher endereço se existir
                     if (customer.address || customer.zip_code) {
                         this.deliveryAddress = customer.address || '';
+                        this.deliveryNumber = customer.number || '';
+                        this.deliveryAddressObservation = customer.complement || customer.address_reference || ''; // Tenta pegar complemento ou referência
                         this.deliveryNeighborhood = customer.neighborhood || '';
                         this.deliveryCep = customer.zip_code || '';
                         this.addressId = customer.address_id || null;
@@ -700,6 +773,8 @@
                     this.customerIsWholesale = false;
                     this.addressId = null;
                     this.deliveryAddress = '';
+                    this.deliveryNumber = '';
+                    this.deliveryAddressObservation = '';
                     this.deliveryNeighborhood = '';
                     this.deliveryCep = '';
                     this.customerSuggestions = [];
@@ -870,7 +945,28 @@
 
                         const data = await response.json();
                         if (data.success) {
-                            this.deliveryFee = parseFloat(data.delivery_fee).toFixed(2).replace('.', ',');
+                            this.deliveryFee = parseFloat(data.delivery_fee.replace(',', '.')).toFixed(2).replace('.', ',');
+
+                            // Preencher endereço se retornado
+                            if (data.address) {
+                                // Se o campo de endereço estiver vazio ou não modificado manualmente, preenche
+                                // Assumindo que o usuario quer o endereço do CEP
+                                let fullAddress = data.address.street;
+                                if (fullAddress) {
+                                    this.deliveryAddress = fullAddress; // Logradouro
+                                }
+
+                                if (data.address.neighborhood) {
+                                    this.deliveryNeighborhood = data.address.neighborhood;
+                                }
+
+                                // Se houver campos de cidade/estado no form (não vi no view_file anterior, mas se tiver, preencheria)
+                                // this.deliveryCity = data.address.city;
+                                // this.deliveryState = data.address.state;
+                            }
+                        } else {
+                            // Se falhar (ex: CEP invalido), pode zerar ou avisar
+                            console.warn(data.message);
                         }
                     } catch (error) {
                         console.error('Erro ao calcular taxa:', error);
@@ -960,7 +1056,7 @@
 
                     this.confirmingPixPayment = true;
                     try {
-                        const response = await fetch(`/dashboard/pdv/orders/${this.pixQrOrderId}/confirm-payment-silent`, {
+                        const response = await fetch('{{ route("dashboard.pdv.confirmPaymentSilent", ["order" => ":id"]) }}'.replace(':id', this.pixQrOrderId), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -994,6 +1090,16 @@
                         scheduledAt = this.selectedDeliverySlot + ':00';
                     }
 
+                    let finalAddress = this.deliveryAddress;
+                    if (this.deliveryNumber) {
+                        finalAddress += ', ' + this.deliveryNumber;
+                    }
+
+                    let finalInstructions = this.deliveryInstructions || '';
+                    if (this.deliveryAddressObservation) {
+                        finalInstructions = finalInstructions ? (finalInstructions + ' | ' + this.deliveryAddressObservation) : this.deliveryAddressObservation;
+                    }
+
                     return {
                         customer_id: this.customerId,
                         items: this.items.map(item => ({
@@ -1008,13 +1114,13 @@
                         delivery_type: this.deliveryType,
                         address_id: this.deliveryType === 'delivery' ? this.addressId : null,
                         scheduled_delivery_at: scheduledAt,
-                        delivery_instructions: this.deliveryInstructions,
+                        delivery_instructions: finalInstructions,
                         delivery_fee: parseFloat(String(this.deliveryFee || '0').replace(',', '.')),
                         discount_amount: parseFloat(String(this.discountAmount || '0').replace(',', '.')),
                         // Fallbacks para campos que o backend possa esperar com nomes diferentes
                         customer_name: this.customerName,
                         customer_phone: this.customerPhone,
-                        delivery_address: this.deliveryAddress,
+                        delivery_address: finalAddress,
                         delivery_neighborhood: this.deliveryNeighborhood,
                         delivery_cep: this.deliveryCep,
                         create_as_paid: this.create_as_paid
@@ -1146,6 +1252,53 @@
 
                 saveAllowAvulso() {
                     localStorage.setItem('allowAvulso', this.allowAvulso);
+                },
+
+                // Função de criar cliente
+                async submitCreateCustomer() {
+                    if (!this.newCustomerName.trim()) {
+                        alert('Nome é obrigatório');
+                        return;
+                    }
+
+                    this.creatingCustomer = true;
+
+                    try {
+                        const response = await fetch('{{ route("dashboard.customers.store") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                name: this.newCustomerName,
+                                phone: this.newCustomerPhone
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success && data.customer) {
+                            // Selecionar o cliente criado
+                            this.selectCustomer(data.customer);
+
+                            // Limpar e fechar
+                            this.newCustomerName = '';
+                            this.newCustomerPhone = '';
+                            this.createCustomerModalOpen = false;
+
+                            // Feedback
+                            // alert('Cliente cadastrado com sucesso!');
+                        } else {
+                            alert('Erro ao cadastrar cliente: ' + (data.message || 'Erro desconhecido'));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert('Erro ao cadastrar cliente');
+                    } finally {
+                        this.creatingCustomer = false;
+                    }
                 },
 
                 init() {

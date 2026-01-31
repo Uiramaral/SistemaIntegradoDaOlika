@@ -173,8 +173,8 @@
                         // Nome COMPLETO do cliente
                         $customerName = $order->customer->name ?? 'Cliente';
 
-                        // Data formatada
-                        $orderDate = $order->scheduled_delivery_at ?? $order->created_at;
+                        // Data formatada - data do pedido (quando foi realizado)
+                        $orderDate = $order->created_at;
                         $formattedDate = $orderDate->format('d/m/Y');
 
                         // Valor total
@@ -220,14 +220,69 @@
                                     <i data-lucide="{{ $statusData['icon'] }}" class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0"></i>
                                     <span class="hidden md:inline xl:hidden 2xl:inline">{{ $statusData['label'] }}</span>
                                 </span>
-                                <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-                                    <button type="button" @click.stop="closeAllMenus(); open = true"
+                                <div x-data="{
+                                                                            open: false,
+                                                                            toggle() {
+                                                                                if (this.open) {
+                                                                                    this.open = false;
+                                                                                } else {
+                                                                                    // Fechar outros menus antes de abrir este
+                                                                                    window.dispatchEvent(new CustomEvent('close-all-menus', { detail: { except: this.$el } }));
+                                                                                    this.open = true;
+                                                                                    this.updatePosition();
+                                                                                }
+                                                                            },
+                                                                            updatePosition() {
+                                                                                this.$nextTick(() => {
+                                                                                    const trigger = this.$refs.trigger;
+                                                                                    const dropdown = this.$refs.dropdown;
+                                                                                    if (!trigger || !dropdown) return;
+
+                                                                                    const rect = trigger.getBoundingClientRect();
+                                                                                    const dropdownHeight = 320; // Altura estimada máxima
+                                                                                    const viewportHeight = window.innerHeight;
+                                                                                    const spaceBelow = viewportHeight - rect.bottom;
+
+                                                                                    // Resetar estilos base
+                                                                                    dropdown.style.position = 'fixed';
+                                                                                    dropdown.style.right = 'auto';
+                                                                                    dropdown.style.left = (rect.right - 224) + 'px'; // 224px = w-56
+
+                                                                                    // Decidir se abre para cima ou para baixo
+                                                                                    if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
+                                                                                        // Abrir para cima
+                                                                                        dropdown.style.top = 'auto';
+                                                                                        dropdown.style.bottom = (viewportHeight - rect.top + 4) + 'px';
+                                                                                        dropdown.style.maxHeight = (rect.top - 20) + 'px';
+                                                                                    } else {
+                                                                                        // Abrir para baixo
+                                                                                        dropdown.style.bottom = 'auto';
+                                                                                        dropdown.style.top = (rect.bottom + 4) + 'px';
+                                                                                        dropdown.style.maxHeight = (spaceBelow - 20) + 'px';
+                                                                                    }
+                                                                                });
+                                                                            },
+                                                                            init() {
+                                                                                // Escutar evento global para fechar
+                                                                                window.addEventListener('close-all-menus', (e) => {
+                                                                                    if (e.detail && e.detail.except === this.$el) return;
+                                                                                    this.open = false;
+                                                                                });
+
+                                                                                // Fechar ao rolar a página para evitar desconexão visual
+                                                                                window.addEventListener('scroll', () => { if(this.open) this.open = false; }, true);
+                                                                            }
+                                                                        }" @click.outside="open = false" class="relative">
+                                    <button type="button" x-ref="trigger" @click.stop="toggle()"
                                         class="inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                        title="Ações">
+                                        :class="{ 'bg-muted': open }" title="Ações">
                                         <i data-lucide="more-vertical" class="h-4 w-4"></i>
                                     </button>
-                                    <div x-show="open" x-cloak x-transition
-                                        class="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-border z-[100] py-1 max-h-[80vh] overflow-y-auto">
+
+                                    {{-- Menu Dropdown com position fixed via style inline dinâmico --}}
+                                    <div x-show="open" x-cloak x-transition x-ref="dropdown"
+                                        class="fixed w-56 bg-white rounded-lg shadow-xl border border-border z-[9999] py-1 overflow-y-auto"
+                                        style="display: none;">
                                         <a href="{{ route('dashboard.orders.show', $order->id) }}"
                                             class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
                                             <i data-lucide="eye" class="w-4 h-4 shrink-0"></i>
@@ -306,11 +361,16 @@
                                             <div class="border-t border-border my-1"></div>
 
                                             @if(isset($order->payment_status) && $order->payment_status === 'pending')
-                                                <a href="{{ route('dashboard.orders.show', $order->id) }}#payment"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left">
-                                                    <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
-                                                    <span>Confirmar Pagamento</span>
-                                                </a>
+                                                <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}"
+                                                    class="w-full">
+                                                    @csrf
+                                                    <input type="hidden" name="status" value="paid">
+                                                    <button type="submit"
+                                                        class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left">
+                                                        <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
+                                                        <span>Confirmar Pagamento</span>
+                                                    </button>
+                                                </form>
                                             @endif
 
                                             <form method="POST" action="{{ route('dashboard.orders.updateStatus', $order->id) }}"
@@ -402,8 +462,16 @@
                         </div>
                     </div>
                 @endif
+
             </div>
         </div>
+
+        <!-- Pagination -->
+        @if($orders->hasPages())
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/20 rounded-b-xl">
+                {{ $orders->withQueryString()->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

@@ -19,7 +19,7 @@ class DeliveryTrackingController extends Controller
             if (!$order->tracking_token) {
                 $order->tracking_token = Str::random(32);
             }
-            
+
             $order->tracking_enabled = true;
             $order->tracking_started_at = now();
             $order->tracking_stopped_at = null;
@@ -40,7 +40,7 @@ class DeliveryTrackingController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'error' => 'Erro ao salvar rastreamento: ' . $e->getMessage()
@@ -133,6 +133,19 @@ class DeliveryTrackingController extends Controller
             ->with(['customer', 'address'])
             ->firstOrFail();
 
-        return view('tracking.show', compact('order', 'token'));
+        // Tentar obter coordenadas do endereço se não existirem
+        $destination = [
+            'lat' => $order->address->latitude ?? null,
+            'lng' => $order->address->longitude ?? null,
+        ];
+
+        // Se não tem coordenadas, tentar usar um padrão da cidade ou do endereço (simulado por enquanto, ideal seria geocoding)
+        // Coordenadas padrão de São Paulo se falhar
+        if (!$destination['lat'] || !$destination['lng']) {
+            // Tenta extrair coordenadas de um cache ou serviço se disponível
+            // Por enquanto, manteremos null para que a view trate ou use a localização do entregador como centro
+        }
+
+        return view('tracking.show', compact('order', 'token', 'destination'));
     }
 }

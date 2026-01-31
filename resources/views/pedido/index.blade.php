@@ -4,6 +4,13 @@
 
 @section('content')
 @php
+    $routeName = \Illuminate\Support\Facades\Request::route() ? \Illuminate\Support\Facades\Request::route()->getName() : '';
+    $isStore = str_starts_with($routeName, 'store.');
+    
+    $rMenu = $isStore ? 'store.menu' : 'pedido.menu';
+    $rCart = $isStore ? 'store.cart' : 'pedido.cart';
+    $rIndex = $isStore ? 'store.index' : 'pedido.index';
+
     $cartCount = session('cart_count', 0);
     $cart = session('cart', []);
     if (empty($cartCount) && !empty($cart)) {
@@ -131,6 +138,23 @@
         @endif
     @endforeach
 @endif
+
+<!-- Product Modal Container -->
+<div id="productModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity opacity-0" id="productModalBackdrop" onclick="closeProductModal()"></div>
+    
+    <!-- Modal Panel Container -->
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+        <!-- Modal Panel (Panel itself listens to clicks, so propagation stop is needed if clicking inside shouldn't close) -->
+        <!-- But the panel content is loaded via AJAX. We set pointer-events-auto on the panel. -->
+        <div id="productModalPanel" class="w-full max-w-4xl bg-transparent transition-all transform scale-95 opacity-0 pointer-events-auto flex items-center justify-center">
+            <div id="productModalBody" class="w-full shadow-2xl rounded-xl overflow-hidden bg-card">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 
@@ -503,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span>Todos</span>
     `;
     todosBtn.addEventListener('click', () => {
-        window.location.href = '{{ route('pedido.index') }}';
+        window.location.href = '{{ route($rIndex) }}';
     });
     categoriesList.appendChild(todosBtn);
     
@@ -529,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  <span>{{ $cat->name }}</span>
              `;
              catBtn{{ str_replace(['-', ' '], '_', $catId) }}.addEventListener('click', () => {
-                 window.location.href = '{{ route('pedido.menu.category', is_numeric($catId) ? $catId : 0) }}';
+                 window.location.href = '{{ route($rMenu . '.category', is_numeric($catId) ? $catId : 0) }}';
              });
              categoriesList.appendChild(catBtn{{ str_replace(['-', ' '], '_', $catId) }});
          @else
@@ -558,7 +582,6 @@ document.addEventListener('DOMContentLoaded', function() {
         productsCount.textContent = '{{ $productsCount }} produtos disponíveis';
     }
     
-
     
     // Busca
     const searchInput = document.getElementById('searchInput');
@@ -569,14 +592,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const query = e.target.value.trim();
             if (query.length >= 2) {
                 searchTimeout = setTimeout(() => {
-                    window.location.href = '{{ route('pedido.menu.search') }}?q=' + encodeURIComponent(query);
+                    window.location.href = '{{ route($rMenu . '.search') }}?q=' + encodeURIComponent(query);
                 }, 500);
             }
         });
     }
     
     // Filtro de categorias (botões acima da busca) - apenas no index
-    @if(request()->routeIs('pedido.index'))
+    @if(request()->routeIs($rIndex))
     const categoryFilterBtns = document.querySelectorAll('.category-filter-btn');
     categoryFilterBtns.forEach(btn => {
         btn.addEventListener('click', function(e) {
@@ -670,7 +693,7 @@ function addToCart(productId, productName, price, buttonElement = null) {
     }
     
     // Fazer requisição de forma não-bloqueante
-    fetch('{{ route('pedido.cart.add') }}', {
+    fetch('{{ route($rCart . '.add') }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -738,9 +761,195 @@ function addToCart(productId, productName, price, buttonElement = null) {
     });
 }
 
-function openQuickView(productId) {
-    window.location.href = '{{ route('pedido.menu.product', ':id') }}'.replace(':id', productId);
+/* Product Modal Functions */
+function openProductModal(productId) {
+    window.activeModalProductId = productId;
+    
+    const modal = document.getElementById('productModal');
+    const backdrop = document.getElementById('productModalBackdrop');
+    const panel = document.getElementById('productModalPanel');
+    const body = document.getElementById('productModalBody');
+
+    // Show modal
+    modal.classList.remove('hidden');
+    // Animate in
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('scale-95', 'opacity-0');
+        panel.classList.add('scale-100', 'opacity-100');
+    }, 10);
+
+    // Loading state
+    body.innerHTML = '<div class="h-64 flex items-center justify-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>';
+
+    // Fetch Content
+    const url = '{{ route($rMenu . ".product.modal", ":id") }}'.replace(':id', productId);
+    
+    fetch(url)
+        .then(res => res.text())
+        .then(html => {
+            body.innerHTML = html;
+            
+            // Trigger price update if variants exist (init visual state)
+            const checked = body.querySelector('input[name="modal_variant_id"]:checked');
+            if (checked) {
+                 updateModalPrice(checked);
+            }
+            // Initialize quantity display
+            const qtyEl = document.getElementById('modalQty');
+            if (qtyEl) qtyEl.textContent = '1';
+        })
+        .catch(err => {
+            console.error(err);
+            body.innerHTML = '<div class="p-6 text-center text-destructive">Erro ao carregar produto. Tente novamente.</div>';
+        });
+}
+
+function closeProductModal() {
+    const modal = document.getElementById('productModal');
+    const backdrop = document.getElementById('productModalBackdrop');
+    const panel = document.getElementById('productModalPanel');
+
+    backdrop.classList.add('opacity-0');
+    panel.classList.remove('scale-100', 'opacity-100');
+    panel.classList.add('scale-95', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.getElementById('productModalBody').innerHTML = ''; 
+    }, 300);
+}
+
+function changeModalQty(delta) {
+    const qtyEl = document.getElementById('modalQty');
+    if (!qtyEl) return;
+    
+    let qty = parseInt(qtyEl.textContent) || 1;
+    qty = Math.max(1, qty + delta);
+    qtyEl.textContent = qty;
+    
+    refreshModalTotals();
+}
+
+function updateModalPrice(input) {
+    refreshModalTotals();
+}
+
+function refreshModalTotals() {
+    const qtyEl = document.getElementById('modalQty');
+    if (!qtyEl) return;
+    const qty = parseInt(qtyEl.textContent) || 1;
+    
+    const checked = document.querySelector('input[name="modal_variant_id"]:checked');
+    let price = 0;
+    
+    if (checked) {
+        price = parseFloat(checked.getAttribute('data-price') || 0);
+        
+        // Update unit price display
+        const unitEl = document.getElementById('modalPrice');
+        if (unitEl) unitEl.textContent = 'R$ ' + price.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    } else {
+        // Fallback: parse from modalPrice text or use zero if fails
+        const unitEl = document.getElementById('modalPrice');
+        if (unitEl) {
+             const text = unitEl.textContent.replace('R$', '').trim().replace(/\./g, '').replace(',', '.');
+             price = parseFloat(text) || 0;
+        }
+    }
+    
+    const total = price * qty;
+    const totalEl = document.getElementById('modalTotalPrice');
+    if (totalEl) totalEl.textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function submitModalCart() {
+    const qtyEl = document.getElementById('modalQty');
+    const qty = parseInt(qtyEl.textContent) || 1;
+    
+    const checked = document.querySelector('input[name="modal_variant_id"]:checked');
+    let variantId = null;
+    let price = 0;
+    
+    // Check if variants are present
+    const hasVariants = document.querySelector('input[name="modal_variant_id"]');
+
+    if (hasVariants) {
+        if (!checked) {
+            showNotification('Selecione uma opção.', 'error');
+            return;
+        }
+        variantId = checked.value;
+        price = parseFloat(checked.getAttribute('data-price') || 0);
+    } else {
+         const unitEl = document.getElementById('modalPrice');
+         if(unitEl) {
+             const text = unitEl.textContent.replace('R$', '').trim().replace(/\./g, '').replace(',', '.');
+             price = parseFloat(text) || 0;
+         }
+    }
+
+    const observation = document.getElementById('modalObservation')?.value || '';
+    
+    if (!window.activeModalProductId) {
+         console.error("No active product ID");
+         return;
+    }
+
+    const btn = document.querySelector('#productModalBody button[onclick="submitModalCart()"]');
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin inline-block mr-2">⟳</span> Adicionando...';
+    }
+
+    fetch('{{ route($rCart . ".add") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+             product_id: window.activeModalProductId,
+             variant_id: variantId,
+             qty: qty,
+             price: price, 
+             special_instructions: observation
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok || data.success) {
+            closeProductModal();
+            if (typeof window.updateCartBadge === 'function') {
+                 try { window.updateCartBadge(data.cart_count); } catch(e){}
+            } else {
+                 const badge = document.querySelector('a[href*="cart"] .absolute');
+                 if(badge) badge.textContent = data.cart_count;
+            }
+             showNotification('Adicionado ao pedido!', 'success');
+             
+             // Open cart drawer if exists
+             const cartDrawer = document.getElementById('cartDrawer');
+             if (cartDrawer && typeof loadCartIntoDrawer === 'function') {
+                const isOpen = !cartDrawer.classList.contains('translate-x-full');
+                if (isOpen) loadCartIntoDrawer();
+             }
+        } else {
+             showNotification(data.message || 'Erro ao adicionar.', 'error');
+        }
+    })
+    .catch(e => {
+        console.error(e);
+        showNotification('Erro ao processar pedido.', 'error');
+    })
+    .finally(() => {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
 }
 </script>
 @endpush
-

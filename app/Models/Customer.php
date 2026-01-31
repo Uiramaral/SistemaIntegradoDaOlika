@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Scopes\ClientScope;
+use App\Models\Traits\BelongsToClient; // ✅ Importar Trait
 
 class Customer extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, BelongsToClient; // ✅ Usar Trait
 
     protected $fillable = [
         'client_id', // ✅ NOVO: Multi-instância
@@ -60,10 +61,7 @@ class Customer extends Authenticatable
     /**
      * ✅ NOVO: Global Scope para filtrar automaticamente por client_id
      */
-    protected static function booted()
-    {
-        static::addGlobalScope(new ClientScope());
-    }
+
 
     /**
      * ✅ NOVO: Relacionamento com cliente (multi-instância)
@@ -244,7 +242,7 @@ class Customer extends Authenticatable
     public function getMapsQueryAttribute(): ?string
     {
         if (!empty($this->lat) && !empty($this->lng)) {
-            return $this->lat.','.$this->lng;
+            return $this->lat . ',' . $this->lng;
         }
         return $this->endereco_formatado ?: ($this->address ?? null);
     }
@@ -255,7 +253,7 @@ class Customer extends Authenticatable
     public function getMapsUrlAttribute(): ?string
     {
         $q = $this->maps_query;
-        return $q ? 'https://www.google.com/maps/dir/?api=1&destination='.urlencode($q) : null;
+        return $q ? 'https://www.google.com/maps/dir/?api=1&destination=' . urlencode($q) : null;
     }
 
     /**

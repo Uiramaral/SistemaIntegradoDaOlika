@@ -39,9 +39,9 @@ class OrderController extends Controller
                 session()->forget('order_id');
             }
         }
-        
+
         $cart = session('cart', []);
-        
+
         if (empty($cart)) {
             return redirect()->route('pedido.cart.index')
                 ->with('error', 'Seu carrinho está vazio.');
@@ -55,10 +55,10 @@ class OrderController extends Controller
                 $customer = \App\Models\Customer::where('phone', $customerPhone)->first();
                 $customerId = $customer->id ?? null;
             }
-            
+
             $cartController = new CartController();
             [$count, $subtotal] = $cartController->cartSummary($cart, true);
-            
+
             \App\Models\AnalyticsEvent::trackCheckoutStarted($customerId, [
                 'cart_items_count' => $count,
                 'subtotal' => $subtotal,
@@ -72,7 +72,7 @@ class OrderController extends Controller
         // Resumo do carrinho
         $cartController = new CartController();
         [$count, $subtotal, $items] = $cartController->cartSummary($cart, true);
-        
+
         $cartData = [
             'count' => $count,
             'subtotal' => $subtotal,
@@ -100,11 +100,12 @@ class OrderController extends Controller
                 if (Schema::hasColumn('settings', 'advance_order_days')) {
                     $advanceDays = (int) (DB::table('settings')->value('advance_order_days') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'advance_order_days')->value($valCol);
-                        if ($val !== null) $advanceDays = (int) $val;
+                        if ($val !== null)
+                            $advanceDays = (int) $val;
                     }
                 }
             }
@@ -122,7 +123,7 @@ class OrderController extends Controller
         $customerPhone = preg_replace('/\D/', '', $prefill['customer_phone'] ?? '');
         $customerId = null;
         $isFirstOrder = true; // Por padrão, assumir que é primeiro pedido (cliente novo)
-        
+
         // Tentar identificar cliente por email ou telefone
         $identifiedCustomer = null;
         if ($customerEmail || $customerPhone) {
@@ -142,18 +143,18 @@ class OrderController extends Controller
                     ->whereIn('payment_status', ['approved', 'paid'])
                     ->exists();
                 $isFirstOrder = !$hasPaidOrders;
-                
+
                 // Se cliente tem endereço salvo, usar para pré-preencher
                 if ($identifiedCustomer->zip_code || $identifiedCustomer->address) {
                     $addressParts = $identifiedCustomer->address ? explode(',', $identifiedCustomer->address, 2) : [null, null];
                     $street = trim($addressParts[0] ?? '');
                     $number = trim($addressParts[1] ?? '');
-                    
+
                     if (empty($street) && $identifiedCustomer->address) {
                         $street = $identifiedCustomer->address;
                         $number = '';
                     }
-                    
+
                     $prefill = array_merge($prefill, [
                         'customer_name' => $identifiedCustomer->name ?? $prefill['customer_name'],
                         'customer_phone' => $identifiedCustomer->phone ?? $prefill['customer_phone'],
@@ -168,29 +169,29 @@ class OrderController extends Controller
                 }
             }
         }
-        
+
         // Calcular frete estimado (0 por enquanto, será calculado depois)
         $estimatedDeliveryFee = 0;
-        
+
         // Verificar se já há frete grátis por valor mínimo
         $freeShippingMin = 0;
         try {
             if (Schema::hasTable('settings')) {
-                $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                 if ($keyCol && $valCol) {
                     $val = DB::table('settings')->where($keyCol, 'free_shipping_min_total')->value($valCol);
                     if ($val !== null) {
-                        $freeShippingMin = (float)str_replace(',', '.', (string)$val);
+                        $freeShippingMin = (float) str_replace(',', '.', (string) $val);
                     }
                 }
             }
         } catch (\Exception $e) {
             // Ignorar erro
         }
-        
+
         $hasFreeShippingByValue = $freeShippingMin > 0 && $subtotal >= $freeShippingMin;
-        
+
         // Buscar cupons públicos elegíveis
         $eligibleCoupons = collect();
         try {
@@ -199,33 +200,33 @@ class OrderController extends Controller
                 ->where('is_active', true)
                 ->valid()
                 ->available();
-            
+
             // Incluir cupons públicos OU cupons direcionados ao cliente
-            $couponsQuery->where(function($q) use ($customerId) {
+            $couponsQuery->where(function ($q) use ($customerId) {
                 $q->where('visibility', 'public');
                 if ($customerId) {
-                    $q->orWhere(function($subQ) use ($customerId) {
+                    $q->orWhere(function ($subQ) use ($customerId) {
                         $subQ->where('visibility', 'targeted')
-                             ->where('target_customer_id', $customerId);
+                            ->where('target_customer_id', $customerId);
                     });
                 }
             });
-            
+
             $allCoupons = $couponsQuery->get();
-            
-            $eligibleCoupons = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
+
+            $eligibleCoupons = $allCoupons->filter(function ($coupon) use ($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder, $hasFreeShippingByValue) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
                 }
-                
+
                 // Verificar se é cupom direcionado e se o cliente tem direito
                 if ($coupon->visibility === 'targeted') {
                     if (!$customerId || $coupon->target_customer_id !== $customerId) {
                         return false; // Cupom direcionado não é para este cliente
                     }
                 }
-                
+
                 // Para cupons de primeiro pedido, verificar primeiro se é primeiro pedido
                 // Cupons de primeiro pedido devem aparecer para clientes novos (mesmo sem customer_id)
                 if ($coupon->first_order_only) {
@@ -247,27 +248,27 @@ class OrderController extends Controller
                     // Cupom de primeiro pedido é elegível
                     return true;
                 }
-                
+
                 // Para outros cupons (não first_order_only), verificar elegibilidade geral
                 if (!$coupon->isEligibleFor($customerId, $subtotal, $estimatedDeliveryFee, $isFirstOrder)) {
                     return false;
                 }
-                
+
                 // IMPORTANTE: Verificar se o cliente pode usar o cupom (inclui verificação de uso único)
                 // Se há customerId, sempre verificar canBeUsedBy para garantir que não foi usado antes
                 if ($customerId && !$coupon->canBeUsedBy($customerId)) {
                     return false; // Cliente não pode usar este cupom (já usou, limite atingido, etc)
                 }
-                
+
                 return true;
             })->values();
-            
+
             \Log::info('OrderController:checkout - Cupons elegíveis', [
                 'total_public_coupons' => $allPublicCoupons->count(),
                 'eligible_count' => $eligibleCoupons->count(),
                 'customer_id' => $customerId,
                 'is_first_order' => $isFirstOrder,
-            'subtotal' => $subtotal,
+                'subtotal' => $subtotal,
                 'delivery_fee' => $estimatedDeliveryFee,
                 'has_free_shipping_by_value' => $hasFreeShippingByValue
             ]);
@@ -277,7 +278,7 @@ class OrderController extends Controller
             ]);
             $eligibleCoupons = collect();
         }
-        
+
         // Buscar saldo de cashback do cliente
         $cashbackBalance = 0;
         $cashbackCustomer = null;
@@ -287,7 +288,7 @@ class OrderController extends Controller
                 $cashbackBalance = $cashbackCustomer->cashback_balance;
             }
         }
-        
+
         // Calcular datas disponíveis
         $availableDates = [];
         $slotCapacity = 2; // padrão
@@ -296,11 +297,12 @@ class OrderController extends Controller
                 if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
                     $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
-                        if ($val !== null) $slotCapacity = (int) $val;
+                        if ($val !== null)
+                            $slotCapacity = (int) $val;
                     }
                 }
             }
@@ -308,7 +310,7 @@ class OrderController extends Controller
             // Mantém padrão se houver erro
         }
         $slotCapacity = max(1, $slotCapacity);
-        
+
         $today = now()->startOfDay();
         $minDate = $today->copy()->addDays($advanceDays);
 
@@ -316,7 +318,7 @@ class OrderController extends Controller
         for ($i = $advanceDays; $i <= $advanceDays + 13; $i++) { // 2 semanas à frente
             $checkDate = $today->copy()->addDays($i);
             $dayOfWeek = strtolower($checkDate->format('l')); // monday, tuesday, etc
-            
+
             if ($deliverySchedules->has($dayOfWeek)) {
                 $schedules = $deliverySchedules[$dayOfWeek]->filter(fn($s) => $s->is_active);
                 if ($schedules->count() > 0) {
@@ -326,18 +328,18 @@ class OrderController extends Controller
                         // start_time e end_time já são objetos Carbon (cast datetime)
                         $start = \Carbon\Carbon::today()->setTimeFromTimeString($schedule->start_time->format('H:i'));
                         $end = \Carbon\Carbon::today()->setTimeFromTimeString($schedule->end_time->format('H:i'));
-                        
+
                         while ($start < $end) {
                             $slotStart = $start->copy();
                             $slotEnd = $start->copy()->addMinutes(30);
-                            
+
                             // Verificar quantos pedidos já estão agendados neste slot
                             $used = Order::whereDate('scheduled_delivery_at', $checkDate->toDateString())
                                 ->whereTime('scheduled_delivery_at', $slotStart->format('H:i:00'))
                                 ->count();
-                            
+
                             $available = max(0, $slotCapacity - $used);
-                            
+
                             if ($available > 0) {
                                 $slotKey = $checkDate->format('Y-m-d') . ' ' . $slotStart->format('H:i');
                                 $slots[] = [
@@ -346,14 +348,14 @@ class OrderController extends Controller
                                     'available' => $available,
                                 ];
                             }
-                            
+
                             $start->addMinutes(30);
                         }
                     }
-                    
+
                     if (!empty($slots)) {
-                    $availableDates[] = [
-                        'date' => $checkDate->format('Y-m-d'),
+                        $availableDates[] = [
+                            'date' => $checkDate->format('Y-m-d'),
                             'label' => $checkDate->format('d/m/Y'),
                             'day_name' => $checkDate->locale('pt_BR')->dayName,
                             'slots' => $slots,
@@ -372,7 +374,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $cart = session('cart', []);
-        
+
         // Validação
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
@@ -396,7 +398,7 @@ class OrderController extends Controller
             'delivery_discount_amount' => 'nullable|numeric',
             'delivery_fee_locked' => 'nullable|boolean',
         ]);
-        
+
         // Se for um pedido do PDV e o carrinho estiver vazio, criar sessão do carrinho a partir dos itens do pedido
         if (empty($cart) && (($validated['order_id'] ?? null) || ($validated['order_number'] ?? null))) {
             $orderQuery = Order::query()->with('items.product');
@@ -405,9 +407,9 @@ class OrderController extends Controller
             } else {
                 $orderQuery->where('order_number', $validated['order_number']);
             }
-            
+
             $pdvOrder = $orderQuery->first();
-            
+
             // Verificar se o pedido PDV já foi pago
             if ($pdvOrder && in_array($pdvOrder->payment_status, ['approved', 'paid'])) {
                 // Limpar carrinho e redirecionar para página de sucesso
@@ -417,7 +419,7 @@ class OrderController extends Controller
                 return redirect()->route('pedido.payment.success', ['order' => $pdvOrder->id])
                     ->with('info', 'Este pedido já foi finalizado e pago.');
             }
-            
+
             if ($pdvOrder && $pdvOrder->items->count() > 0 && $pdvOrder->payment_status === 'pending') {
                 // Criar carrinho a partir dos itens do pedido
                 $cart = [];
@@ -425,7 +427,7 @@ class OrderController extends Controller
                     $key = ($item->product_id ?? 0) . ':' . ($item->variant_id ?? 0);
                     $cart[$key] = [
                         'qty' => $item->quantity,
-                        'price' => (float)$item->unit_price,
+                        'price' => (float) $item->unit_price,
                         'special_instructions' => $item->special_instructions ?? null,
                     ];
                 }
@@ -437,15 +439,15 @@ class OrderController extends Controller
                 ]);
             }
         }
-        
+
         // Verificar novamente se o carrinho está vazio após tentar criar a partir do PDV
         $cart = session('cart', []);
-        
+
         if (empty($cart)) {
             return redirect()->route('pedido.cart.index')
                 ->with('error', 'Seu carrinho está vazio.');
         }
-        
+
         // Normalizar CEP (mantém 8 dígitos ou generaliza sufixo)
         $zipDigits = preg_replace('/\D/', '', $validated['zip_code']);
         if (strlen($zipDigits) === 8) {
@@ -482,7 +484,7 @@ class OrderController extends Controller
             // 1. Buscar ou criar/atualizar cliente (usar telefone como chave única)
             // Usar updateOrCreate para atomicidade e evitar duplicatas
             $phoneNormalized = trim($validated['customer_phone']);
-            
+
             // Normalizar telefone: remover caracteres não numéricos e garantir formato consistente
             $phoneDigits = preg_replace('/\D/', '', $phoneNormalized);
             // Se não começar com 55 (código do país), adicionar se tiver 10 ou 11 dígitos (formato brasileiro)
@@ -490,19 +492,19 @@ class OrderController extends Controller
                 $phoneDigits = '55' . $phoneDigits;
             }
             $phoneNormalized = $phoneDigits;
-            
+
             // Filtrar apenas números do campo number
             $number = preg_replace('/\D/', '', $validated['number']);
-            
+
             // Montar endereço completo para salvar no cliente
             $fullAddress = trim($validated['street'] . ', ' . $number);
             if (!empty($validated['complement'])) {
                 $fullAddress .= ' - ' . $validated['complement'];
             }
-            
+
             // Tentar encontrar cliente por telefone (com variações)
             $customer = Customer::where('phone', $phoneNormalized)->first();
-            
+
             // Se não encontrou, tentar sem código do país
             if (!$customer && strlen($phoneNormalized) > 2 && str_starts_with($phoneNormalized, '55')) {
                 $phoneWithoutCountry = substr($phoneNormalized, 2);
@@ -512,7 +514,7 @@ class OrderController extends Controller
                     $customer->phone = $phoneNormalized;
                 }
             }
-            
+
             // Se ainda não encontrou, tentar com código do país
             if (!$customer && !str_starts_with($phoneNormalized, '55') && strlen($phoneNormalized) >= 10) {
                 $phoneWithCountry = '55' . $phoneNormalized;
@@ -521,7 +523,7 @@ class OrderController extends Controller
                     // Cliente encontrado, manter telefone como está
                 }
             }
-            
+
             // Se não encontrou cliente existente, criar novo
             if (!$customer) {
                 \Log::warning('OrderController:store - Cliente não encontrado, criando novo', [
@@ -529,13 +531,13 @@ class OrderController extends Controller
                     'phone_original' => $validated['customer_phone'],
                     'customer_name' => $validated['customer_name'],
                 ]);
-                
+
                 // Verificar uma última vez se não existe cliente com telefone similar (busca mais ampla)
                 $similarCustomer = Customer::whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [preg_replace('/\D/', '', $phoneNormalized)])
                     ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", [preg_replace('/\D/', '', substr($phoneNormalized, 2))])
                     ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = ?", ['55' . preg_replace('/\D/', '', $phoneNormalized)])
                     ->first();
-                
+
                 if ($similarCustomer) {
                     \Log::info('OrderController:store - Cliente similar encontrado, usando existente', [
                         'similar_customer_id' => $similarCustomer->id,
@@ -574,10 +576,10 @@ class OrderController extends Controller
                 $customer->zip_code = preg_replace('/\D/', '', $validated['zip_code']);
                 $customer->save();
             }
-            
+
             // Recarregar cliente do banco para garantir que temos todos os dados atualizados
             $customer->refresh();
-            
+
             \Log::info('OrderController:store - Cliente processado', [
                 'customer_id' => $customer->id,
                 'customer_phone' => $customer->phone,
@@ -594,12 +596,12 @@ class OrderController extends Controller
 
             if (!$address) {
                 $address = Address::create([
-                'customer_id' => $customer->id,
-                'street' => $validated['street'],
-                'number' => $number,
-                'complement' => $validated['complement'] ?? null,
+                    'customer_id' => $customer->id,
+                    'street' => $validated['street'],
+                    'number' => $number,
+                    'complement' => $validated['complement'] ?? null,
                     'neighborhood' => $validated['neighborhood'],
-                'city' => $validated['city'],
+                    'city' => $validated['city'],
                     'state' => $validated['state'],
                     'cep' => $validated['zip_code'],
                 ]);
@@ -616,15 +618,15 @@ class OrderController extends Controller
             $deliveryDiscountPercent = null;
             $deliveryDiscountAmount = null;
             $deliveryDistanceKm = null;
-            
+
             // Se o frete não foi fornecido na request, tentar calcular automaticamente
             $requestDeliveryFee = $request->input('delivery_fee');
             if ($requestDeliveryFee !== null && $requestDeliveryFee !== '') {
-                $deliveryFee = (float)$requestDeliveryFee;
+                $deliveryFee = (float) $requestDeliveryFee;
                 // Se o frete veio da request, pode ter dados de desconto também
-                $baseDeliveryFee = (float)($request->input('base_delivery_fee') ?? $deliveryFee);
-                $deliveryDiscountPercent = (float)($request->input('delivery_discount_percent') ?? 0);
-                $deliveryDiscountAmount = (float)($request->input('delivery_discount_amount') ?? 0);
+                $baseDeliveryFee = (float) ($request->input('base_delivery_fee') ?? $deliveryFee);
+                $deliveryDiscountPercent = (float) ($request->input('delivery_discount_percent') ?? 0);
+                $deliveryDiscountAmount = (float) ($request->input('delivery_discount_amount') ?? 0);
             } else {
                 // Tentar calcular automaticamente usando o CEP fornecido
                 $destinationZipcode = preg_replace('/\D/', '', $validated['zip_code']);
@@ -632,15 +634,15 @@ class OrderController extends Controller
                     try {
                         $customerPhone = preg_replace('/\D/', '', $validated['customer_phone']);
                         $customerEmail = $validated['customer_email'] ?? null;
-                        
+
                         $deliveryFeeService = new \App\Services\DeliveryFeeService();
                         $result = $deliveryFeeService->calculateDeliveryFee(
                             $destinationZipcode,
-                            (float)$subtotal,
+                            (float) $subtotal,
                             $customerPhone ?: null,
                             $customerEmail
                         );
-                        
+
                         if ($result['success']) {
                             $deliveryFee = $result['delivery_fee'];
                             $baseDeliveryFee = $result['base_delivery_fee'] ?? $deliveryFee;
@@ -668,7 +670,7 @@ class OrderController extends Controller
                     $fretePendente = true;
                 }
             }
-            
+
             // Se o frete estiver pendente, ainda permitir finalizar, mas marcar no pedido
             // Por segurança, vamos validar se há frete calculado antes de permitir finalizar
             if ($fretePendente && $deliveryFee <= 0) {
@@ -686,13 +688,13 @@ class OrderController extends Controller
 
             // Aplicar cupom se informado (ANTES do cashback)
             // Tentar obter cupom da requisição, depois da sessão (para preservar em caso de erro)
-            $couponCode = trim((string)(
-                $request->input('applied_coupon_code') 
-                ?: $request->input('coupon_code', '') 
+            $couponCode = trim((string) (
+                $request->input('applied_coupon_code')
+                ?: $request->input('coupon_code', '')
                 ?: session('checkout.applied_coupon_code', '')
             ));
             $appliedCoupon = null;
-            
+
             if ($couponCode !== '') {
                 // Usar scopes do modelo Coupon para garantir que está ativo, válido e disponível
                 // Buscar cupom público OU direcionado ao cliente
@@ -700,20 +702,20 @@ class OrderController extends Controller
                     ->active()
                     ->valid()
                     ->available();
-                
+
                 // Incluir cupons públicos OU cupons direcionados ao cliente
-                $couponQuery->where(function($q) use ($customer) {
+                $couponQuery->where(function ($q) use ($customer) {
                     $q->where('visibility', 'public');
                     if ($customer->id) {
-                        $q->orWhere(function($subQ) use ($customer) {
+                        $q->orWhere(function ($subQ) use ($customer) {
                             $subQ->where('visibility', 'targeted')
-                                 ->where('target_customer_id', $customer->id);
+                                ->where('target_customer_id', $customer->id);
                         });
                     }
                 });
-                
+
                 $coupon = $couponQuery->first();
-                
+
                 if ($coupon) {
                     // Verificar se é cupom direcionado e se o cliente tem direito
                     if ($coupon->visibility === 'targeted' && $coupon->target_customer_id !== $customer->id) {
@@ -728,7 +730,7 @@ class OrderController extends Controller
                         $isFirstOrder = !Order::where('customer_id', $customer->id)
                             ->whereIn('payment_status', ['approved', 'paid'])
                             ->exists();
-                        
+
                         // Validar elegibilidade
                         if ($coupon->isEligibleFor($customer->id, $subtotal, $deliveryFee, $isFirstOrder)) {
                             // Verificar se pode ser usado pelo cliente (inclui verificação de primeiro pedido)
@@ -771,20 +773,20 @@ class OrderController extends Controller
 
             // Calcular subtotal após desconto do cupom
             $subtotalAfterCoupon = max(0, $subtotal - $discountAmount);
-            
+
             // Aplicar cashback automaticamente se cliente tiver saldo disponível
             // IMPORTANTE: Recarregar o cliente do banco para garantir que temos o ID correto
             $customer->refresh();
             $cashbackBalance = CustomerCashback::getBalance($customer->id);
             $cashbackUsed = 0;
-            
+
             \Log::info('OrderController:store - Verificando cashback do cliente', [
                 'customer_id' => $customer->id,
                 'customer_phone' => $customer->phone,
                 'cashback_balance' => $cashbackBalance,
                 'subtotal_after_coupon' => $subtotalAfterCoupon,
             ]);
-            
+
             if ($cashbackBalance > 0 && $subtotalAfterCoupon > 0) {
                 // Usar cashback disponível, limitado ao valor restante do pedido
                 $cashbackUsed = min($cashbackBalance, $subtotalAfterCoupon);
@@ -800,34 +802,45 @@ class OrderController extends Controller
                     'subtotal_after_coupon' => $subtotalAfterCoupon,
                 ]);
             }
-            
+
             // Calcular cashback gerado (sobre o valor final após abatimento do cashback usado)
             // O cashback gerado é calculado sobre o valor que o cliente realmente vai pagar
-            // Buscar percentual de cashback das payment_settings (chave: cashback_percentage)
-            $cashbackPercent = 5.0; // padrão
-            try {
-                if (Schema::hasTable('payment_settings')) {
-                    $val = DB::table('payment_settings')->where('key', 'cashback_percentage')->value('value');
-                    if ($val !== null && $val !== '') {
-                        $cashbackPercent = (float)$val;
+            // IMPORTANTE: Clientes de revenda (is_wholesale = 1) NÃO recebem cashback
+            $isWholesale = $customer->is_wholesale ?? false;
+            $cashbackEarned = 0;
+
+            if (!$isWholesale) {
+                // Buscar percentual de cashback das payment_settings (chave: cashback_percentage)
+                $cashbackPercent = 5.0; // padrão
+                try {
+                    if (Schema::hasTable('payment_settings')) {
+                        $val = DB::table('payment_settings')->where('key', 'cashback_percentage')->value('value');
+                        if ($val !== null && $val !== '') {
+                            $cashbackPercent = (float) $val;
+                        }
                     }
+                } catch (\Exception $e) {
+                    // Mantém padrão se houver erro
                 }
-            } catch (\Exception $e) {
-                // Mantém padrão se houver erro
+                // Cashback gerado é calculado sobre o valor final após abatimento do cashback usado
+                // Exemplo: subtotal R$30, cashback usado R$1,25 → cashback ganho sobre R$28,75
+                $finalSubtotalForCashback = max(0, $subtotalAfterCoupon - $cashbackUsed);
+                $cashbackEarned = round($finalSubtotalForCashback * max(0, $cashbackPercent) / 100, 2);
+
+                \Log::info('OrderController:store - Cálculo de cashback ganho', [
+                    'subtotal' => $subtotal,
+                    'subtotal_after_coupon' => $subtotalAfterCoupon,
+                    'cashback_used' => $cashbackUsed,
+                    'final_subtotal_for_cashback' => $finalSubtotalForCashback,
+                    'cashback_percent' => $cashbackPercent,
+                    'cashback_earned' => $cashbackEarned,
+                ]);
+            } else {
+                \Log::info('OrderController:store - Cliente de revenda, cashback não aplicável', [
+                    'customer_id' => $customer->id,
+                    'is_wholesale' => $isWholesale,
+                ]);
             }
-            // Cashback gerado é calculado sobre o valor final após abatimento do cashback usado
-            // Exemplo: subtotal R$30, cashback usado R$1,25 → cashback ganho sobre R$28,75
-            $finalSubtotalForCashback = max(0, $subtotalAfterCoupon - $cashbackUsed);
-            $cashbackEarned = round($finalSubtotalForCashback * max(0, $cashbackPercent) / 100, 2);
-            
-            \Log::info('OrderController:store - Cálculo de cashback ganho', [
-                'subtotal' => $subtotal,
-                'subtotal_after_coupon' => $subtotalAfterCoupon,
-                'cashback_used' => $cashbackUsed,
-                'final_subtotal_for_cashback' => $finalSubtotalForCashback,
-                'cashback_percent' => $cashbackPercent,
-                'cashback_earned' => $cashbackEarned,
-            ]);
 
             $finalAmount = max(0, $subtotal + $deliveryFee - $discountAmount - $cashbackUsed);
 
@@ -839,56 +852,57 @@ class OrderController extends Controller
                     ['scheduled_delivery_slot' => ['O horário de entrega é obrigatório.']]
                 );
             }
-            
+
             // O slot já vem no formato 'Y-m-d H:i' (ex: '2025-11-05 18:30')
             try {
                 $slot = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $validated['scheduled_delivery_slot']);
-                    
-                    // Valida que o slot ainda possui capacidade
-                    $used = Order::whereDate('scheduled_delivery_at', $slot->toDateString())
-                        ->whereTime('scheduled_delivery_at', $slot->format('H:i:00'))
-                        ->count();
-                    
-                    // Capacidade por slot (configurável) - leitura flexível da tabela settings
-                    $slotCapacity = 2; // padrão
-                    try {
-                        if (Schema::hasTable('settings')) {
-                            if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
-                                $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
+
+                // Valida que o slot ainda possui capacidade
+                $used = Order::whereDate('scheduled_delivery_at', $slot->toDateString())
+                    ->whereTime('scheduled_delivery_at', $slot->format('H:i:00'))
+                    ->count();
+
+                // Capacidade por slot (configurável) - leitura flexível da tabela settings
+                $slotCapacity = 2; // padrão
+                try {
+                    if (Schema::hasTable('settings')) {
+                        if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
+                            $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
                         } else {
-                                $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                                $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                                if ($keyCol && $valCol) {
-                                    $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
-                                    if ($val !== null) $slotCapacity = (int) $val;
-                                }
+                            $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                            $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                            if ($keyCol && $valCol) {
+                                $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
+                                if ($val !== null)
+                                    $slotCapacity = (int) $val;
                             }
                         }
-                    } catch (\Exception $e) {
-                        // Mantém padrão se houver erro
-                    }
-                    $slotCapacity = max(1, $slotCapacity);
-                    
-                    if ($used < $slotCapacity) {
-                        $scheduledDeliveryAt = $slot;
-                    } else {
-                        \Log::warning('OrderController:store - Slot esgotado', [
-                            'slot' => $validated['scheduled_delivery_slot'],
-                            'used' => $used,
-                            'capacity' => $slotCapacity
-                        ]);
                     }
                 } catch (\Exception $e) {
-                    \Log::error('OrderController:store - Erro ao processar slot de agendamento', [
-                        'slot' => $validated['scheduled_delivery_slot'],
-                        'error' => $e->getMessage()
-                    ]);
-                    throw new \Illuminate\Validation\ValidationException(
-                        validator([], []),
-                        ['scheduled_delivery_slot' => ['Erro ao processar horário de entrega. Por favor, tente novamente.']]
-                    );
+                    // Mantém padrão se houver erro
                 }
-            
+                $slotCapacity = max(1, $slotCapacity);
+
+                if ($used < $slotCapacity) {
+                    $scheduledDeliveryAt = $slot;
+                } else {
+                    \Log::warning('OrderController:store - Slot esgotado', [
+                        'slot' => $validated['scheduled_delivery_slot'],
+                        'used' => $used,
+                        'capacity' => $slotCapacity
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('OrderController:store - Erro ao processar slot de agendamento', [
+                    'slot' => $validated['scheduled_delivery_slot'],
+                    'error' => $e->getMessage()
+                ]);
+                throw new \Illuminate\Validation\ValidationException(
+                    validator([], []),
+                    ['scheduled_delivery_slot' => ['Erro ao processar horário de entrega. Por favor, tente novamente.']]
+                );
+            }
+
             if (!$scheduledDeliveryAt) {
                 throw new \Illuminate\Validation\ValidationException(
                     validator([], []),
@@ -901,7 +915,7 @@ class OrderController extends Controller
             \Log::info('OrderController:store - Número gerado', ['order_number' => $orderNumber]);
 
             // 7. Preparar notas do pedido (incluindo aviso se frete estiver pendente)
-            $orderNotes = trim((string)($request->input('notes', '') ?: ''));
+            $orderNotes = trim((string) ($request->input('notes', '') ?: ''));
             if ($fretePendente && $deliveryFee <= 0) {
                 $fretePendenteNote = '⚠️ ATENÇÃO: Frete de entrega pendente de cálculo.';
                 $orderNotes = $orderNotes ? ($orderNotes . "\n\n" . $fretePendenteNote) : $fretePendenteNote;
@@ -915,7 +929,7 @@ class OrderController extends Controller
                 'subtotal_after_coupon' => $subtotalAfterCoupon,
                 'final_amount' => $finalAmount,
             ]);
-            
+
             $order = Order::create([
                 'client_id' => currentClientId() ?? 1, // Multi-tenant: salvar o client_id
                 'customer_id' => $customer->id,
@@ -937,7 +951,7 @@ class OrderController extends Controller
                 'scheduled_delivery_at' => $scheduledDeliveryAt,
                 'notes' => !empty($orderNotes) ? $orderNotes : ($validated['notes'] ?? null),
             ]);
-            
+
             // Verificar se cashback foi salvo corretamente
             $order->refresh();
             \Log::info('OrderController:store - Pedido criado, verificando cashback salvo', [
@@ -949,7 +963,7 @@ class OrderController extends Controller
             // Verificar se order_number foi salvo corretamente
             $order->refresh();
             \Log::info('OrderController:store - Pedido criado', ['order_id' => $order->id, 'order_number' => $order->order_number]);
-            
+
             if (empty($order->order_number)) {
                 \Log::error('OrderController:store - order_number não foi salvo!', ['order_id' => $order->id]);
                 // Tentar salvar novamente
@@ -961,20 +975,20 @@ class OrderController extends Controller
             // 8. Criar itens do pedido
             foreach ($cart as $key => $row) {
                 // Extrair productId e variantId, removendo possível hash de observação
-                $keyParts = explode(':', (string)$key);
+                $keyParts = explode(':', (string) $key);
                 $productIdStr = $keyParts[0] ?? '0';
                 $variantIdStr = $keyParts[1] ?? '0';
                 // Se houver 'obs:' na chave, ignorar essas partes
-                
-                $productId = (int)$productIdStr;
-                $variantId = (int)$variantIdStr ?: null;
-                $qty = (int)($row['qty'] ?? 1);
-                $price = (float)($row['price'] ?? 0);
+
+                $productId = (int) $productIdStr;
+                $variantId = (int) $variantIdStr ?: null;
+                $qty = (int) ($row['qty'] ?? 1);
+                $price = (float) ($row['price'] ?? 0);
                 $specialInstructions = $row['special_instructions'] ?? null;
 
                 $product = \App\Models\Product::find($productId);
                 $productName = $product ? $product->name : "Produto #{$productId}";
-                
+
                 // Se tiver variante, incluir no nome
                 if ($variantId) {
                     $variant = \App\Models\ProductVariant::find($variantId);
@@ -984,7 +998,7 @@ class OrderController extends Controller
                 }
 
                 OrderItem::create([
-                        'order_id' => $order->id,
+                    'order_id' => $order->id,
                     'product_id' => $productId ?: null,
                     'variant_id' => $variantId,
                     'quantity' => $qty,
@@ -1080,7 +1094,7 @@ class OrderController extends Controller
             // Redirecionar para página de pagamento
             if ($validated['payment_method'] === 'pix') {
                 return redirect()->route('pedido.payment.pix', ['order' => $order->id]);
-                } else {
+            } else {
                 return redirect()->route('pedido.payment.checkout', ['order' => $order->id]);
             }
 
@@ -1101,10 +1115,10 @@ class OrderController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             // IMPORTANTE: NÃO limpar o carrinho em caso de erro - permite que o usuário tente novamente
             // O carrinho só deve ser limpo após confirmação do pagamento
-            
+
             return redirect()->route('pedido.checkout.index')
                 ->with('error', 'Erro ao processar pedido. Por favor, tente novamente. Se o problema persistir, entre em contato com o suporte.')
                 ->withInput();
@@ -1118,12 +1132,12 @@ class OrderController extends Controller
     public function completePdvOrder(Request $request, $orderNumber)
     {
         $token = $request->get('token');
-        
+
         // Buscar pedido pelo número
         $order = Order::where('order_number', $orderNumber)
             ->with(['customer', 'items.product', 'address', 'orderDeliveryFee'])
             ->firstOrFail();
-        
+
         // Validar token (simples, baseado em hash do ID + número + app key)
         $appKey = config('app.key');
         if (empty($appKey)) {
@@ -1132,46 +1146,46 @@ class OrderController extends Controller
             ]);
             abort(500, 'Erro de configuração do sistema.');
         }
-        
+
         $expectedToken = md5($order->id . $order->order_number . $appKey);
-        
+
         // Log para debug (remover em produção se necessário)
         \Log::debug('OrderController: Validação de token PDV', [
-                        'order_id' => $order->id,
+            'order_id' => $order->id,
             'order_number' => $orderNumber,
             'token_recebido' => $token,
             'token_esperado' => $expectedToken,
             'app_key_length' => strlen($appKey),
             'match' => ($token === $expectedToken)
         ]);
-        
+
         if ($token !== $expectedToken) {
             abort(403, 'Token inválido ou link expirado.');
         }
-        
+
         // Verificar se o pedido já foi finalizado
         if ($order->payment_status !== null && $order->payment_status !== 'pending') {
             return redirect()->route('pedido.payment.success', ['order' => $order->id])
                 ->with('info', 'Este pedido já foi finalizado.');
         }
-        
+
         // Calcular subtotal e totais do pedido
-        $subtotal = (float)$order->total_amount;
-        $deliveryFee = (float)($order->delivery_fee ?? 0);
-        $discountAmount = (float)($order->discount_amount ?? 0);
-        $finalAmount = (float)$order->final_amount;
-        
+        $subtotal = (float) $order->total_amount;
+        $deliveryFee = (float) ($order->delivery_fee ?? 0);
+        $discountAmount = (float) ($order->discount_amount ?? 0);
+        $finalAmount = (float) $order->final_amount;
+
         // Preparar dados para a view (similar ao checkout)
         $cartData = [
             'count' => $order->items->sum('quantity'),
             'subtotal' => $subtotal,
-            'items' => $order->items->map(function($item) {
+            'items' => $order->items->map(function ($item) {
                 return [
                     'product_id' => $item->product_id,
                     'variant_id' => null,
                     'qty' => $item->quantity,
-                    'price' => (float)$item->unit_price,
-                    'subtotal' => (float)$item->total_price,
+                    'price' => (float) $item->unit_price,
+                    'subtotal' => (float) $item->total_price,
                     'name' => $item->custom_name ?? optional($item->product)->name ?? 'Item',
                     'variant' => null,
                     'image_url' => optional($item->product)->image_url ?? null,
@@ -1179,7 +1193,7 @@ class OrderController extends Controller
             })->toArray(),
             'delivery_fee' => $deliveryFee,
         ];
-        
+
         // Pré-preencher dados do cliente
         // Se não houver endereço na tabela addresses, usar dados do cliente
         $address = $order->address;
@@ -1195,7 +1209,7 @@ class OrderController extends Controller
             'state' => $address->state ?? $order->customer->state ?? '',
             'zip_code' => $address->cep ?? $order->customer->zip_code ?? '',
         ];
-        
+
         // Extrair número do endereço completo do cliente se necessário
         if (empty($prefill['number']) && !empty($order->customer->address)) {
             $addressParts = explode(',', $order->customer->address);
@@ -1204,10 +1218,10 @@ class OrderController extends Controller
                 $prefill['number'] = trim($addressParts[1]);
             }
         }
-        
+
         // Cupom aplicado (se houver)
         $appliedCouponCode = $order->coupon_code ?? null;
-        
+
         // Buscar configurações de agendamento (mesma lógica do checkout)
         $advanceDays = 2;
         try {
@@ -1215,23 +1229,24 @@ class OrderController extends Controller
                 if (Schema::hasColumn('settings', 'advance_order_days')) {
                     $advanceDays = (int) (DB::table('settings')->value('advance_order_days') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'advance_order_days')->value($valCol);
-                        if ($val !== null) $advanceDays = (int) $val;
+                        if ($val !== null)
+                            $advanceDays = (int) $val;
                     }
                 }
             }
         } catch (\Exception $e) {
             // Mantém padrão se houver erro
         }
-        
+
         // Buscar horários de entrega disponíveis (mesma lógica do checkout)
         $deliverySchedules = DeliverySchedule::where('is_active', true)
             ->get()
             ->groupBy('day_of_week');
-        
+
         $availableDates = [];
         $slotCapacity = 2; // padrão
         try {
@@ -1239,27 +1254,28 @@ class OrderController extends Controller
                 if (Schema::hasColumn('settings', 'delivery_slot_capacity')) {
                     $slotCapacity = (int) (DB::table('settings')->value('delivery_slot_capacity') ?? 2);
                 } else {
-                    $keyCol = collect(['key','name','config_key'])->first(fn($c)=>Schema::hasColumn('settings',$c));
-                    $valCol = collect(['value','val','config_value'])->first(fn($c)=>Schema::hasColumn('settings',$c));
+                    $keyCol = collect(['key', 'name', 'config_key'])->first(fn($c) => Schema::hasColumn('settings', $c));
+                    $valCol = collect(['value', 'val', 'config_value'])->first(fn($c) => Schema::hasColumn('settings', $c));
                     if ($keyCol && $valCol) {
                         $val = DB::table('settings')->where($keyCol, 'delivery_slot_capacity')->value($valCol);
-                        if ($val !== null) $slotCapacity = (int) $val;
+                        if ($val !== null)
+                            $slotCapacity = (int) $val;
                     }
                 }
             }
         } catch (\Exception $e) {
             // Mantém padrão
         }
-        
+
         // Gerar slots disponíveis (mesma lógica do checkout)
         $today = \Carbon\Carbon::today();
         $maxDate = $today->copy()->addDays($advanceDays + 6);
-        
+
         // Usar a mesma lógica do método checkout (iterar por datas e verificar se existe schedule para o dia)
         for ($i = $advanceDays; $i <= $advanceDays + 13; $i++) { // 2 semanas à frente
             $checkDate = $today->copy()->addDays($i);
             $dayOfWeek = strtolower($checkDate->format('l')); // monday, tuesday, etc
-            
+
             if ($deliverySchedules->has($dayOfWeek)) {
                 $schedules = $deliverySchedules[$dayOfWeek]->filter(fn($s) => $s->is_active);
                 if ($schedules->count() > 0) {
@@ -1269,18 +1285,18 @@ class OrderController extends Controller
                         // start_time e end_time já são objetos Carbon (cast datetime)
                         $start = \Carbon\Carbon::today()->setTimeFromTimeString($schedule->start_time->format('H:i'));
                         $end = \Carbon\Carbon::today()->setTimeFromTimeString($schedule->end_time->format('H:i'));
-                        
+
                         while ($start < $end) {
                             $slotStart = $start->copy();
                             $slotEnd = $start->copy()->addMinutes(30);
-                            
+
                             // Verificar quantos pedidos já estão agendados neste slot
                             $used = Order::whereDate('scheduled_delivery_at', $checkDate->toDateString())
                                 ->whereTime('scheduled_delivery_at', $slotStart->format('H:i:00'))
                                 ->count();
-                            
+
                             $available = max(0, $slotCapacity - $used);
-                            
+
                             if ($available > 0) {
                                 $slotKey = $checkDate->format('Y-m-d') . ' ' . $slotStart->format('H:i');
                                 $slots[] = [
@@ -1289,11 +1305,11 @@ class OrderController extends Controller
                                     'available' => $available,
                                 ];
                             }
-                            
+
                             $start->addMinutes(30);
                         }
                     }
-                    
+
                     if (!empty($slots)) {
                         $availableDates[] = [
                             'date' => $checkDate->format('Y-m-d'),
@@ -1305,14 +1321,14 @@ class OrderController extends Controller
                 }
             }
         }
-        
+
         // Buscar cupons públicos elegíveis
         $customerId = $order->customer_id;
         $isFirstOrder = !Order::where('customer_id', $customerId)
             ->whereIn('payment_status', ['approved', 'paid'])
             ->where('id', '!=', $order->id)
             ->exists();
-        
+
         // Buscar cupons públicos elegíveis (usando colunas corretas: starts_at, expires_at, visibility)
         $eligibleCoupons = collect(); // Inicializar como collection vazia para garantir que sempre existe
         try {
@@ -1322,7 +1338,7 @@ class OrderController extends Controller
                 ->valid()
                 ->available()
                 ->get()
-                ->filter(function($coupon) use ($isFirstOrder, $subtotal, $deliveryFee, $customerId) {
+                ->filter(function ($coupon) use ($isFirstOrder, $subtotal, $deliveryFee, $customerId) {
                     // Verificar se é elegível para o pedido
                     if (!$coupon->isEligibleFor($customerId, $subtotal, $deliveryFee, $isFirstOrder)) {
                         return false;
@@ -1338,38 +1354,38 @@ class OrderController extends Controller
             // Manter como collection vazia em caso de erro
             $eligibleCoupons = collect();
         }
-        
+
         // Cashback
         $cashbackBalance = \App\Models\CustomerCashback::getBalance($customerId);
         $cashbackCustomer = $order->customer;
-        
+
         // Cupom aplicado (se houver)
         $appliedCouponCode = $order->coupon_code ?? null;
 
         $orderDeliveryFee = $order->orderDeliveryFee;
         $initialDeliveryFee = $order->delivery_fee;
-        $initialBaseDeliveryFee = $orderDeliveryFee ? (float)($orderDeliveryFee->calculated_fee ?? $orderDeliveryFee->final_fee ?? $initialDeliveryFee) : $initialDeliveryFee;
+        $initialBaseDeliveryFee = $orderDeliveryFee ? (float) ($orderDeliveryFee->calculated_fee ?? $orderDeliveryFee->final_fee ?? $initialDeliveryFee) : $initialDeliveryFee;
         $initialDeliveryDiscountAmount = 0.0;
         $initialDeliveryDiscountPercent = 0.0;
 
         if ($orderDeliveryFee) {
-            $initialDeliveryDiscountAmount = max(0, (float)($orderDeliveryFee->calculated_fee ?? 0) - (float)($orderDeliveryFee->final_fee ?? 0));
+            $initialDeliveryDiscountAmount = max(0, (float) ($orderDeliveryFee->calculated_fee ?? 0) - (float) ($orderDeliveryFee->final_fee ?? 0));
             if (($orderDeliveryFee->calculated_fee ?? 0) > 0) {
-                $initialDeliveryDiscountPercent = round(($initialDeliveryDiscountAmount / (float)$orderDeliveryFee->calculated_fee) * 100, 2);
+                $initialDeliveryDiscountPercent = round(($initialDeliveryDiscountAmount / (float) $orderDeliveryFee->calculated_fee) * 100, 2);
             }
         }
 
         if ($initialBaseDeliveryFee === null && $initialDeliveryFee !== null) {
             $initialBaseDeliveryFee = $initialDeliveryFee;
         }
-        
+
         return view('pedido.checkout', compact(
-            'cartData', 
-            'availableDates', 
-            'advanceDays', 
-            'prefill', 
-            'eligibleCoupons', 
-            'cashbackBalance', 
+            'cartData',
+            'availableDates',
+            'advanceDays',
+            'prefill',
+            'eligibleCoupons',
+            'cashbackBalance',
             'cashbackCustomer',
             'appliedCouponCode',
             'order', // Passar o pedido para identificar que é do PDV
@@ -1389,27 +1405,27 @@ class OrderController extends Controller
         $cart = session('cart', []);
         $subtotal = 0;
         $productIds = [];
-        
+
         // Se carrinho estiver vazio, tentar buscar pedido do PDV
         if (empty($cart)) {
             $orderNumber = $request->input('order_number');
             $orderId = $request->input('order_id');
-            
+
             if ($orderNumber || $orderId) {
                 $orderQuery = Order::query()->with('items');
-                
+
                 if ($orderNumber) {
                     $orderQuery->where('order_number', $orderNumber);
                 } elseif ($orderId) {
                     $orderQuery->where('id', $orderId);
                 }
-                
+
                 $order = $orderQuery->first();
-                
+
                 if ($order && $order->items) {
                     // Calcular subtotal dos itens do pedido
                     foreach ($order->items as $item) {
-                        $subtotal += (float)$item->total_price;
+                        $subtotal += (float) $item->total_price;
                         if ($item->product_id) {
                             $productIds[] = $item->product_id;
                         }
@@ -1445,10 +1461,10 @@ class OrderController extends Controller
 
             // Calcular subtotal do carrinho
             foreach ($cart as $key => $row) {
-                [$productIdStr] = array_pad(explode(':', (string)$key, 2), 2, '0');
-                $productIds[] = (int)$productIdStr;
-                $qty = (int)($row['qty'] ?? 1);
-                $price = (float)($row['price'] ?? 0);
+                [$productIdStr] = array_pad(explode(':', (string) $key, 2), 2, '0');
+                $productIds[] = (int) $productIdStr;
+                $qty = (int) ($row['qty'] ?? 1);
+                $price = (float) ($row['price'] ?? 0);
                 $subtotal += $qty * $price;
             }
         }
@@ -1458,50 +1474,50 @@ class OrderController extends Controller
         $customerId = null;
         $cashbackBalance = 0;
         $isFirstOrder = true; // Por padrão, assumir que é primeiro pedido (será redefinido se cliente identificado)
-        $customerPhoneRaw = (string)$request->input('customer_phone', '');
+        $customerPhoneRaw = (string) $request->input('customer_phone', '');
         $customerPhone = preg_replace('/\D/', '', $customerPhoneRaw);
-        $customerEmail = trim((string)$request->input('customer_email', ''));
-        
+        $customerEmail = trim((string) $request->input('customer_email', ''));
+
         // Normalizar telefone: adicionar código do país se necessário
         if ($customerPhone && strlen($customerPhone) >= 10 && strlen($customerPhone) <= 11 && !str_starts_with($customerPhone, '55')) {
             $customerPhone = '55' . $customerPhone;
         }
-        
+
         \Log::info('calculateDiscounts: Buscando cliente', [
             'customer_phone_raw' => $customerPhoneRaw,
             'customer_phone_normalized' => $customerPhone,
             'customer_email' => $customerEmail,
         ]);
-        
+
         if ($customerPhone || $customerEmail) {
             $customer = null;
-            
+
             // Tentar encontrar cliente por telefone normalizado primeiro
             if ($customerPhone && strlen($customerPhone) >= 10) {
                 $customer = Customer::where('phone', $customerPhone)->first();
-                
+
                 // Se não encontrou, tentar sem código do país
                 if (!$customer && strlen($customerPhone) > 2 && str_starts_with($customerPhone, '55')) {
                     $phoneWithoutCountry = substr($customerPhone, 2);
                     $customer = Customer::where('phone', $phoneWithoutCountry)->first();
                 }
-                
+
                 // Se ainda não encontrou, tentar com código do país
                 if (!$customer && !str_starts_with($customerPhone, '55') && strlen($customerPhone) >= 10) {
                     $phoneWithCountry = '55' . $customerPhone;
                     $customer = Customer::where('phone', $phoneWithCountry)->first();
                 }
             }
-            
+
             // Se não encontrou por telefone, tentar por email
             if (!$customer && $customerEmail) {
                 $customer = Customer::where('email', $customerEmail)->first();
             }
-            
+
             if ($customer) {
                 $customerId = $customer->id;
                 $cashbackBalance = CustomerCashback::getBalance($customer->id);
-                
+
                 \Log::info('calculateDiscounts: Cliente encontrado', [
                     'customer_id' => $customerId,
                     'customer_phone_db' => $customer->phone,
@@ -1513,17 +1529,17 @@ class OrderController extends Controller
                     ->whereIn('payment_status', ['approved', 'paid'])
                     ->exists();
                 $isFirstOrder = !$hasPaidOrders;
-                
+
                 // Separar rua e número do campo address
                 $addressParts = $customer->address ? explode(',', $customer->address, 2) : [null, null];
                 $street = trim($addressParts[0] ?? '');
                 $number = trim($addressParts[1] ?? '');
-                
+
                 if (empty($street) && $customer->address) {
                     $street = $customer->address;
                     $number = '';
                 }
-                
+
                 $customerData = [
                     'name' => $customer->name,
                     'phone' => $customer->phone,
@@ -1540,10 +1556,10 @@ class OrderController extends Controller
 
         // Calcular frete (estimado, usar o que vier na request ou calcular se cliente identificado)
         $deliveryFeeLocked = $request->boolean('delivery_fee_locked');
-        $deliveryFee = (float)($request->input('delivery_fee', 0));
-        $baseDeliveryFee = (float)($request->input('base_delivery_fee', $deliveryFee));
-        $deliveryDiscountPercent = (float)($request->input('delivery_discount_percent', 0));
-        $deliveryDiscountAmount = (float)($request->input('delivery_discount_amount', 0));
+        $deliveryFee = (float) ($request->input('delivery_fee', 0));
+        $baseDeliveryFee = (float) ($request->input('base_delivery_fee', $deliveryFee));
+        $deliveryDiscountPercent = (float) ($request->input('delivery_discount_percent', 0));
+        $deliveryDiscountAmount = (float) ($request->input('delivery_discount_amount', 0));
 
         if (!$deliveryFeeLocked) {
             $deliveryDiscountPercent = 0;
@@ -1559,7 +1575,7 @@ class OrderController extends Controller
                     $deliveryFeeService = new \App\Services\DeliveryFeeService();
                     $feeResult = $deliveryFeeService->calculateDeliveryFee(
                         $zipcode,
-                        (float)$subtotal,
+                        (float) $subtotal,
                         $customerPhone ?: null,
                         $customerEmail ?: null
                     );
@@ -1577,17 +1593,17 @@ class OrderController extends Controller
         }
 
         // Aplicar cupom se informado
-        $couponCode = trim((string)($request->input('coupon_code', '')));
+        $couponCode = trim((string) ($request->input('coupon_code', '')));
         $couponDiscount = 0;
         $couponMessage = null;
-        
+
         if ($couponCode !== '') {
             $coupon = \App\Models\Coupon::where('code', strtoupper($couponCode))
                 ->active()
                 ->valid()
                 ->available()
                 ->first();
-            
+
             if ($coupon) {
                 // Verificar se precisa de cliente identificado
                 // Cupons de primeiro pedido não precisam de identificação obrigatória
@@ -1639,7 +1655,7 @@ class OrderController extends Controller
 
         // Calcular subtotal após cupom
         $subtotalAfterCoupon = max(0, $subtotal - $couponDiscount);
-        
+
         // Buscar cupons elegíveis para mostrar no combobox (mesma lógica do checkout)
         $eligibleCouponsForDisplay = collect();
         try {
@@ -1648,21 +1664,21 @@ class OrderController extends Controller
                 ->where('is_active', true)
                 ->valid()
                 ->available();
-            
+
             // Incluir cupons públicos OU cupons direcionados ao cliente
-            $couponsQuery->where(function($q) use ($customerId) {
+            $couponsQuery->where(function ($q) use ($customerId) {
                 $q->where('visibility', 'public');
                 if ($customerId) {
-                    $q->orWhere(function($subQ) use ($customerId) {
+                    $q->orWhere(function ($subQ) use ($customerId) {
                         $subQ->where('visibility', 'targeted')
-                             ->where('target_customer_id', $customerId);
+                            ->where('target_customer_id', $customerId);
                     });
                 }
             });
-            
+
             $allCoupons = $couponsQuery->get();
 
-            $eligibleCouponsForDisplay = $allCoupons->filter(function($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
+            $eligibleCouponsForDisplay = $allCoupons->filter(function ($coupon) use ($customerId, $subtotal, $deliveryFee, $isFirstOrder) {
                 // Cupons de frete grátis não são mais exibidos
                 if ($coupon->free_shipping_only) {
                     return false;
@@ -1716,7 +1732,7 @@ class OrderController extends Controller
             ]);
             $eligibleCouponsForDisplay = collect();
         }
-        
+
         // Buscar saldo de cashback do cliente (se não foi buscado antes)
         if (!isset($cashbackBalance)) {
             $cashbackBalance = 0;
@@ -1728,7 +1744,7 @@ class OrderController extends Controller
                 ]);
             }
         }
-        
+
         // Aplicar cashback automaticamente se houver saldo disponível
         $cashbackUsed = 0;
         if ($cashbackBalance > 0 && $customerId && $subtotalAfterCoupon > 0) {
@@ -1755,11 +1771,12 @@ class OrderController extends Controller
             if (Schema::hasTable('payment_settings')) {
                 $val = DB::table('payment_settings')->where('key', 'cashback_percentage')->value('value');
                 if ($val !== null && $val !== '') {
-                    $cashbackPercent = (float)$val;
+                    $cashbackPercent = (float) $val;
                 }
             }
-        } catch (\Exception $e) {}
-        
+        } catch (\Exception $e) {
+        }
+
         // Cashback gerado é calculado sobre o valor final após abatimento do cashback usado
         // Exemplo: subtotal R$30, cashback usado R$1,25 → cashback ganho sobre R$28,75
         // É apenas informativo até o pagamento ser confirmado
@@ -1769,10 +1786,10 @@ class OrderController extends Controller
         $total = max(0, $subtotal + $deliveryFee - $couponDiscount - $cashbackUsed);
 
         // Garantir que coupon_message seja sempre uma string (não null)
-        $couponMessageFinal = ($couponMessage !== null && trim($couponMessage) !== '') 
-            ? trim($couponMessage) 
+        $couponMessageFinal = ($couponMessage !== null && trim($couponMessage) !== '')
+            ? trim($couponMessage)
             : null;
-        
+
         $jsonResponse = [
             'subtotal' => round($subtotal, 2),
             'delivery_fee' => round($deliveryFee, 2),
@@ -1786,7 +1803,7 @@ class OrderController extends Controller
             'cashback_balance' => round($cashbackBalance, 2),
             'total' => round($total, 2),
             'customer' => $customerData, // Dados do cliente para preencher endereço
-            'eligible_coupons' => $eligibleCouponsForDisplay->map(function($coupon) {
+            'eligible_coupons' => $eligibleCouponsForDisplay->map(function ($coupon) {
                 return [
                     'code' => $coupon->code,
                     'name' => $coupon->name,
@@ -1795,12 +1812,12 @@ class OrderController extends Controller
                 ];
             })->toArray(),
         ];
-        
+
         \Log::warning('calculateDiscounts: JSON final antes de retornar', [
             'coupon_message_in_response' => $jsonResponse['coupon_message'],
             'coupon_message_type_in_response' => gettype($jsonResponse['coupon_message']),
         ]);
-        
+
         return response()->json($jsonResponse);
     }
 
@@ -1847,7 +1864,7 @@ class OrderController extends Controller
                 $order = $orderQuery->first();
                 if ($order && $order->items) {
                     foreach ($order->items as $item) {
-                        $subtotal += (float)$item->total_price;
+                        $subtotal += (float) $item->total_price;
                     }
                 }
             }
@@ -1863,7 +1880,7 @@ class OrderController extends Controller
         $deliveryFeeService = new \App\Services\DeliveryFeeService();
         $result = $deliveryFeeService->calculateDeliveryFeeByAddress(
             $address,
-            (float)$subtotal,
+            (float) $subtotal,
             $validated['customer_phone'] ?? null,
             $validated['customer_email'] ?? null
         );
@@ -1901,8 +1918,8 @@ class OrderController extends Controller
 
     public function lookupCustomer(Request $request)
     {
-        $phone = preg_replace('/\D/', '', (string)$request->input('phone', ''));
-        $email = trim((string)$request->input('email', ''));
+        $phone = preg_replace('/\D/', '', (string) $request->input('phone', ''));
+        $email = trim((string) $request->input('email', ''));
 
         if ($phone === '' && $email === '') {
             return response()->json([
@@ -2003,41 +2020,41 @@ class OrderController extends Controller
     private function generateOrderNumber(): string
     {
         $prefix = 'OLK';
-        
+
         // Buscar o último número sequencial usado (formato OLK-0144-XXXXXX)
         // Extrair o número sequencial do segundo segmento (após OLK-)
         $lastOrder = Order::where('order_number', 'like', 'OLK-%')
             ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
             ->first();
-        
+
         $sequenceNumber = 144; // Último pedido do sistema antigo
-        
+
         if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
-            $lastSequence = (int)$matches[1];
+            $lastSequence = (int) $matches[1];
             if ($lastSequence >= 144) {
                 $sequenceNumber = $lastSequence + 1;
             }
         }
-        
+
         // Gerar 6 caracteres aleatórios (letras maiúsculas e números)
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         $randomSuffix = '';
         for ($i = 0; $i < 6; $i++) {
             $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
         }
-        
+
         // Formato: OLK-0145-ABC123
-        $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
-        
+        $orderNumber = $prefix . '-' . str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+
         // Verificar se já existe (muito improvável, mas por segurança)
         while (Order::where('order_number', $orderNumber)->exists()) {
             $randomSuffix = '';
             for ($i = 0; $i < 6; $i++) {
                 $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
             }
-            $orderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+            $orderNumber = $prefix . '-' . str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
         }
-        
+
         return $orderNumber;
     }
 

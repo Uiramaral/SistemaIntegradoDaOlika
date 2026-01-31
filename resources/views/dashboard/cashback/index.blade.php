@@ -1,146 +1,380 @@
 @extends('dashboard.layouts.app')
 
 @section('page_title', 'Cashback')
-@section('page_subtitle', 'Acompanhe uma visão detalhada das métricas e resultados')
-
-@section('page_actions')
-    <a href="{{ route('dashboard.cashback.create') }}" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
-        Nova Transação
-    </a>
-@endsection
+@section('page_subtitle', 'Gerenciamento do programa de cashback')
 
 @section('content')
-<div class="space-y-6">
+<div x-data="cashbackPage()" id="cashback-page" class="space-y-6">
 
-  @if(session('success'))
-    <div class="rounded-lg border bg-green-50 border-green-200 p-4 text-green-700 mb-4">
-      {{ session('success') }}
-    </div>
-  @endif
+    @if(session('success'))
+        <div class="rounded-lg border bg-green-50 border-green-200 p-4 text-green-700">
+            {{ session('success') }}
+        </div>
+    @endif
 
-  <x-stat-grid :items="[
-    ['label' => 'Total Gerado', 'value' => 'R$ ' . number_format($totalCredits ?? 0, 2, ',', '.'), 'icon' => 'dollar-sign'],
-    ['label' => 'Total Utilizado', 'value' => 'R$ ' . number_format($totalDebits ?? 0, 2, ',', '.'), 'icon' => 'minus-circle'],
-    ['label' => 'Saldo Disponível', 'value' => 'R$ ' . number_format($totalAvailable ?? 0, 2, ',', '.'), 'icon' => 'wallet'],
-    ['label' => 'Clientes com Saldo', 'value' => ($activeCustomers ?? 0), 'icon' => 'user-check'],
-  ]" />
-  
-  <div class="grid gap-6 lg:grid-cols-2">
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="flex flex-col space-y-1.5 p-6">
-        <h3 class="text-2xl font-semibold leading-none tracking-tight">Configurações do Programa</h3>
-        <p class="text-sm text-muted-foreground">Configure as regras do programa de cashback</p>
-      </div>
-      <div class="p-6 pt-0 space-y-6">
-        <form action="{{ route('dashboard.cashback.settings.save') }}" method="POST" id="cashbackSettingsForm">
-          @csrf
-          
-          <div class="flex items-center justify-between">
-            <div class="space-y-0.5">
-              <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="cashback_enabled">Programa Ativo</label>
-              <p class="text-sm text-muted-foreground">Ativar ou desativar o programa de cashback</p>
+    {{-- Stats Grid --}}
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-4 border border-green-200">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                    <i data-lucide="dollar-sign" class="h-4 w-4 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-green-700 uppercase tracking-wide">Total Gerado</span>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" name="cashback_enabled" id="cashback_enabled" value="1" {{ ($cashbackSettings['enabled'] ?? true) ? 'checked' : '' }} onchange="this.parentElement.querySelector('.toggle-slider').classList.toggle('translate-x-5', this.checked); this.parentElement.querySelector('.toggle-bg').classList.toggle('bg-primary', this.checked); this.parentElement.querySelector('.toggle-bg').classList.toggle('bg-gray-300', !this.checked);" class="sr-only">
-              <div class="toggle-bg w-11 h-6 {{ ($cashbackSettings['enabled'] ?? true) ? 'bg-primary' : 'bg-gray-300' }} rounded-full transition-colors duration-200 ease-in-out"></div>
-              <div class="toggle-slider absolute left-[2px] top-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ease-in-out {{ ($cashbackSettings['enabled'] ?? true) ? 'translate-x-5' : '' }}"></div>
-            </label>
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="cashback_percentage">Percentual de Cashback (%)</label>
-            <input type="number" name="cashback_percentage" id="cashback_percentage" step="0.1" min="0" max="100" value="{{ old('cashback_percentage', $cashbackSettings['percentage'] ?? 5.0) }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" required />
-            <p class="text-sm text-muted-foreground">Porcentagem do valor da compra devolvida como cashback</p>
-            @error('cashback_percentage')
-              <span class="text-sm text-red-600">{{ $message }}</span>
-            @enderror
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="cashback_min_purchase">Compra Mínima (R$)</label>
-            <input type="number" name="cashback_min_purchase" id="cashback_min_purchase" step="0.01" min="0" value="{{ old('cashback_min_purchase', $cashbackSettings['min_purchase'] ?? 30.0) }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="0.00" required />
-            <p class="text-sm text-muted-foreground">Valor mínimo da compra para receber cashback</p>
-            @error('cashback_min_purchase')
-              <span class="text-sm text-red-600">{{ $message }}</span>
-            @enderror
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="cashback_max_amount">Cashback Máximo por Compra (R$)</label>
-            <input type="number" name="cashback_max_amount" id="cashback_max_amount" step="0.01" min="0" value="{{ old('cashback_max_amount', $cashbackSettings['max_amount'] ?? 50.0) }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="0.00" />
-            <p class="text-sm text-muted-foreground">Valor máximo de cashback por compra (deixe 0 para ilimitado)</p>
-            @error('cashback_max_amount')
-              <span class="text-sm text-red-600">{{ $message }}</span>
-            @enderror
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="cashback_expiry_days">Validade do Cashback (dias)</label>
-            <input type="number" name="cashback_expiry_days" id="cashback_expiry_days" min="1" value="{{ old('cashback_expiry_days', $cashbackSettings['expiry_days'] ?? 90) }}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" placeholder="90" required />
-            <p class="text-sm text-muted-foreground">Tempo até o cashback expirar se não for utilizado</p>
-            @error('cashback_expiry_days')
-              <span class="text-sm text-red-600">{{ $message }}</span>
-            @enderror
-          </div>
-          
-          <button type="submit" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full">
-            Salvar Configurações
-          </button>
-        </form>
-      </div>
-    </div>
-    
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="flex flex-col space-y-1.5 p-6">
-        <h3 class="text-2xl font-semibold leading-none tracking-tight">Últimas Transações</h3>
-        <p class="text-sm text-muted-foreground">Transações de cashback recentes</p>
-      </div>
-      <div class="p-6 pt-0">
-        @if(isset($recentTransactions) && $recentTransactions->count() > 0)
-        <div class="relative w-full overflow-auto">
-          <table class="w-full caption-bottom text-sm" data-mobile-card="true">
-            <thead class="[&_tr]:border-b">
-              <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Cliente</th>
-                <th class="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Tipo</th>
-                <th class="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Valor</th>
-                <th class="h-12 px-4 align-middle font-medium text-muted-foreground">Descrição</th>
-                <th class="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Data</th>
-                <th class="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody class="[&_tr:last-child]:border-0">
-              @foreach($recentTransactions as $transaction)
-              <tr class="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
-                <td class="p-4 align-middle font-medium">{{ $transaction->customer->name ?? 'Cliente não encontrado' }}</td>
-                <td class="p-4 align-middle text-right">
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $transaction->type === 'credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                    {{ $transaction->type === 'credit' ? 'Crédito' : 'Débito' }}
-                  </span>
-                </td>
-                <td class="p-4 align-middle text-right font-semibold {{ $transaction->type === 'credit' ? 'text-green-600' : 'text-red-600' }}">
-                  {{ $transaction->type === 'credit' ? '+' : '-' }}R$ {{ number_format((float)$transaction->amount, 2, ',', '.') }}
-                </td>
-                <td class="p-4 align-middle text-sm text-muted-foreground">{{ $transaction->description ?? '-' }}</td>
-                <td class="p-4 align-middle text-right text-muted-foreground">{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
-                <td class="p-4 align-middle text-center actions-cell">
-                  <a href="{{ route('dashboard.cashback.edit', $transaction) }}" class="inline-flex items-center text-sm text-primary hover:underline">
-                    Editar
-                  </a>
-                </td>
-              </tr>
-              @endforeach
-            </tbody>
-          </table>
+            <p class="text-xl font-bold text-green-800">R$ {{ number_format($totalCredits ?? 0, 2, ',', '.') }}</p>
         </div>
-        @else
-        <div class="text-center py-8 text-muted-foreground">
-          <p>Nenhuma transação de cashback registrada ainda.</p>
+        <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-4 border border-red-200">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                    <i data-lucide="minus-circle" class="h-4 w-4 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-red-700 uppercase tracking-wide">Total Utilizado</span>
+            </div>
+            <p class="text-xl font-bold text-red-800">R$ {{ number_format($totalDebits ?? 0, 2, ',', '.') }}</p>
         </div>
-        @endif
-      </div>
+        <div class="bg-gradient-to-br from-primary/5 to-primary/15 rounded-2xl p-4 border border-primary/20">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                    <i data-lucide="wallet" class="h-4 w-4 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-primary uppercase tracking-wide">Saldo Disponível</span>
+            </div>
+            <p class="text-xl font-bold text-primary">R$ {{ number_format($totalAvailable ?? 0, 2, ',', '.') }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                    <i data-lucide="users" class="h-4 w-4 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-blue-700 uppercase tracking-wide">Clientes com Saldo</span>
+            </div>
+            <p class="text-xl font-bold text-blue-800">{{ $activeCustomers ?? 0 }}</p>
+        </div>
+
     </div>
-  </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+        {{-- Settings Card --}}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="p-4 border-b border-border">
+                <h3 class="text-lg font-semibold text-foreground">Configurações do Programa</h3>
+                <p class="text-sm text-muted-foreground mt-0.5">Configure as regras do programa de cashback</p>
+            </div>
+            <div class="p-4">
+                <form action="{{ route('dashboard.cashback.settings.save') }}" method="POST" class="space-y-4">
+                    @csrf
+
+                    {{-- Toggle Ativo --}}
+                    <label class="flex items-center justify-between bg-muted/20 p-4 rounded-xl border border-border/50 cursor-pointer">
+                        <div>
+                            <span class="font-medium text-foreground block">Programa Ativo</span>
+                            <span class="text-xs text-muted-foreground">Ativar ou desativar o programa de cashback</span>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" name="cashback_enabled" value="1" {{ ($cashbackSettings['enabled'] ?? true) ? 'checked' : '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </div>
+                    </label>
+
+                    {{-- Percentage --}}
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Percentual de Cashback (%)</label>
+                        <input type="number" name="cashback_percentage" step="0.1" min="0" max="100"
+                            value="{{ old('cashback_percentage', $cashbackSettings['percentage'] ?? 5.0) }}" required
+                            class="w-full h-10 px-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm">
+                        <p class="text-xs text-muted-foreground mt-1">Porcentagem do valor da compra devolvida como cashback.</p>
+                    </div>
+
+                    {{-- Min Purchase --}}
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Compra Mínima (R$)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                            <input type="number" name="cashback_min_purchase" step="0.01" min="0"
+                                value="{{ old('cashback_min_purchase', $cashbackSettings['min_purchase'] ?? 30.0) }}" required
+                                class="w-full h-10 pl-10 pr-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm">
+                        </div>
+                        <p class="text-xs text-muted-foreground mt-1">Valor mínimo da compra para receber cashback.</p>
+                    </div>
+
+                    {{-- Max Amount --}}
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Cashback Máximo por Compra</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                            <input type="number" name="cashback_max_amount" step="0.01" min="0"
+                                value="{{ old('cashback_max_amount', $cashbackSettings['max_amount'] ?? 50.0) }}"
+                                class="w-full h-10 pl-10 pr-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                placeholder="0.00">
+                        </div>
+                        <p class="text-xs text-muted-foreground mt-1">Deixe 0 para ilimitado.</p>
+                    </div>
+
+                    {{-- Expiry Days --}}
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Validade (dias)</label>
+                        <input type="number" name="cashback_expiry_days" min="1"
+                            value="{{ old('cashback_expiry_days', $cashbackSettings['expiry_days'] ?? 90) }}" required
+                            class="w-full h-10 px-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                            placeholder="90">
+                        <p class="text-xs text-muted-foreground mt-1">Tempo até o cashback expirar se não for utilizado.</p>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-sm transition-colors">
+                        <i data-lucide="save" class="h-4 w-4"></i>
+                        Salvar Configurações
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Transactions Card --}}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground">Últimas Transações</h3>
+                    <p class="text-sm text-muted-foreground mt-0.5">Transações de cashback recentes</p>
+                </div>
+                <button type="button" @click="openModal('create')"
+                    class="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-sm transition-colors shrink-0">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>Nova Transação</span>
+                </button>
+            </div>
+            <div class="p-4">
+                @if(isset($recentTransactions) && $recentTransactions->count() > 0)
+                    <div class="space-y-3">
+                        @foreach($recentTransactions as $transaction)
+                            @php
+                                $transactionJson = [
+                                    'id' => $transaction->id,
+                                    'customer_id' => $transaction->customer_id,
+                                    'customer_name' => $transaction->customer->name ?? 'Cliente não encontrado',
+                                    'amount' => (float) $transaction->amount,
+                                    'type' => $transaction->type,
+                                    'description' => $transaction->description ?? '',
+                                    'update_url' => route('dashboard.cashback.update', $transaction->id),
+                                ];
+                            @endphp
+                            <div class="flex items-center justify-between p-3 rounded-xl border border-border bg-white hover:shadow-sm transition-all">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-9 h-9 rounded-lg {{ $transaction->type === 'credit' ? 'bg-green-100' : 'bg-red-100' }} flex items-center justify-center shrink-0">
+                                        <i data-lucide="{{ $transaction->type === 'credit' ? 'plus' : 'minus' }}"
+                                            class="h-4 w-4 {{ $transaction->type === 'credit' ? 'text-green-600' : 'text-red-600' }}"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-medium text-sm text-foreground truncate">{{ $transaction->customer->name ?? 'Cliente não encontrado' }}</p>
+                                        <p class="text-xs text-muted-foreground truncate">{{ $transaction->description ?? 'Sem descrição' }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="text-right">
+                                        <p class="font-semibold text-sm {{ $transaction->type === 'credit' ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $transaction->type === 'credit' ? '+' : '-' }}R$ {{ number_format((float)$transaction->amount, 2, ',', '.') }}
+                                        </p>
+                                        <p class="text-xs text-muted-foreground">{{ $transaction->created_at->format('d/m/Y') }}</p>
+                                    </div>
+                                    <button type="button" @click="openModal('edit', {{ json_encode($transactionJson) }})"
+                                        class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-muted transition-colors">
+                                        <i data-lucide="edit" class="h-4 w-4 text-muted-foreground"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="text-center py-8 text-muted-foreground">
+                        <div class="flex flex-col items-center gap-3">
+                            <i data-lucide="wallet" class="w-10 h-10 opacity-20"></i>
+                            <p class="text-sm">Nenhuma transação de cashback registrada.</p>
+                            <button @click="openModal('create')"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold text-sm">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Criar primeira transação
+                            </button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL --}}
+    <div class="fixed inset-0 z-[100] overflow-y-auto" x-show="isModalOpen" x-cloak
+        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+
+        <div class="fixed inset-0 bg-black/50" @click="closeModal()"></div>
+
+        <div class="flex min-h-full items-start sm:items-center justify-center p-4">
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden my-auto"
+                @click.stop
+                x-show="isModalOpen"
+                x-transition:enter="ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95">
+
+                <form :action="formAction" method="POST">
+                    @csrf
+                    <input type="hidden" name="_method" :value="isEditMode ? 'PUT' : 'POST'">
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+                        <div>
+                            <h2 class="text-lg font-semibold text-foreground" x-text="isEditMode ? 'Editar Transação' : 'Nova Transação'"></h2>
+                            <p class="text-sm text-muted-foreground mt-0.5">Ajuste manual de cashback do cliente.</p>
+                        </div>
+                        <button type="button" @click="closeModal()" class="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    {{-- Body --}}
+                    <div class="px-6 py-5 space-y-4">
+
+                        {{-- Customer (only for create) --}}
+                        <div x-show="!isEditMode">
+                            <label class="block text-sm font-medium text-foreground mb-1">Cliente <span class="text-destructive">*</span></label>
+                            <select name="customer_id" x-model="formData.customer_id" :required="!isEditMode"
+                                class="w-full h-10 px-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm">
+                                <option value="">Selecione um cliente...</option>
+                                @foreach(\App\Models\Customer::orderBy('name')->get() as $customer)
+                                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Customer Name (readonly for edit) --}}
+                        <div x-show="isEditMode">
+                            <label class="block text-sm font-medium text-foreground mb-1">Cliente</label>
+                            <input type="text" :value="formData.customer_name" readonly
+                                class="w-full h-10 px-3 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
+                        </div>
+
+                        {{-- Type --}}
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Tipo <span class="text-destructive">*</span></label>
+                            <div class="flex gap-2">
+                                <button type="button" @click="formData.type = 'credit'"
+                                    class="flex-1 px-4 py-2 text-sm font-medium rounded-xl border transition-colors"
+                                    :class="formData.type === 'credit' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-border text-foreground hover:bg-muted/30'">
+                                    <i data-lucide="plus" class="inline h-4 w-4 mr-1"></i>
+                                    Crédito
+                                </button>
+                                <button type="button" @click="formData.type = 'debit'"
+                                    class="flex-1 px-4 py-2 text-sm font-medium rounded-xl border transition-colors"
+                                    :class="formData.type === 'debit' ? 'bg-red-100 border-red-500 text-red-700' : 'bg-white border-border text-foreground hover:bg-muted/30'">
+                                    <i data-lucide="minus" class="inline h-4 w-4 mr-1"></i>
+                                    Débito
+                                </button>
+                            </div>
+                            <input type="hidden" name="type" :value="formData.type">
+                        </div>
+
+                        {{-- Amount --}}
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-1">Valor <span class="text-destructive">*</span></label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                                <input type="number" name="amount" step="0.01" min="0.01" x-model="formData.amount" required
+                                    class="w-full h-10 pl-10 pr-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                    placeholder="0.00">
+                            </div>
+                        </div>
+
+                        {{-- Description --}}
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-1">Descrição</label>
+                            <input type="text" name="description" x-model="formData.description"
+                                class="w-full h-10 px-3 rounded-xl border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                placeholder="Ex: Ajuste manual, bônus, etc.">
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="px-6 py-4 border-t border-border flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                        <button type="button" @click="closeModal()"
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-border bg-white text-foreground font-medium hover:bg-muted/30 transition-colors text-sm">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold shadow-sm transition-colors text-sm">
+                            <span x-text="isEditMode ? 'Salvar Alterações' : 'Criar Transação'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+
+@push('styles')
+<style>[x-cloak]{display:none!important}</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', function() {
+    Alpine.data('cashbackPage', function() {
+        return {
+            isModalOpen: false,
+            isEditMode: false,
+            formAction: '',
+
+            formData: {
+                id: null,
+                customer_id: '',
+                customer_name: '',
+                amount: '',
+                type: 'credit',
+                description: ''
+            },
+
+            openModal(mode, data = null) {
+                this.isModalOpen = true;
+                this.isEditMode = mode === 'edit';
+                if (mode === 'create') {
+                    this.formAction = "{{ route('dashboard.cashback.store') }}";
+                    this.resetForm();
+                } else {
+                    this.formAction = data.update_url;
+                    this.loadFormData(data);
+                }
+                this.$nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+            },
+
+            closeModal() {
+                this.isModalOpen = false;
+            },
+
+            resetForm() {
+                this.formData = {
+                    id: null,
+                    customer_id: '',
+                    customer_name: '',
+                    amount: '',
+                    type: 'credit',
+                    description: ''
+                };
+            },
+
+            loadFormData(data) {
+                this.formData = {
+                    id: data.id,
+                    customer_id: data.customer_id || '',
+                    customer_name: data.customer_name || '',
+                    amount: data.amount || '',
+                    type: data.type || 'credit',
+                    description: data.description || ''
+                };
+            }
+        };
+    });
+});
+</script>
+@endpush
 @endsection

@@ -15,14 +15,31 @@ class CustomersController extends Controller
         $search = trim((string) $request->get('q', ''));
         $fiado = trim((string) $request->get('fiado', ''));
         $revenda = trim((string) $request->get('revenda', ''));
+        $compras = trim((string) $request->get('compras', ''));
         $ordenar = trim((string) $request->get('ordenar', 'nome')) ?: 'nome';
 
         $query = \App\Models\Customer::query();
 
+        $clientId = currentClientId();
+        $clientIdSafe = $clientId ? (int) $clientId : null;
+
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro por compras
+        if ($compras === 'com') {
+            $query->whereHas('orders', function ($q) use ($clientIdSafe) {
+                if ($clientIdSafe)
+                    $q->where('client_id', $clientIdSafe);
+            });
+        } elseif ($compras === 'sem') {
+            $query->whereDoesntHave('orders', function ($q) use ($clientIdSafe) {
+                if ($clientIdSafe)
+                    $q->where('client_id', $clientIdSafe);
             });
         }
 
@@ -35,11 +52,11 @@ class CustomersController extends Controller
 
         $clientId = currentClientId();
         $debtSub = '(SELECT COALESCE(SUM(CASE WHEN type="debit" THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN type="credit" THEN amount ELSE 0 END), 0) FROM customer_debts WHERE customer_debts.customer_id = customers.id AND status = "open")';
-        
+
         // Construir condições para filtrar por client_id se existir
         // Usar cast para int para segurança (client_id é sempre inteiro)
-        $clientIdSafe = $clientId ? (int)$clientId : null;
-        
+        $clientIdSafe = $clientId ? (int) $clientId : null;
+
         if ($clientIdSafe) {
             $query->select(
                 'customers.*',
@@ -98,22 +115,32 @@ class CustomersController extends Controller
         ]);
 
         $cashbackBalance = $r->input('cashback_balance', 0);
-        
+
         $data['created_at'] = now();
         $data['updated_at'] = now();
         $data['is_wholesale'] = $r->has('is_wholesale') ? 1 : 0;
         unset($data['cashback_balance']); // Remover do array de dados do cliente
 
-        $customerId = DB::table('customers')->insertGetId($data);
+        // Usar Eloquent para garantir que eventos e Global Scopes funcionem (inclusive BelongsToClient)
+        $customer = \App\Models\Customer::create($data);
+        $customerId = $customer->id;
 
         // Criar transação de cashback inicial se o valor foi informado
         if ($cashbackBalance > 0) {
             \App\Models\CustomerCashback::create([
                 'customer_id' => $customerId,
                 'order_id' => null,
-                'amount' => (float)$cashbackBalance,
+                'amount' => (float) $cashbackBalance,
                 'type' => 'credit',
                 'description' => 'Saldo inicial de cashback',
+            ]);
+        }
+
+        if ($r->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'customer' => $customer,
+                'message' => 'Cliente criado com sucesso!'
             ]);
         }
 
@@ -132,12 +159,12 @@ class CustomersController extends Controller
             if ($clientId) {
                 $customer = \App\Models\Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                     ->where('id', $id)
-                    ->where(function($q) use ($clientId) {
+                    ->where(function ($q) use ($clientId) {
                         $q->where('client_id', $clientId)
-                          ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
+                            ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
                     })
                     ->first();
-                    
+
                 if (!$customer) {
                     return redirect()->route('dashboard.customers.index')->with('error', 'Cliente não encontrado');
                 }
@@ -147,7 +174,7 @@ class CustomersController extends Controller
         }
 
         $clientId = currentClientId();
-        
+
         // Buscar pedidos considerando client_id
         $ordersQuery = DB::table('orders')->where('customer_id', $id);
         if ($clientId) {
@@ -175,13 +202,13 @@ class CustomersController extends Controller
             $totalOrdersQuery->where('client_id', $clientId);
         }
         $totalOrders = $totalOrdersQuery->count();
-        
+
         $totalOrdersValueQuery = DB::table('orders')->where('customer_id', $id);
         if ($clientId) {
             $totalOrdersValueQuery->where('client_id', $clientId);
         }
         $totalOrdersValue = $totalOrdersValueQuery->sum('final_amount');
-        
+
         $averageOrderValue = $totalOrders > 0 ? ($totalOrdersValue / $totalOrders) : 0;
 
         return view('dashboard.customers.show', compact('customer', 'orders', 'openDebts', 'debtHistory', 'totalOrders', 'totalOrdersValue', 'averageOrderValue'));
@@ -214,18 +241,18 @@ class CustomersController extends Controller
             'is_wholesale' => 'nullable|boolean',
         ]);
 
-        $targetCashbackBalance = (float)($r->input('cashback_balance', 0) ?? 0);
-        
+        $targetCashbackBalance = (float) ($r->input('cashback_balance', 0) ?? 0);
+
         $data['updated_at'] = now();
         $data['is_wholesale'] = $r->has('is_wholesale') ? 1 : 0;
         unset($data['cashback_balance']); // Remover do array de dados do cliente
-        
+
         DB::table('customers')->where('id', $id)->update($data);
 
         // Ajustar cashback se o valor foi informado e é diferente do saldo atual
         $currentBalance = \App\Models\CustomerCashback::getBalance($id);
         $difference = $targetCashbackBalance - $currentBalance;
-        
+
         if (abs($difference) > 0.01) { // Tolerância de 1 centavo para diferenças de arredondamento
             if ($difference > 0) {
                 // Adicionar cashback
@@ -289,7 +316,7 @@ class CustomersController extends Controller
 
         try {
             $query = \App\Models\Customer::query();
-            
+
             if ($customerId) {
                 $query->where('id', $customerId);
                 $customer = $query->first();
@@ -360,7 +387,7 @@ class CustomersController extends Controller
                         }
 
                         $updated++;
-                        
+
                         $summary[] = [
                             'id' => $customer->id,
                             'name' => $customer->name,
@@ -377,7 +404,7 @@ class CustomersController extends Controller
                 }
             }
 
-            $message = $dryRun 
+            $message = $dryRun
                 ? "Modo de teste: {$updated} cliente(s) teriam estatísticas atualizadas."
                 : "✅ {$updated} cliente(s) atualizado(s) com sucesso!";
 
@@ -414,7 +441,7 @@ class CustomersController extends Controller
             'cashback_balance' => 'required|numeric|min:0',
         ]);
 
-        $targetCashbackBalance = (float)$request->input('cashback_balance', 0);
+        $targetCashbackBalance = (float) $request->input('cashback_balance', 0);
         $currentBalance = \App\Models\CustomerCashback::getBalance($id);
         $difference = $targetCashbackBalance - $currentBalance;
 
@@ -458,12 +485,12 @@ class CustomersController extends Controller
             if ($clientId) {
                 $customer = \App\Models\Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                     ->where('id', $id)
-                    ->where(function($q) use ($clientId) {
+                    ->where(function ($q) use ($clientId) {
                         $q->where('client_id', $clientId)
-                          ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
+                            ->orWhereNull('client_id'); // Permitir clientes sem client_id (dados antigos)
                     })
                     ->first();
-                    
+
                 if (!$customer) {
                     return redirect()->route('dashboard.customers.show', $id)
                         ->with('error', 'Cliente não encontrado');
@@ -484,7 +511,7 @@ class CustomersController extends Controller
 
             // Calcular saldo atual
             $oldBalance = \App\Models\CustomerDebt::getBalance($id);
-            $newBalance = (float)$request->input('new_balance', 0);
+            $newBalance = (float) $request->input('new_balance', 0);
             $adjustmentAmount = $newBalance - $oldBalance;
 
             // Se não houver diferença significativa, não fazer nada

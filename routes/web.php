@@ -59,7 +59,40 @@ use App\Http\Controllers\ProfileController;
 Route::domain('{slug}.' . $cozinhaDomain)->middleware(['identify.tenant'])->group(function () {
     Route::get('/', [MenuController::class, 'index'])->name('store.index');
     Route::get('/menu', [MenuController::class, 'index'])->name('store.menu');
-    Route::get('/produto/{product}', [MenuController::class, 'product'])->name('store.product');
+    Route::get('/produto/{product}', [MenuController::class, 'product'])->name('store.menu.product'); // Renamed to match prefix logic
+    Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('store.menu.product.modal');
+    Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('store.menu.product.json');
+    Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('store.menu.category');
+    Route::get('/buscar', [MenuController::class, 'search'])->name('store.menu.search');
+
+    // Carrinho
+    Route::prefix('cart')->name('store.cart.')->group(function () {
+        Route::get('/', [CartController::class, 'show'])->name('index');
+        Route::get('/count', [CartController::class, 'count'])->name('count');
+        Route::get('/items', [CartController::class, 'items'])->name('items');
+        Route::post('/add', [CartController::class, 'add'])->name('add');
+        Route::post('/update', [CartController::class, 'update'])->name('update');
+        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
+        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+    });
+
+    // Checkout
+    Route::prefix('checkout')->name('store.checkout.')->group(function () {
+        Route::get('/', [OrderController::class, 'checkout'])->name('index');
+        Route::post('/', [OrderController::class, 'store'])->name('store');
+        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
+    });
+
+    // Payment
+    Route::prefix('payment')->name('store.payment.')->group(function () {
+        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
+        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
+        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
+        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
+    });
 });
 
 // 2. DASHBOARD DO ASSINANTE (Ex: dashboard.cozinhapro.app.br)
@@ -528,6 +561,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
     Route::post('/customers/update-stats', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateStats'])->name('dashboard.customers.updateStats');
     Route::put('/customers/{customer}/cashback', [\App\Http\Controllers\Dashboard\CustomersController::class, 'updateCashback'])->name('dashboard.customers.updateCashback');
     Route::post('/customers/{customer}/adjust-debt-balance', [\App\Http\Controllers\Dashboard\CustomersController::class, 'adjustDebtBalance'])->name('dashboard.customers.adjustDebtBalance');
+    Route::post('wholesale-prices/{id}/toggle-status', [\App\Http\Controllers\Dashboard\WholesalePricesController::class, 'toggleStatus'])->name('dashboard.wholesale-prices.toggle-status');
     Route::resource('wholesale-prices', \App\Http\Controllers\Dashboard\WholesalePricesController::class)->names([
         'index' => 'dashboard.wholesale-prices.index',
         'create' => 'dashboard.wholesale-prices.create',
@@ -632,6 +666,13 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::put('/{id}', [\App\Http\Controllers\Dashboard\FinancasController::class, 'update'])->name('update');
         Route::delete('/{id}', [\App\Http\Controllers\Dashboard\FinancasController::class, 'destroy'])->name('destroy');
     });
+
+    // Perfil do Usuário e Loja
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'index'])->name('profile.edit');
+    Route::patch('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    // Rotas específicas de slug
+    Route::patch('/profile/slug', [\App\Http\Controllers\ProfileController::class, 'updateSlug'])->name('cozinha.profile.slug.update');
+    Route::get('/profile/check-slug', [\App\Http\Controllers\ProfileController::class, 'checkSlugAvailability'])->name('profile.check.slug');
 
     Route::get('/settings', [\App\Http\Controllers\Dashboard\SettingsController::class, 'index'])->name('dashboard.settings');
     Route::post('/settings/general', [\App\Http\Controllers\Dashboard\SettingsController::class, 'generalSave'])->name('dashboard.settings.general.save');
@@ -893,6 +934,7 @@ Route::domain($pedidoDomain)->name('pedido.')->group(function () {
         Route::get('/', [MenuController::class, 'index'])->name('index');
         Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
         Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
+        Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('product.modal');
         Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
     });
@@ -942,6 +984,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
         Route::get('/', [MenuController::class, 'index'])->name('index');
         Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category');
         Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product');
+        Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('product.modal');
         Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json');
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
     });

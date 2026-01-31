@@ -25,20 +25,35 @@ class OrdersController extends Controller
     {
         // Filtrar por client_id do estabelecimento atual
         $clientId = currentClientId();
-        
+
         // Otimizado: selecionar apenas campos necessários e eager loading específico
         $query = Order::with([
-                'customer' => function($q) {
-                    $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                      ->select('id', 'name', 'phone', 'email', 'client_id');
-                },
-                'address:id,street,number,neighborhood,city,state,cep,complement',
-                'payment:id,order_id,status,provider,provider_id',
-                'items' => fn($q) => $q->with(['product' => fn($p) => $p->with('category:id,name')]),
-            ])
-            ->select('id', 'order_number', 'status', 'payment_status', 'final_amount', 'total_amount',
-                     'delivery_fee', 'discount_amount', 'created_at', 'updated_at', 'customer_id',
-                     'address_id', 'payment_id', 'scheduled_delivery_at', 'client_id', 'delivery_type')
+            'customer' => function ($q) {
+                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                    ->select('id', 'name', 'phone', 'email', 'client_id');
+            },
+            'address:id,street,number,neighborhood,city,state,cep,complement',
+            'payment:id,order_id,status,provider,provider_id',
+            'items' => fn($q) => $q->with(['product' => fn($p) => $p->with('category:id,name')]),
+        ])
+            ->select(
+                'id',
+                'order_number',
+                'status',
+                'payment_status',
+                'final_amount',
+                'total_amount',
+                'delivery_fee',
+                'discount_amount',
+                'created_at',
+                'updated_at',
+                'customer_id',
+                'address_id',
+                'payment_id',
+                'scheduled_delivery_at',
+                'client_id',
+                'delivery_type'
+            )
             ->withExists(['debts as has_fiado_pendente' => fn($q) => $q->where('type', 'debit')->where('status', 'open')])
             ->orderBy('created_at', 'desc');
 
@@ -50,22 +65,22 @@ class OrdersController extends Controller
         // Busca por cliente ou número do pedido
         if ($request->has('q') && $request->q) {
             $search = $request->q;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($c) use ($search) {
-                      // Remover scope para buscar customer
-                      $c->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                        ->where(function($customerQuery) use ($search) {
+                    ->orWhereHas('customer', function ($c) use ($search) {
+                        // Remover scope para buscar customer
+                        $c->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                            ->where(function ($customerQuery) use ($search) {
                             $customerQuery->where('name', 'like', "%{$search}%")
-                                          ->orWhere('phone', 'like', "%{$search}%");
+                                ->orWhere('phone', 'like', "%{$search}%");
                         });
-                  });
+                    });
             });
         }
 
         // Filtro por status - padrão: all (todos exceto cancelados)
         $statusFilter = $request->input('status', 'all');
-        
+
         if ($statusFilter === 'all') {
             // Todos exceto cancelados
             $query->where('status', '!=', 'cancelled');
@@ -81,13 +96,13 @@ class OrdersController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             $allOrders = $query->get();
             return response()->json([
-                'orders' => $allOrders->map(function($order) {
+                'orders' => $allOrders->map(function ($order) {
                     $customerName = $order->customer->name ?? 'Cliente';
                     $nameParts = explode(' ', trim($customerName));
-                    $shortName = count($nameParts) > 1 
-                        ? $nameParts[0] . ' ' . end($nameParts) 
+                    $shortName = count($nameParts) > 1
+                        ? $nameParts[0] . ' ' . end($nameParts)
                         : $customerName;
-                    
+
                     $statusMap = [
                         'pending' => ['label' => 'Pendente', 'class' => 'status-badge-pending'],
                         'confirmed' => ['label' => 'Confirmado', 'class' => 'status-badge-processing'],
@@ -97,7 +112,7 @@ class OrdersController extends Controller
                         'cancelled' => ['label' => 'Cancelado', 'class' => 'status-badge-cancelled'],
                     ];
                     $statusData = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'class' => 'status-badge-pending'];
-                    
+
                     return [
                         'id' => $order->id,
                         'order_number' => $order->order_number,
@@ -107,7 +122,7 @@ class OrdersController extends Controller
                         'status' => $order->status,
                         'status_label' => $statusData['label'],
                         'status_class' => $statusData['class'],
-                        'final_amount' => (float)($order->final_amount ?? 0),
+                        'final_amount' => (float) ($order->final_amount ?? 0),
                         'items_count' => $order->items->count() ?? 0,
                         'delivery_type' => ($order->delivery_type ?? null) === 'delivery' || $order->address ? 'delivery' : 'pickup',
                         'delivery_label' => ($order->delivery_type ?? null) === 'delivery' || $order->address ? 'Entrega' : 'Retirada',
@@ -116,7 +131,7 @@ class OrdersController extends Controller
                 })
             ]);
         }
-        
+
         $orders = $query->paginate(20)->withQueryString();
 
         // Modal passa a buscar produtos via API (modal-products) com customer_id.
@@ -185,8 +200,8 @@ class OrdersController extends Controller
 
         $collection = Product::where('products.is_active', true)
             ->with([
-                'variants' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-                'wholesalePrices' => fn ($q) => $q->where('is_active', true),
+                'variants' => fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'wholesalePrices' => fn($q) => $q->where('is_active', true),
             ])
             ->orderBy('products.name', 'asc')
             ->get();
@@ -282,7 +297,7 @@ class OrdersController extends Controller
         });
 
         if (!$includeWholesale) {
-            $mapped = $mapped->filter(fn ($p) => !($p['wholesale_only'] ?? false))->values();
+            $mapped = $mapped->filter(fn($p) => !($p['wholesale_only'] ?? false))->values();
         }
 
         return $mapped->all();
@@ -297,28 +312,28 @@ class OrdersController extends Controller
         try {
             // Filtrar por client_id do estabelecimento atual
             $clientId = currentClientId();
-            
+
             // Pegar o ID do último pedido conhecido (ou timestamp)
             $lastOrderId = $request->input('last_order_id', 0);
             $lastOrderCreatedAt = $request->input('last_order_created_at');
             $knownOrderIds = $request->input('known_order_ids', []); // IDs dos pedidos já exibidos na página
-            
+
             // Buscar novos pedidos (criados após o último conhecido)
             $newOrdersQuery = Order::with([
-                    'customer' => function($q) {
-                        // Remover scope para carregar customer (pedido já está filtrado)
-                        $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
-                    },
-                    'address',
-                    'payment'
-                ])
+                'customer' => function ($q) {
+                    // Remover scope para carregar customer (pedido já está filtrado)
+                    $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
+                },
+                'address',
+                'payment'
+            ])
                 ->orderBy('created_at', 'desc');
-            
+
             // Filtrar por client_id se existir
             if ($clientId) {
                 $newOrdersQuery->where('client_id', $clientId);
             }
-            
+
             if ($lastOrderId > 0) {
                 $newOrdersQuery->where('id', '>', $lastOrderId);
             } elseif ($lastOrderCreatedAt) {
@@ -331,17 +346,17 @@ class OrdersController extends Controller
             } else {
                 $newOrdersQuery->limit(10);
             }
-            
+
             // Buscar pedidos atualizados (mudança de status ou pagamento)
             // Pegar os últimos 50 pedidos para verificar atualizações
             $updatedOrdersQuery = Order::with(['customer', 'address', 'payment'])
                 ->whereIn('id', $knownOrderIds);
-            
+
             // Filtrar por client_id se existir
             if ($clientId) {
                 $updatedOrdersQuery->where('client_id', $clientId);
             }
-            
+
             // Se não houver IDs conhecidos ainda, não buscar atualizados
             if (empty($knownOrderIds)) {
                 $updatedOrdersQuery->whereRaw('1 = 0'); // Forçar retorno vazio
@@ -349,29 +364,29 @@ class OrdersController extends Controller
                 $updatedOrdersQuery->orderBy('updated_at', 'desc')
                     ->limit(50);
             }
-            
+
             // Aplicar mesmos filtros da busca principal se houver
             if ($request->has('q') && $request->q) {
                 $search = $request->q;
-                $newOrdersQuery->where(function($q) use ($search) {
+                $newOrdersQuery->where(function ($q) use ($search) {
                     $q->where('order_number', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function($c) use ($search) {
-                          $c->where('name', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%");
-                      });
+                        ->orWhereHas('customer', function ($c) use ($search) {
+                            $c->where('name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
                 });
-                $updatedOrdersQuery->where(function($q) use ($search) {
+                $updatedOrdersQuery->where(function ($q) use ($search) {
                     $q->where('order_number', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function($c) use ($search) {
-                          $c->where('name', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%");
-                      });
+                        ->orWhereHas('customer', function ($c) use ($search) {
+                            $c->where('name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
                 });
             }
-            
+
             // Aplicar mesmo filtro de status do método index
             $statusFilter = $request->input('status', 'all');
-            
+
             if ($statusFilter === 'all') {
                 $newOrdersQuery->where('status', '!=', 'cancelled');
                 $updatedOrdersQuery->where('status', '!=', 'cancelled');
@@ -385,12 +400,12 @@ class OrdersController extends Controller
                 $newOrdersQuery->where('status', $statusFilter);
                 $updatedOrdersQuery->where('status', $statusFilter);
             }
-            
+
             $newOrders = $newOrdersQuery->get();
             $updatedOrders = $updatedOrdersQuery->get();
-            
+
             // Função auxiliar para formatar pedido
-            $formatOrder = function($order) {
+            $formatOrder = function ($order) {
                 $statusColors = [
                     'pending' => 'bg-muted text-muted-foreground',
                     'confirmed' => 'bg-primary text-primary-foreground',
@@ -421,9 +436,9 @@ class OrdersController extends Controller
                     'failed' => 'Falhou',
                     'refunded' => 'Reembolsado',
                 ];
-                
+
                 $mpInfo = $this->extractMercadoPagoStatusInfo($order);
-                
+
                 $paymentColor = $paymentStatusColors[$order->payment_status] ?? 'bg-muted text-muted-foreground';
                 $paymentLabel = $paymentStatusLabel[$order->payment_status] ?? ucfirst($order->payment_status);
 
@@ -431,7 +446,7 @@ class OrdersController extends Controller
                     $paymentColor = 'bg-warning text-warning-foreground';
                     $paymentLabel = 'Em Análise';
                 }
-                
+
                 return [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
@@ -456,7 +471,7 @@ class OrdersController extends Controller
                     'fiscal_receipt_url' => route('dashboard.orders.fiscalReceipt', $order->id),
                 ];
             };
-            
+
             return response()->json([
                 'success' => true,
                 'orders' => $newOrders->map($formatOrder),
@@ -469,7 +484,7 @@ class OrdersController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao buscar novos pedidos',
@@ -500,7 +515,7 @@ class OrdersController extends Controller
                 }
 
                 $payment = $searchResult['payment'];
-                $paymentId = (string)($payment['id'] ?? '');
+                $paymentId = (string) ($payment['id'] ?? '');
 
                 if (empty($paymentId)) {
                     throw new \RuntimeException('Pagamento retornado sem identificador.');
@@ -582,16 +597,20 @@ class OrdersController extends Controller
 
             if (!isset($result['success']) || !$result['success']) {
                 $errorMsg = $result['error'] ?? 'Não foi possível enviar o recibo via WhatsApp.';
-                
+
                 // Mensagens mais amigáveis para erros comuns
-                if (str_contains(strtolower($errorMsg), 'número inválido') || 
-                    str_contains(strtolower($errorMsg), 'não possui conta')) {
+                if (
+                    str_contains(strtolower($errorMsg), 'número inválido') ||
+                    str_contains(strtolower($errorMsg), 'não possui conta')
+                ) {
                     $errorMsg = 'O número de telefone do cliente não está registrado no WhatsApp ou está em formato inválido. Verifique o número cadastrado: ' . ($order->customer->phone ?? 'N/A');
-                } elseif (str_contains(strtolower($errorMsg), 'não conectado') || 
-                          str_contains(strtolower($errorMsg), 'desconectado')) {
+                } elseif (
+                    str_contains(strtolower($errorMsg), 'não conectado') ||
+                    str_contains(strtolower($errorMsg), 'desconectado')
+                ) {
                     $errorMsg = 'O WhatsApp não está conectado no momento. Aguarde alguns segundos e tente novamente.';
                 }
-                
+
                 return redirect()
                     ->back()
                     ->with('error', $errorMsg);
@@ -633,32 +652,32 @@ class OrdersController extends Controller
         if ($clientId && $order->client_id !== $clientId) {
             return response()->json(['success' => false, 'message' => 'Pedido não encontrado'], 404);
         }
-        
+
         // Se ainda pendente e houver payment_id, tentar atualizar consultando o provedor
-        $wasPaid = in_array(strtolower((string)$order->payment_status), ['approved','paid']);
+        $wasPaid = in_array(strtolower((string) $order->payment_status), ['approved', 'paid']);
         if (!$wasPaid && !empty($order->payment_id)) {
             try {
                 $svc = new \App\Services\MercadoPagoApiService();
-                $res = $svc->getPaymentStatus((string)$order->payment_id);
+                $res = $svc->getPaymentStatus((string) $order->payment_id);
                 if (!empty($res['success']) && !empty($res['payment'])) {
                     $payment = $res['payment'];
-                    $status = strtolower((string)($payment['status'] ?? 'pending'));
+                    $status = strtolower((string) ($payment['status'] ?? 'pending'));
                     $mappedStatus = \App\Services\MercadoPagoApiService::mapPaymentStatus($status);
                     $order->payment_status = $mappedStatus;
                     $order->payment_raw_response = $payment;
-                    
-                    if (in_array($status, ['approved','paid'])) {
+
+                    if (in_array($status, ['approved', 'paid'])) {
                         $order->status = 'confirmed';
                     }
                     $order->save();
-                    
+
                     // Processar confirmação de pagamento se necessário
-                    if (in_array($status, ['approved','paid']) && empty($order->notified_paid_at)) {
+                    if (in_array($status, ['approved', 'paid']) && empty($order->notified_paid_at)) {
                         try {
                             $orderStatusService = app(\App\Services\OrderStatusService::class);
                             $orderStatusService->changeStatus(
-                                $order, 
-                                'paid', 
+                                $order,
+                                'paid',
                                 'Pagamento aprovado via polling (PIX)',
                                 null,
                                 false,
@@ -679,21 +698,21 @@ class OrdersController extends Controller
                 ]);
             }
         }
-        
+
         $order->refresh();
-        
+
         return response()->json([
             'success' => true,
             'payment_status' => $order->payment_status,
             'status' => $order->status,
-            'is_paid' => in_array(strtolower((string)$order->payment_status), ['approved','paid']),
+            'is_paid' => in_array(strtolower((string) $order->payment_status), ['approved', 'paid']),
         ]);
     }
 
     public function show($id)
     {
         \Log::info('OrdersController@show Debug', ['id' => $id, 'clientId' => currentClientId()]);
-        
+
         // Buscar pedido sem o global scope para permitir dados legados (client_id null)
         $order = Order::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->findOrFail($id);
 
@@ -703,17 +722,17 @@ class OrdersController extends Controller
         $clientId = currentClientId();
         if ($clientId) {
             // Permitir se o client_id bater OU se o pedido for antigo (null)
-            if ($order->client_id !== null && (int)$order->client_id !== (int)$clientId) {
+            if ($order->client_id !== null && (int) $order->client_id !== (int) $clientId) {
                 \Log::warning('OrdersController@show Access Denied', ['order_client_id' => $order->client_id, 'session_client_id' => $clientId]);
                 abort(404, 'Pedido não encontrado');
             }
         }
-        
+
         $order->load([
-            'customer' => function($q) {
+            'customer' => function ($q) {
                 // Remover scope para carregar customer (pedido já está filtrado)
                 $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                  ->select('id', 'name', 'phone', 'email', 'client_id');
+                    ->select('id', 'name', 'phone', 'email', 'client_id');
             },
             'address',
             'items.product:id,name,price',
@@ -739,9 +758,9 @@ class OrdersController extends Controller
         // Cupons disponíveis - usar mesma lógica do edit
         $availableCoupons = Coupon::where('client_id', $clientId)
             ->where('is_active', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>=', now());
+                    ->orWhere('expires_at', '>=', now());
             })
             ->get();
 
@@ -776,9 +795,9 @@ class OrdersController extends Controller
     public function edit($id)
     {
         $order = Order::with([
-            'customer' => function($q) {
+            'customer' => function ($q) {
                 $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                  ->select('id', 'name', 'phone', 'email', 'client_id');
+                    ->select('id', 'name', 'phone', 'email', 'client_id');
             },
             'items.product:id,name,price',
             'address',
@@ -803,9 +822,9 @@ class OrdersController extends Controller
         // Cupons disponíveis
         $availableCoupons = Coupon::where('client_id', $clientId)
             ->where('is_active', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>=', now());
+                    ->orWhere('expires_at', '>=', now());
             })
             ->get();
 
@@ -902,7 +921,7 @@ class OrdersController extends Controller
             // Obter o código do status recebido
             $requestedStatusCode = $request->status;
             $skipNotification = $request->has('skip_notification') && $request->skip_notification;
-            
+
             // Verificar se é um código de order_statuses ou um status direto do ENUM
             $statusRecord = DB::table('order_statuses')
                 ->where('code', $requestedStatusCode)
@@ -925,7 +944,7 @@ class OrdersController extends Controller
             // Se for um código de order_statuses, usar o código diretamente
             // Se não, mapear para o valor válido do ENUM
             $enumStatus = $statusMapping[$requestedStatusCode] ?? $requestedStatusCode;
-            
+
             // Validar se o status mapeado é válido para o ENUM
             $validEnumValues = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
             if (!in_array($enumStatus, $validEnumValues)) {
@@ -934,21 +953,21 @@ class OrdersController extends Controller
 
             // Atualizar status do pedido
             $oldStatus = $order->status;
-            
+
             // Se o status for "confirmed" ou "paid", atualizar payment_status também
             if ($enumStatus === 'confirmed' || $requestedStatusCode === 'paid') {
                 if ($order->payment_status !== 'paid' && $order->payment_status !== 'approved') {
                     $order->payment_status = 'paid';
                 }
             }
-            
+
             // Usar OrderStatusService para atualizar status, histórico e notificações
             $orderStatusService = new \App\Services\OrderStatusService();
-            
+
             // Primeiro atualizar o status no pedido manualmente para garantir mapeamento correto
             $order->status = $enumStatus;
             $order->save();
-            
+
             // Depois usar o serviço para notificações (ele verificará se já foi atualizado)
             // Passar o código original (requestedStatusCode) para buscar as configurações corretas
             // Se skip_notification estiver marcado, passar true para skipNotifications
@@ -1020,7 +1039,8 @@ class OrdersController extends Controller
 
             foreach ($request->order_ids as $orderId) {
                 $order = Order::find($orderId);
-                if (!$order) continue;
+                if (!$order)
+                    continue;
 
                 $order->refresh();
                 if ($enumStatus === 'confirmed' || $requestedStatusCode === 'paid') {
@@ -1080,14 +1100,14 @@ class OrdersController extends Controller
 
             // Preparar dados para atualização
             $updateData = $request->only(['notes', 'observations', 'delivery_instructions']);
-            
+
             // Processar scheduled_delivery_at: se vazio, setar como null; se preenchido, converter para datetime
             if ($request->has('scheduled_delivery_at') && empty($request->scheduled_delivery_at)) {
                 $updateData['scheduled_delivery_at'] = null;
             } elseif ($request->filled('scheduled_delivery_at')) {
                 $updateData['scheduled_delivery_at'] = \Carbon\Carbon::parse($request->scheduled_delivery_at);
             }
-            
+
             // Atualizar informações do pedido
             $order->update($updateData);
 
@@ -1097,13 +1117,13 @@ class OrdersController extends Controller
             // Criar cobrança se solicitado
             if ($request->has('create_payment') && $request->create_payment) {
                 $paymentMethod = $request->payment_method ?? 'pix';
-                
+
                 if ($paymentMethod === 'pix') {
                     // Criar PIX via Mercado Pago
                     $pixData = $this->createPixPayment($order);
                     if ($pixData && isset($pixData['qr_code'])) {
                         $paymentLink = route('payment.pix', ['order' => $order->id]);
-                        
+
                         // Atualizar pedido com dados do PIX
                         $order->update([
                             'payment_method' => 'pix',
@@ -1159,19 +1179,19 @@ class OrdersController extends Controller
     {
         try {
             $mpApi = new MercadoPagoApi();
-            
+
             // Construir descrição detalhada
             $description = $this->buildDetailedDescription($order);
-            
+
             // Preparar dados do pedido com descrição completa
             $orderData = [
                 'number' => $order->order_number,
                 'total' => floatval($order->final_amount ?? $order->total_amount),
                 'description' => $description,
-                'items' => $order->items->map(function($item) {
+                'items' => $order->items->map(function ($item) {
                     return [
-                        'title' => !$item->product_id && $item->custom_name 
-                            ? 'Item Avulso - ' . $item->custom_name 
+                        'title' => !$item->product_id && $item->custom_name
+                            ? 'Item Avulso - ' . $item->custom_name
                             : ($item->custom_name ?? ($item->product->name ?? 'Produto')),
                         'quantity' => $item->quantity,
                         'unit_price' => floatval($item->unit_price),
@@ -1183,15 +1203,15 @@ class OrdersController extends Controller
                 'delivery_fee' => floatval($order->delivery_fee ?? 0),
                 'notification_url' => route('webhooks.mercadopago'),
             ];
-            
+
             $payer = [
                 'email' => $order->customer->email ?? 'cliente@email.com',
                 'first_name' => explode(' ', $order->customer->name ?? 'Cliente')[0],
                 'last_name' => (explode(' ', $order->customer->name ?? 'Cliente', 2)[1] ?? ''),
             ];
-            
+
             $result = $mpApi->createPixPayment($orderData, $payer);
-            
+
             if ($result && isset($result['ok']) && $result['ok']) {
                 return [
                     'qr_code' => $result['qr_code'] ?? null,
@@ -1215,18 +1235,18 @@ class OrdersController extends Controller
     {
         try {
             $mpApi = new MercadoPagoApi();
-            
+
             // Preparar dados do pedido com descrição detalhada
             $description = $this->buildDetailedDescription($order);
-            
+
             $orderData = [
                 'number' => $order->order_number,
                 'total' => floatval($order->final_amount ?? $order->total_amount),
                 'description' => $description,
-                'items' => $order->items->map(function($item) {
+                'items' => $order->items->map(function ($item) {
                     return [
-                        'title' => !$item->product_id && $item->custom_name 
-                            ? 'Item Avulso - ' . $item->custom_name 
+                        'title' => !$item->product_id && $item->custom_name
+                            ? 'Item Avulso - ' . $item->custom_name
                             : ($item->custom_name ?? ($item->product->name ?? 'Produto')),
                         'quantity' => $item->quantity,
                         'unit_price' => floatval($item->unit_price),
@@ -1243,19 +1263,19 @@ class OrdersController extends Controller
                     'pending' => route('dashboard.orders.show', $order),
                 ],
             ];
-            
+
             $payer = [
                 'email' => $order->customer->email ?? 'cliente@email.com',
                 'first_name' => explode(' ', $order->customer->name ?? 'Cliente')[0],
                 'last_name' => (explode(' ', $order->customer->name ?? 'Cliente', 2)[1] ?? ''),
             ];
-            
+
             $result = $mpApi->createPaymentLink($orderData, $payer);
-            
+
             if ($result && isset($result['init_point'])) {
                 return $result['init_point'];
             }
-            
+
             // Fallback: retorna rota local que redireciona para Mercado Pago
             return route('payment.checkout', ['order' => $order->id, 'method' => $method]);
         } catch (\Exception $e) {
@@ -1271,25 +1291,25 @@ class OrdersController extends Controller
     private function buildDetailedDescription(Order $order): string
     {
         $description = "Pedido #{$order->order_number} - OLIKA\n\n";
-        
+
         // Itens do pedido
         $description .= "📦 ITENS:\n";
         foreach ($order->items as $item) {
-            $itemName = !$item->product_id && $item->custom_name 
-                ? 'Item Avulso - ' . $item->custom_name 
+            $itemName = !$item->product_id && $item->custom_name
+                ? 'Item Avulso - ' . $item->custom_name
                 : ($item->custom_name ?? ($item->product->name ?? 'Produto'));
             $description .= "• {$item->quantity}x {$itemName} - R$ " . number_format($item->unit_price, 2, ',', '.') . " un.\n";
         }
-        
+
         // Subtotal
         $subtotal = $order->total_amount ?? 0;
         $description .= "\n💰 SUBTOTAL: R$ " . number_format($subtotal, 2, ',', '.') . "\n";
-        
+
         // Taxa de entrega (se houver)
         if ($order->delivery_fee > 0) {
             $description .= "🚚 TAXA DE ENTREGA: R$ " . number_format($order->delivery_fee, 2, ',', '.') . "\n";
         }
-        
+
         // Descontos
         if ($order->discount_amount > 0) {
             if ($order->coupon_code) {
@@ -1298,11 +1318,11 @@ class OrdersController extends Controller
                 $description .= "🎟️ DESCONTO APLICADO: -R$ " . number_format($order->discount_amount, 2, ',', '.') . "\n";
             }
         }
-        
+
         // Total
         $total = $order->final_amount ?? $order->total_amount ?? 0;
         $description .= "\n✅ TOTAL: R$ " . number_format($total, 2, ',', '.') . "\n";
-        
+
         return $description;
     }
 
@@ -1313,7 +1333,7 @@ class OrdersController extends Controller
     {
         try {
             $customer = $order->customer;
-            
+
             if (!$customer || !$customer->phone) {
                 throw new \Exception('Cliente sem telefone cadastrado');
             }
@@ -1328,8 +1348,8 @@ class OrdersController extends Controller
                 $message .= "Seu pedido *{$order->order_number}* foi atualizado.\n\n";
                 $message .= "📦 *Resumo do pedido:*\n";
                 foreach ($order->items as $item) {
-                    $productName = !$item->product_id && $item->custom_name 
-                        ? 'Item Avulso - ' . $item->custom_name 
+                    $productName = !$item->product_id && $item->custom_name
+                        ? 'Item Avulso - ' . $item->custom_name
                         : ($item->custom_name ?? ($item->product->name ?? 'Produto'));
                     $message .= "• {$item->quantity}x {$productName}";
                     if ($item->special_instructions) {
@@ -1338,7 +1358,7 @@ class OrdersController extends Controller
                     $message .= "\n";
                 }
                 $message .= "\n💰 *Total: R$ " . number_format($order->final_amount ?? $order->total_amount, 2, ',', '.') . "*\n\n";
-                
+
                 if ($paymentLink) {
                     $message .= "💳 Para efetuar o pagamento, acesse:\n{$paymentLink}\n\n";
                     if (str_contains($paymentLink, 'pix')) {
@@ -1359,16 +1379,16 @@ class OrdersController extends Controller
             if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
                 $phoneNormalized = '55' . $phoneNormalized;
             }
-            
+
             Log::info('OrdersController: Enviando WhatsApp', [
                 'order_id' => $order->id,
                 'customer_phone_original' => $customer->phone,
                 'phone_normalized' => $phoneNormalized,
             ]);
-            
+
             // Enviar via WhatsApp usando número normalizado
             $result = $whatsappService->sendText($phoneNormalized, $message);
-            
+
             if (!isset($result['success']) || !$result['success']) {
                 Log::warning("Falha ao enviar WhatsApp", [
                     'order_id' => $order->id,
@@ -1383,7 +1403,7 @@ class OrdersController extends Controller
                     'phone_normalized' => $phoneNormalized,
                 ]);
             }
-            
+
             return true;
         } catch (\Exception $e) {
             Log::error("Erro ao enviar WhatsApp: " . $e->getMessage());
@@ -1441,11 +1461,11 @@ class OrdersController extends Controller
             }
 
             // Verificar se é cupom de frete grátis
-            $isFreeDeliveryCoupon = stripos($coupon->name ?? '', 'frete') !== false && 
-                                   (stripos($coupon->name ?? '', 'grátis') !== false || 
-                                    stripos($coupon->name ?? '', 'gratis') !== false || 
-                                    stripos($coupon->description ?? '', 'frete grátis') !== false ||
-                                    stripos($coupon->description ?? '', 'frete gratis') !== false);
+            $isFreeDeliveryCoupon = stripos($coupon->name ?? '', 'frete') !== false &&
+                (stripos($coupon->name ?? '', 'grátis') !== false ||
+                    stripos($coupon->name ?? '', 'gratis') !== false ||
+                    stripos($coupon->description ?? '', 'frete grátis') !== false ||
+                    stripos($coupon->description ?? '', 'frete gratis') !== false);
 
             // Se for cupom de frete grátis, validar se o pedido tem entrega
             if ($isFreeDeliveryCoupon) {
@@ -1453,7 +1473,7 @@ class OrdersController extends Controller
                 // E se a taxa de entrega atual é > 0 (caso contrário não faz sentido aplicar cupom de frete grátis)
                 $isDelivery = $order->delivery_type === 'delivery' || $order->address_id !== null;
                 $hasDeliveryFee = ($order->delivery_fee ?? 0) > 0;
-                
+
                 if (!$isDelivery || !$hasDeliveryFee) {
                     DB::rollBack();
                     \Log::warning('Tentativa de aplicar cupom de frete grátis em pedido sem entrega ou sem taxa de entrega', [
@@ -1531,7 +1551,7 @@ class OrdersController extends Controller
             if ($order->coupon_code) {
                 $couponCode = $order->coupon_code; // Salvar código antes de limpar
                 $coupon = Coupon::where('code', $couponCode)->first();
-                
+
                 // Remover registro do cupom do pedido antes de limpar o código (se a tabela existir)
                 try {
                     if (Schema::hasTable('order_coupons')) {
@@ -1545,7 +1565,7 @@ class OrdersController extends Controller
                         'error' => $e->getMessage(),
                     ]);
                 }
-                
+
                 // Reverter desconto
                 $order->coupon_code = null;
                 $order->discount_amount = 0;
@@ -1579,25 +1599,25 @@ class OrdersController extends Controller
 
             $oldFee = $order->delivery_fee ?? 0;
             $newFee = $request->delivery_fee;
-            
+
             // Se a nova taxa é 0 e há um cupom aplicado, verificar se é cupom de frete grátis
             if ($newFee == 0 && $order->coupon_code) {
                 $coupon = Coupon::where('code', $order->coupon_code)->first();
                 if ($coupon) {
                     // Verificar se é cupom de frete grátis
-                    $isFreeDeliveryCoupon = stripos($coupon->name ?? '', 'frete') !== false && 
-                                           (stripos($coupon->name ?? '', 'grátis') !== false || 
-                                            stripos($coupon->name ?? '', 'gratis') !== false ||
-                                            stripos($coupon->description ?? '', 'frete grátis') !== false ||
-                                            stripos($coupon->description ?? '', 'frete gratis') !== false);
-                    
+                    $isFreeDeliveryCoupon = stripos($coupon->name ?? '', 'frete') !== false &&
+                        (stripos($coupon->name ?? '', 'grátis') !== false ||
+                            stripos($coupon->name ?? '', 'gratis') !== false ||
+                            stripos($coupon->description ?? '', 'frete grátis') !== false ||
+                            stripos($coupon->description ?? '', 'frete gratis') !== false);
+
                     // Se for cupom de frete grátis, removê-lo automaticamente
                     if ($isFreeDeliveryCoupon) {
                         \Log::info('Removendo cupom de frete grátis automaticamente ao zerar taxa de entrega', [
                             'order_id' => $order->id,
                             'coupon_code' => $coupon->code,
                         ]);
-                        
+
                         // Remover registro do cupom do pedido (se a tabela existir)
                         try {
                             if (Schema::hasTable('order_coupons')) {
@@ -1610,7 +1630,7 @@ class OrdersController extends Controller
                                 'error' => $e->getMessage(),
                             ]);
                         }
-                        
+
                         // Limpar cupom e recálculo do desconto
                         $couponCode = $order->coupon_code;
                         $order->coupon_code = null;
@@ -1619,7 +1639,7 @@ class OrdersController extends Controller
                     }
                 }
             }
-            
+
             $order->delivery_fee = $newFee;
             $totalAmount = $order->total_amount ?? 0;
             $discountAmount = $order->discount_amount ?? 0;
@@ -1663,10 +1683,10 @@ class OrdersController extends Controller
             DB::beginTransaction();
 
             $discount = 0;
-            
+
             $totalAmount = $order->total_amount ?? 0;
             $deliveryFee = $order->delivery_fee ?? 0;
-            
+
             // Calcular desconto do cupom se existir
             $couponDiscount = 0;
             if ($order->coupon_code) {
@@ -1686,7 +1706,7 @@ class OrdersController extends Controller
 
             // Total de desconto = desconto do cupom + desconto manual
             $totalDiscount = $couponDiscount + $discount;
-            
+
             $order->discount_amount = $totalDiscount;
             $order->manual_discount_type = $request->discount_type; // Salvar tipo do desconto manual
             $order->manual_discount_value = $request->discount_value; // Salvar valor do desconto manual
@@ -1695,8 +1715,8 @@ class OrdersController extends Controller
 
             DB::commit();
 
-            $discountLabel = $request->discount_type === 'percentage' 
-                ? number_format($request->discount_value, 2) . '%' 
+            $discountLabel = $request->discount_type === 'percentage'
+                ? number_format($request->discount_value, 2) . '%'
                 : 'R$ ' . number_format($request->discount_value, 2, ',', '.');
 
             return redirect()->back()->with('success', "Desconto de {$discountLabel} aplicado com sucesso!");
@@ -1713,7 +1733,7 @@ class OrdersController extends Controller
 
             $totalAmount = $order->total_amount ?? 0;
             $deliveryFee = $order->delivery_fee ?? 0;
-            
+
             // Calcular desconto do cupom se existir
             $couponDiscount = 0;
             if ($order->coupon_code) {
@@ -1973,7 +1993,7 @@ class OrdersController extends Controller
             $allInput = $request->all();
             $customName = $request->input('custom_name');
             $unitPrice = $request->input('unit_price');
-            
+
             \Log::info('=== ADD ITEM - INÍCIO ===', [
                 'order_id' => $order->id,
                 'all_input' => $allInput,
@@ -1999,23 +2019,23 @@ class OrdersController extends Controller
                 'has_custom_name' => $request->has('custom_name'),
                 'has_unit_price' => $request->has('unit_price'),
             ]);
-            
+
             // Verificar se é item avulso - produto_id vazio, null, string vazia, ou 'loose_item'
             $productId = $request->input('product_id');
             // Considerar item avulso se: vazio, null, string vazia, 'loose_item', ou não é numérico
-            $isLooseItem = empty($productId) || 
-                          $productId === '' || 
-                          $productId === 'loose_item' || 
-                          $productId === null || 
-                          $productId === 'null' ||
-                          (!is_numeric($productId) && $productId !== '0');
-            
+            $isLooseItem = empty($productId) ||
+                $productId === '' ||
+                $productId === 'loose_item' ||
+                $productId === null ||
+                $productId === 'null' ||
+                (!is_numeric($productId) && $productId !== '0');
+
             \Log::info('=== ADD ITEM - TIPO IDENTIFICADO ===', [
                 'isLooseItem' => $isLooseItem,
                 'productId' => $productId,
                 'productId_type' => gettype($productId),
             ]);
-            
+
             // Validação baseada no tipo de item
             if ($isLooseItem) {
                 // Validação para item avulso
@@ -2095,7 +2115,7 @@ class OrdersController extends Controller
                     // Se já existe, apenas aumenta a quantidade
                     $existingItem->quantity += $request->quantity;
                     $existingItem->total_price = $existingItem->unit_price * $existingItem->quantity;
-                    
+
                     // Atualiza observações se fornecido
                     if ($request->special_instructions) {
                         $existingItem->special_instructions = $request->special_instructions;
@@ -2103,7 +2123,7 @@ class OrdersController extends Controller
                     if ($request->custom_name) {
                         $existingItem->custom_name = $request->custom_name;
                     }
-                    
+
                     $existingItem->save();
                 } else {
                     // Cria novo item
@@ -2150,7 +2170,7 @@ class OrdersController extends Controller
                 'errors' => $e->errors(),
                 'message' => $e->getMessage(),
             ]);
-            
+
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -2158,7 +2178,7 @@ class OrdersController extends Controller
                     'error' => $e->getMessage(),
                 ], 422);
             }
-            
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2169,14 +2189,14 @@ class OrdersController extends Controller
                 'line' => $e->getLine(),
                 'trace' => substr($e->getTraceAsString(), 0, 1000),
             ]);
-            
+
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Erro ao adicionar item: ' . $e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'Erro ao adicionar item: ' . $e->getMessage())->withInput();
         }
     }
@@ -2194,21 +2214,21 @@ class OrdersController extends Controller
             'payment',
             'orderDeliveryFee'
         ]);
-        
+
         // Histórico de status
         $statusHistory = DB::table('order_status_history')
             ->where('order_id', $order->id)
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         // Buscar configurações do sistema
         $settings = \App\Models\Setting::getSettings();
-        
+
         // Se for requisição AJAX, retornar apenas o conteúdo HTML do modal
         if (request()->ajax() || request()->wantsJson()) {
             return view('dashboard.orders.receipt-modal', compact('order', 'statusHistory', 'settings'));
         }
-        
+
         return view('dashboard.orders.receipt', compact('order', 'statusHistory', 'settings'));
     }
 
@@ -2225,13 +2245,13 @@ class OrdersController extends Controller
             'payment',
             'orderDeliveryFee'
         ]);
-        
+
         // Gerar QR code do WhatsApp em base64
         $whatsappQrBase64 = $this->generateWhatsAppQRCode();
-        
+
         return view('dashboard.orders.fiscal-receipt', compact('order', 'whatsappQrBase64'));
     }
-    
+
     /**
      * Exibe recibo de conferência (sem valores, apenas produtos e quantidades)
      */
@@ -2242,10 +2262,10 @@ class OrdersController extends Controller
             'items.product',
             'items.variant',
         ]);
-        
+
         return view('dashboard.orders.check-receipt', compact('order'));
     }
-    
+
     /**
      * Gera QR code do WhatsApp em base64 para impressão
      */
@@ -2255,25 +2275,25 @@ class OrdersController extends Controller
             // Buscar número do WhatsApp das configurações
             $settings = \App\Models\Setting::getSettings();
             $phone = $settings->business_phone ?? config('olika.business.phone', '(71) 98701-9420');
-            
+
             // Remover caracteres não numéricos e adicionar código do país se necessário
             $phoneDigits = preg_replace('/\D/', '', $phone);
             if (strlen($phoneDigits) === 11 && !str_starts_with($phoneDigits, '55')) {
                 // Se tem 11 dígitos (formato brasileiro), adicionar código do país
                 $phoneDigits = '55' . $phoneDigits;
             }
-            
+
             $whatsappUrl = 'https://wa.me/' . $phoneDigits;
-            
+
             // Gerar QR code usando API externa e converter para base64
             $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($whatsappUrl);
-            
+
             // Fazer requisição e converter para base64
             $imageData = @file_get_contents($qrUrl);
             if ($imageData !== false) {
                 return base64_encode($imageData);
             }
-            
+
             return null;
         } catch (\Exception $e) {
             \Log::error('Erro ao gerar QR code do WhatsApp', [
@@ -2295,21 +2315,21 @@ class OrdersController extends Controller
             'payment',
             'orderDeliveryFee'
         ]);
-        
+
         $printerService = new \App\Services\FiscalPrinterService();
         $result = $printerService->sendToPrinter($order, 'thermal');
-        
+
         if (!$result['success']) {
             return response()->json($result, 500);
         }
-        
+
         // Adicionar informações adicionais para o monitor
         $result['order_id'] = $order->id;
         $result['order_number'] = $order->order_number;
         $result['status'] = $order->status;
         $result['payment_status'] = $order->payment_status;
         $result['created_at'] = $order->created_at->toIso8601String();
-        
+
         return response()->json($result);
     }
 
@@ -2323,22 +2343,22 @@ class OrdersController extends Controller
             'items.product',
             'items.variant'
         ]);
-        
+
         $printerService = new \App\Services\FiscalPrinterService();
         // Usar modo 'check' para gerar recibo sem preços
         $result = $printerService->sendToPrinter($order, 'thermal', 'check');
-        
+
         if (!$result['success']) {
             return response()->json($result, 500);
         }
-        
+
         // Adicionar informações adicionais para o monitor
         $result['order_id'] = $order->id;
         $result['order_number'] = $order->order_number;
         $result['status'] = $order->status;
         $result['payment_status'] = $order->payment_status;
         $result['created_at'] = $order->created_at->toIso8601String();
-        
+
         return response()->json($result);
     }
 
@@ -2357,25 +2377,25 @@ class OrdersController extends Controller
     {
         try {
             $clientId = currentClientId();
-            
+
             // Buscar pedidos que precisam ser impressos:
             // 1. Pedidos com print_requested_at (independente de pagamento) - prioridade 1
             // 2. Pedidos pagos e confirmados recentes - prioridade 2
             $timeLimit = now()->subHours(24);
-            
+
             $orders = Order::with(['customer', 'address'])
-                ->where(function($q) use ($timeLimit) {
+                ->where(function ($q) use ($timeLimit) {
                     // PRIORIDADE 1: Qualquer pedido solicitado explicitamente (print_requested_at)
-                    $q->where(function($subQ) {
+                    $q->where(function ($subQ) {
                         $subQ->whereNotNull('print_requested_at')
-                             ->whereNull('printed_at');
+                            ->whereNull('printed_at');
                     })
-                    // PRIORIDADE 2: Pedidos pagos e confirmados das últimas 24h
-                    ->orWhere(function($subQ) use ($timeLimit) {
+                        // PRIORIDADE 2: Pedidos pagos e confirmados das últimas 24h
+                        ->orWhere(function ($subQ) use ($timeLimit) {
                         $subQ->whereIn('payment_status', ['paid', 'approved'])
-                             ->where('status', 'confirmed')
-                             ->where('created_at', '>=', $timeLimit)
-                             ->whereNull('printed_at');
+                            ->where('status', 'confirmed')
+                            ->where('created_at', '>=', $timeLimit)
+                            ->whereNull('printed_at');
                     });
                 })
                 ->orderByRaw('CASE WHEN print_requested_at IS NOT NULL THEN 0 ELSE 1 END') // Priorizar solicitados
@@ -2386,7 +2406,7 @@ class OrdersController extends Controller
 
             return response()->json([
                 'success' => true,
-                'orders' => $orders->map(function($order) {
+                'orders' => $orders->map(function ($order) {
                     return [
                         'id' => $order->id,
                         'order_number' => $order->order_number,
@@ -2404,7 +2424,7 @@ class OrdersController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'error' => 'Erro ao buscar pedidos',
@@ -2510,7 +2530,7 @@ class OrdersController extends Controller
     {
         try {
             $timeLimit = now()->subHours(24);
-            
+
             // Marcar como impresso todos os pedidos antigos que ainda estão pendentes
             $updated = Order::whereNotNull('print_requested_at')
                 ->where('print_requested_at', '<', $timeLimit)
@@ -2519,7 +2539,7 @@ class OrdersController extends Controller
                     'printed_at' => now(),
                     'updated_at' => now()
                 ]);
-            
+
             Log::info('Solicitações antigas de impressão limpas', [
                 'count' => $updated,
                 'time_limit' => $timeLimit->toDateTimeString()
@@ -2549,26 +2569,26 @@ class OrdersController extends Controller
     {
         // Recalcular total dos itens
         $itemsTotal = $order->items()->sum('total_price');
-        
+
         $order->total_amount = $itemsTotal;
-        
+
         // Recalcular valor final considerando desconto e entrega
         $deliveryFee = $order->delivery_fee ?? 0;
         $discountAmount = $order->discount_amount ?? 0;
-        
+
         $order->final_amount = $itemsTotal + $deliveryFee - $discountAmount;
-        
+
         // Garantir que o valor final não seja negativo
         if ($order->final_amount < 0) {
             $order->final_amount = 0;
         }
-        
+
         $order->save();
-        
+
         // Atualizar débitos abertos relacionados a este pedido
         $this->updateOrderDebts($order);
     }
-    
+
     /**
      * Atualiza os débitos abertos relacionados a um pedido quando o total muda
      */
@@ -2580,19 +2600,19 @@ class OrdersController extends Controller
                 ->where('type', 'debit')
                 ->where('status', 'open')
                 ->get();
-            
+
             if ($debts->isEmpty()) {
                 return; // Não há débitos para atualizar
             }
-            
+
             $newAmount = $order->final_amount ?? $order->total_amount ?? 0;
-            
+
             foreach ($debts as $debt) {
                 // Atualizar o valor do débito para o novo total do pedido
                 $debt->amount = $newAmount;
                 $debt->description = "Pedido #{$order->order_number} - Lançado manualmente como débito";
                 $debt->save();
-                
+
                 Log::info('Débito atualizado após alteração no pedido', [
                     'order_id' => $order->id,
                     'debt_id' => $debt->id,
@@ -2669,7 +2689,7 @@ class OrdersController extends Controller
 
             // Verificar se foi pago
             $wasPaid = in_array(strtolower($order->payment_status), ['paid', 'approved']);
-            
+
             if (!$wasPaid) {
                 return redirect()->back()->with('error', 'Apenas pedidos pagos podem ser estornados.');
             }
@@ -2681,7 +2701,7 @@ class OrdersController extends Controller
                 try {
                     $mercadoPagoService = new \App\Services\MercadoPagoApiService();
                     $refundResult = $mercadoPagoService->refundPayment($order->payment_id);
-                    
+
                     if ($refundResult['success']) {
                         \Log::info('Estorno: Pagamento estornado no Mercado Pago', [
                             'order_id' => $order->id,
@@ -2697,7 +2717,7 @@ class OrdersController extends Controller
                             'error' => $refundResult['error'] ?? 'Erro desconhecido',
                             'details' => $refundResult['details'] ?? null,
                         ]);
-                        
+
                         // Não bloquear o processo, mas adicionar ao motivo
                         $reason .= ' [ATENÇÃO: Estorno no Mercado Pago pode ter falhado - verificar manualmente]';
                     }
@@ -2708,7 +2728,7 @@ class OrdersController extends Controller
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
-                    
+
                     // Não bloquear o processo, mas adicionar ao motivo
                     $reason .= ' [ATENÇÃO: Erro ao estornar no Mercado Pago - verificar manualmente]';
                 }
@@ -2773,19 +2793,19 @@ class OrdersController extends Controller
                     if ($coupon) {
                         // Decrementar contador de uso
                         $coupon->decrement('used_count');
-                        
+
                         // Remover registro de uso do cupom
                         if (\Schema::hasTable('order_coupons')) {
                             \App\Models\OrderCoupon::where('order_id', $order->id)->delete();
                         }
-                        
+
                         // Remover registro de uso se existir tabela coupon_usages
                         if (\Schema::hasTable('coupon_usages')) {
                             \DB::table('coupon_usages')
                                 ->where('order_id', $order->id)
                                 ->delete();
                         }
-                        
+
                         \Log::info('Estorno: Uso de cupom revertido', [
                             'order_id' => $order->id,
                             'coupon_code' => $order->coupon_code
@@ -2805,11 +2825,11 @@ class OrdersController extends Controller
                     $loyaltyTransactions = \App\Models\LoyaltyTransaction::where('order_id', $order->id)
                         ->where('type', 'earned')
                         ->get();
-                    
+
                     foreach ($loyaltyTransactions as $transaction) {
                         // Marcar transação como inativa
                         $transaction->update(['is_active' => false]);
-                        
+
                         // Criar transação de ajuste para reverter pontos
                         // Usar 'adjustment' que é um tipo válido no enum
                         \App\Models\LoyaltyTransaction::create([
@@ -2822,7 +2842,7 @@ class OrdersController extends Controller
                             'is_active' => true,
                         ]);
                     }
-                    
+
                     \Log::info('Estorno: Pontos de fidelidade revertidos', [
                         'order_id' => $order->id,
                         'transactions_count' => $loyaltyTransactions->count()
@@ -2845,7 +2865,7 @@ class OrdersController extends Controller
                 // Verificar se as colunas existem antes de inserir
                 $hasUpdatedAt = DB::getSchemaBuilder()->hasColumn('order_status_history', 'updated_at');
                 $hasClientId = DB::getSchemaBuilder()->hasColumn('order_status_history', 'client_id');
-                
+
                 $insertData = [
                     'order_id' => $order->id,
                     'old_status' => $order->getOriginal('status') ?? 'pending',
@@ -2854,18 +2874,18 @@ class OrdersController extends Controller
                     'user_id' => auth()->check() ? auth()->id() : null,
                     'created_at' => now(),
                 ];
-                
+
                 // Adicionar client_id se a coluna existir
                 if ($hasClientId) {
                     // Usar client_id do pedido ou currentClientId() como fallback
                     $insertData['client_id'] = $order->client_id ?? currentClientId() ?? null;
                 }
-                
+
                 // Só adicionar updated_at se a coluna existir
                 if ($hasUpdatedAt) {
                     $insertData['updated_at'] = now();
                 }
-                
+
                 DB::table('order_status_history')->insert($insertData);
             } catch (\Exception $e) {
                 \Log::warning('Estorno: Erro ao registrar histórico', [
@@ -2926,21 +2946,21 @@ class OrdersController extends Controller
             $lastOrder = Order::where('order_number', 'like', 'OLK-%')
                 ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(order_number, "-", 2), "-", -1) AS UNSIGNED) DESC')
                 ->first();
-            
+
             $sequenceNumber = 144;
             if ($lastOrder && preg_match('/OLK-(\d+)-/', $lastOrder->order_number, $matches)) {
-                $lastSequence = (int)$matches[1];
+                $lastSequence = (int) $matches[1];
                 if ($lastSequence >= 144) {
                     $sequenceNumber = $lastSequence + 1;
                 }
             }
-            
+
             $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             $randomSuffix = '';
             for ($i = 0; $i < 6; $i++) {
                 $randomSuffix .= $characters[rand(0, strlen($characters) - 1)];
             }
-            $newOrderNumber = $prefix . '-' . str_pad((string)$sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
+            $newOrderNumber = $prefix . '-' . str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT) . '-' . $randomSuffix;
 
             // Criar novo pedido com os mesmos dados do pedido cancelado
             $newOrder = Order::create([
@@ -3027,10 +3047,10 @@ class OrdersController extends Controller
             $customerName = $order->customer->name;
             $orderNumber = $order->order_number;
             $total = number_format($order->final_amount, 2, ',', '.');
-            
+
             // Usar o link de pagamento PIX padrão (gerado quando o pedido foi criado)
             $paymentLink = route('pedido.payment.pix', $order->id);
-            
+
             $message = "*Cobrança - Pedido #{$orderNumber}*\n\n";
             $message .= "Olá {$customerName}!\n\n";
             $message .= "💵 *Valor:* R$ {$total}\n";
@@ -3049,14 +3069,14 @@ class OrdersController extends Controller
                     'order_number' => $order->order_number,
                     'customer_phone' => $phone,
                 ]);
-                
+
                 return redirect()->back()->with('success', 'Cobrança enviada via WhatsApp com sucesso!');
             } else {
                 \Log::warning('Erro ao enviar cobrança via WhatsApp', [
                     'order_id' => $order->id,
                     'result' => $result,
                 ]);
-                
+
                 return redirect()->back()->with('error', 'Erro ao enviar cobrança via WhatsApp.');
             }
 

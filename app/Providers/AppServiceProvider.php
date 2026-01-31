@@ -12,6 +12,8 @@ use App\Models\Order;
 use App\Observers\CustomerDebtObserver;
 use App\Observers\OrderFinancialObserver;
 
+use Illuminate\Pagination\Paginator;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -28,29 +30,33 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Usar a view de paginação personalizada (Tailwind traduzido)
+        Paginator::defaultView('vendor.pagination.tailwind');
+        Paginator::defaultSimpleView('vendor.pagination.tailwind');
+
         // Detectar URL base dinamicamente baseado no host atual
         // IMPORTANTE: Isso deve ser feito ANTES de qualquer uso de asset() ou url()
         $request = request();
         if ($request) {
             $currentHost = $request->getHost();
             $scheme = $request->getScheme();
-            
+
             // Detectar se é ambiente de desenvolvimento
             $isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
-            
+
             // Forçar HTTPS em produção e desenvolvimento (se disponível)
             if (app()->environment('production') || $isDevDomain) {
                 URL::forceScheme('https');
             }
-            
+
             // Forçar URL base baseada no host atual
             // Isso garante que asset() e url() usem o domínio correto
             $rootUrl = $scheme . '://' . $currentHost;
             URL::forceRootUrl($rootUrl);
-            
+
             // Configurar URL do storage público dinamicamente
             Config::set('filesystems.disks.public.url', $rootUrl . '/storage');
-            
+
             // Garantir que ASSET_URL também use o domínio atual (se configurado)
             if (config('app.asset_url')) {
                 Config::set('app.asset_url', $rootUrl);
@@ -62,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Helper Blade @role
-        Blade::if('role', function(...$roles){
+        Blade::if('role', function (...$roles) {
             $u = auth()->user();
             return $u && (empty($roles) || in_array($u->role, $roles));
         });

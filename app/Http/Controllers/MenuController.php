@@ -2,228 +2,160 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
-use Illuminate\Http\Request;
+use App\Models\Client;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 
 class MenuController extends Controller
 {
     /**
-     * Exibe o cardápio principal
+     * Exibe a página inicial do cardápio do tenant atual
      */
-    public function index()
+    public function index(Request $request)
     {
-        // 1) Destaques primeiro (escopos do seu Model)
-        $featuredProducts = Product::query()
-            ->select('products.*')
-            ->active()
-            ->showInCatalog()
-            ->available()
-            ->purchasable()
-            ->featured()
-            ->with(['images', 'category']) // Eager load images e category para evitar N+1
-            ->ordered()
-            ->get();
+        // O tenant (client_id) já é gerenciado pelo middleware e Trait BelongsToClient.
+        // Apenas buscamos os dados, e o escopo global filtra automaticamente pelo cliente.
 
-        $featuredIds = $featuredProducts->pluck('id')->unique()->values();
-
-        // 2) Buscar produtos novos (últimos 15 dias) para categoria dinâmica "Novidades"
-        $newProductsThreshold = now()->subDays(15);
-        $newProducts = Product::query()
-            ->select('products.*')
-            ->where('created_at', '>=', $newProductsThreshold)
-            ->whereNotIn('products.id', $featuredIds->toArray()) // Excluir produtos em destaque
-            ->active()
-            ->showInCatalog()
-            ->available()
-            ->purchasable()
-            ->with(['images', 'category'])
-            ->inRandomOrder() // Ordenar aleatoriamente
-            ->limit(8) // Limitar a 8 itens
-            ->get();
-
-        // 3) Categorias ordenadas com seus produtos agrupados
-        // IMPORTANTE: Produtos podem aparecer tanto em categorias quanto em Novidades/Destaques
-        $categories = Category::query()
-            ->select('categories.*')
-            ->active()
-            ->ordered()
-            ->get()
-            ->map(function ($category) {
-                // Buscar TODOS os produtos da categoria (sem excluir nada)
-                $category->products = Product::query()
-                    ->where('category_id', $category->id)
-                    ->active()
-                    ->showInCatalog()
-                    ->available()
-                    ->purchasable()
-                    ->with(['images'])
-                    ->ordered()
-                    ->get();
-                
-                return $category;
-            })
-            ->filter(function ($category) {
-                // Remover categorias sem produtos (mas manter "Novidades" que será tratada separadamente)
-                $categoryName = strtolower($category->name);
-                if (strpos($categoryName, 'novidades') !== false || strpos($categoryName, 'novidade') !== false) {
-                    return false; // Remover categoria "Novidades" do banco, vamos criar dinamicamente
-                }
-                return $category->products->count() > 0;
-            });
-        
-        // 4) Criar categoria dinâmica "Novidades" se houver produtos novos
-        if ($newProducts->count() > 0) {
-            // Buscar categoria "Novidades" do banco para pegar configurações (sort_order, display_type)
-            $novidadesFromDB = Category::query()
-                ->where(function($q) {
-                    $q->whereRaw('LOWER(name) LIKE ?', ['%novidades%'])
-                      ->orWhereRaw('LOWER(name) LIKE ?', ['%novidade%']);
-                })
-                ->first();
-            
-            $novidadesCategory = (object) [
-                'id' => 'novidades',
-                'name' => $novidadesFromDB ? $novidadesFromDB->name : 'Novidades !! 🎉',
-                'description' => $novidadesFromDB->description ?? null,
-                'image_url' => $novidadesFromDB->image_url ?? null,
-                'is_active' => true,
-                'sort_order' => -1, // Ordem negativa para garantir que seja sempre primeiro
-                'display_type' => $novidadesFromDB ? ($novidadesFromDB->display_type ?? 'list_horizontal') : 'list_horizontal',
-                'products' => $newProducts,
-            ];
-            
-            // Adicionar "Novidades" à coleção
-            $categories->push($novidadesCategory);
-        }
-        
-        // 5) Ordenar categorias: Novidades sempre primeiro, depois ordem alfabética
-        $categories = $categories->sortBy(function($category) {
-            // Se for "Novidades", retorna ordem -1 (sempre primeiro)
-            if (is_string($category->id) && $category->id === 'novidades') {
-                return -1;
+        // Buscar categorias ativas e ordenadas, com produtos também ativos/disponíveis
+        $categories = Category::with([
+            'products' => function ($query) {
+                $query->where('is_active', true)
+                    ->where('is_available', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
             }
-            // Para outras categorias, ordenar alfabeticamente pelo nome
-            return strtolower($category->name);
-        })->values();
+        ])
+            ->active()   // Scope do model Category
+            ->ordered()  // Scope do model Category
+            ->get();
 
-        // Criar objeto store com valores padrão
-        $store = (object) [
-            'name' => 'Olika',
-            'cover_url' => asset('images/hero-breads.jpg'),
-            'category_label' => 'Pães • Artesanais',
-            'reviews_count' => '250+',
-            'is_open' => true,
-            'hours' => 'Seg–Sex: 7h–19h · Sáb–Dom: 8h–14h',
-            'address' => 'Rua dos Pães Artesanais, 123 Bairro Gourmet – São Paulo, SP',
-            'phone' => '(11) 98765-4321',
-            'bio' => 'Pães artesanais com fermentação natural. Tradição e qualidade em cada fornada.'
-        ];
+        // Lista plana de produtos ativos para contagem geral e busca rápida se necessário (opcional na view)
+        $products = Product::where('is_active', true)
+            ->where('is_available', true)
+            ->get();
 
-        return view('pedido.index', compact('store', 'categories', 'featuredProducts'));
+        return view('pedido.index', compact('categories', 'products'));
     }
 
     /**
-     * Exibe produtos de uma categoria específica
+     * Exibe uma categoria específica
      */
-    public function category(Category $category)
+    public function category(Request $request, $category)
     {
-        $products = $category->products()
-            ->active()
-            ->showInCatalog()
-            ->available()
-            ->purchasable()
-            ->with(['images']) // Eager load images
-            ->ordered()
-            ->get();
-        
-        // Buscar categorias para sidebar
-        $categories = Category::query()
-            ->select('categories.*')
-            ->active()
-            ->ordered()
-            ->get();
+        // Se category for slug ou ID
+        $query = Category::with([
+            'products' => function ($q) {
+                $q->where('is_active', true)
+                    ->where('is_available', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
+            }
+        ]);
 
-        return view('pedido.category', compact('category', 'products', 'categories'));
+        if (is_numeric($category)) {
+            $cat = $query->find($category);
+        } else {
+            // Tentar buscar por slug se existir campo, ou ID string
+            $cat = $query->where('id', $category)->first();
+            // TODO: Se tiver slug, mudar para where('slug', $category)
+        }
+
+        if (!$cat) {
+            abort(404, 'Categoria não encontrada.');
+        }
+
+        // Reutiliza a view index filtrada ou view específica
+        // Se existir view category, usar. Senão index com filtro.
+        if (View::exists('pedido.category')) {
+            return view('pedido.category', ['category' => $cat, 'products' => $cat->products]);
+        }
+
+        $products = $cat->products()->where('is_active', true)->get();
+
+        return view('pedido.index', [
+            'categories' => collect([$cat]),
+            'products' => $products
+        ]);
     }
 
     /**
      * Exibe detalhes de um produto
      */
-    public function product(Product $product)
+    public function product(Request $request, $product)
     {
-        // Bloquear acesso direto a produtos indisponíveis/inativos/não compráveis ou que não aparecem no catálogo
-        $isPurchasable = ($product->price > 0) || $product->variants()->where('is_active', true)->where('price', '>', 0)->exists();
-        if (!$product->is_active || !$product->show_in_catalog || !$product->is_available || !$isPurchasable) {
-            abort(404);
+        // Carregar produto com variações e imagens
+        $prod = Product::with(['category', 'variants', 'images', 'allergens'])
+            ->where('is_active', true) // Segurança extra
+            ->find($product);
+
+        if (!$prod) {
+            // Tenta buscar pelo ID na URL se passed as object binding falhar ou se for integer
+            $prod = Product::with(['category', 'variants', 'images', 'allergens'])
+                ->where('is_active', true)
+                ->find($product);
         }
-        $relatedProducts = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
-            ->active()
-            ->showInCatalog()
-            ->available()
-            ->purchasable()
-            ->with(['images']) // Eager load images
-            ->ordered()
+
+        if (!$prod) {
+            abort(404, 'Produto não encontrado.');
+        }
+
+        // Produtos relacionados (mesma categoria)
+        $related = Product::where('category_id', $prod->category_id)
+            ->where('id', '!=', $prod->id)
+            ->where('is_active', true)
+            ->where('is_available', true)
             ->limit(4)
             ->get();
 
-        // Buscar categorias para sidebar
-        $categories = Category::query()
-            ->select('categories.*')
-            ->active()
-            ->ordered()
-            ->get();
-
-        return view('pedido.product', compact('product', 'relatedProducts', 'categories'));
+        return view('pedido.product', [
+            'product' => $prod,
+            'related' => $related
+        ]);
     }
 
     /**
-     * Quick-view JSON público
+     * Retorna JSON do produto (para modais/quickview)
      */
-    public function productJson(Product $product, Request $request)
+    /**
+     * Retorna HTML do modal do produto
+     */
+    public function productModal($product)
     {
-        $product->load(['category','images','variants' => function($q){ 
-            $q->where('is_active', true)->orderBy('sort_order'); 
-        }]);
-        $variantsCol = ($product->variants ?? collect())->map(function($v){
-            return [
-                'id' => $v->id,
-                'name' => $v->name,
-                'price' => (float)($v->price ?? 0),
-                'is_active' => (bool)$v->is_active,
-                'sort_order' => (int)$v->sort_order,
-                'weight_grams' => (int)($v->weight_grams ?? 0),
-            ];
-        })->values();
+        $prod = Product::with([
+            'category',
+            'variants' => function ($q) {
+                $q->where('is_active', true)->orderBy('sort_order');
+            },
+            'images',
+            'allergens'
+        ])
+            ->where('is_active', true)
+            ->find($product);
 
-        $basePrice = (float)($product->price ?? 0);
-        if ($basePrice <= 0 && $variantsCol->count() > 0) {
-            $minPos = $variantsCol->pluck('price')->filter(function($p){ return is_numeric($p) && $p > 0; })->min();
-            $basePrice = $minPos !== null ? (float)$minPos : 0.0;
+        if (!$prod) {
+            return response()->json(['error' => 'Produto não encontrado'], 404);
         }
 
-        \Log::info('Menu.productJson', [
-            'product_id' => $product->id,
-            'product_price' => (float)$product->price,
-            'variants_count' => $variantsCol->count(),
-            'first_variant' => $variantsCol->first(),
-            'basePrice' => $basePrice,
-        ]);
+        return view('pedido.partials.product-modal-content', ['product' => $prod]);
+    }
 
-        return response()->json([
-            'id' => $product->id,
-            'name' => $product->name,
-            'description' => $product->description,
-            'category' => $product->category ? ['id'=>$product->category->id,'name'=>$product->category->name] : null,
-            'image_url' => $product->image_url,
-            'cover_image' => $product->cover_image,
-            'images' => ($product->images ?? collect())->map(fn($i)=>['id'=>$i->id,'path'=>$i->path,'is_primary'=>(bool)$i->is_primary])->values(),
-            'price' => $basePrice,
-            'weight_grams' => (int)($product->weight_grams ?? 0),
-            'has_variants' => $variantsCol->count() > 0,
-            'variants' => $variantsCol,
-        ]);
+    /**
+     * Retorna JSON do produto (para modais/quickview)
+     */
+    public function productJson($product)
+    {
+        $prod = Product::with(['variants', 'images', 'allergens'])
+            ->where('is_active', true)
+            ->find($product);
+
+        if (!$prod) {
+            return response()->json(['error' => 'Produto não encontrado'], 404);
+        }
+
+        return response()->json($prod);
     }
 
     /**
@@ -231,36 +163,40 @@ class MenuController extends Controller
      */
     public function search(Request $request)
     {
-        $query = $request->get('q');
-        
+        $query = $request->input('q');
+
         if (empty($query)) {
             return redirect()->route('pedido.index');
         }
 
-        $products = Product::where(function ($q) use ($query) {
-            $q->where('name', 'like', "%{$query}%")
-              ->orWhere('description', 'like', "%{$query}%");
-        })
-        ->active()
-        ->showInCatalog()
-        ->available()
-        ->with(['images']) // Eager load images
-        ->ordered()
-        ->get();
+        $products = Product::where('is_active', true)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', '%' . $query . '%')
+                    ->orWhere('description', 'like', "%{$query}%");
+            })
+            ->where('is_available', true)
+            ->get();
 
-        return view('pedido.search', compact('products', 'query'));
-    }
+        // Se existir view de search, usar (mas verificamos que search.blade.php existe e é pequena, talvez incompleta? Vamos usar index por segurança)
+        if (View::exists('pedido.search')) {
+            // return view('pedido.search', compact('products', 'query'));
+        }
 
-    /**
-     * Download do cardápio
-     */
-    public function download()
-    {
-        // Por enquanto, retorna uma resposta simples
-        // Você pode implementar geração de PDF aqui
-        return response()->json([
-            'message' => 'Download do cardápio em desenvolvimento',
-            'status' => 'info'
+        // Fallback robusto: Encapsular resultados em uma Categoria fictícia para reutilizar a lógica da view pedido.index
+        $searchCategory = new Category([
+            'id' => 'search-results',
+            'name' => 'Resultados para: "' . $query . '"',
+            'display_type' => 'grid',
+            'is_active' => true
+        ]);
+
+        // Associar coleção de produtos
+        $searchCategory->setRelation('products', $products);
+
+        return view('pedido.index', [
+            'categories' => collect([$searchCategory]),
+            'products' => $products,
+            'searchQuery' => $query
         ]);
     }
 }

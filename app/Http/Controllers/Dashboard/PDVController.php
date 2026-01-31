@@ -20,6 +20,7 @@ use App\Services\MercadoPagoApi;
 use App\Services\WhatsAppService;
 use App\Services\DistanceCalculatorService;
 use App\Models\DeliveryFee;
+use App\Models\CustomerCashback;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 
@@ -168,6 +169,7 @@ class PDVController extends Controller
             ->get(['id', 'name', 'phone', 'email', 'address', 'neighborhood', 'city', 'state', 'zip_code', 'custom_delivery_fee', 'is_wholesale']);
 
         // Adicionar endereço principal (primeiro endereço da tabela addresses) se existir
+        // E também o saldo de cashback
         $customers->each(function ($customer) {
             if ($customer->addresses && $customer->addresses->isNotEmpty()) {
                 $mainAddress = $customer->addresses->first();
@@ -190,6 +192,9 @@ class PDVController extends Controller
                 // Adicionar address_id para uso posterior
                 $customer->address_id = $mainAddress->id;
             }
+
+            // Buscar saldo de cashback do cliente
+            $customer->cashback_balance = CustomerCashback::getBalance($customer->id);
         });
 
         return response()->json(['customers' => $customers]);
@@ -381,6 +386,7 @@ class PDVController extends Controller
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'is_wholesale' => $request->has('is_wholesale') && $request->is_wholesale ? 1 : 0,
+                'client_id' => currentClientId(),
             ];
 
             // Se houver dados de endereço, atualizar também no cliente
@@ -597,11 +603,73 @@ class PDVController extends Controller
                 $totalDiscount = $couponDiscount + $manualDiscountFixed + $manualDiscountFromPercent;
             }
 
-            $finalAmount = max(0, $subtotal + $deliveryFee - $totalDiscount);
             $orderNumber = $this->generateOrderNumber();
 
             $createAsPaid = $request->has('create_as_paid') && $request->create_as_paid;
             $pm = $request->payment_method;
+
+            // ===== CASHBACK USADO =====
+            // Buscar saldo de cashback disponível do cliente e usar automaticamente
+            $cashbackBalance = CustomerCashback::getBalance($customer->id);
+            $cashbackUsed = 0;
+            $subtotalAfterDiscount = max(0, $subtotal - $totalDiscount);
+
+            Log::info('PDV: Verificando cashback do cliente', [
+                'customer_id' => $customer->id,
+                'cashback_balance' => $cashbackBalance,
+                'subtotal_after_discount' => $subtotalAfterDiscount,
+            ]);
+
+            if ($cashbackBalance > 0 && $subtotalAfterDiscount > 0) {
+                // Usar cashback disponível, limitado ao valor restante do pedido (não inclui frete)
+                $cashbackUsed = min($cashbackBalance, $subtotalAfterDiscount);
+                Log::info('PDV: Cashback será aplicado', [
+                    'cashback_used' => $cashbackUsed,
+                    'cashback_balance' => $cashbackBalance,
+                    'subtotal_after_discount' => $subtotalAfterDiscount,
+                ]);
+            } else {
+                Log::info('PDV: Cashback não será aplicado', [
+                    'reason' => $cashbackBalance <= 0 ? 'Sem saldo de cashback' : 'Subtotal após desconto é zero',
+                    'cashback_balance' => $cashbackBalance,
+                    'subtotal_after_discount' => $subtotalAfterDiscount,
+                ]);
+            }
+
+            // Calcular valor final com dedução de cashback usado
+            $finalAmount = max(0, $subtotal + $deliveryFee - $totalDiscount - $cashbackUsed);
+
+            // ===== CASHBACK GANHO =====
+            // Calcular cashback - clientes de revenda (is_wholesale = 1) NÃO recebem cashback
+            $cashbackEarned = 0;
+            $isWholesale = $customer->is_wholesale ?? false;
+
+            if (!$isWholesale) {
+                // Verificar se cashback está habilitado
+                $cashbackEnabled = DB::table('payment_settings')->where('key', 'cashback_enabled')->value('value') == '1';
+
+                if ($cashbackEnabled) {
+                    $cashbackPercent = (float) (DB::table('payment_settings')->where('key', 'cashback_percentage')->value('value') ?? 5.0);
+                    // Cashback ganho é calculado sobre o valor que o cliente realmente paga (excluindo cashback usado)
+                    $finalSubtotalForCashback = max(0, $subtotalAfterDiscount - $cashbackUsed);
+                    $cashbackEarned = round($finalSubtotalForCashback * max(0, $cashbackPercent) / 100, 2);
+
+                    Log::info('PDV: Cashback calculado', [
+                        'customer_id' => $customer->id,
+                        'subtotal_after_discount' => $subtotalAfterDiscount,
+                        'cashback_used' => $cashbackUsed,
+                        'final_subtotal_for_cashback' => $finalSubtotalForCashback,
+                        'cashback_percent' => $cashbackPercent,
+                        'cashback_earned' => $cashbackEarned,
+                        'final_amount' => $finalAmount,
+                    ]);
+                }
+            } else {
+                Log::info('PDV: Cliente de revenda - cashback não aplicável', [
+                    'customer_id' => $customer->id,
+                    'is_wholesale' => $isWholesale,
+                ]);
+            }
 
             // Se for fiado ou pix direto, marcar status
             $initialStatus = 'pending';
@@ -638,6 +706,8 @@ class PDVController extends Controller
                 'discount_amount' => $totalDiscount,
                 'coupon_code' => $couponCode,
                 'final_amount' => $finalAmount,
+                'cashback_used' => $cashbackUsed, // Cashback deduzido do saldo do cliente
+                'cashback_earned' => $cashbackEarned, // Cashback calculado
                 'payment_method' => $pm ?? 'pix',
                 'payment_status' => $initialPaymentStatus,
                 'delivery_type' => $request->delivery_type,
@@ -661,6 +731,56 @@ class PDVController extends Controller
                     'order_id' => $order->id,
                     'order_number' => $orderNumber,
                 ]);
+
+                // Deduzir cashback usado do saldo do cliente (criar débito)
+                if ($cashbackUsed > 0) {
+                    try {
+                        CustomerCashback::createDebit(
+                            $customer->id,
+                            $order->id,
+                            $cashbackUsed,
+                            "Uso de cashback no pedido #{$orderNumber}"
+                        );
+                        Log::info('PDV: Cashback deduzido do saldo do cliente', [
+                            'order_id' => $order->id,
+                            'customer_id' => $customer->id,
+                            'cashback_used' => $cashbackUsed,
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::warning('PDV: Erro ao deduzir cashback usado', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                // Registrar cashback ganho imediatamente para pedidos criados como pagos
+                if ($cashbackEarned > 0) {
+                    try {
+                        // Verificar se já existe cashback para este pedido (evitar duplicatas)
+                        $existingCashback = CustomerCashback::where('order_id', $order->id)
+                            ->where('type', 'credit')
+                            ->first();
+                        if (!$existingCashback) {
+                            CustomerCashback::createCredit(
+                                $customer->id,
+                                $order->id,
+                                $cashbackEarned,
+                                "Cashback do pedido #{$orderNumber}"
+                            );
+                            Log::info('PDV: Cashback registrado para pedido criado como pago', [
+                                'order_id' => $order->id,
+                                'customer_id' => $customer->id,
+                                'cashback_earned' => $cashbackEarned,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('PDV: Erro ao registrar cashback', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
 
             // Criar itens
@@ -1404,66 +1524,7 @@ class PDVController extends Controller
         return $orderNumber;
     }
 
-    /**
-     * Calcula taxa de entrega baseada na distância (CEP)
-     * Usa DeliveryFeeService centralizado
-     */
-    public function calculateDeliveryFee(Request $request)
-    {
-        $request->validate([
-            'cep' => 'required|string|min:8|max:10',
-            'subtotal' => 'required|numeric|min:0',
-            'customer_id' => 'nullable|integer|exists:customers,id',
-        ]);
 
-        try {
-            $destinationCep = preg_replace('/\D/', '', $request->cep);
-            $subtotal = (float) $request->subtotal;
-
-            // Buscar dados do cliente se fornecido
-            $customerPhone = null;
-            $customerEmail = null;
-            if ($request->filled('customer_id')) {
-                $customer = Customer::find($request->customer_id);
-                if ($customer) {
-                    $customerPhone = $customer->phone;
-                    $customerEmail = $customer->email;
-                }
-            }
-
-            // Usar serviço centralizado
-            $deliveryFeeService = new \App\Services\DeliveryFeeService();
-            $result = $deliveryFeeService->calculateDeliveryFee(
-                $destinationCep,
-                $subtotal,
-                $customerPhone ? preg_replace('/\D/', '', $customerPhone) : null,
-                $customerEmail
-            );
-
-            // Formatar resposta (compatível com formato esperado pelo PDV)
-            return response()->json([
-                'success' => $result['success'],
-                'delivery_fee' => $result['delivery_fee'],
-                'distance_km' => $result['distance_km'],
-                'free_delivery' => $result['free'] ?? false,
-                'custom' => $result['custom'] ?? false,
-                'message' => $result['message'] ?? null,
-            ], $result['success'] ? 200 : 400);
-
-        } catch (\Exception $e) {
-            Log::error('PDV: Erro ao calcular taxa de entrega', [
-                'cep' => $request->cep ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao calcular taxa de entrega: ' . $e->getMessage(),
-                'delivery_fee' => 0.00,
-            ], 500);
-        }
-    }
 
     /**
      * Obtém o CEP da loja (store_zip_code)
@@ -1475,6 +1536,60 @@ class PDVController extends Controller
     {
         $service = new \App\Services\DeliveryFeeService();
         return $service->getStoreZipCode();
+    }
+
+    public function calculateDeliveryFee(Request $request)
+    {
+        $request->validate([
+            'cep' => 'required|string|min:8',
+            'subtotal' => 'nullable|numeric',
+            'customer_id' => 'nullable|integer'
+        ]);
+
+        $cep = preg_replace('/\D/', '', $request->cep);
+        $subtotal = (float) $request->subtotal;
+        $customerId = $request->customer_id;
+
+        // 1. Buscar endereço no ViaCEP
+        $addressData = [];
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("https://viacep.com.br/ws/{$cep}/json/");
+            if ($response->successful() && !isset($response->json()['erro'])) {
+                $viacep = $response->json();
+                $addressData = [
+                    'street' => $viacep['logradouro'] ?? '',
+                    'neighborhood' => $viacep['bairro'] ?? '',
+                    'city' => $viacep['localidade'] ?? '',
+                    'state' => $viacep['uf'] ?? '',
+                    'zip_code' => $viacep['cep'] ?? $cep,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::warning("PDV: Erro ao consultar ViaCEP: " . $e->getMessage());
+        }
+
+        // 2. Calcular taxa usando o serviço
+        $deliveryFeeService = new \App\Services\DeliveryFeeService();
+
+        $customerPhone = null;
+        $customerEmail = null;
+
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            if ($customer) {
+                $customerPhone = $customer->phone;
+                $customerEmail = $customer->email;
+            }
+        }
+
+        $feeResult = $deliveryFeeService->calculateDeliveryFee($cep, $subtotal, $customerPhone, $customerEmail);
+
+        return response()->json([
+            'success' => $feeResult['success'],
+            'delivery_fee' => number_format($feeResult['delivery_fee'], 2, ',', '.'),
+            'address' => $addressData, // Retorna os dados do endereço encontrados
+            'message' => $feeResult['message']
+        ]);
     }
 
     /**
@@ -1587,5 +1702,6 @@ class PDVController extends Controller
             ], 500);
         }
     }
-}
 
+    // --- API Methods for PDV ---
+}

@@ -12,22 +12,22 @@ class CategoriesController extends Controller
     public function index(Request $request)
     {
         $query = Category::withCount('products');
-        
+
         // Busca
         $searchTerm = $request->input('q');
         if (!empty($searchTerm)) {
-            $query->where(function($q) use ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('description', 'like', "%{$searchTerm}%");
+                    ->orWhere('description', 'like', "%{$searchTerm}%");
             });
         }
-        
-        $categories = $query->orderBy('sort_order')->orderBy('name')->get();
-        
+
+        $categories = $query->orderBy('sort_order')->orderBy('name')->paginate(20)->withQueryString();
+
         // Se for requisição AJAX, retornar JSON sem paginação
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
-                'categories' => $categories->map(function($category) {
+                'categories' => $categories->map(function ($category) {
                     return [
                         'id' => $category->id,
                         'name' => $category->name,
@@ -37,11 +37,11 @@ class CategoriesController extends Controller
                 })
             ]);
         }
-        
+
         // Buscar produtos para cada categoria (para gerenciamento)
         $allProducts = \App\Models\Product::orderBy('name')->get(['id', 'name', 'category_id']);
         $allCategories = Category::orderBy('sort_order')->orderBy('name')->get(['id', 'name']);
-        
+
         return view('dashboard.categories.index', compact('categories', 'allProducts', 'allCategories'));
     }
 
@@ -78,8 +78,8 @@ class CategoriesController extends Controller
             'display_type' => 'nullable|in:grid,list_horizontal,list_vertical',
         ]);
 
-        $validated['is_active'] = (bool)($request->input('is_active', true));
-        $validated['sort_order'] = (int)($request->input('sort_order', 0));
+        $validated['is_active'] = (bool) ($request->input('is_active', true));
+        $validated['sort_order'] = (int) ($request->input('sort_order', 0));
         $validated['display_type'] = $request->input('display_type', 'grid');
 
         Category::create($validated);
@@ -104,8 +104,8 @@ class CategoriesController extends Controller
             'display_type' => 'nullable|in:grid,list_horizontal,list_vertical',
         ]);
 
-        $validated['is_active'] = (bool)($request->input('is_active', false));
-        $validated['sort_order'] = (int)($request->input('sort_order', 0));
+        $validated['is_active'] = (bool) ($request->input('is_active', false));
+        $validated['sort_order'] = (int) ($request->input('sort_order', 0));
         $validated['display_type'] = $request->input('display_type', 'grid');
 
         $category->update($validated);

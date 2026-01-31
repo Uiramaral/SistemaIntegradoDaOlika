@@ -14,8 +14,7 @@ class WholesalePricesController extends Controller
     public function index(Request $request)
     {
         // Filtrar preços de revenda pelos produtos do estabelecimento atual
-        // ProductWholesalePrice está relacionado com Product, que tem client_id
-        $query = ProductWholesalePrice::whereHas('product', function($q) {
+        $query = ProductWholesalePrice::whereHas('product', function ($q) {
             // Product já filtra por client_id automaticamente via Global Scope
         })->with(['product', 'variant'])
             ->orderBy('product_id')
@@ -25,6 +24,18 @@ class WholesalePricesController extends Controller
         // Busca por produto
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
+        }
+
+        // Busca textual (q)
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('product', function ($subQ) use ($search) {
+                    $subQ->where('name', 'like', "%{$search}%");
+                })->orWhereHas('variant', function ($subQ) use ($search) {
+                    $subQ->where('name', 'like', "%{$search}%");
+                });
+            });
         }
 
         // Filtro por status
@@ -37,34 +48,62 @@ class WholesalePricesController extends Controller
         }
 
         $prices = $query->paginate(20)->withQueryString();
-        // Product já filtra por client_id automaticamente
-        $products = Product::where('is_active', true)->orderBy('name')->get();
 
-        return view('dashboard.wholesale-prices.index', compact('prices', 'products'));
+        // Preparar lista de produtos para o Modal (mesma lógica do create)
+        $productsList = collect();
+        $rawProducts = Product::where('is_active', true)->orderBy('name')->get();
+
+        foreach ($rawProducts as $product) {
+            $variants = ProductVariant::where('product_id', $product->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+
+            if ($variants->count() === 0) {
+                $productsList->push([
+                    'product_id' => $product->id,
+                    'variant_id' => null,
+                    'display_name' => $product->name,
+                    'price' => (float) $product->price,
+                ]);
+            } else {
+                foreach ($variants as $variant) {
+                    $productsList->push([
+                        'product_id' => $product->id,
+                        'variant_id' => $variant->id,
+                        'display_name' => $product->name . ' (' . $variant->name . ')',
+                        'price' => (float) $variant->price,
+                    ]);
+                }
+            }
+        }
+        $productsList = $productsList->sortBy('display_name')->values();
+
+        return view('dashboard.wholesale-prices.index', compact('prices', 'productsList'));
     }
 
     public function create()
     {
         $productsList = collect();
-        
+
         $products = Product::where('is_active', true)
             ->orderBy('name')
             ->get();
-        
+
         foreach ($products as $product) {
             // Buscar variantes diretamente do banco
             $variants = ProductVariant::where('product_id', $product->id)
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->get();
-            
+
             if ($variants->count() === 0) {
                 // Produto sem variantes: adicionar como opção única
                 $productsList->push([
                     'product_id' => $product->id,
                     'variant_id' => null,
                     'display_name' => $product->name,
-                    'price' => (float)$product->price,
+                    'price' => (float) $product->price,
                 ]);
             } else {
                 // Produto com variantes: adicionar cada variante como opção separada
@@ -73,12 +112,12 @@ class WholesalePricesController extends Controller
                         'product_id' => $product->id,
                         'variant_id' => $variant->id,
                         'display_name' => $product->name . ' (' . $variant->name . ')',
-                        'price' => (float)$variant->price,
+                        'price' => (float) $variant->price,
                     ]);
                 }
             }
         }
-        
+
         // Ordenar alfabeticamente pelo display_name
         $productsList = $productsList->sortBy('display_name')->values();
 
@@ -122,27 +161,27 @@ class WholesalePricesController extends Controller
     public function edit($id)
     {
         $wholesalePrice = ProductWholesalePrice::with(['product', 'variant'])->findOrFail($id);
-        
+
         $productsList = collect();
-        
+
         $products = Product::where('is_active', true)
             ->orderBy('name')
             ->get();
-        
+
         foreach ($products as $product) {
             // Buscar variantes diretamente do banco
             $variants = ProductVariant::where('product_id', $product->id)
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->get();
-            
+
             if ($variants->count() === 0) {
                 // Produto sem variantes: adicionar como opção única
                 $productsList->push([
                     'product_id' => $product->id,
                     'variant_id' => null,
                     'display_name' => $product->name,
-                    'price' => (float)$product->price,
+                    'price' => (float) $product->price,
                 ]);
             } else {
                 // Produto com variantes: adicionar cada variante como opção separada
@@ -151,12 +190,12 @@ class WholesalePricesController extends Controller
                         'product_id' => $product->id,
                         'variant_id' => $variant->id,
                         'display_name' => $product->name . ' (' . $variant->name . ')',
-                        'price' => (float)$variant->price,
+                        'price' => (float) $variant->price,
                     ]);
                 }
             }
         }
-        
+
         // Ordenar alfabeticamente pelo display_name
         $productsList = $productsList->sortBy('display_name')->values();
 
@@ -166,7 +205,7 @@ class WholesalePricesController extends Controller
     public function update(Request $request, $id)
     {
         $wholesalePrice = ProductWholesalePrice::findOrFail($id);
-        
+
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'variant_id' => 'nullable|exists:product_variants,id',
@@ -207,6 +246,18 @@ class WholesalePricesController extends Controller
 
         return redirect()->route('dashboard.wholesale-prices.index')
             ->with('success', 'Preço de revenda removido com sucesso!');
+    }
+    public function toggleStatus($id)
+    {
+        $wholesalePrice = ProductWholesalePrice::findOrFail($id);
+        $wholesalePrice->is_active = !$wholesalePrice->is_active;
+        $wholesalePrice->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status atualizado com sucesso!',
+            'is_active' => $wholesalePrice->is_active
+        ]);
     }
 }
 

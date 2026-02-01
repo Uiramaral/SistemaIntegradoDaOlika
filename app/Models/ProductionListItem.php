@@ -13,6 +13,7 @@ class ProductionListItem extends Model
     protected $fillable = [
         'production_list_id',
         'recipe_id',
+        'order_item_id',
         'recipe_name',
         'quantity',
         'weight',
@@ -57,6 +58,11 @@ class ProductionListItem extends Model
     public function recipe(): BelongsTo
     {
         return $this->belongsTo(Recipe::class);
+    }
+
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\OrderItem::class);
     }
 
     public function getTotalWeightAttribute()

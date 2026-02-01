@@ -11,6 +11,7 @@ use App\Models\CustomerDebt;
 use App\Models\Order;
 use App\Observers\CustomerDebtObserver;
 use App\Observers\OrderFinancialObserver;
+use App\Observers\OrderProductionObserver;
 
 use Illuminate\Pagination\Paginator;
 
@@ -81,6 +82,11 @@ class AppServiceProvider extends ServiceProvider
         // Registrar observer para receita automática de pedidos pagos (Finanças)
         if (class_exists(OrderFinancialObserver::class)) {
             Order::observe(OrderFinancialObserver::class);
+        }
+
+        // Registrar observer para automação da lista de produção
+        if (class_exists(OrderProductionObserver::class)) {
+            Order::observe(OrderProductionObserver::class);
         }
     }
 }

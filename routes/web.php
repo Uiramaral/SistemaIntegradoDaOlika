@@ -758,11 +758,11 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::post('/send-pix-whatsapp/{order}', [\App\Http\Controllers\Dashboard\PDVController::class, 'sendPixWhatsApp'])->name('sendPixWhatsApp');
     });
 
-    Route::prefix('production')->name('dashboard.producao.')->group(function () {
+    Route::prefix('dashboard/producao')->name('dashboard.producao.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Dashboard\ProductionController::class, 'dashboard'])->name('index');
 
         // Receitas
-        Route::prefix('recipes')->name('receitas.')->group(function () {
+        Route::prefix('receitas')->name('receitas.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Dashboard\RecipesController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Dashboard\RecipesController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Dashboard\RecipesController::class, 'store'])->name('store');
@@ -775,7 +775,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         });
 
         // Ingredientes
-        Route::prefix('ingredients')->name('ingredientes.')->group(function () {
+        Route::prefix('ingredientes')->name('ingredientes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Dashboard\IngredientsController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Dashboard\IngredientsController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Dashboard\IngredientsController::class, 'store'])->name('store');
@@ -786,7 +786,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         });
 
         // Embalagens
-        Route::prefix('packagings')->name('embalagens.')->group(function () {
+        Route::prefix('embalagens')->name('embalagens.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Dashboard\PackagingsController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Dashboard\PackagingsController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Dashboard\PackagingsController::class, 'store'])->name('store');
@@ -796,7 +796,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         });
 
         // Lista de Produção
-        Route::prefix('list')->name('lista-producao.')->group(function () {
+        Route::prefix('lista')->name('lista-producao.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Dashboard\ProductionController::class, 'listaProducao'])->name('index');
             Route::post('/create', [\App\Http\Controllers\Dashboard\ProductionController::class, 'createList'])->name('create');
             Route::post('/{id}/items', [\App\Http\Controllers\Dashboard\ProductionController::class, 'addItemToList'])->name('add-item');
@@ -811,7 +811,7 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::get('/inventory-produced', function () {
             return view('dashboard.producao.estoque-produzidos');
         })->name('estoque-produzidos.index');
-        Route::prefix('costs')->name('custos.')->group(function () {
+        Route::prefix('custos')->name('custos.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Dashboard\CustosController::class, 'index'])->name('index');
             Route::post('/calculate', [\App\Http\Controllers\Dashboard\CustosController::class, 'calculate'])->name('calculate');
         });

@@ -4,42 +4,89 @@
 @section('page_subtitle', 'Acompanhamento da produção diária')
 
 @section('content')
+    <style>
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
     <div class="space-y-6">
         <div class="bg-card rounded-xl border border-border overflow-hidden">
-            {{-- Header --}}
-            <div
-                class="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h3 class="font-semibold text-lg flex items-center gap-2">
-                        <i data-lucide="calendar" class="w-5 h-5 text-primary"></i>
-                        Produção – {{ \Carbon\Carbon::parse($date)->translatedFormat('d/m/Y') }}
-                    </h3>
-                    <p class="text-sm text-muted-foreground mt-1">{{ $list ? $list->total_items : 0 }} itens na lista</p>
+            {{-- Header com Seletor de Datas Estilo Carrossel --}}
+            <div class="px-4 pt-6 pb-2 border-b border-border bg-card">
+                <div class="flex items-center justify-between mb-6 px-2">
+                    <a href="{{ route('dashboard.producao.lista-producao.index', ['date' => \Carbon\Carbon::parse($date)->subDays(1)->format('Y-m-d')]) }}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-muted/30 text-xs font-bold hover:bg-muted transition-all">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        Anterior
+                    </a>
+
+                    <div class="text-center">
+                        <h3 class="text-base font-black text-foreground tracking-tight">
+                            {{ \Carbon\Carbon::parse($date)->locale('pt_BR')->translatedFormat('F Y') }}
+                        </h3>
+                    </div>
+
+                    <a href="{{ route('dashboard.producao.lista-producao.index', ['date' => \Carbon\Carbon::parse($date)->addDays(1)->format('Y-m-d')]) }}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-muted/30 text-xs font-bold hover:bg-muted transition-all">
+                        Próximo
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </a>
                 </div>
 
-                <div class="flex gap-2 items-center w-full sm:w-auto">
-                    @php $countPrint = $list ? $list->items->where('mark_for_print', true)->count() : 0; @endphp
-                    @if($list && $countPrint > 0)
-                        <a href="{{ route('dashboard.producao.lista-producao.print', ['id' => $list->id]) }}" target="_blank"
-                            class="btn-primary items-center justify-center h-10 w-full sm:w-auto sm:px-4 gap-2 text-white bg-red-600 hover:bg-red-700">
-                            <i data-lucide="printer" class="h-4 w-4"></i>
-                            Imprimir Selecionados ({{ $countPrint }})
-                        </a>
-                    @endif
+                <div class="flex gap-4 overflow-x-auto pt-3 pb-4 scrollbar-hide px-2 -mx-2 snap-x">
+                    @foreach($availableDates as $d)
+                                <a href="{{ route('dashboard.producao.lista-producao.index', ['date' => $d['date']]) }}" class="relative flex-shrink-0 w-[84px] snap-center p-3 rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center gap-1
+                                                                                                                                           {{ $d['is_selected']
+                        ? 'bg-white border-primary border-2 shadow-lg ring-4 ring-primary/5 scale-105 z-10'
+                        : 'bg-card border-border hover:border-primary/30 opacity-70 hover:opacity-100' }}">
 
-                    @if(!$list)
-                        <form action="{{ route('dashboard.producao.lista-producao.create') }}" method="POST"
-                            class="flex gap-2 w-full sm:w-auto">
-                            @csrf
-                            <input type="date" name="production_date" value="{{ $date }}" class="form-input flex-1">
-                            <button type="submit" class="btn-primary gap-2">
-                                <i data-lucide="plus" class="h-4 w-4"></i>
-                                Criar Lista
-                            </button>
-                        </form>
-                    @endif
+                                    <span
+                                        class="text-[10px] font-black uppercase tracking-widest {{ $d['is_selected'] ? 'text-primary' : 'text-muted-foreground' }}">
+                                        {{ $d['month'] }}
+                                    </span>
+
+                                    <span class="text-2xl font-black tracking-tighter text-foreground">
+                                        {{ $d['day'] }}
+                                    </span>
+
+                                    <span
+                                        class="text-[10px] font-bold capitalize {{ $d['is_selected'] ? 'text-primary' : 'text-muted-foreground' }}">
+                                        {{ $d['weekday'] }}
+                                    </span>
+
+                                    @if($d['count'] > 0)
+                                        <div
+                                            class="absolute -top-1.5 -right-1.5 h-6 w-6 bg-primary text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-md ring-2 ring-primary/10">
+                                            {{ $d['count'] }}
+                                        </div>
+                                    @endif
+                                </a>
+                    @endforeach
                 </div>
             </div>
+
+            {{-- Barra de Ações Rápida --}}
+            @if($list)
+                <div class="px-4 py-3 bg-muted/10 border-b border-border flex justify-between items-center sm:px-6">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <span class="text-foreground font-black">{{ $list->total_items }}</span> itens agendados
+                    </p>
+
+                    @php $countPrint = $items->where('mark_for_print', true)->count(); @endphp
+                    @if($countPrint > 0)
+                        <a href="{{ route('dashboard.producao.lista-producao.print', ['id' => $list->id]) }}" target="_blank"
+                            class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black hover:bg-red-700 transition-all shadow-md hover:shadow-lg active:scale-95">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                            IMPRIMIR SELECIONADOS ({{ $countPrint }})
+                        </a>
+                    @endif
+                </div>
+            @endif
 
             @if($list)
                 {{-- Add Item Form --}}
@@ -105,13 +152,13 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border">
-                            @forelse($list->items as $item)
+                            @forelse($items as $item)
                                 <tr class="hover:bg-muted/30 transition-colors {{ $item->is_produced ? 'bg-green-50/30' : '' }}">
                                     <td class="py-4 px-4 text-center">
                                         <input type="checkbox"
                                             class="mark-print-checkbox w-5 h-5 rounded border-border text-primary focus:ring-primary cursor-pointer"
                                             {{ ($item->mark_for_print ?? true) ? 'checked' : '' }}
-                                            data-url="{{ route('dashboard.producao.lista-producao.mark-print', $item->id) }}">
+                                            data-url="{{ route('dashboard.producao.lista-producao.mark-print', $item->ids) }}">
                                     </td>
                                     <td class="py-4 px-4 align-top">
                                         <p class="font-semibold text-foreground">{{ $item->recipe_name }}</p>
@@ -132,22 +179,15 @@
                                     <td class="py-4 px-4 align-top">
                                         @if($item->recipe)
                                             @php
-                                                // Simple logic to display ingredients inline
                                                 $calculated = $item->recipe->calculateIngredientWeights($item->weight);
                                                 $displayIngredients = [];
                                                 foreach ($calculated as $key => $row) {
                                                     $w = (float) ($row['weight'] ?? 0) * $item->quantity;
                                                     if ($w <= 0)
                                                         continue;
-                                                    if (strpos($key, '_') === 0 && !in_array($key, ['_water', '_levain']))
-                                                        continue;
 
+                                                    // O nome vem do label (água/levain) ou do ingrediente
                                                     $name = $row['label'] ?? ($row['ingredient']->name ?? 'N/A');
-                                                    if ($key === '_water')
-                                                        $name = 'Água';
-                                                    if ($key === '_levain')
-                                                        $name = 'Levain';
-
                                                     $displayIngredients[] = "{$name}: " . number_format($w, 1, ',', '.') . "g";
                                                 }
                                             @endphp
@@ -160,15 +200,26 @@
                                         @endif
                                     </td>
                                     <td class="py-4 px-4 align-top text-right">
-                                        <form action="{{ route('dashboard.producao.lista-producao.remove-item', $item->id) }}"
-                                            method="POST" onsubmit="return confirm('Remover item?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="btn-icon btn-ghost h-8 w-8 text-destructive hover:bg-destructive/10">
-                                                <i data-lucide="trash-2" class="h-4 w-4"></i>
-                                            </button>
-                                        </form>
+                                        <div class="flex items-center justify-end gap-1">
+                                            <form
+                                                action="{{ route('dashboard.producao.lista-producao.mark-produced', $item->ids) }}"
+                                                method="POST">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="btn-icon {{ $item->is_produced ? 'bg-green-100 text-green-700' : 'btn-ghost text-muted-foreground hover:text-green-600' }} h-8 w-8">
+                                                    <i data-lucide="{{ $item->is_produced ? 'check-circle' : 'circle' }}"
+                                                        class="h-4 w-4"></i>
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('dashboard.producao.lista-producao.remove-item', $item->ids) }}"
+                                                method="POST" onsubmit="return confirm('Remover lote?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                    class="btn-icon btn-ghost h-8 w-8 text-destructive hover:bg-destructive/10">
+                                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                                </button>
+                                            </form>
                                     </td>
                                 </tr>
                             @empty
@@ -185,31 +236,48 @@
 
                 {{-- Mobile Cards --}}
                 <div class="lg:hidden divide-y divide-border">
-                    @forelse($list->items as $item)
-                        <div class="p-4 space-y-3 {{ $item->is_produced ? 'bg-green-50/30' : '' }}">
+                    @forelse($items as $item)
+                        <div class="p-4 space-y-3 {{ $item->is_produced ? 'bg-green-50/10' : '' }}">
                             <div class="flex justify-between items-start">
                                 <div class="flex items-start gap-3">
                                     <input type="checkbox"
                                         class="mark-print-checkbox mt-1 w-5 h-5 rounded border-border text-primary focus:ring-primary"
                                         {{ ($item->mark_for_print ?? true) ? 'checked' : '' }}
-                                        data-url="{{ route('dashboard.producao.lista-producao.mark-print', $item->id) }}">
+                                        data-url="{{ route('dashboard.producao.lista-producao.mark-print', $item->ids) }}">
                                     <div>
-                                        <h4 class="font-semibold text-foreground">{{ $item->recipe_name }}</h4>
-                                        <p class="text-sm text-muted-foreground">
+                                        <div class="flex items-center gap-2">
+                                            @if($item->is_produced)
+                                                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                            @endif
+                                            <h4 class="font-bold text-foreground">{{ $item->recipe_name }}</h4>
+                                        </div>
+                                        <p class="text-[10px] text-muted-foreground mt-0.5">
                                             {{ $item->quantity }}x {{ number_format($item->weight, 0, ',', '.') }}g =
-                                            <strong>{{ number_format($item->quantity * $item->weight, 0, ',', '.') }}g</strong>
+                                            <strong
+                                                class="text-foreground">{{ number_format($item->total_weight / 1000, 2, ',', '.') }}kg</strong>
                                         </p>
                                     </div>
                                 </div>
 
-                                <form action="{{ route('dashboard.producao.lista-producao.remove-item', $item->id) }}" method="POST"
-                                    onsubmit="return confirm('Remover item?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn-icon btn-ghost h-8 w-8 text-destructive -mr-2">
-                                        <i data-lucide="trash-2" class="h-4 w-4"></i>
-                                    </button>
-                                </form>
+                                <div class="flex items-center gap-1">
+                                    <form action="{{ route('dashboard.producao.lista-producao.mark-produced', $item->ids) }}"
+                                        method="POST">
+                                        @csrf
+                                        <button type="submit"
+                                            class="btn-icon {{ $item->is_produced ? 'bg-green-100 text-green-700' : 'btn-ghost text-muted-foreground' }} h-8 w-8">
+                                            <i data-lucide="{{ $item->is_produced ? 'check-circle' : 'circle' }}"
+                                                class="h-4 w-4"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('dashboard.producao.lista-producao.remove-item', $item->ids) }}"
+                                        method="POST" onsubmit="return confirm('Remover lote?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-icon btn-ghost h-8 w-8 text-destructive -mr-2">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
 
                             @if($item->observation)
@@ -221,22 +289,14 @@
 
                             @if($item->recipe)
                                 @php
-                                    // Same logic for mobile
                                     $calculated = $item->recipe->calculateIngredientWeights($item->weight);
                                     $displayIngredients = [];
                                     foreach ($calculated as $key => $row) {
                                         $w = (float) ($row['weight'] ?? 0) * $item->quantity;
                                         if ($w <= 0)
                                             continue;
-                                        if (strpos($key, '_') === 0 && !in_array($key, ['_water', '_levain']))
-                                            continue;
 
                                         $name = $row['label'] ?? ($row['ingredient']->name ?? 'N/A');
-                                        if ($key === '_water')
-                                            $name = 'Água';
-                                        if ($key === '_levain')
-                                            $name = 'Levain';
-
                                         $displayIngredients[] = "{$name}: " . number_format($w, 1, ',', '.') . "g";
                                     }
                                 @endphp
@@ -261,8 +321,17 @@
             @else
                 <div class="p-12 text-center text-muted-foreground">
                     <i data-lucide="calendar-off" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
-                    <h3 class="text-lg font-medium text-foreground mb-2">Nenhuma lista para hoje</h3>
-                    <p>Use o formulário acima para criar uma lista de produção para esta data.</p>
+                    <h3 class="text-lg font-medium text-foreground mb-2">Nenhuma lista para esta data</h3>
+                    <p class="mb-6">Você pode criar uma nova lista de produção para este dia agora mesmo.</p>
+
+                    <form action="{{ route('dashboard.producao.lista-producao.create') }}" method="POST" class="inline-block">
+                        @csrf
+                        <input type="hidden" name="production_date" value="{{ $date }}">
+                        <button type="submit" class="btn-primary gap-2">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Criar Lista de Produção
+                        </button>
+                    </form>
                 </div>
             @endif
         </div>
@@ -303,6 +372,14 @@
                         }
                     });
                 });
+            });
+
+            // Auto-scroll para a data selecionada
+            document.addEventListener('DOMContentLoaded', function () {
+                const activeDate = document.querySelector('.bg-white.border-primary');
+                if (activeDate) {
+                    activeDate.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
             });
         </script>
     @endpush

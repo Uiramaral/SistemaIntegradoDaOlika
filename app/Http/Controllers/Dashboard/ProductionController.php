@@ -17,13 +17,13 @@ class ProductionController extends Controller
     public function dashboard()
     {
         $clientId = currentClientId();
-        
+
         // Estatísticas gerais
         $totalRecipes = Recipe::count();
         $activeRecipes = Recipe::where('is_active', true)->count();
         $totalProductionRecords = ProductionRecord::count();
         $todayProduction = ProductionRecord::whereDate('production_date', today())->sum('total_produced');
-        
+
         // Itens mais produzidos (últimos 30 dias)
         $mostProduced = ProductionRecord::select('recipe_id', 'recipe_name', DB::raw('SUM(quantity) as total_quantity'))
             ->where('production_date', '>=', Carbon::now()->subDays(30))
@@ -31,17 +31,17 @@ class ProductionController extends Controller
             ->orderBy('total_quantity', 'desc')
             ->limit(10)
             ->get();
-        
+
         // Produção por dia (últimos 7 dias)
         $dailyProduction = ProductionRecord::select(
-                DB::raw('DATE(production_date) as date'),
-                DB::raw('SUM(total_produced) as total')
-            )
+            DB::raw('DATE(production_date) as date'),
+            DB::raw('SUM(total_produced) as total')
+        )
             ->where('production_date', '>=', Carbon::now()->subDays(7))
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         return view('dashboard.producao.dashboard', compact(
             'totalRecipes',
             'activeRecipes',
@@ -54,62 +54,102 @@ class ProductionController extends Controller
 
     public function listaProducao(Request $request)
     {
+        \Carbon\Carbon::setLocale('pt_BR');
         $clientId = currentClientId();
         $date = $request->input('date', today()->format('Y-m-d'));
-        
+
         $list = ProductionList::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->where('client_id', $clientId)
             ->whereDate('production_date', $date)
-            ->with(['items' => function($query) {
-                $query->orderBy('sort_order');
-            }, 'items.recipe.steps.ingredients' => function($query) {
-                $query->with(['ingredient' => function($q) {
-                    $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
-                }]);
-            }])
+            ->with([
+                'items' => function ($query) {
+                    $query->orderBy('sort_order');
+                },
+                'items.recipe.steps.ingredients' => function ($query) {
+                    $query->with([
+                        'ingredient' => function ($q) {
+                            $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
+                        }
+                    ]);
+                }
+            ])
             ->first();
-        
+
         $recipes = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->where(function($q) use ($clientId) {
+            ->where(function ($q) use ($clientId) {
                 $q->where('client_id', $clientId)->orWhereNull('client_id');
             })
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
-        
-        return view('dashboard.producao.lista-producao', compact('list', 'recipes', 'date'));
+
+        // Lógica para o carrossel de datas (D-3 a D+3)
+        $selectedDate = Carbon::parse($date);
+        $startDate = $selectedDate->copy()->subDays(3);
+        $endDate = $selectedDate->copy()->addDays(3);
+
+        $availableDates = [];
+        $tempDate = $startDate->copy();
+        while ($tempDate <= $endDate) {
+            $dateStr = $tempDate->format('Y-m-d');
+
+            // Contar itens para cada dia
+            $count = \App\Models\ProductionListItem::whereHas('productionList', function ($q) use ($clientId, $dateStr) {
+                $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                    ->where('client_id', $clientId)
+                    ->whereDate('production_date', $dateStr);
+            })->count();
+
+            $availableDates[] = [
+                'date' => $dateStr,
+                'day' => $tempDate->day,
+                'month' => ucfirst(str_replace('.', '', $tempDate->translatedFormat('M'))),
+                'weekday' => ucfirst(str_replace('-feira', '', $tempDate->translatedFormat('l'))),
+                'is_selected' => $dateStr === $date,
+                'count' => $count
+            ];
+            $tempDate->addDay();
+        }
+
+        // Consolidação e Divisão por Lotes (3kg)
+        $items = $list ? $this->consolidateAndSplitItems($list->items) : collect();
+
+        return view('dashboard.producao.lista-producao', compact('list', 'recipes', 'date', 'availableDates', 'items'));
     }
 
     public function printProductionList(Request $request, $id)
     {
         $clientId = currentClientId();
         $replaceLevain = $request->boolean('replace_levain', false);
-        
+
         $list = ProductionList::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->where('client_id', $clientId)
-            ->with(['items' => function($query) {
-                $query->orderBy('sort_order');
-            }])
+            ->with([
+                'items' => function ($query) {
+                    $query->orderBy('sort_order');
+                }
+            ])
             ->findOrFail($id);
-        
+
         if ($list->items->isEmpty()) {
             \Log::warning('Lista de produção vazia', [
                 'list_id' => $list->id,
                 'client_id' => $clientId
             ]);
-            
+
             $date = $list->production_date->format('Y-m-d');
             $recipes = [];
             $totalLevain = 0;
             $totalRecipes = 0;
-            
+
             return view('dashboard.producao.print-queue', compact('recipes', 'totalLevain', 'totalRecipes', 'date', 'replaceLevain'));
         }
 
-        // Apenas itens marcados para impressão (padrão: todos)
-        $itemsToPrint = $list->items->filter(fn ($i) => $i->mark_for_print ?? true)->values();
+        // CONSOLIDAÇÃO E DIVISÃO POR LOTES (3kg)
+        $itemsToPrint = $list->items->filter(fn($i) => $i->mark_for_print ?? true);
+        $batchItems = $this->consolidateAndSplitItems($itemsToPrint);
 
-        if ($itemsToPrint->isEmpty()) {
+        if ($batchItems->isEmpty()) {
             $date = $list->production_date->format('Y-m-d');
             $recipes = [];
             $totalLevain = 0;
@@ -117,234 +157,97 @@ class ProductionController extends Controller
             return view('dashboard.producao.print-queue', compact('recipes', 'totalLevain', 'totalRecipes', 'date', 'replaceLevain'));
         }
 
-        // Carregar receitas com todos os relacionamentos necessários
-        $recipeIds = $itemsToPrint->pluck('recipe_id')->filter()->unique()->toArray();
-
-        if (empty($recipeIds)) {
-            \Log::warning('Nenhum recipe_id encontrado nos itens', [
-                'list_id' => $list->id,
-                'items' => $list->items->toArray()
-            ]);
-            
-            $date = $list->production_date->format('Y-m-d');
-            $recipes = [];
-            $totalLevain = 0;
-            $totalRecipes = 0;
-            
-            return view('dashboard.producao.print-queue', compact('recipes', 'totalLevain', 'totalRecipes', 'date', 'replaceLevain'));
-        }
-        
-        $recipesData = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->whereIn('id', $recipeIds)
-            ->with(['steps.ingredients.ingredient'])
-            ->get()
-            ->keyBy('id');
-        
         $recipes = [];
         $totalLevain = 0;
         $totalRecipes = 0;
 
-        foreach ($itemsToPrint as $item) {
-            if (!$item->recipe_id) {
-                \Log::warning('Item sem recipe_id', [
-                    'item_id' => $item->id,
-                    'list_id' => $list->id
-                ]);
-                continue;
-            }
-            
-            $recipe = $recipesData->get($item->recipe_id);
-            
-            if (!$recipe) {
-                \Log::warning('Receita não encontrada para item de produção', [
-                    'item_id' => $item->id,
-                    'recipe_id' => $item->recipe_id,
-                    'list_id' => $list->id,
-                    'available_recipe_ids' => $recipesData->keys()->toArray()
-                ]);
-                continue;
-            }
+        foreach ($batchItems as $item) {
+            $recipe = $item->recipe;
 
-            $itemWeight = (float) ($item->weight ?? $recipe->total_weight);
-            $itemQuantity = (int) $item->quantity;
-            $totalWeight = $itemWeight * $itemQuantity;
-            $totalRecipes += $itemQuantity;
+            if ($recipe) {
+                $itemWeight = (float) $item->weight;
+                $itemQuantity = (int) $item->quantity;
+                $totalWeight = $itemWeight * $itemQuantity;
+                $totalRecipes += $itemQuantity;
 
-            // Garantir que todos os relacionamentos estão carregados
-            if (!$recipe->relationLoaded('steps')) {
-                $recipe->load('steps.ingredients.ingredient');
-            } else {
-                // Se já carregado, garantir que os relacionamentos aninhados também estão
-                foreach ($recipe->steps as $step) {
-                    if (!$step->relationLoaded('ingredients')) {
-                        $step->load('ingredients.ingredient');
-                    } else {
-                        foreach ($step->ingredients as $ri) {
-                            if (!$ri->relationLoaded('ingredient')) {
-                                $ri->load('ingredient');
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Pesos calculados: % sobre farinha (baker's). Hidratação e levain % sobre farinha.
-            $calculated = $recipe->calculateIngredientWeights($itemWeight);
-            
-            \Log::debug('Ingredientes calculados para receita', [
-                'recipe_id' => $recipe->id,
-                'recipe_name' => $recipe->name,
-                'item_weight' => $itemWeight,
-                'calculated_keys' => array_keys($calculated),
-                'calculated_count' => count($calculated),
-                'calculated_data' => array_map(function($row) {
-                    return [
-                        'has_ingredient' => isset($row['ingredient']),
-                        'ingredient_name' => $row['ingredient']->name ?? 'N/A',
-                        'weight' => $row['weight'] ?? 0
-                    ];
-                }, $calculated)
-            ]);
-            
-            $ingredients = [];
-
-            foreach ($calculated as $key => $row) {
-                $w = (float) ($row['weight'] ?? 0) * $itemQuantity;
-                
-                \Log::debug('Processando ingrediente', [
-                    'key' => $key,
-                    'weight' => $w,
-                    'row' => $row
-                ]);
-                
-                if ($w <= 0) {
-                    \Log::debug('Pulando ingrediente com peso zero', ['key' => $key]);
-                    continue;
+                // Garantir relacionamentos para o cálculo
+                if (!$recipe->relationLoaded('steps')) {
+                    $recipe->load('steps.ingredients.ingredient');
                 }
 
-                // Tratar água e levain como casos especiais
-                if ($key === '_water') {
-                    // Na impressão, dividir água em 60% água gelada e 40% gelo
-                    $waterWeight = $w * 0.6; // 60% água gelada
-                    $iceWeight = $w * 0.4;   // 40% gelo
-                    
-                    $ingredients[] = [
-                        'ingredient' => (object) ['name' => 'Água gelada'],
-                        'weight' => $waterWeight,
-                    ];
-                    $ingredients[] = [
-                        'ingredient' => (object) ['name' => 'Gelo'],
-                        'weight' => $iceWeight,
-                    ];
-                    \Log::debug('Adicionado água dividida', ['water' => $waterWeight, 'ice' => $iceWeight]);
-                    continue;
-                }
+                $calculated = $recipe->calculateIngredientWeights($itemWeight);
+                $ingredients = [];
 
-                if ($key === '_levain') {
-                    if ($replaceLevain) {
-                        \Log::debug('Pulando levain (substituindo por fermento)');
+                foreach ($calculated as $key => $row) {
+                    $w = (float) ($row['weight'] ?? 0) * $itemQuantity;
+                    if ($w <= 0)
+                        continue;
+
+                    if ($key === '_water') {
+                        $waterWeight = $w * 0.6; // 60% água gelada
+                        $iceWeight = $w * 0.4;   // 40% gelo
+                        $ingredients[] = ['ingredient' => (object) ['name' => 'Água gelada'], 'weight' => $waterWeight];
+                        $ingredients[] = ['ingredient' => (object) ['name' => 'Gelo'], 'weight' => $iceWeight];
                         continue;
                     }
-                    $totalLevain += $w;
-                    $name = $row['label'] ?? 'Levain';
-                    $ingredients[] = [
-                        'ingredient' => (object) ['name' => $name],
-                        'weight' => $w,
-                    ];
-                    \Log::debug('Adicionado levain', ['weight' => $w]);
-                    continue;
-                }
 
-                // Pular outras chaves que começam com _ (são virtuais)
-                if (strpos($key, '_') === 0) {
-                    \Log::debug('Pulando chave virtual', ['key' => $key]);
-                    continue;
-                }
-
-                // Processar ingredientes normais
-                $ing = $row['ingredient'] ?? null;
-                if (!$ing) {
-                    \Log::warning('Ingrediente não encontrado no cálculo', [
-                        'recipe_id' => $recipe->id,
-                        'key' => $key,
-                        'row' => $row
-                    ]);
-                    continue;
-                }
-
-                // $ing já é o objeto Ingredient diretamente
-                $ingredientName = $ing->name ?? 'Ingrediente desconhecido';
-                
-                // Pular levain se estiver sendo substituído
-                if ($replaceLevain && (stripos($ingredientName, 'levain') !== false)) {
-                    \Log::debug('Pulando ingrediente levain (substituindo)', ['name' => $ingredientName]);
-                    continue;
-                }
-
-                $ingredients[] = [
-                    'ingredient' => $ing,
-                    'weight' => $w,
-                ];
-                
-                \Log::debug('Adicionado ingrediente normal', [
-                    'name' => $ingredientName,
-                    'weight' => $w
-                ]);
-            }
-
-            if ($replaceLevain) {
-                $fermento = Ingredient::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                    ->where(function ($q) {
-                        $q->where('name', 'like', '%fermento%liofilizado%')
-                            ->orWhere('name', 'like', '%fermento%seco%')
-                            ->orWhere('name', 'like', '%fermento biológico%');
-                    })
-                    ->first();
-                if ($fermento) {
-                    $flour = $recipe->getFlourWeight($itemWeight);
-                    $fermentoWeight = ($flour * $itemQuantity * 1.5) / 100;
-                    $ingredients[] = [
-                        'ingredient' => $fermento,
-                        'weight' => $fermentoWeight,
-                    ];
-                }
-            }
-
-            // Ordenar ingredientes por nome
-            usort($ingredients, function ($a, $b) {
-                $nameA = is_object($a['ingredient']) ? $a['ingredient']->name : '';
-                $nameB = is_object($b['ingredient']) ? $b['ingredient']->name : '';
-                return strcmp($nameA, $nameB);
-            });
-            
-            \Log::info('Receita adicionada à lista de impressão', [
-                'recipe_name' => $item->recipe_name ?? $recipe->name,
-                'quantity' => $itemQuantity,
-                'weight' => $itemWeight,
-                'ingredients_count' => count($ingredients),
-                'ingredients_names' => array_map(function($ing) {
-                    if (is_object($ing['ingredient'])) {
-                        return $ing['ingredient']->name ?? 'Sem nome';
+                    if ($key === '_levain') {
+                        if ($replaceLevain)
+                            continue;
+                        $totalLevain += $w;
+                        $name = $row['label'] ?? 'Levain';
+                        $ingredients[] = ['ingredient' => (object) ['name' => $name], 'weight' => $w];
+                        continue;
                     }
-                    return $ing['ingredient']['name'] ?? 'Sem nome';
-                }, $ingredients),
-                'ingredients_total_weight' => array_sum(array_column($ingredients, 'weight')),
-                'ingredients_debug' => $ingredients
-            ]);
-            
-            $recipes[] = [
-                'recipe' => $recipe,
-                'recipe_name' => $item->recipe_name ?? $recipe->name,
-                'quantity' => $itemQuantity,
-                'weight' => $itemWeight,
-                'total_weight' => $totalWeight,
-                'observation' => $item->observation ?? null,
-                'ingredients' => array_values($ingredients),
-            ];
+
+                    if (strpos($key, '_') === 0)
+                        continue;
+
+                    $ing = $row['ingredient'] ?? null;
+                    if (!$ing)
+                        continue;
+
+                    if ($replaceLevain && stripos($ing->name, 'levain') !== false)
+                        continue;
+
+                    $ingredients[] = ['ingredient' => $ing, 'weight' => $w];
+                }
+
+                if ($replaceLevain) {
+                    $fermento = Ingredient::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+                        ->where(function ($q) {
+                            $q->where('name', 'like', '%fermento%liofilizado%')
+                                ->orWhere('name', 'like', '%fermento%seco%')
+                                ->orWhere('name', 'like', '%fermento biológico%');
+                        })
+                        ->first();
+                    if ($fermento) {
+                        $flour = $recipe->getFlourWeight($itemWeight);
+                        $fermentoWeight = ($flour * $itemQuantity * 1.5) / 100;
+                        $ingredients[] = ['ingredient' => $fermento, 'weight' => $fermentoWeight];
+                    }
+                }
+
+                usort($ingredients, function ($a, $b) {
+                    $nameA = is_object($a['ingredient']) ? $a['ingredient']->name : '';
+                    $nameB = is_object($b['ingredient']) ? $b['ingredient']->name : '';
+                    return strcmp($nameA, $nameB);
+                });
+
+                $recipes[] = [
+                    'recipe' => $recipe,
+                    'recipe_name' => $item->recipe_name,
+                    'quantity' => $itemQuantity,
+                    'weight' => $itemWeight,
+                    'total_weight' => $totalWeight,
+                    'observation' => $item->observation,
+                    'ingredients' => $ingredients,
+                ];
+            }
         }
 
         $date = $list->production_date->format('Y-m-d');
-        
+
         \Log::info('Impressão de lista de produção', [
             'list_id' => $list->id,
             'items_count' => $list->items->count(),
@@ -352,14 +255,14 @@ class ProductionController extends Controller
             'total_recipes' => $totalRecipes,
             'total_levain' => $totalLevain
         ]);
-        
+
         return view('dashboard.producao.print-queue', compact('recipes', 'totalLevain', 'totalRecipes', 'date', 'replaceLevain'));
     }
 
     public function createList(Request $request)
     {
         $clientId = currentClientId();
-        
+
         $validated = $request->validate([
             'production_date' => 'required|date',
             'notes' => 'nullable|string',
@@ -390,7 +293,7 @@ class ProductionController extends Controller
     public function addItemToList(Request $request, $listId)
     {
         $clientId = currentClientId();
-        
+
         $validated = $request->validate([
             'recipe_id' => 'required|integer',
             'quantity' => 'required|integer|min:1',
@@ -404,7 +307,7 @@ class ProductionController extends Controller
 
         $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->find($validated['recipe_id']);
-        
+
         if (!$recipe) {
             return back()->with('error', 'Receita não encontrada!');
         }
@@ -419,15 +322,15 @@ class ProductionController extends Controller
             // Atualizar quantidade
             $newObservation = $validated['observation'] ?? null;
             $existingObservation = $existingItem->observation;
-            
+
             if ($newObservation) {
-                $finalObservation = $existingObservation ? 
-                    $existingObservation . ' | ' . $newObservation : 
+                $finalObservation = $existingObservation ?
+                    $existingObservation . ' | ' . $newObservation :
                     $newObservation;
             } else {
                 $finalObservation = $existingObservation;
             }
-            
+
             $existingItem->update([
                 'quantity' => $existingItem->quantity + $validated['quantity'],
                 'observation' => $finalObservation
@@ -458,28 +361,38 @@ class ProductionController extends Controller
     public function toggleMarkForPrint(Request $request, $id)
     {
         $clientId = currentClientId();
+        $ids = explode(',', $id);
 
-        $item = ProductionListItem::whereHas('productionList', fn ($q) => $q->where('client_id', $clientId))
-            ->findOrFail($id);
+        $items = ProductionListItem::whereHas('productionList', fn($q) => $q->where('client_id', $clientId))
+            ->whereIn('id', $ids)
+            ->get();
 
-        $item->update(['mark_for_print' => !$item->mark_for_print]);
+        if ($items->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Itens não encontrados'], 404);
+        }
+
+        // Toggle baseado no primeiro item
+        $target = !$items->first()->mark_for_print;
+        foreach ($items as $item) {
+            $item->update(['mark_for_print' => $target]);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'mark_for_print' => $item->mark_for_print,
-                'message' => $item->mark_for_print ? 'Marcado para impressão' : 'Desmarcado da impressão',
+                'mark_for_print' => $target,
+                'message' => $target ? 'Marcado para impressão' : 'Desmarcado da impressão',
             ]);
         }
 
-        return back()->with('success', 'Item atualizado!');
+        return back()->with('success', 'Itens atualizados!');
     }
 
     public function addRecipeToTodayList(Request $request)
     {
         $clientId = currentClientId();
         $date = today()->format('Y-m-d');
-        
+
         $validated = $request->validate([
             'recipe_id' => 'required|integer',
             'quantity' => 'required|integer|min:1',
@@ -503,7 +416,7 @@ class ProductionController extends Controller
 
         $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->find($validated['recipe_id']);
-        
+
         if (!$recipe) {
             return response()->json([
                 'success' => false,
@@ -514,7 +427,7 @@ class ProductionController extends Controller
         // Verificar se já existe o item na lista
         $existingItem = $list->items()
             ->where('recipe_id', $validated['recipe_id'])
-            ->where(function($q) use ($validated, $recipe) {
+            ->where(function ($q) use ($validated, $recipe) {
                 $itemWeight = $validated['weight'] ?? $recipe->total_weight;
                 $q->whereRaw('ABS(weight - ?) < 0.01', [$itemWeight]);
             })
@@ -524,15 +437,15 @@ class ProductionController extends Controller
             // Atualizar quantidade
             $newObservation = $validated['observation'] ?? null;
             $existingObservation = $existingItem->observation;
-            
+
             if ($newObservation) {
-                $finalObservation = $existingObservation ? 
-                    $existingObservation . ' | ' . $newObservation : 
+                $finalObservation = $existingObservation ?
+                    $existingObservation . ' | ' . $newObservation :
                     $newObservation;
             } else {
                 $finalObservation = $existingObservation;
             }
-            
+
             $existingItem->update([
                 'quantity' => $existingItem->quantity + $validated['quantity'],
                 'observation' => $finalObservation
@@ -559,77 +472,106 @@ class ProductionController extends Controller
 
     public function markItemProduced(Request $request, $id)
     {
-        $clientId = currentClientId();
-        
-        $item = \App\Models\ProductionListItem::whereHas('productionList', function($q) use ($clientId) {
-                $q->where('client_id', $clientId);
-            })
-            ->findOrFail($id);
-        
-        $wasProduced = $item->is_produced;
-        
-        $item->update([
-            'is_produced' => !$item->is_produced,
-            'produced_at' => !$item->is_produced ? now() : null,
-        ]);
+        try {
+            $clientId = currentClientId();
 
-        // Criar registro de produção apenas quando marcar como produzido
-        if ($item->is_produced && !$wasProduced) {
-            $list = $item->productionList;
-            $recipe = $item->recipe;
-            
-            ProductionRecord::create([
-                'client_id' => $clientId,
-                'recipe_id' => $item->recipe_id,
-                'recipe_name' => $item->recipe_name,
-                'quantity' => $item->quantity,
-                'weight' => $item->weight,
-                'total_produced' => $item->quantity * $item->weight,
-                'production_date' => $list ? $list->production_date : today(),
-                'observation' => $item->observation,
-                'cost' => $recipe ? $recipe->cost * $item->quantity : 0,
-            ]);
-            
-            // Abater estoque dos ingredientes usados na receita
-            if ($recipe) {
-                $this->deductIngredientStock($recipe, $item->quantity);
+            // Suporte a múltiplos IDs separados por vírgula (para lotes consolidados)
+            $ids = explode(',', $id);
+
+            $items = \App\Models\ProductionListItem::whereIn('id', $ids)
+                ->whereHas('productionList', function ($q) use ($clientId) {
+                    $q->where('client_id', $clientId);
+                })
+                ->get();
+
+            if ($items->isEmpty()) {
+                if ($request->ajax())
+                    return response()->json(['success' => false, 'message' => 'Itens não encontrados'], 404);
+                return back()->with('error', 'Itens não encontrados');
             }
-        }
 
-        return back()->with('success', 'Item atualizado!');
+            // O status final será o oposto do status do primeiro item (toggle)
+            $targetStatus = !$items->first()->is_produced;
+
+            foreach ($items as $item) {
+                $wasProduced = $item->is_produced;
+
+                $item->update([
+                    'is_produced' => $targetStatus,
+                    'produced_at' => $targetStatus ? now() : null,
+                ]);
+
+                // Criar registro de produção apenas quando marcar como produzido
+                if ($item->is_produced && !$wasProduced) {
+                    $list = $item->productionList;
+                    $recipe = $item->recipe;
+
+                    ProductionRecord::create([
+                        'client_id' => $clientId,
+                        'recipe_id' => $item->recipe_id,
+                        'recipe_name' => $item->recipe_name,
+                        'quantity' => $item->quantity,
+                        'weight' => $item->weight,
+                        'total_produced' => $item->quantity * $item->weight,
+                        'production_date' => $list ? $list->production_date : today(),
+                        'observation' => $item->observation,
+                        'cost' => $recipe ? $recipe->cost * $item->quantity : 0,
+                    ]);
+
+                    // Abater estoque dos ingredientes usados na receita
+                    if ($recipe) {
+                        $this->deductIngredientStock($recipe, $item->quantity);
+                    }
+                }
+            }
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => count($items) > 1 ? 'Lote atualizado!' : 'Item atualizado!',
+                    'is_produced' => $targetStatus
+                ]);
+            }
+
+            return back()->with('success', count($items) > 1 ? 'Lote atualizado!' : 'Item atualizado!');
+        } catch (\Exception $e) {
+            if ($request->ajax())
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function removeItemFromList(Request $request, $id)
     {
         $clientId = currentClientId();
-        
-        $item = \App\Models\ProductionListItem::whereHas('productionList', function($q) use ($clientId) {
-                $q->where('client_id', $clientId);
-            })
-            ->findOrFail($id);
-        
-        $item->delete();
-        
+        $ids = explode(',', $id);
+
+        \App\Models\ProductionListItem::whereHas('productionList', function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->whereIn('id', $ids)
+            ->delete();
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Item removido da lista!'
+                'message' => 'Item(ns) removido(s) da lista!'
             ]);
         }
-        
-        return back()->with('success', 'Item removido da lista!');
+
+        return back()->with('success', 'Item(s) removido(s) da lista!');
     }
 
     public function listaCompras(Request $request)
     {
         $date = $request->input('date', today()->format('Y-m-d'));
-        
+
         $list = ProductionList::whereDate('production_date', $date)
             ->with(['items.recipe.steps.ingredients.ingredient'])
             ->first();
-        
+
         $shoppingList = [];
-        
+
         if ($list) {
             foreach ($list->items as $item) {
                 if (!$item->is_produced && $item->recipe) {
@@ -638,7 +580,7 @@ class ProductionController extends Controller
                             if ($ri->ingredient) {
                                 $ingredientId = $ri->ingredient->id;
                                 $needed = ($ri->calculated_weight / 1000) * $item->quantity; // Converter para kg
-                                
+
                                 if (!isset($shoppingList[$ingredientId])) {
                                     $shoppingList[$ingredientId] = [
                                         'ingredient' => $ri->ingredient,
@@ -647,7 +589,7 @@ class ProductionController extends Controller
                                         'min_stock' => $ri->ingredient->min_stock ?? 0,
                                     ];
                                 }
-                                
+
                                 $shoppingList[$ingredientId]['needed'] += $needed;
                             }
                         }
@@ -655,7 +597,7 @@ class ProductionController extends Controller
                 }
             }
         }
-        
+
         return view('dashboard.producao.lista-compras', compact('shoppingList', 'date'));
     }
 
@@ -663,31 +605,31 @@ class ProductionController extends Controller
     {
         $startDate = $request->input('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
         $endDate = $request->input('end_date', today()->format('Y-m-d'));
-        
+
         // Itens mais produzidos
         $mostProduced = ProductionRecord::select('recipe_id', 'recipe_name', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total_produced) as total_weight'))
             ->whereBetween('production_date', [$startDate, $endDate])
             ->groupBy('recipe_id', 'recipe_name')
             ->orderBy('total_quantity', 'desc')
             ->get();
-        
+
         // Produção por dia
         $dailyProduction = ProductionRecord::select(
-                DB::raw('DATE(production_date) as date'),
-                DB::raw('SUM(quantity) as total_quantity'),
-                DB::raw('SUM(total_produced) as total_weight'),
-                DB::raw('SUM(cost) as total_cost')
-            )
+            DB::raw('DATE(production_date) as date'),
+            DB::raw('SUM(quantity) as total_quantity'),
+            DB::raw('SUM(total_produced) as total_weight'),
+            DB::raw('SUM(cost) as total_cost')
+        )
             ->whereBetween('production_date', [$startDate, $endDate])
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         // Totalizadores
         $totalQuantity = $mostProduced->sum('total_quantity');
         $totalWeight = $dailyProduction->sum('total_weight');
         $totalCost = $dailyProduction->sum('total_cost');
-        
+
         return view('dashboard.producao.relatorios', compact(
             'mostProduced',
             'dailyProduction',
@@ -714,7 +656,7 @@ class ProductionController extends Controller
         $list = ProductionList::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->where('client_id', $clientId)
             ->whereDate('production_date', $date)
-            ->with(['items' => fn ($q) => $q->orderBy('sort_order')])
+            ->with(['items' => fn($q) => $q->orderBy('sort_order')])
             ->first();
 
         $queue = [];
@@ -722,7 +664,7 @@ class ProductionController extends Controller
         $listId = null;
 
         if ($list) {
-            $itemsToPrint = $list->items->filter(fn ($i) => $i->mark_for_print ?? true);
+            $itemsToPrint = $list->items->filter(fn($i) => $i->mark_for_print ?? true);
             $listId = $list->id;
 
             foreach ($itemsToPrint as $item) {
@@ -758,21 +700,23 @@ class ProductionController extends Controller
             $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                 ->with(['steps.ingredients.ingredient'])
                 ->find($validated['recipe_id']);
-            
+
             if (!$recipe) {
                 throw new \Exception('Receita não encontrada');
             }
 
             $queue = session('print_queue', []);
-            
+
             // Verificar se já existe na fila (mesma receita e mesmo peso)
             $existingIndex = null;
             foreach ($queue as $index => $item) {
                 $itemWeight = $item['weight'] ?? $recipe->total_weight;
                 $newWeight = $validated['weight'] ?? $recipe->total_weight;
-                
-                if ($item['recipe_id'] == $validated['recipe_id'] && 
-                    abs($itemWeight - $newWeight) < 0.01) { // Comparação com tolerância para decimais
+
+                if (
+                    $item['recipe_id'] == $validated['recipe_id'] &&
+                    abs($itemWeight - $newWeight) < 0.01
+                ) { // Comparação com tolerância para decimais
                     $existingIndex = $index;
                     break;
                 }
@@ -817,14 +761,14 @@ class ProductionController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Erro ao adicionar receita: ' . $e->getMessage()
                 ], 500);
             }
-            
+
             return back()->with('error', 'Erro ao adicionar receita à fila: ' . $e->getMessage());
         }
     }
@@ -870,12 +814,12 @@ class ProductionController extends Controller
     {
         try {
             $queue = session('print_queue', []);
-            
+
             if (isset($queue[$index])) {
                 unset($queue[$index]);
                 $queue = array_values($queue); // Reindexar
                 session(['print_queue' => $queue]);
-                
+
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
                         'success' => true,
@@ -883,31 +827,31 @@ class ProductionController extends Controller
                         'queue_count' => count($queue)
                     ]);
                 }
-                
+
                 return back()->with('success', 'Item removido da fila!');
             }
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Item não encontrado na fila!'
                 ], 404);
             }
-            
+
             return back()->with('error', 'Item não encontrado na fila!');
         } catch (\Exception $e) {
             \Log::error('Erro ao remover da fila de impressão', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Erro ao remover item: ' . $e->getMessage()
                 ], 500);
             }
-            
+
             return back()->with('error', 'Erro ao remover item da fila!');
         }
     }
@@ -916,7 +860,7 @@ class ProductionController extends Controller
     {
         try {
             session()->forget('print_queue');
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Fila limpa!'
@@ -925,7 +869,7 @@ class ProductionController extends Controller
             \Log::error('Erro ao limpar fila de impressão', [
                 'error' => $e->getMessage()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao limpar fila: ' . $e->getMessage()
@@ -941,12 +885,12 @@ class ProductionController extends Controller
         ]);
 
         $queue = session('print_queue', []);
-        
+
         if (isset($queue[$index])) {
             $queue[$index]['quantity'] = $validated['quantity'];
             $queue[$index]['observation'] = $validated['observation'] ?? null;
             session(['print_queue' => $queue]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Item atualizado!'
@@ -964,54 +908,62 @@ class ProductionController extends Controller
         $queue = session('print_queue', []);
         $replaceLevain = $request->boolean('replace_levain', false);
         $date = $request->input('date', today()->format('Y-m-d'));
-        
+
+        // CONSOLIDAÇÃO E DIVISÃO POR LOTES (3kg)
+        $batchItems = $this->consolidateAndSplitItems($queue);
+
         $recipes = [];
         $totalLevain = 0;
         $totalRecipes = 0;
 
-        foreach ($queue as $item) {
-            // Garantir que todas as chaves necessárias existem
-            if (!isset($item['recipe_id']) || !isset($item['quantity'])) {
-                continue; // Pular itens inválidos
-            }
-            
-            $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                ->with(['steps.ingredients.ingredient'])
-                ->find($item['recipe_id']);
+        foreach ($batchItems as $item) {
+            $recipe = $item->recipe;
 
             if ($recipe) {
-                $itemWeight = (float) ($item['weight'] ?? $recipe->total_weight);
-                $itemQuantity = (int) ($item['quantity'] ?? 1);
+                $itemWeight = (float) $item->weight;
+                $itemQuantity = (int) $item->quantity;
                 $totalWeight = $itemWeight * $itemQuantity;
                 $totalRecipes += $itemQuantity;
 
                 $calculated = $recipe->calculateIngredientWeights($itemWeight);
                 $ingredients = [];
+
                 foreach ($calculated as $key => $row) {
                     $w = (float) ($row['weight'] ?? 0) * $itemQuantity;
-                    if ($w <= 0) continue;
+                    if ($w <= 0)
+                        continue;
+
                     if ($key === '_levain') {
-                        if ($replaceLevain) continue;
+                        if ($replaceLevain)
+                            continue;
                         $totalLevain += $w;
                     }
+
                     if ($key === '_water') {
-                        // Na impressão, dividir água em 60% água gelada e 40% gelo
+                        // Divisão de água/gelo apenas para PÃES
                         $waterWeight = $w * 0.6; // 60% água gelada
                         $iceWeight = $w * 0.4;   // 40% gelo
                         $ingredients[] = ['ingredient' => (object) ['name' => 'Água gelada'], 'weight' => $waterWeight];
                         $ingredients[] = ['ingredient' => (object) ['name' => 'Gelo'], 'weight' => $iceWeight];
                         continue;
                     }
+
                     if ($key === '_levain') {
                         $name = $row['label'] ?? 'Levain';
                         $ingredients[] = ['ingredient' => (object) ['name' => $name], 'weight' => $w];
                         continue;
                     }
+
                     $ing = $row['ingredient'] ?? null;
-                    if (!$ing) continue;
-                    if ($replaceLevain && stripos($ing->name, 'levain') !== false) continue;
+                    if (!$ing)
+                        continue;
+
+                    if ($replaceLevain && stripos($ing->name, 'levain') !== false)
+                        continue;
+
                     $ingredients[] = ['ingredient' => $ing, 'weight' => $w];
                 }
+
                 if ($replaceLevain) {
                     $fermento = Ingredient::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                         ->where(function ($q) {
@@ -1026,15 +978,16 @@ class ProductionController extends Controller
                         $ingredients[] = ['ingredient' => $fermento, 'weight' => $fermentoWeight];
                     }
                 }
-                usort($ingredients, fn ($a, $b) => strcmp($a['ingredient']->name, $b['ingredient']->name));
+
+                usort($ingredients, fn($a, $b) => strcmp($a['ingredient']->name, $b['ingredient']->name));
 
                 $recipes[] = [
                     'recipe' => $recipe,
-                    'recipe_name' => $item['recipe_name'] ?? $recipe->name,
+                    'recipe_name' => $item->recipe_name,
                     'quantity' => $itemQuantity,
                     'weight' => $itemWeight,
                     'total_weight' => $totalWeight,
-                    'observation' => $item['observation'] ?? null,
+                    'observation' => $item->observation,
                     'ingredients' => $ingredients,
                 ];
             }
@@ -1051,32 +1004,32 @@ class ProductionController extends Controller
         try {
             // Calcular ingredientes necessários para a quantidade produzida
             $calculated = $recipe->calculateIngredientWeights($recipe->total_weight * $quantity);
-            
+
             foreach ($calculated as $key => $row) {
                 // Pular água e levain (não são ingredientes com estoque)
                 if ($key === '_water' || $key === '_levain') {
                     continue;
                 }
-                
+
                 $ingredient = $row['ingredient'] ?? null;
                 if (!$ingredient || !isset($ingredient->id)) {
                     continue;
                 }
-                
+
                 $weightUsed = (float) ($row['weight'] ?? 0);
                 if ($weightUsed <= 0) {
                     continue;
                 }
-                
+
                 // Buscar ingrediente sem ClientScope para garantir que encontre
                 $ingredientModel = Ingredient::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
                     ->find($ingredient->id);
-                
+
                 if ($ingredientModel) {
                     // Abater estoque (não permitir negativo)
                     $newStock = max(0, (float) $ingredientModel->stock - $weightUsed);
                     $ingredientModel->update(['stock' => $newStock]);
-                    
+
                     \Log::info('Estoque abatido após produção', [
                         'ingredient_id' => $ingredientModel->id,
                         'ingredient_name' => $ingredientModel->name,
@@ -1111,10 +1064,10 @@ class ProductionController extends Controller
             'tax_percentage' => $settings->tax_percentage ?? 0,
             'card_fee_percentage' => $settings->card_fee_percentage ?? 6.0,
         ];
-        
+
         // Converter para objeto para compatibilidade com a view
         $productionSettings = (object) $productionSettings;
-        
+
         return view('dashboard.producao.configuracoes-custos', compact('productionSettings'));
     }
 
@@ -1133,7 +1086,7 @@ class ProductionController extends Controller
 
         $clientId = currentClientId();
         $settings = \App\Models\Setting::getSettings($clientId);
-        
+
         $settings->update([
             'sales_multiplier' => $validated['sales_multiplier'],
             'resale_multiplier' => $validated['resale_multiplier'],
@@ -1143,5 +1096,139 @@ class ProductionController extends Controller
         ]);
 
         return back()->with('success', 'Configurações de custos de produção salvas com sucesso!');
+    }
+
+    /**
+     * Consolida itens da mesma receita e divide em lotes de no máximo 3kg (3000g).
+     */
+    private function consolidateAndSplitItems($items)
+    {
+        if (!$items)
+            return collect();
+        if (!($items instanceof \Illuminate\Support\Collection)) {
+            $items = collect($items);
+        }
+        if ($items->isEmpty())
+            return collect();
+
+        $limitGrams = 3000;
+        $consolidatedRows = [];
+
+        // Agrupar por receita e peso base unitário
+        $groups = $items->groupBy(function ($item) {
+            $isModel = $item instanceof \Illuminate\Database\Eloquent\Model;
+            $recipeId = $isModel ? $item->recipe_id : ($item['recipe_id'] ?? 'no-recipe');
+
+            // Tentar obter o peso unitário
+            if ($isModel) {
+                $w = (float) ($item->weight ?? ($item->recipe ? $item->recipe->total_weight : 0));
+            } else {
+                $w = (float) ($item['weight'] ?? 0);
+                if ($w <= 0) {
+                    $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->find($recipeId);
+                    if ($recipe)
+                        $w = (float) $recipe->total_weight;
+                }
+            }
+
+            return $recipeId . '-' . number_format($w, 2, '.', '');
+        });
+
+        foreach ($groups as $group) {
+            $first = $group->first();
+            $isModel = $first instanceof \Illuminate\Database\Eloquent\Model;
+            $recipeId = $isModel ? $first->recipe_id : ($first['recipe_id'] ?? 0);
+
+            if ($isModel) {
+                $unitWeight = (float) ($first->weight ?? ($first->recipe ? $first->recipe->total_weight : 0));
+            } else {
+                $unitWeight = (float) ($first['weight'] ?? 0);
+                if ($unitWeight <= 0) {
+                    $recipe = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->find($recipeId);
+                    if ($recipe)
+                        $unitWeight = (float) $recipe->total_weight;
+                }
+            }
+
+            if ($unitWeight <= 0) {
+                $qty = $group->sum(fn($i) => $isModel ? $i->quantity : ($i['quantity'] ?? 0));
+                $consolidatedRows[] = $this->createBatchRow($group, $qty, $unitWeight);
+                continue;
+            }
+
+            $totalQty = $group->sum(fn($i) => $isModel ? $i->quantity : ($i['quantity'] ?? 0));
+            $maxPerBatch = floor($limitGrams / $unitWeight);
+
+            if ($maxPerBatch <= 0) {
+                // Caso o peso unitário seja > 3kg, cada unidade é um lote
+                foreach ($group as $item) {
+                    $q = $isModel ? $item->quantity : ($item['quantity'] ?? 0);
+                    for ($i = 0; $i < $q; $i++) {
+                        $consolidatedRows[] = $this->createBatchRow(collect([$item]), 1, $unitWeight);
+                    }
+                }
+                continue;
+            }
+
+            // Dividir em lotes equilibrados
+            $totalBatches = (int) ceil($totalQty / $maxPerBatch);
+            $baseQtyPerBatch = (int) floor($totalQty / $totalBatches);
+            $remainder = $totalQty % $totalBatches;
+
+            $batchIndex = 1;
+            for ($i = 0; $i < $totalBatches; $i++) {
+                $currentBatchQty = $baseQtyPerBatch + ($i < $remainder ? 1 : 0);
+                if ($currentBatchQty <= 0)
+                    continue;
+
+                $consolidatedRows[] = $this->createBatchRow($group, $currentBatchQty, $unitWeight, $totalBatches > 1 ? $batchIndex : null);
+                $batchIndex++;
+            }
+        }
+
+        return collect($consolidatedRows);
+    }
+
+    private function createBatchRow($group, $qty, $weight, $batchNumber = null)
+    {
+        $first = $group->first();
+        $isModel = $first instanceof \Illuminate\Database\Eloquent\Model;
+
+        // Um lote é considerado produzido apenas se TODOS os itens originais dele estiverem produzidos
+        $isProduced = $isModel ? ($group->count() === 1 ? $first->is_produced : $group->every('is_produced', true)) : false;
+
+        $ids = $isModel ? $group->pluck('id')->implode(',') : '';
+        $observations = $isModel
+            ? $group->pluck('observation')->filter()->unique()->implode(' | ')
+            : $group->pluck('observation', null)->filter()->unique()->implode(' | '); // Fallback para array
+
+        if (!$isModel && is_array($first)) {
+            $observations = collect($group)->pluck('observation')->filter()->unique()->implode(' | ');
+        }
+
+        $recipeName = $isModel ? $first->recipe_name : ($first['recipe_name'] ?? '');
+        if (empty($recipeName)) {
+            $recipeId = $isModel ? $first->recipe_id : ($first['recipe_id'] ?? 0);
+            $recipe = $isModel ? $first->recipe : Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->find($recipeId);
+            if ($recipe)
+                $recipeName = $recipe->name;
+        }
+
+        return (object) [
+            'ids' => $ids,
+            'recipe_id' => $isModel ? $first->recipe_id : ($first['recipe_id'] ?? null),
+            'recipe' => $isModel ? $first->recipe : Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)->find($first['recipe_id'] ?? 0),
+            'original_recipe_name' => $recipeName,
+            'recipe_name' => $batchNumber ? "{$recipeName} (Lote {$batchNumber})" : $recipeName,
+            'quantity' => $qty,
+            'weight' => $weight,
+            'total_weight' => $qty * $weight,
+            'is_produced' => $isProduced,
+            'observation' => $observations,
+            'batch_number' => $batchNumber,
+            'is_batch' => $batchNumber !== null,
+            'mark_for_print' => $isModel ? $group->every('mark_for_print', true) : true,
+            'original_items' => $group
+        ];
     }
 }

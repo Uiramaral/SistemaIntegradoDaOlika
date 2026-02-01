@@ -169,15 +169,16 @@ class Recipe extends Model
 
     public function calculateIngredientWeights(?float $totalWeight = null): array
     {
-        $flour = $this->getFlourWeight($totalWeight);
+        $isBread = (bool) ($this->is_bread ?? false);
+        $targetTotal = $totalWeight ?? (float) ($this->total_weight ?? 0);
+        $flour = $isBread ? $this->getFlourWeight($targetTotal) : 0;
 
-        \Log::debug('calculateIngredientWeights iniciado', [
-            'recipe_id' => $this->id,
-            'recipe_name' => $this->name,
-            'total_weight' => $totalWeight,
-            'flour_weight' => $flour,
-            'steps_loaded' => $this->relationLoaded('steps')
-        ]);
+        // Fator de escala para receitas que não usam baker percentage
+        // Se a receita tem um total_weight de 1000g e queremos produzir 2000g, o fator é 2.
+        $scaleFactor = 1.0;
+        if (!$isBread && (float) $this->total_weight > 0) {
+            $scaleFactor = $targetTotal / (float) $this->total_weight;
+        }
 
         $steps = $this->relationLoaded('steps')
             ? $this->steps
@@ -191,87 +192,47 @@ class Recipe extends Model
                 }
             ])->get();
 
-        \Log::debug('Steps carregadas', [
-            'steps_count' => $steps->count(),
-            'steps_data' => $steps->map(function ($step) {
-                return [
-                    'id' => $step->id,
-                    'name' => $step->name,
-                    'ingredients_count' => $step->ingredients->count(),
-                    'ingredients' => $step->ingredients->map(function ($ri) {
-                        return [
-                            'id' => $ri->id,
-                            'ingredient_id' => $ri->ingredient_id,
-                            'percentage' => $ri->percentage,
-                            'has_ingredient' => $ri->ingredient !== null,
-                            'ingredient_name' => $ri->ingredient->name ?? 'N/A'
-                        ];
-                    })->toArray()
-                ];
-            })->toArray()
-        ]);
-
         $out = [];
         foreach ($steps as $step) {
             foreach ($step->ingredients as $ri) {
-                if ($ri->percentage === null) {
-                    \Log::debug('Pulando ingrediente sem porcentagem', [
-                        'recipe_ingredient_id' => $ri->id,
-                        'ingredient_id' => $ri->ingredient_id
-                    ]);
-                    continue;
-                }
-
-                // Garantir que o relacionamento ingredient está carregado (sem ClientScope)
+                // Garantir relacionamento
                 if (!$ri->relationLoaded('ingredient')) {
-                    $ri->load([
-                        'ingredient' => function ($query) {
-                            $query->withoutGlobalScope(\App\Models\Scopes\ClientScope::class);
-                        }
-                    ]);
+                    $ri->load(['ingredient' => fn($q) => $q->withoutGlobalScope(\App\Models\Scopes\ClientScope::class)]);
                 }
 
-                if (!$ri->ingredient) {
-                    \Log::warning('Ingrediente não encontrado no relacionamento', [
-                        'recipe_ingredient_id' => $ri->id,
-                        'ingredient_id' => $ri->ingredient_id
-                    ]);
+                if (!$ri->ingredient)
                     continue;
+
+                $weight = 0.0;
+                if ($isBread && $ri->percentage !== null) {
+                    $weight = round($flour * (float) $ri->percentage / 100, 2);
+                } else {
+                    // Se não for pão ou não tiver %, usa o peso fixo escalado
+                    $weight = round((float) ($ri->weight ?? 0) * $scaleFactor, 2);
                 }
 
-                $w = round($flour * (float) $ri->percentage / 100, 2);
+                if ($weight <= 0)
+                    continue;
+
                 $id = $ri->ingredient_id;
                 if (!isset($out[$id])) {
                     $out[$id] = ['ingredient' => $ri->ingredient, 'weight' => 0.0];
                 }
-                $out[$id]['weight'] += $w;
-
-                \Log::debug('Ingrediente adicionado ao cálculo', [
-                    'ingredient_id' => $id,
-                    'ingredient_name' => $ri->ingredient->name,
-                    'percentage' => $ri->percentage,
-                    'weight' => $w,
-                    'total_weight_for_id' => $out[$id]['weight']
-                ]);
+                $out[$id]['weight'] += $weight;
             }
         }
-        $h = (float) ($this->hydration ?? 0);
-        $l = (float) ($this->levain ?? 0);
-        if ($h > 0) {
-            $out['_water'] = ['ingredient' => null, 'weight' => round($flour * $h / 100, 2), 'label' => 'Água (hidratação)'];
-            \Log::debug('Água adicionada', ['weight' => $out['_water']['weight']]);
-        }
-        if ($l > 0) {
-            $out['_levain'] = ['ingredient' => null, 'weight' => round($flour * $l / 100, 2), 'label' => 'Levain'];
-            \Log::debug('Levain adicionado', ['weight' => $out['_levain']['weight']]);
-        }
 
-        \Log::debug('calculateIngredientWeights finalizado', [
-            'total_ingredients' => count($out),
-            'ingredient_ids' => array_keys(array_filter($out, function ($key) {
-                return strpos($key, '_') !== 0;
-            }, ARRAY_FILTER_USE_KEY))
-        ]);
+        // Adicionar água e levain apenas para pães
+        if ($isBread) {
+            $h = (float) ($this->hydration ?? 0);
+            $l = (float) ($this->levain ?? 0);
+            if ($h > 0) {
+                $out['_water'] = ['ingredient' => null, 'weight' => round($flour * $h / 100, 2), 'label' => 'Água (hidratação)'];
+            }
+            if ($l > 0) {
+                $out['_levain'] = ['ingredient' => null, 'weight' => round($flour * $l / 100, 2), 'label' => 'Levain'];
+            }
+        }
 
         return $out;
     }

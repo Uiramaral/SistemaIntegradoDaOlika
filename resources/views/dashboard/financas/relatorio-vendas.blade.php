@@ -115,7 +115,8 @@
                     <div class="min-w-0">
                         <p class="text-xs sm:text-sm text-muted-foreground">Valor Total</p>
                         <p class="text-lg sm:text-2xl font-bold text-green-600 truncate">R$
-                            {{ number_format($totalVendas ?? 0, 2, ',', '.') }}</p>
+                            {{ number_format($totalVendas ?? 0, 2, ',', '.') }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -222,8 +223,8 @@
                 </div>
 
                 @if($vendas->hasPages())
-                    <div class="p-4 border-t">
-                        {{ $vendas->links() }}
+                    <div class="p-4 border-t border-border bg-muted/20 rounded-b-lg">
+                        {{ $vendas->withQueryString()->links() }}
                     </div>
                 @endif
             @endif

@@ -31,7 +31,7 @@
 
 @if($isPurchasable)
     @if($displayType === 'grid')
-        <div class="product-item rounded-lg border text-card-foreground shadow-sm group overflow-hidden border-border hover-lift bg-card cursor-pointer"
+        <div class="product-item rounded-lg border text-card-foreground shadow-sm group overflow-hidden border-border hover-lift bg-card cursor-pointer transition-all duration-300 ease-in-out"
             data-category-id="{{ $product->category_id ?? '0' }}" onclick="openProductModal({{ $product->id }})">
             <div class="p-0">
                 <div class="relative aspect-4-3 overflow-hidden bg-muted cursor-pointer" style="aspect-ratio: 4 / 3;">

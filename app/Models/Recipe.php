@@ -139,6 +139,34 @@ class Recipe extends Model
      * Retorna pesos calculados por ingrediente (e opcionalmente água/levain).
      * totalWeight: peso total da massa (ex.: 700g). Se null, usa total_weight da receita.
      */
+    /**
+     * Obtém o peso de uma unidade (variante ou peso do produto)
+     */
+    public function getUnitWeight(): float
+    {
+        if ($this->variant_id && $this->variant) {
+            return (float) ($this->variant->weight_grams ?? 0);
+        }
+
+        if ($this->product) {
+            return (float) ($this->product->weight_grams ?? 0);
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Calcula o rendimento em porções
+     */
+    public function getPortionsAttribute(): float
+    {
+        $unitWeight = $this->getUnitWeight();
+        if ($unitWeight > 0 && $this->total_weight > 0) {
+            return round($this->total_weight / $unitWeight, 2);
+        }
+        return 0.0;
+    }
+
     public function calculateIngredientWeights(?float $totalWeight = null): array
     {
         $flour = $this->getFlourWeight($totalWeight);

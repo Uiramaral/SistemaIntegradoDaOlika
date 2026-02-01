@@ -1228,43 +1228,37 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         }
         
         // Marcar como calculado SEMPRE que recebemos um valor (mesmo 0 = grátis)
-        // IMPORTANTE: Frete calculado = true quando temos um valor calculado, mesmo que seja 0 (grátis)
         if (currentDeliveryFee !== null && currentDeliveryFee !== undefined && !isNaN(parseFloat(currentDeliveryFee))) {
             window.checkoutData.freteCalculado = true;
             window.checkoutData.deliveryFee = currentDeliveryFee;
             if (typeof window.checkoutData.deliveryFeeLocked === 'undefined') {
                 window.checkoutData.deliveryFeeLocked = false;
             }
-            console.log('updateOrderSummary: Frete calculado, marcando como true (valor:', currentDeliveryFee, ')');
             // Atualizar estado do botão após atualizar frete
-            updateFinalizeButtonState();
+            if (typeof updateFinalizeButtonState === 'function') {
+                updateFinalizeButtonState();
+            }
         } else {
             // Se não recebeu um valor válido, verificar se já estava calculado
             const freteJaEstavaCalculado = window.checkoutData.freteCalculado === true;
             if (freteJaEstavaCalculado) {
-                // Preservar estado anterior
-                console.log('updateOrderSummary: Preservando frete já calculado (valor anterior:', window.checkoutData.deliveryFee, ')');
-                updateFinalizeButtonState();
-            } else {
-                // Apenas marcar como não calculado se realmente nunca foi calculado
-                if (!window.checkoutData.freteCalculado) {
-                    console.log('updateOrderSummary: Frete ainda não calculado');
+                 if (typeof updateFinalizeButtonState === 'function') {
+                    updateFinalizeButtonState();
                 }
             }
         }
         
-        // Cupom - SEMPRE mostrar se houver desconto (mesmo que não tenha código, pode ser aplicado automaticamente)
-        console.log('updateOrderSummary: Cupom - discount:', couponDiscount, 'code:', couponCode);
+        // Cupom
+        const couponRow = document.getElementById('summaryCouponRow');
+        const couponLabel = document.getElementById('summaryCouponLabel');
+        const couponValueEl = document.getElementById('summaryCoupon');
+
         if (couponDiscount > 0) {
-            const couponRow = document.getElementById('summaryCouponRow');
-            const couponLabel = document.getElementById('summaryCouponLabel');
-            couponLabel.textContent = `Cupom${couponCode ? ' (' + couponCode + ')' : ''}`;
-            document.getElementById('summaryCoupon').textContent = `- R$ ${couponDiscount.toFixed(2).replace('.', ',')}`;
-            couponRow.classList.remove('hidden');
-            console.log('updateOrderSummary: Exibindo linha de cupom com desconto:', couponDiscount);
+            if (couponLabel) couponLabel.textContent = `Cupom${couponCode ? ' (' + couponCode + ')' : ''}`;
+            if (couponValueEl) couponValueEl.textContent = `- R$ ${couponDiscount.toFixed(2).replace('.', ',')}`;
+            if (couponRow) couponRow.classList.remove('hidden');
         } else {
-            document.getElementById('summaryCouponRow').classList.add('hidden');
-            console.log('updateOrderSummary: Ocultando linha de cupom (sem desconto)');
+             if (couponRow) couponRow.classList.add('hidden');
         }
         
         // Cashback usado
@@ -1272,28 +1266,21 @@ async function updateOrderSummary(subtotal = null, deliveryFee = null) {
         const cashbackValue = document.getElementById('summaryCashback');
         
         if (cashbackUsed > 0) {
-            if (cashbackValue) {
-                cashbackValue.textContent = `- R$ ${cashbackUsed.toFixed(2).replace('.', ',')}`;
-            }
-            if (cashbackRow) {
-                cashbackRow.classList.remove('hidden');
-                console.log('✅ updateOrderSummary: Exibindo linha de cashback usado:', cashbackUsed);
-            } else {
-                console.error('❌ updateOrderSummary: Elemento summaryCashbackRow não encontrado no DOM!');
-            }
+            if (cashbackValue) cashbackValue.textContent = `- R$ ${cashbackUsed.toFixed(2).replace('.', ',')}`;
+            if (cashbackRow) cashbackRow.classList.remove('hidden');
         } else {
-            if (cashbackRow) {
-                cashbackRow.classList.add('hidden');
-                console.log('updateOrderSummary: Ocultando linha de cashback (sem desconto)');
-            }
+            if (cashbackRow) cashbackRow.classList.add('hidden');
         }
         
-        // Cashback ganho - sempre mostrar se cashbackEarned foi calculado
+        // Cashback ganho
+        const cashbackEarnedValueEl = document.getElementById('summaryCashbackEarnedValue');
+        const cashbackEarnedEl = document.getElementById('summaryCashbackEarned');
+
         if (cashbackEarned && cashbackEarned > 0) {
-            document.getElementById('summaryCashbackEarnedValue').textContent = `R$ ${Number(cashbackEarned).toFixed(2).replace('.', ',')} de cashback`;
-            document.getElementById('summaryCashbackEarned').classList.remove('hidden');
+            if (cashbackEarnedValueEl) cashbackEarnedValueEl.textContent = `R$ ${Number(cashbackEarned).toFixed(2).replace('.', ',')} de cashback`;
+            if (cashbackEarnedEl) cashbackEarnedEl.classList.remove('hidden');
         } else {
-            document.getElementById('summaryCashbackEarned').classList.add('hidden');
+            if (cashbackEarnedEl) cashbackEarnedEl.classList.add('hidden');
         }
         
         const summaryTotalEl = document.getElementById('summaryTotal');

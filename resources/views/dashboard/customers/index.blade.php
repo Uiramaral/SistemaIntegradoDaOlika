@@ -14,7 +14,7 @@
         <div class="p-4 sm:p-6 border-b border-border">
             <form id="customers-filter-form" method="GET" action="{{ route('dashboard.customers.index') }}"
                 class="space-y-4">
-                
+
                 {{-- Linha Superior: Busca e Ações Principais --}}
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
@@ -26,7 +26,7 @@
                             class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
                             autocomplete="off">
                     </div>
-                    
+
                     <button type="button" @click="newCustomerModalOpen = true"
                         class="btn-primary gap-2 h-10 px-4 rounded-lg shadow-sm whitespace-nowrap inline-flex items-center justify-center">
                         <i data-lucide="plus" class="h-4 w-4 text-white"></i>
@@ -45,34 +45,47 @@
                         {{-- Filtro Compras --}}
                         <select name="compras" onchange="this.form.submit()"
                             class="h-9 rounded-lg border border-input bg-muted/20 text-xs px-2 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full lg:w-32">
-                            <option value="" {{ trim((string) (request('compras') ?? '')) === '' ? 'selected' : '' }}>Compras (Todas)</option>
-                            <option value="com" {{ trim((string) (request('compras') ?? '')) === 'com' ? 'selected' : '' }}>Com compras</option>
-                            <option value="sem" {{ trim((string) (request('compras') ?? '')) === 'sem' ? 'selected' : '' }}>Sem compras</option>
+                            <option value="" {{ trim((string) (request('compras') ?? '')) === '' ? 'selected' : '' }}>Compras
+                                (Todas)</option>
+                            <option value="com" {{ trim((string) (request('compras') ?? '')) === 'com' ? 'selected' : '' }}>
+                                Com compras</option>
+                            <option value="sem" {{ trim((string) (request('compras') ?? '')) === 'sem' ? 'selected' : '' }}>
+                                Sem compras</option>
                         </select>
 
                         {{-- Filtro Fiado --}}
                         <select name="fiado" onchange="this.form.submit()"
                             class="h-9 rounded-lg border border-input bg-muted/20 text-xs px-2 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full lg:w-28">
-                            <option value="" {{ trim((string) (request('fiado') ?? '')) === '' ? 'selected' : '' }}>Fiado (Todos)</option>
-                            <option value="com" {{ trim((string) (request('fiado') ?? '')) === 'com' ? 'selected' : '' }}>Com fiado</option>
-                            <option value="sem" {{ trim((string) (request('fiado') ?? '')) === 'sem' ? 'selected' : '' }}>Sem fiado</option>
+                            <option value="" {{ trim((string) (request('fiado') ?? '')) === '' ? 'selected' : '' }}>Fiado
+                                (Todos)</option>
+                            <option value="com" {{ trim((string) (request('fiado') ?? '')) === 'com' ? 'selected' : '' }}>Com
+                                fiado</option>
+                            <option value="sem" {{ trim((string) (request('fiado') ?? '')) === 'sem' ? 'selected' : '' }}>Sem
+                                fiado</option>
                         </select>
 
                         {{-- Filtro Tipo --}}
                         <select name="revenda" onchange="this.form.submit()"
                             class="h-9 rounded-lg border border-input bg-muted/20 text-xs px-2 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full lg:w-28">
-                            <option value="" {{ trim((string) (request('revenda') ?? '')) === '' ? 'selected' : '' }}>Tipo (Todos)</option>
-                            <option value="1" {{ trim((string) (request('revenda') ?? '')) === '1' ? 'selected' : '' }}>Revenda</option>
-                            <option value="0" {{ trim((string) (request('revenda') ?? '')) === '0' ? 'selected' : '' }}>Consumidor</option>
+                            <option value="" {{ trim((string) (request('revenda') ?? '')) === '' ? 'selected' : '' }}>Tipo
+                                (Todos)</option>
+                            <option value="1" {{ trim((string) (request('revenda') ?? '')) === '1' ? 'selected' : '' }}>
+                                Revenda</option>
+                            <option value="0" {{ trim((string) (request('revenda') ?? '')) === '0' ? 'selected' : '' }}>
+                                Consumidor</option>
                         </select>
 
                         {{-- Ordenação --}}
                         <select name="ordenar" onchange="this.form.submit()"
                             class="h-9 rounded-lg border border-input bg-muted/20 text-xs px-2 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full lg:w-32">
-                            <option value="nome" {{ (request('ordenar') ?? 'nome') === 'nome' ? 'selected' : '' }}>Nome A–Z</option>
-                            <option value="ultimo" {{ (request('ordenar') ?? 'nome') === 'ultimo' ? 'selected' : '' }}>Último pedido</option>
-                            <option value="gasto" {{ (request('ordenar') ?? 'nome') === 'gasto' ? 'selected' : '' }}>Total gasto</option>
-                            <option value="pedidos" {{ (request('ordenar') ?? 'nome') === 'pedidos' ? 'selected' : '' }}>Mais pedidos</option>
+                            <option value="nome" {{ (request('ordenar') ?? 'nome') === 'nome' ? 'selected' : '' }}>Nome A–Z
+                            </option>
+                            <option value="ultimo" {{ (request('ordenar') ?? 'nome') === 'ultimo' ? 'selected' : '' }}>Último
+                                pedido</option>
+                            <option value="gasto" {{ (request('ordenar') ?? 'nome') === 'gasto' ? 'selected' : '' }}>Total
+                                gasto</option>
+                            <option value="pedidos" {{ (request('ordenar') ?? 'nome') === 'pedidos' ? 'selected' : '' }}>Mais
+                                pedidos</option>
                         </select>
                     </div>
 
@@ -222,7 +235,7 @@
         <!-- Pagination -->
         <!-- Pagination -->
         @if(isset($customers) && method_exists($customers, 'links') && $customers->hasPages())
-            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/20">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/20 rounded-b-xl">
                 {{ $customers->withQueryString()->links() }}
             </div>
         @endif

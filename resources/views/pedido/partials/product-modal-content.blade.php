@@ -29,7 +29,7 @@
     </div>
 
     <!-- Content Section -->
-    <div class="w-full md:w-7/12 flex flex-col h-full bg-card min-h-0">
+    <div class="w-full md:w-7/12 flex flex-col flex-1 min-h-0 bg-card">
         <!-- Header (Sticky on scroll) -->
         <div class="p-6 pb-2 shrink-0 relative">
             <button onclick="closeProductModal()"
@@ -122,7 +122,7 @@
         </div>
 
         <!-- Footer (Actions) -->
-        <div class="p-6 border-t bg-muted/20 shrink-0">
+        <div class="p-6 pb-10 mb-1 border-t bg-muted/20 shrink-0">
             <div class="flex flex-col gap-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center border rounded-md bg-background">
@@ -152,15 +152,21 @@
                     </div>
                 </div>
 
-                <button onclick="submitModalCart()"
-                    class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-12 w-full shadow-lg shadow-primary/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14" />
-                        <path d="M12 5v14" />
-                    </svg>
-                    Adicionar ao Pedido
-                </button>
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    <button onclick="submitModalCart(false)"
+                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-primary text-primary hover:bg-primary/5 h-12 w-full">
+                        Adicionar +
+                    </button>
+                    <button onclick="submitModalCart(true)"
+                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-12 w-full shadow-lg shadow-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14" />
+                            <path d="M12 5v14" />
+                        </svg>
+                        Pedir agora
+                    </button>
+                </div>
             </div>
         </div>
     </div>

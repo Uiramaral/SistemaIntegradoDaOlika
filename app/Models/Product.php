@@ -51,7 +51,7 @@ class Product extends Model
         'nutritional_info' => 'array',
         'price' => 'decimal:2',
         'weight_grams' => 'integer',
-        'variants' => 'array',
+        // 'variants' => 'array', // Removido para evitar conflito com a relação variants()
     ];
 
     /**
@@ -76,6 +76,38 @@ class Product extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Obtém as variantes de forma resiliente (relação ou coluna legado)
+     */
+    public function getEffectiveVariants()
+    {
+        // 1. Tentar pela relação (banco de dados estruturado)
+        $vars = $this->variants;
+        if ($vars && $vars->isNotEmpty()) {
+            return $vars;
+        }
+
+        // 2. Fallback para coluna JSON legado
+        $rawVariants = $this->getRawOriginal('variants');
+        if (!empty($rawVariants)) {
+            $decoded = json_decode($rawVariants, true);
+            if (is_array($decoded)) {
+                return collect($decoded)->map(function ($v) {
+                    // Converter array legado em objeto similar a ProductVariant
+                    return (object) [
+                        'id' => $v['id'] ?? $v['name'] ?? null,
+                        'name' => $v['name'] ?? '',
+                        'price' => $v['price'] ?? 0,
+                        'weight_grams' => $v['weight_grams'] ?? $v['weight'] ?? 0,
+                        'is_active' => $v['is_active'] ?? true,
+                    ];
+                });
+            }
+        }
+
+        return collect();
     }
 
     /**

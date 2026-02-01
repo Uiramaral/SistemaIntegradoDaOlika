@@ -20,7 +20,13 @@ class ProductsController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'allergens', 'images'])->latest();
+        $query = Product::with(['category', 'allergens', 'images'])
+            ->withCount([
+                'orderItems as sales_count' => function ($q) {
+                    $q->select(DB::raw('SUM(quantity)'));
+                }
+            ])
+            ->latest();
 
         // Busca
         $searchTerm = $request->input('q') ?? $request->input('search');
@@ -57,6 +63,7 @@ class ProductsController extends Controller
                         'category_name' => $product->category->name ?? 'Sem categoria',
                         'price' => (float) ($product->price ?? 0),
                         'stock' => (int) ($product->stock ?? $product->inventory ?? 0),
+                        'sales_count' => (int) ($product->order_items_sum_quantity ?? 0),
                         'is_active' => $product->is_active ?? true,
                         'cover_image' => $product->cover_image,
                     ];
@@ -380,8 +387,19 @@ class ProductsController extends Controller
     public function show(Request $request, Product $product)
     {
         try {
-            $product->load(['category', 'allergens', 'images', 'variants' => function ($q) {
-                $q->orderBy('sort_order'); }]);
+            $product->load([
+                'category',
+                'allergens',
+                'images',
+                'variants' => function ($q) {
+                    $q->orderBy('sort_order');
+                }
+            ]);
+
+            // Carregar soma de vendas manualmente para evitar erro BelongsTo::loadSum
+            $product->sales_count = (int) DB::table('order_items')
+                ->where('product_id', $product->id)
+                ->sum('quantity');
 
             // Resposta JSON para modal
             if ($request->wantsJson() || $request->ajax() || str_contains($request->header('Accept'), 'application/json')) {
@@ -427,6 +445,7 @@ class ProductsController extends Controller
                     'is_available' => (bool) $product->is_available,
                     'is_featured' => (bool) $product->is_featured,
                     'preparation_time' => $product->preparation_time,
+                    'sales_count' => (int) ($product->sales_count ?? 0),
                 ]);
             }
 

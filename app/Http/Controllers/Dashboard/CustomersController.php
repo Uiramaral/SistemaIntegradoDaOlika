@@ -60,15 +60,15 @@ class CustomersController extends Controller
         if ($clientIdSafe) {
             $query->select(
                 'customers.*',
-                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe}) as total_orders"),
-                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe}) as total_spent"),
+                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe} AND orders.status != 'cancelled') as total_orders"),
+                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND orders.client_id = {$clientIdSafe} AND orders.status != 'cancelled') as total_spent"),
                 DB::raw("{$debtSub} as total_debts")
             );
         } else {
             $query->select(
                 'customers.*',
-                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id) as total_orders"),
-                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id) as total_spent"),
+                DB::raw("(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id AND orders.status != 'cancelled') as total_orders"),
+                DB::raw("(SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE orders.customer_id = customers.id AND orders.status != 'cancelled') as total_spent"),
                 DB::raw("{$debtSub} as total_debts")
             );
         }
@@ -197,13 +197,13 @@ class CustomersController extends Controller
             ->get();
 
         // Calcular estatísticas de pedidos considerando client_id
-        $totalOrdersQuery = DB::table('orders')->where('customer_id', $id);
+        $totalOrdersQuery = DB::table('orders')->where('customer_id', $id)->where('status', '!=', 'cancelled');
         if ($clientId) {
             $totalOrdersQuery->where('client_id', $clientId);
         }
         $totalOrders = $totalOrdersQuery->count();
 
-        $totalOrdersValueQuery = DB::table('orders')->where('customer_id', $id);
+        $totalOrdersValueQuery = DB::table('orders')->where('customer_id', $id)->where('status', '!=', 'cancelled');
         if ($clientId) {
             $totalOrdersValueQuery->where('client_id', $clientId);
         }
@@ -335,17 +335,18 @@ class CustomersController extends Controller
 
             foreach ($customers as $customer) {
                 try {
-                    // Buscar pedidos pagos do cliente
-                    $paidOrders = $customer->orders()
-                        ->whereIn('payment_status', ['approved', 'paid'])
+                    // Buscar pedidos VÁLIDOS do cliente (todos menos cancelados)
+                    // Isso alinha com o Dashboard que mostra "Total Pedidos" = todos - cancelados
+                    $validOrders = $customer->orders()
+                        ->where('status', '!=', 'cancelled')
                         ->get();
 
-                    $totalOrders = $paidOrders->count();
-                    $totalSpent = $paidOrders->sum('final_amount');
+                    $totalOrders = $validOrders->count();
+                    $totalSpent = $validOrders->sum('final_amount');
 
-                    // Buscar último pedido pago
+                    // Buscar último pedido válido
                     $lastOrder = $customer->orders()
-                        ->whereIn('payment_status', ['approved', 'paid'])
+                        ->where('status', '!=', 'cancelled')
                         ->orderBy('created_at', 'desc')
                         ->first();
 

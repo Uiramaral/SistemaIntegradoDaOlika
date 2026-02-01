@@ -16,6 +16,15 @@ class Order extends Model
 {
     use HasFactory, BelongsToClient;
 
+    protected $guarded = ['id'];
+
+    protected $casts = [
+        'scheduled_delivery_at' => 'datetime',
+        'pix_expires_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
     /**
      * Mutator para normalizar valores de status para o ENUM válido da tabela orders.
      * Aceita códigos vindos de order_statuses e converte para o ENUM permitido.

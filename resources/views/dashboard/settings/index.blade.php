@@ -3,44 +3,33 @@
 @section('page_title', 'Configurações')
 @section('page_subtitle', 'Gerencie as configurações do sistema')
 
-@push('styles')
-<style>
-    .view-btn {
-        @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2;
-    }
-    .view-btn.active {
-        @apply bg-white text-foreground shadow-sm;
-    }
-    .view-btn.inactive {
-        @apply bg-transparent text-gray-600 hover:text-foreground hover:bg-gray-50;
-    }
-    
-    input[type="color"] {
-        cursor: pointer;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        border: none;
-    }
-    input[type="color"]::-webkit-color-swatch-wrapper {
-        padding: 0;
-    }
-    input[type="color"]::-webkit-color-swatch {
-        border: 2px solid #d1d5db;
-        border-radius: 0.5rem;
-    }
-</style>
-@endpush
-
 @section('content')
-<div class="space-y-6">
+<div x-data="{ 
+    activeTab: 'geral', 
+    init() {
+        if(window.location.hash) {
+            const hash = window.location.hash.substring(1);
+            if(['geral', 'personalizacao', 'pwa', 'impressao'].includes(hash)) {
+                this.activeTab = hash;
+            }
+        }
+    },
+    setTab(tab) {
+        this.activeTab = tab;
+        window.location.hash = tab;
+    }
+}" class="space-y-6">
+
     @if(session('success'))
-        <div class="rounded-lg border bg-green-50 text-green-900 px-4 py-3">{{ session('success') }}</div>
+        <div class="rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-3 shadow-sm animate-fade-in flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+            {{ session('success') }}
+        </div>
     @endif
 
     @if($errors->any())
-        <div class="rounded-lg border bg-red-50 text-red-900 px-4 py-3">
-            <ul class="list-disc list-inside">
+        <div class="rounded-xl border border-red-200 bg-red-50 text-red-900 px-4 py-3 shadow-sm animate-fade-in">
+            <ul class="list-disc list-inside space-y-1">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -48,66 +37,76 @@
         </div>
     @endif
 
-    <!-- Botões de Visualização (Abas) -->
-    <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-        <button class="view-btn active" id="btn-view-geral" onclick="switchTab('geral')">
+    <!-- Tabs Navigation -->
+    <div class="bg-muted/30 p-1.5 rounded-xl flex flex-wrap gap-1 sm:gap-2">
+        <button @click="setTab('geral')" 
+                :class="activeTab === 'geral' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
             <i data-lucide="settings" class="w-4 h-4"></i>
             Geral
         </button>
-        <button class="view-btn inactive" id="btn-view-personalizacao" onclick="switchTab('personalizacao')">
+        <button @click="setTab('personalizacao')" 
+                :class="activeTab === 'personalizacao' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
             <i data-lucide="palette" class="w-4 h-4"></i>
             Personalização
         </button>
-        <button class="view-btn inactive" id="btn-view-pwa" onclick="switchTab('pwa')">
+        <button @click="setTab('pwa')" 
+                :class="activeTab === 'pwa' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
             <i data-lucide="smartphone" class="w-4 h-4"></i>
             App & Notificações
         </button>
-        <button class="view-btn inactive" id="btn-view-impressao" onclick="switchTab('impressao')">
+        <button @click="setTab('impressao')" 
+                :class="activeTab === 'impressao' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
             <i data-lucide="printer" class="w-4 h-4"></i>
             Impressão
         </button>
     </div>
 
     <!-- Conteúdo: Geral -->
-    <div id="content-geral" class="tab-content">
-        <div class="space-y-6">
+    <div x-show="activeTab === 'geral'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+        <div class="grid gap-6 md:grid-cols-2">
             <!-- Informações da Empresa -->
-            <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="building-2" class="w-5 h-5"></i>
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <i data-lucide="building-2" class="w-4 h-4"></i>
+                        </div>
                         Informações da Empresa
                     </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Dados básicos da sua empresa/confeitaria</p>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Dados básicos da sua empresa/confeitaria</p>
                 </div>
                 <form action="{{ route('dashboard.settings.general.save') }}" method="POST" class="p-6 space-y-4">
                     @csrf
-                    <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-4">
                         <div class="space-y-2">
-                            <label class="text-sm font-medium" for="company_name">Nome da Empresa / Confeitaria *</label>
+                            <label class="text-sm font-medium" for="company_name">Nome da Empresa / Confeitaria <span class="text-destructive">*</span></label>
                             <input name="company_name" id="company_name" 
                                    value="{{ $generalSettings['company_name'] ?? auth()->user()->name ?? '' }}" 
                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
                                    placeholder="Ex.: Confeitaria Pro" required>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-sm font-medium" for="company_phone">Telefone / WhatsApp *</label>
+                            <label class="text-sm font-medium" for="company_phone">Telefone / WhatsApp <span class="text-destructive">*</span></label>
                             <input name="company_phone" id="company_phone" 
                                    value="{{ $generalSettings['company_phone'] ?? auth()->user()->phone ?? '' }}" 
                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
                                    placeholder="(11) 99999-9999" required>
-                            <p class="text-xs text-muted-foreground">Usado para notificações via WhatsApp</p>
+                            <p class="text-[11px] text-muted-foreground">Usado para notificações via WhatsApp</p>
                         </div>
-                        <div class="space-y-2 md:col-span-2">
-                            <label class="text-sm font-medium" for="company_email">E-mail *</label>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="company_email">E-mail <span class="text-destructive">*</span></label>
                             <input type="email" name="company_email" id="company_email" 
                                    value="{{ $generalSettings['company_email'] ?? auth()->user()->email ?? '' }}" 
                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
                                    placeholder="contato@confeitaria.com" required>
                         </div>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
                             Salvar Informações
                         </button>
@@ -116,17 +115,19 @@
             </div>
 
             <!-- Configurações Regionais -->
-            <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="globe" class="w-5 h-5"></i>
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
+                            <i data-lucide="globe" class="w-4 h-4"></i>
+                        </div>
                         Configurações Regionais
                     </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Idioma e moeda do sistema</p>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Idioma, moeda e fuso horário</p>
                 </div>
                 <form action="{{ route('dashboard.settings.general.save') }}" method="POST" class="p-6 space-y-4">
                     @csrf
-                    <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-4">
                         <div class="space-y-2">
                             <label class="text-sm font-medium" for="language">Idioma</label>
                             <select name="language" id="language" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
@@ -144,10 +145,10 @@
                             </select>
                         </div>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
-                            Salvar Configurações
+                            Salvar Regionais
                         </button>
                     </div>
                 </form>
@@ -156,16 +157,18 @@
     </div>
 
     <!-- Conteúdo: Personalização -->
-    <div id="content-personalizacao" class="tab-content hidden">
-        <div class="space-y-6">
+    <div x-show="activeTab === 'personalizacao'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
+        <div class="grid gap-6 md:grid-cols-2">
             <!-- Cor do Tema -->
             <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
+                <div class="p-6 border-b border-border bg-muted/10">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="palette" class="w-5 h-5"></i>
-                        Cor do Tema
+                        <div class="h-8 w-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-600">
+                            <i data-lucide="palette" class="w-4 h-4"></i>
+                        </div>
+                        Aparência
                     </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Personalize a cor principal do seu sistema</p>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Personalize as cores do seu sistema</p>
                 </div>
                 <form action="{{ route('dashboard.settings.personalization.save') }}" method="POST" class="p-6 space-y-6">
                     @csrf
@@ -173,68 +176,52 @@
                         $selectedColor = $personalizationSettings['theme_color'] ?? '#f59e0b';
                     @endphp
                     
-                    <!-- Color Picker Visual -->
-                    <div class="space-y-3">
-                        <label class="text-sm font-medium block">Escolha uma cor personalizada</label>
+                    <div class="space-y-4">
+                        <label class="text-sm font-medium block">Cor Principal</label>
                         <div class="flex items-center gap-4">
-                            <input type="color" 
-                                   id="custom_color_picker" 
-                                   value="{{ $selectedColor }}"
-                                   class="w-20 h-20 rounded-lg border-2 border-gray-300 cursor-pointer hover:border-gray-400 transition-all"
-                                   onchange="updateColorFromPicker(this.value)">
-                            <div class="flex-1">
+                            <div class="relative group">
+                                <input type="color" 
+                                       id="custom_color_picker" 
+                                       value="{{ $selectedColor }}"
+                                       class="w-16 h-16 rounded-xl border-2 border-border cursor-pointer p-0.5 overflow-hidden transition-transform group-hover:scale-105"
+                                       onchange="document.getElementById('theme_color_input').value = this.value; window.updatePresets(this.value);">
+                                <div class="absolute inset-0 pointer-events-none rounded-xl ring-1 ring-inset ring-black/10"></div>
+                            </div>
+                            <div class="flex-1 space-y-2">
                                 <input type="text" 
                                        id="theme_color_input" 
                                        name="theme_color" 
                                        value="{{ $selectedColor }}"
                                        pattern="^#[0-9A-Fa-f]{6}$"
-                                       class="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                                       placeholder="#f59e0b"
-                                       onchange="updateColorFromInput(this.value)">
-                                <p class="text-xs text-muted-foreground mt-1">Digite o código hexadecimal da cor (ex: #f59e0b)</p>
+                                       class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono uppercase"
+                                       placeholder="#F59E0B"
+                                       onchange="document.getElementById('custom_color_picker').value = this.value; window.updatePresets(this.value);">
+                                <p class="text-xs text-muted-foreground">Hexadecimal da cor</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2">
+                            <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cores Sugeridas</label>
+                            <div class="grid grid-cols-6 gap-2">
+                                @foreach([
+                                    '#f472b6', '#3b82f6', '#10b981', '#8b5cf6', 
+                                    '#f97316', '#ef4444', '#eab308', '#14b8a6', 
+                                    '#6366f1', '#ec4899', '#84cc16', '#06b6d4'
+                                ] as $color)
+                                    <button type="button" 
+                                            class="preset-color-btn w-full aspect-square rounded-lg border border-border shadow-sm hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                            style="background-color: {{ $color }}"
+                                            onclick="document.getElementById('theme_color_input').value = '{{ $color }}'; document.getElementById('custom_color_picker').value = '{{ $color }}'; window.updatePresets('{{ $color }}');">
+                                    </button>
+                                @endforeach
                             </div>
                         </div>
                     </div>
 
-                    <!-- Cores Pré-definidas -->
-                    <div class="space-y-3">
-                        <label class="text-sm font-medium block">Ou escolha uma cor pré-definida</label>
-                        <div class="grid grid-cols-4 md:grid-cols-8 gap-3">
-                            @php
-                                $colors = [
-                                    ['name' => 'Rosa', 'value' => '#f472b6'],
-                                    ['name' => 'Azul', 'value' => '#3b82f6'],
-                                    ['name' => 'Verde', 'value' => '#10b981'],
-                                    ['name' => 'Roxo', 'value' => '#8b5cf6'],
-                                    ['name' => 'Laranja', 'value' => '#f97316'],
-                                    ['name' => 'Vermelho', 'value' => '#ef4444'],
-                                    ['name' => 'Amarelo', 'value' => '#eab308'],
-                                    ['name' => 'Turquesa', 'value' => '#14b8a6'],
-                                ];
-                            @endphp
-                            @foreach($colors as $color)
-                                <button type="button" 
-                                        class="relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-110 {{ $selectedColor === $color['value'] ? 'border-gray-800 ring-2 ring-offset-2' : 'border-gray-300 hover:border-gray-400' }}" 
-                                        style="background-color: {{ $color['value'] }}"
-                                        data-color="{{ $color['value'] }}" 
-                                        onclick="selectPresetColor('{{ $color['value'] }}')"
-                                        title="{{ $color['name'] }}">
-                                    @if($selectedColor === $color['value'])
-                                        <div class="absolute inset-0 flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                        </div>
-                                    @endif
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
-                            Salvar Cor do Tema
+                            Salvar Aparência
                         </button>
                     </div>
                 </form>
@@ -242,37 +229,60 @@
 
             <!-- Logotipo e Favicon -->
             <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
+                <div class="p-6 border-b border-border bg-muted/10">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="image" class="w-5 h-5"></i>
-                        Logotipo e Favicon
-                    </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Personalize a identidade visual do sistema</p>
-                </div>
-                <form action="{{ route('dashboard.settings.personalization.save') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
-                    @csrf
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div class="space-y-3">
-                            <label class="text-sm font-medium">Logotipo</label>
-                            @if(isset($personalizationSettings['logo_url']))
-                                <img src="{{ $personalizationSettings['logo_url'] }}" alt="Logo" class="h-16 object-contain">
-                            @endif
-                            <input type="file" name="logo" accept="image/*" 
-                                   class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium">
-                            <p class="text-xs text-muted-foreground">PNG ou JPG, máximo 2MB</p>
+                        <div class="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600">
+                            <i data-lucide="image" class="w-4 h-4"></i>
                         </div>
+                        Identidade Visual
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Logotipo e ícone do navegador</p>
+                </div>
+                <form action="{{ route('dashboard.settings.personalization.save') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
+                    @csrf
+                    <div class="space-y-6">
                         <div class="space-y-3">
-                            <label class="text-sm font-medium">Favicon</label>
-                            @if(isset($personalizationSettings['favicon_url']))
-                                <img src="{{ $personalizationSettings['favicon_url'] }}" alt="Favicon" class="h-16 w-16 object-contain">
-                            @endif
-                            <input type="file" name="favicon" accept="image/*" 
-                                   class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium">
-                            <p class="text-xs text-muted-foreground">Ícone 32x32px, PNG recomendado</p>
+                            <label class="text-sm font-medium flex justify-between">
+                                Logotipo
+                                <span class="text-xs text-muted-foreground font-normal">Recomendado: 200px de altura</span>
+                            </label>
+                            <div class="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center gap-4 bg-muted/5 hover:bg-muted/10 transition-colors">
+                                @if(isset($personalizationSettings['logo_url']))
+                                    <img src="{{ $personalizationSettings['logo_url'] }}" alt="Logo" class="h-16 object-contain mb-2">
+                                @else
+                                    <div class="h-16 w-full flex items-center justify-center text-muted-foreground/30">
+                                        <i data-lucide="image-off" class="w-10 h-10"></i>
+                                    </div>
+                                @endif
+                                <label class="cursor-pointer w-full text-center py-2 px-4 rounded border border-input hover:bg-accent hover:text-accent-foreground">
+                                    <span>Escolher arquivo...</span>
+                                    <input type="file" name="logo" accept="image/*" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="text-sm font-medium flex justify-between">
+                                Favicon
+                                <span class="text-xs text-muted-foreground font-normal">Ícone da aba (32x32px)</span>
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-xl border border-border bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                    @if(isset($personalizationSettings['favicon_url']))
+                                        <img src="{{ $personalizationSettings['favicon_url'] }}" alt="Favicon" class="w-8 h-8 object-contain">
+                                    @else
+                                        <i data-lucide="globe" class="w-8 h-8 text-muted-foreground/30"></i>
+                                    @endif
+                                </div>
+                                <div class="flex-1">
+                                    <input type="file" name="favicon" accept="image/*" 
+                                           class="file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-sm text-muted-foreground w-full">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
                             Salvar Imagens
                         </button>
@@ -283,63 +293,52 @@
     </div>
 
     <!-- Conteúdo: PWA & Notificações -->
-    <div id="content-pwa" class="tab-content hidden">
-        <div class="space-y-6">
+    <div x-show="activeTab === 'pwa'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
+        <div class="grid gap-6 md:grid-cols-2">
             <!-- Instalar Aplicativo (PWA) -->
             <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
+                <div class="p-6 border-b border-border bg-muted/10">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="download" class="w-5 h-5"></i>
+                        <div class="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-600">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </div>
                         Instalar Aplicativo
                     </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Instale a Confeitaria Pro no seu dispositivo para acesso rápido e offline</p>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">App offline para acesso rápido</p>
                 </div>
-                <div class="p-6">
+                <div class="p-6 space-y-6">
                     <div id="pwa-install-container" class="space-y-4">
-                        <!-- Botão de Instalação (mostrado apenas se PWA for suportado) -->
-                        <div id="pwa-install-prompt" class="hidden">
-                            <button id="btn-install-pwa" class="btn-primary w-full md:w-auto">
-                                <i data-lucide="smartphone" class="w-4 h-4"></i>
-                                Instalar Aplicativo
+                        <!-- Install Button -->
+                        <div id="pwa-install-prompt" class="hidden text-center py-4">
+                            <button id="btn-install-pwa" class="flex w-full items-center justify-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
+                                <i data-lucide="smartphone" class="w-5 h-5 mr-2"></i>
+                                Instalar Agora
                             </button>
-                            <p class="text-xs text-muted-foreground mt-2">
-                                Instale o app para acessar rapidamente e usar offline
+                            <p class="text-xs text-muted-foreground mt-3">
+                                Instale na sua área de trabalho para uma experiência melhor
                             </p>
                         </div>
 
-                        <!-- Já Instalado -->
+                        <!-- Already Installed -->
                         <div id="pwa-already-installed" class="hidden">
-                            <div class="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                            <div class="flex items-center gap-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600 shrink-0"></i>
                                 <div>
-                                    <p class="font-medium text-green-900">Aplicativo já instalado</p>
-                                    <p class="text-sm text-green-700">Você pode acessar o app pela tela inicial do seu dispositivo</p>
+                                    <p class="font-bold text-green-900">Aplicativo Instalado</p>
+                                    <p class="text-xs text-green-700 mt-1">O app já está pronto para uso offline.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Não Suportado -->
+                        <!-- Not Supported -->
                         <div id="pwa-not-supported">
-                            <div class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                                <i data-lucide="info" class="w-5 h-5 text-gray-600"></i>
+                            <div class="flex items-center gap-4 p-4 bg-muted border border-border rounded-xl">
+                                <i data-lucide="info" class="w-5 h-5 text-muted-foreground shrink-0"></i>
                                 <div>
-                                    <p class="font-medium text-gray-900">Verificando suporte...</p>
-                                    <p class="text-sm text-gray-700">Aguarde enquanto verificamos se seu navegador suporta instalação</p>
+                                    <p class="font-medium text-foreground">Aguardando verificação...</p>
+                                    <p class="text-xs text-muted-foreground mt-1">Checando compatibilidade do navegador...</p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Instruções Manuais -->
-                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 class="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                            <i data-lucide="help-circle" class="w-4 h-4"></i>
-                            Como instalar manualmente
-                        </h4>
-                        <div class="text-sm text-blue-800 space-y-2">
-                            <p><strong>No Chrome/Edge (Desktop):</strong> Clique no ícone de instalação (➕) na barra de endereços</p>
-                            <p><strong>No Safari (iOS):</strong> Toque em "Compartilhar" → "Adicionar à Tela Inicial"</p>
-                            <p><strong>No Chrome (Android):</strong> Menu (⋮) → "Adicionar à tela inicial"</p>
                         </div>
                     </div>
                 </div>
@@ -347,673 +346,573 @@
 
             <!-- Notificações Push -->
             <div class="bg-card rounded-xl border border-border shadow-sm">
-                <div class="p-6 border-b border-border">
+                <div class="p-6 border-b border-border bg-muted/10">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <div class="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600">
+                            <i data-lucide="bell" class="w-4 h-4"></i>
+                        </div>
                         Notificações Push
                     </h3>
-                    <p class="text-sm text-muted-foreground mt-1">Receba alertas sobre novos pedidos e atualizações importantes</p>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Alertas de pedidos em tempo real</p>
                 </div>
-                <div class="p-6 space-y-4">
-                    <!-- Status das Notificações -->
+                <div class="p-6 space-y-6">
+                    <!-- Status -->
                     <div id="notification-status-container">
-                        <div id="notification-enabled" class="hidden flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
-                            <div class="flex-1">
-                                <p class="font-medium text-green-900">Notificações ativadas ✓</p>
-                                <p class="text-sm text-green-700">Você receberá alertas sobre novos pedidos e atualizações</p>
+                        <div id="notification-enabled" class="hidden flex flex-col gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                            <div class="mx-auto w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                <i data-lucide="bell-ring" class="w-5 h-5"></i>
                             </div>
-                            <button id="btn-disable-notifications" class="btn-outline text-sm">
-                                Desativar
-                            </button>
-                        </div>
-
-                        <div id="notification-disabled" class="hidden flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <i data-lucide="bell-off" class="w-5 h-5 text-yellow-600"></i>
-                            <div class="flex-1">
-                                <p class="font-medium text-yellow-900">Notificações desativadas</p>
-                                <p class="text-sm text-yellow-700">Ative para receber alertas em tempo real</p>
-                            </div>
-                            <button id="btn-enable-notifications" class="btn-primary text-sm">
-                                <i data-lucide="bell" class="w-4 h-4"></i>
-                                Ativar
-                            </button>
-                        </div>
-
-                        <div id="notification-blocked" class="hidden flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <i data-lucide="x-circle" class="w-5 h-5 text-red-600"></i>
                             <div>
-                                <p class="font-medium text-red-900">Notificações bloqueadas</p>
-                                <p class="text-sm text-red-700">Você bloqueou as notificações. Para ativar, vá nas configurações do navegador.</p>
+                                <p class="font-bold text-green-900">Notificações Ativas</p>
+                                <p class="text-xs text-green-700 mt-1">Você receberá todos os alertas.</p>
                             </div>
                         </div>
 
-                        <div id="notification-loading">
-                            <div class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                                <i data-lucide="loader-2" class="w-5 h-5 text-gray-600 animate-spin"></i>
-                                <p class="text-gray-700">Verificando status das notificações...</p>
+                        <div id="notification-blocked" class="hidden flex flex-col gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                             <div class="mx-auto w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                                <i data-lucide="x-circle" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-red-900">Notificações Bloqueadas</p>
+                                <p class="text-xs text-red-700 mt-1">Você bloqueou as notificações. Ative nas configurações do navegador.</p>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Enviar Notificação de Teste -->
-                    <div class="pt-4 border-t">
-                        <button id="btn-test-notification" class="btn-outline w-full md:w-auto" disabled>
-                            <i data-lucide="send" class="w-4 h-4"></i>
-                            Enviar Notificação de Teste
-                        </button>
-                        <p class="text-xs text-muted-foreground mt-2">
-                            Teste se as notificações estão funcionando corretamente
-                        </p>
+                        <div id="notification-disabled" class="hidden flex flex-col gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
+                            <div class="mx-auto w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                                <i data-lucide="bell-off" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-amber-900">Notificações Desativadas</p>
+                                <p class="text-xs text-amber-700 mt-1">Ative para não perder nenhum pedido.</p>
+                            </div>
+                            <button id="btn-enable-notifications" class="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 mt-2">
+                                Ativar Notificações
+                            </button>
+                        </div>
+                        
+                        <div id="notification-loading" class="text-center py-4">
+                            <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-muted-foreground"></i>
+                        </div>
                     </div>
+                    
+                    <button id="btn-test-notification" class="flex w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground gap-2" disabled>
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        Enviar Teste
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Conteúdo: Impressão (incluir o conteúdo da página printing.blade.php) -->
-    <div id="content-impressao" class="tab-content hidden">
+    <!-- Conteúdo: Impressão -->
+    <div x-show="activeTab === 'impressao'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
         @include('dashboard.settings.printing-content')
     </div>
 </div>
 
 @push('scripts')
-<!-- QZ Tray SDK (para impressão térmica) -->
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ===========================================
-    // SISTEMA DE ABAS
-    // ===========================================
-    window.switchTab = function(tabName) {
-        // Ocultar todos os conteúdos
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('hidden');
-        });
-        
-        // Remover 'active' de todos os botões
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('inactive');
-        });
-        
-        // Mostrar conteúdo selecionado
-        document.getElementById(`content-${tabName}`).classList.remove('hidden');
-        
-        // Ativar botão selecionado
-        const activeBtn = document.getElementById(`btn-view-${tabName}`);
-        activeBtn.classList.add('active');
-        activeBtn.classList.remove('inactive');
-        
-        // Reinicializar ícones Lucide
-        if (window.lucide) lucide.createIcons();
-    };
-    
-    // ===========================================
-    // PERSONALIZAÇÃO: COR DO TEMA
-    // ===========================================
-    window.updateColorFromPicker = function(color) {
-        document.getElementById('theme_color_input').value = color;
-        updateColorSelection(color);
-    };
-    
-    window.updateColorFromInput = function(color) {
-        if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
-            document.getElementById('custom_color_picker').value = color;
-            updateColorSelection(color);
-        }
-    };
-    
-    window.selectPresetColor = function(color) {
-        document.getElementById('theme_color_input').value = color;
-        document.getElementById('custom_color_picker').value = color;
-        updateColorSelection(color);
-    };
-    
-    function updateColorSelection(selectedColor) {
-        document.querySelectorAll('[data-color]').forEach(btn => {
-            const color = btn.dataset.color;
-            if (color === selectedColor) {
-                btn.classList.add('border-gray-800', 'ring-2', 'ring-offset-2');
-                btn.classList.remove('border-gray-300', 'hover:border-gray-400');
+    // Scripts originais mantidos e adaptados
+    window.updatePresets = function(color) {
+        document.querySelectorAll('.preset-color-btn').forEach(btn => {
+            btn.classList.add('opacity-50');
+            if(btn.style.backgroundColor === color) {
+                btn.classList.remove('opacity-50');
+                btn.classList.add('ring-2', 'ring-offset-2', 'ring-gray-400');
             } else {
-                btn.classList.remove('border-gray-800', 'ring-2', 'ring-offset-2');
-                btn.classList.add('border-gray-300', 'hover:border-gray-400');
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-gray-400');
             }
         });
     }
-    
-    // ===========================================
-    // PWA: INSTALAR APLICATIVO
-    // ===========================================
-    let deferredPrompt;
-    const btnInstallPWA = document.getElementById('btn-install-pwa');
-    const pwaInstallPrompt = document.getElementById('pwa-install-prompt');
-    const pwaAlreadyInstalled = document.getElementById('pwa-already-installed');
-    const pwaNotSupported = document.getElementById('pwa-not-supported');
-    
-    // Verificar se já está instalado
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        pwaNotSupported.classList.add('hidden');
-        pwaAlreadyInstalled.classList.remove('hidden');
-    }
-    
-    // Capturar evento beforeinstallprompt
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        pwaNotSupported.classList.add('hidden');
-        pwaInstallPrompt.classList.remove('hidden');
-    });
-    
-    // Botão de instalação
-    if (btnInstallPWA) {
-        btnInstallPWA.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            
-            if (outcome === 'accepted') {
-                pwaInstallPrompt.classList.add('hidden');
-                pwaAlreadyInstalled.classList.remove('hidden');
-            }
-            
-            deferredPrompt = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // ===========================================
+        // PWA: INSTALAR APLICATIVO
+        // ===========================================
+        let deferredPrompt;
+        const btnInstallPWA = document.getElementById('btn-install-pwa');
+        const pwaInstallPrompt = document.getElementById('pwa-install-prompt');
+        const pwaAlreadyInstalled = document.getElementById('pwa-already-installed');
+        const pwaNotSupported = document.getElementById('pwa-not-supported');
+        
+        // Verificar se já está instalado
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            pwaNotSupported.classList.add('hidden');
+            pwaAlreadyInstalled.classList.remove('hidden');
+        }
+        
+        // Capturar evento beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            pwaNotSupported.classList.add('hidden');
+            pwaInstallPrompt.classList.remove('hidden');
         });
-    }
-    
-    // Timeout para verificação
-    setTimeout(() => {
-        if (pwaInstallPrompt.classList.contains('hidden') && pwaAlreadyInstalled.classList.contains('hidden')) {
-            pwaNotSupported.querySelector('p.font-medium').textContent = 'Instalação não disponível';
-            pwaNotSupported.querySelector('p.text-sm').textContent = 'Seu navegador não suporta instalação de aplicativo ou você já está usando o app instalado';
-        }
-    }, 2000);
-    
-    // ===========================================
-    // NOTIFICAÇÕES PUSH
-    // ===========================================
-    const notificationEnabled = document.getElementById('notification-enabled');
-    const notificationDisabled = document.getElementById('notification-disabled');
-    const notificationBlocked = document.getElementById('notification-blocked');
-    const notificationLoading = document.getElementById('notification-loading');
-    const btnEnableNotifications = document.getElementById('btn-enable-notifications');
-    const btnDisableNotifications = document.getElementById('btn-disable-notifications');
-    const btnTestNotification = document.getElementById('btn-test-notification');
-    
-    // Verificar status das notificações
-    async function checkNotificationStatus() {
-        if (!('Notification' in window)) {
-            notificationLoading.classList.add('hidden');
-            notificationDisabled.classList.remove('hidden');
-            notificationDisabled.querySelector('p.font-medium').textContent = 'Notificações não suportadas';
-            notificationDisabled.querySelector('p.text-sm').textContent = 'Seu navegador não suporta notificações push';
-            btnEnableNotifications.classList.add('hidden');
-            return;
-        }
         
-        const permission = Notification.permission;
-        notificationLoading.classList.add('hidden');
-        
-        if (permission === 'granted') {
-            notificationEnabled.classList.remove('hidden');
-            btnTestNotification.disabled = false;
-        } else if (permission === 'denied') {
-            notificationBlocked.classList.remove('hidden');
-        } else {
-            notificationDisabled.classList.remove('hidden');
-        }
-    }
-    
-    // Ativar notificações
-    if (btnEnableNotifications) {
-        btnEnableNotifications.addEventListener('click', async () => {
-            try {
-                const permission = await Notification.requestPermission();
+        // Botão de instalação
+        if (btnInstallPWA) {
+            btnInstallPWA.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
                 
-                if (permission === 'granted') {
-                    notificationDisabled.classList.add('hidden');
-                    notificationEnabled.classList.remove('hidden');
-                    btnTestNotification.disabled = false;
-                    
-                    // Enviar notificação de boas-vindas
-                    new Notification('Notificações Ativadas!', {
-                        body: 'Você receberá alertas sobre novos pedidos e atualizações importantes.',
-                        icon: '/favicon/android-chrome-192x192.png'
-                    });
-                } else if (permission === 'denied') {
-                    notificationDisabled.classList.add('hidden');
-                    notificationBlocked.classList.remove('hidden');
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    pwaInstallPrompt.classList.add('hidden');
+                    pwaAlreadyInstalled.classList.remove('hidden');
                 }
-            } catch (error) {
-                console.error('Erro ao solicitar permissão:', error);
-                alert('Erro ao ativar notificações. Tente novamente.');
+                
+                deferredPrompt = null;
+            });
+        }
+        
+        // Timeout para verificação
+        setTimeout(() => {
+            if (pwaInstallPrompt.classList.contains('hidden') && pwaAlreadyInstalled.classList.contains('hidden')) {
+                const title = pwaNotSupported.querySelector('p.font-medium');
+                const desc = pwaNotSupported.querySelector('p.text-xs') || pwaNotSupported.querySelector('p.text-sm');
+                if(title) title.textContent = 'Instalação não disponível';
+                if(desc) desc.textContent = 'Seu navegador não suporta instalação de aplicativo ou você já está usando o app instalado';
             }
-        });
-    }
-    
-    // Desativar notificações (apenas visual - permissão não pode ser revogada via JS)
-    if (btnDisableNotifications) {
-        btnDisableNotifications.addEventListener('click', () => {
-            alert('Para desativar completamente, vá em Configurações do navegador > Site > Notificações');
-        });
-    }
-    
-    // Enviar notificação de teste
-    if (btnTestNotification) {
-        btnTestNotification.addEventListener('click', async () => {
-            if (Notification.permission !== 'granted') {
-                alert('⚠️ Permissão de notificações não concedida!');
+        }, 2000);
+        
+        // ===========================================
+        // NOTIFICAÇÕES PUSH
+        // ===========================================
+        const notificationEnabled = document.getElementById('notification-enabled');
+        const notificationDisabled = document.getElementById('notification-disabled');
+        const notificationBlocked = document.getElementById('notification-blocked');
+        const notificationLoading = document.getElementById('notification-loading');
+        const btnEnableNotifications = document.getElementById('btn-enable-notifications');
+        const btnDisableNotifications = document.getElementById('btn-disable-notifications');
+        const btnTestNotification = document.getElementById('btn-test-notification');
+        
+        // Verificar status das notificações
+        async function checkNotificationStatus() {
+            if (!('Notification' in window)) {
+                notificationLoading.classList.add('hidden');
+                if(notificationDisabled) {
+                    notificationDisabled.classList.remove('hidden');
+                    const title = notificationDisabled.querySelector('p.font-medium');
+                    const desc = notificationDisabled.querySelector('p.text-xs');
+                    if(title) title.textContent = 'Notificações não suportadas';
+                    if(desc) desc.textContent = 'Seu navegador não suporta notificações push';
+                }
+                if(btnEnableNotifications) btnEnableNotifications.classList.add('hidden');
                 return;
             }
             
-            try {
-                // Verificar se temos Service Worker (necessário para mobile)
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    // Usar Service Worker para notificações (funciona em mobile)
-                    const registration = await navigator.serviceWorker.ready;
-                    await registration.showNotification('Teste de Notificação', {
-                        body: 'Se você está vendo isso, as notificações estão funcionando perfeitamente!',
-                        icon: '/favicon/android-chrome-192x192.png',
-                        badge: '/favicon/android-chrome-192x192.png',
-                        tag: 'test-notification',
-                        requireInteraction: false
-                    });
-                } else {
-                    // Fallback para desktop (sem Service Worker)
-                    new Notification('Teste de Notificação', {
-                        body: 'Se você está vendo isso, as notificações estão funcionando perfeitamente!',
-                        icon: '/favicon/android-chrome-192x192.png',
-                        badge: '/favicon/android-chrome-192x192.png'
-                    });
+            const permission = Notification.permission;
+            notificationLoading.classList.add('hidden');
+            
+            if (permission === 'granted') {
+                if(notificationEnabled) notificationEnabled.classList.remove('hidden');
+                if(btnTestNotification) btnTestNotification.disabled = false;
+            } else if (permission === 'denied') {
+                if(notificationBlocked) notificationBlocked.classList.remove('hidden');
+            } else {
+                if(notificationDisabled) notificationDisabled.classList.remove('hidden');
+            }
+        }
+        
+        // Ativar notificações
+        if (btnEnableNotifications) {
+            btnEnableNotifications.addEventListener('click', async () => {
+                try {
+                    const permission = await Notification.requestPermission();
+                    
+                    if (permission === 'granted') {
+                        if(notificationDisabled) notificationDisabled.classList.add('hidden');
+                        if(notificationEnabled) notificationEnabled.classList.remove('hidden');
+                        if(btnTestNotification) btnTestNotification.disabled = false;
+                        
+                        // Enviar notificação de boas-vindas
+                        new Notification('Notificações Ativadas!', {
+                            body: 'Você receberá alertas sobre novos pedidos e atualizações importantes.',
+                            icon: '/favicon/android-chrome-192x192.png'
+                        });
+                    } else if (permission === 'denied') {
+                        if(notificationDisabled) notificationDisabled.classList.add('hidden');
+                        if(notificationBlocked) notificationBlocked.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Erro ao solicitar permissão:', error);
+                    alert('Erro ao ativar notificações. Tente novamente.');
                 }
-                console.log('✅ Notificação de teste enviada');
-            } catch (error) {
-                console.error('❌ Erro ao enviar notificação:', error);
-                alert('❌ Erro ao enviar notificação: ' + error.message);
-            }
-        });
-    }
-    
-    // Verificar status ao carregar
-    checkNotificationStatus();
-    
-    // ===========================================
-    // IMPRESSÃO: MONITOR DE IMPRESSÃO
-    // ===========================================
-    let monitorActive = false;
-    let monitorInterval = null;
-    let qzConnected = false;
-    let printedCount = 0;
-    
-    const statusIndicator = document.getElementById('status-indicator');
-    const statusText = document.getElementById('status-text');
-    const btnToggleMonitor = document.getElementById('btn-toggle-monitor');
-    const btnToggleText = document.getElementById('btn-toggle-text');
-    const monitorInfo = document.getElementById('monitor-info');
-    const qzStatus = document.getElementById('qz-status');
-    const printerNameEl = document.getElementById('printer-name');
-    const printedCountEl = document.getElementById('printed-count');
-    const lastCheckEl = document.getElementById('last-check');
-    
-    // Verificar se QZ Tray está disponível
-    function isQZTrayAvailable() {
-        return typeof qz !== 'undefined' && qz !== null;
-    }
-    
-    function isQZTrayConnected() {
-        try {
-            return isQZTrayAvailable() && qz.websocket !== null && qz.websocket.isActive();
-        } catch (e) {
-            return false;
-        }
-    }
-    
-    // Conectar ao QZ Tray
-    async function connectQZTray() {
-        if (!isQZTrayAvailable()) {
-            return false;
+            });
         }
         
-        try {
-            if (isQZTrayConnected()) {
-                return true;
-            }
-            
-            await qz.websocket.connect();
-            return isQZTrayConnected();
-        } catch (e) {
-            console.error('Erro ao conectar QZ Tray:', e);
-            return false;
-        }
-    }
-    
-    // Atualizar status visual
-    function updateMonitorStatus(status, message) {
-        if (!statusText) return;
-        statusText.textContent = message;
-        
-        if (status === 'active') {
-            statusIndicator.className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
-            btnToggleMonitor.className = 'btn-outline';
-            btnToggleText.textContent = 'Desativar Monitor';
-            monitorInfo.classList.remove('hidden');
-        } else if (status === 'inactive') {
-            statusIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
-            btnToggleMonitor.className = 'btn-primary';
-            btnToggleText.textContent = 'Ativar Monitor';
-            monitorInfo.classList.add('hidden');
-        } else if (status === 'error') {
-            statusIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
-            btnToggleMonitor.className = 'btn-primary';
-            btnToggleText.textContent = 'Tentar Novamente';
-            monitorInfo.classList.add('hidden');
-        }
-        
-        btnToggleMonitor.disabled = false;
-        if (window.lucide) lucide.createIcons();
-    }
-    
-    // Verificar e imprimir pedidos
-    async function checkAndPrintOrders() {
-        if (!monitorActive) return;
-        
-        console.log('🔄 checkAndPrintOrders: Verificando pedidos...');
-        
-        try {
-            if (lastCheckEl) lastCheckEl.textContent = new Date().toLocaleTimeString('pt-BR');
-            
-            // Verificar conexão QZ Tray
-            if (!isQZTrayConnected()) {
-                console.log('⚠️ QZ Tray desconectado, tentando reconectar...');
-                const connected = await connectQZTray();
-                if (!connected) {
-                    console.error('❌ Falha ao conectar QZ Tray');
-                    if (qzStatus) qzStatus.textContent = '❌ Desconectado';
+        // Enviar notificação de teste
+        if (btnTestNotification) {
+            btnTestNotification.addEventListener('click', async () => {
+                if (Notification.permission !== 'granted') {
+                    alert('⚠️ Permissão de notificações não concedida!');
                     return;
                 }
-                console.log('✅ QZ Tray reconectado');
-                if (qzStatus) qzStatus.textContent = '✅ Conectado';
-            }
-            
-            // Buscar pedidos para imprimir
-            console.log('🔍 Buscando pedidos para imprimir...');
-            const response = await fetch('/dashboard/orders/orders-for-print', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'include'
+                
+                try {
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        const registration = await navigator.serviceWorker.ready;
+                        await registration.showNotification('Teste de Notificação', {
+                            body: 'Se você está vendo isso, as notificações estão funcionando perfeitamente!',
+                            icon: '/favicon/android-chrome-192x192.png',
+                            badge: '/favicon/android-chrome-192x192.png',
+                            tag: 'test-notification',
+                            requireInteraction: false
+                        });
+                    } else {
+                        new Notification('Teste de Notificação', {
+                            body: 'Se você está vendo isso, as notificações estão funcionando perfeitamente!',
+                            icon: '/favicon/android-chrome-192x192.png',
+                            badge: '/favicon/android-chrome-192x192.png'
+                        });
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao enviar notificação:', error);
+                    alert('❌ Erro ao enviar notificação: ' + error.message);
+                }
             });
-            
-            if (!response.ok) {
-                console.error('❌ Erro HTTP ao buscar pedidos:', response.status);
-                throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        checkNotificationStatus();
+        
+        // ===========================================
+        // IMPRESSÃO: MONITOR DE IMPRESSÃO
+        // ===========================================
+        let monitorActive = false;
+        let monitorInterval = null;
+        let qzConnected = false;
+        let printedCount = 0;
+        
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const btnToggleMonitor = document.getElementById('btn-toggle-monitor');
+        const btnToggleText = document.getElementById('btn-toggle-text');
+        const monitorInfo = document.getElementById('monitor-info');
+        const qzStatus = document.getElementById('qz-status');
+        const printerNameEl = document.getElementById('printer-name');
+        const printedCountEl = document.getElementById('printed-count');
+        const lastCheckEl = document.getElementById('last-check');
+        
+        // Verificar se QZ Tray está disponível
+        function isQZTrayAvailable() {
+            return typeof qz !== 'undefined' && qz !== null;
+        }
+        
+        function isQZTrayConnected() {
+            try {
+                return isQZTrayAvailable() && qz.websocket !== null && qz.websocket.isActive();
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Conectar ao QZ Tray
+        async function connectQZTray() {
+            if (!isQZTrayAvailable()) {
+                return false;
             }
             
-            const data = await response.json();
-            console.log('📦 Pedidos recebidos:', data);
+            try {
+                if (isQZTrayConnected()) {
+                    return true;
+                }
+                
+                await qz.websocket.connect();
+                return isQZTrayConnected();
+            } catch (e) {
+                console.error('Erro ao conectar QZ Tray:', e);
+                return false;
+            }
+        }
+        
+        // Atualizar status visual
+        function updateMonitorStatus(status, message) {
+            if (!statusText) return;
+            statusText.textContent = message;
             
-            if (!data.success || !data.orders || data.orders.length === 0) {
-                console.log('ℹ️ Nenhum pedido pendente para imprimir');
+            if (status === 'active') {
+                if(statusIndicator) statusIndicator.className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                if(btnToggleMonitor) btnToggleMonitor.className = 'btn-outline';
+                if(btnToggleText) btnToggleText.textContent = 'Desativar Monitor';
+                if(monitorInfo) monitorInfo.classList.remove('hidden');
+            } else if (status === 'inactive') {
+                if(statusIndicator) statusIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
+                if(btnToggleMonitor) btnToggleMonitor.className = 'btn-primary';
+                if(btnToggleText) btnToggleText.textContent = 'Ativar Monitor';
+                if(monitorInfo) monitorInfo.classList.add('hidden');
+            } else if (status === 'error') {
+                if(statusIndicator) statusIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                if(btnToggleMonitor) btnToggleMonitor.className = 'btn-primary';
+                if(btnToggleText) btnToggleText.textContent = 'Tentar Novamente';
+                if(monitorInfo) monitorInfo.classList.add('hidden');
+            }
+            
+            if(btnToggleMonitor) btnToggleMonitor.disabled = false;
+        }
+        
+        // Verificar e imprimir pedidos
+        async function checkAndPrintOrders() {
+            if (!monitorActive) return;
+            
+            console.log('🔄 checkAndPrintOrders: Verificando pedidos...');
+            
+            try {
+                if (lastCheckEl) lastCheckEl.textContent = new Date().toLocaleTimeString('pt-BR');
+                
+                // Verificar conexão QZ Tray
+                if (!isQZTrayConnected()) {
+                    console.log('⚠️ QZ Tray desconectado, tentando reconectar...');
+                    const connected = await connectQZTray();
+                    if (!connected) {
+                        console.error('❌ Falha ao conectar QZ Tray');
+                        if (qzStatus) qzStatus.textContent = '❌ Desconectado';
+                        return;
+                    }
+                    console.log('✅ QZ Tray reconectado');
+                    if (qzStatus) qzStatus.textContent = '✅ Conectado';
+                }
+                
+                // Buscar pedidos para imprimir
+                console.log('🔍 Buscando pedidos para imprimir...');
+                const response = await fetch('/dashboard/orders/orders-for-print', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    console.error('❌ Erro HTTP ao buscar pedidos:', response.status);
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📦 Pedidos recebidos:', data);
+                
+                if (!data.success || !data.orders || data.orders.length === 0) {
+                    console.log('ℹ️ Nenhum pedido pendente para imprimir');
+                    return;
+                }
+                
+                console.log(`📝 ${data.orders.length} pedido(s) para processar`);
+                
+                // Processar pedidos
+                for (const orderInfo of data.orders) {
+                    if (orderInfo.printed_at) {
+                        console.log(`⏭️ Pedido #${orderInfo.order_number} já foi impresso`);
+                        continue;
+                    }
+                    
+                    console.log(`🖨️ Processando pedido #${orderInfo.order_number}...`);
+                    
+                    try {
+                        const printType = orderInfo.print_type || 'normal';
+                        const escposEndpoint = printType === 'check' 
+                            ? `/orders/${orderInfo.id}/check-receipt/escpos`
+                            : `/orders/${orderInfo.id}/fiscal-receipt/escpos`;
+                        
+                        const detailsResponse = await fetch(escposEndpoint, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'include'
+                        });
+                        
+                        if (!detailsResponse.ok) {
+                            console.error(`❌ Erro ao buscar detalhes:`, detailsResponse.status);
+                            continue;
+                        }
+                        
+                        const orderData = await detailsResponse.json();
+                        if (!orderData.success || !orderData.data) {
+                            console.error(`❌ Dados inválidos para pedido`);
+                            continue;
+                        }
+                        
+                        // Imprimir
+                        const printers = await qz.printers.find();
+                        let printer = printers.find(p => 
+                            p.toUpperCase().includes('EPSON') && 
+                            (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+                        ) || printers[0];
+                        
+                        if (!printer) {
+                            console.error('❌ Nenhuma impressora disponível');
+                            continue;
+                        }
+                        
+                        const printConfig = qz.configs.create(printer);
+                        await qz.print(printConfig, [{
+                            type: 'raw',
+                            format: 'base64',
+                            data: orderData.data
+                        }]);
+                        
+                        // Marcar como impresso
+                        const markResponse = await fetch(`/dashboard/orders/${orderInfo.id}/mark-printed`, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({})
+                        });
+                        
+                        if (markResponse.ok) {
+                            printedCount++;
+                            if (printedCountEl) printedCountEl.textContent = printedCount;
+                        }
+                    } catch (e) {
+                        console.error(`❌ Erro ao imprimir:`, e);
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro na verificação:', error);
+            }
+        }
+        
+        // Ativar monitor
+        async function startMonitor() {
+            if (!btnToggleMonitor) return;
+            btnToggleMonitor.disabled = true;
+            if (btnToggleText) btnToggleText.textContent = 'Conectando...';
+            
+            try {
+                const clearResponse = await fetch('/dashboard/orders/clear-old-print-requests', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'include'
+                });
+            } catch (e) {
+                console.warn('⚠️ Não foi possível limpar solicitações antigas:', e);
+            }
+            
+            const connected = await connectQZTray();
+            
+            if (!connected) {
+                updateMonitorStatus('error', 'QZ Tray não disponível');
+                if (qzStatus) qzStatus.textContent = '❌ Não instalado ou não está rodando';
+                alert('⚠️ QZ Tray não encontrado!\n\nCertifique-se que ele está rodando.');
                 return;
             }
             
-            console.log(`📝 ${data.orders.length} pedido(s) para processar`);
-            
-            // Processar pedidos
-            for (const orderInfo of data.orders) {
-                if (orderInfo.printed_at) {
-                    console.log(`⏭️ Pedido #${orderInfo.order_number} já foi impresso`);
-                    continue;
-                }
+            try {
+                const printers = await qz.printers.find();
+                const printer = printers.find(p => 
+                    p.toUpperCase().includes('EPSON') && 
+                    (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+                ) || printers[0];
                 
-                console.log(`🖨️ Processando pedido #${orderInfo.order_number}...`);
-                
-                try {
-                    // Determinar qual endpoint usar baseado no print_type
-                    const printType = orderInfo.print_type || 'normal';
-                    const escposEndpoint = printType === 'check' 
-                        ? `/orders/${orderInfo.id}/check-receipt/escpos`  // Recibo de conferência (SEM preços)
-                        : `/orders/${orderInfo.id}/fiscal-receipt/escpos`; // Recibo fiscal (COM preços)
-                    
-                    console.log(`📋 Tipo de recibo: ${printType}, endpoint: ${escposEndpoint}`);
-                    
-                    // Buscar detalhes ESC/POS
-                    const detailsResponse = await fetch(escposEndpoint, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        credentials: 'include'
-                    });
-                    
-                    if (!detailsResponse.ok) {
-                        console.error(`❌ Erro ao buscar detalhes do pedido #${orderInfo.order_number}:`, detailsResponse.status);
-                        continue;
-                    }
-                    
-                    const orderData = await detailsResponse.json();
-                    if (!orderData.success || !orderData.data) {
-                        console.error(`❌ Dados inválidos para pedido #${orderInfo.order_number}`);
-                        continue;
-                    }
-                    
-                    // Imprimir
-                    const printers = await qz.printers.find();
-                    let printer = printers.find(p => 
-                        p.toUpperCase().includes('EPSON') && 
-                        (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
-                    ) || printers[0];
-                    
-                    if (!printer) {
-                        console.error('❌ Nenhuma impressora disponível');
-                        continue;
-                    }
-                    
-                    console.log(`🖨️ Imprimindo na: ${printer}`);
-                    const printConfig = qz.configs.create(printer);
-                    await qz.print(printConfig, [{
-                        type: 'raw',
-                        format: 'base64',
-                        data: orderData.data
-                    }]);
-                    
-                    console.log(`✅ Pedido #${orderInfo.order_number} impresso com sucesso`);
-                    
-                    // Marcar como impresso - COM CSRF TOKEN e verificação de sucesso
-                    const markResponse = await fetch(`/dashboard/orders/${orderInfo.id}/mark-printed`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({})
-                    });
-                    
-                    // Verificar se a marcação foi bem-sucedida
-                    if (markResponse.ok) {
-                        const markData = await markResponse.json();
-                        if (markData.success) {
-                            printedCount++;
-                            if (printedCountEl) printedCountEl.textContent = printedCount;
-                            console.log(`✅ Pedido #${orderInfo.order_number} marcado como impresso`);
-                        } else {
-                            console.error(`❌ Falha ao marcar pedido #${orderInfo.order_number}:`, markData.message);
-                        }
-                    } else {
-                        console.error(`❌ Erro HTTP ao marcar pedido #${orderInfo.order_number}:`, markResponse.status);
-                    }
-                } catch (e) {
-                    console.error(`❌ Erro ao imprimir pedido ${orderInfo.id}:`, e);
+                if (printer && printerNameEl) {
+                    printerNameEl.textContent = printer;
                 }
-            }
-        } catch (error) {
-            console.error('❌ Erro na verificação:', error);
-        }
-    }
-    
-    // Ativar monitor
-    async function startMonitor() {
-        if (!btnToggleMonitor) return;
-        btnToggleMonitor.disabled = true;
-        if (btnToggleText) btnToggleText.textContent = 'Conectando...';
-        
-        // Limpar solicitações antigas ANTES de começar
-        try {
-            const clearResponse = await fetch('/dashboard/orders/clear-old-print-requests', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                },
-                credentials: 'include'
-            });
+            } catch (e) {}
             
-            if (clearResponse.ok) {
-                const clearData = await clearResponse.json();
-                console.log('✅ Solicitações antigas limpas:', clearData.cleared_count);
-            }
-        } catch (e) {
-            console.warn('⚠️ Não foi possível limpar solicitações antigas:', e);
-            // Continuar mesmo se falhar a limpeza
-        }
-        
-        // Verificar QZ Tray
-        const connected = await connectQZTray();
-        
-        if (!connected) {
-            updateMonitorStatus('error', 'QZ Tray não disponível');
-            if (qzStatus) qzStatus.textContent = '❌ Não instalado ou não está rodando';
-            alert('⚠️ QZ Tray não encontrado!\n\nPara impressoras térmicas, você precisa:\n1. Instalar o QZ Tray (link na página)\n2. Executar o QZ Tray\n3. Tentar novamente');
-            return;
-        }
-        
-        // Detectar impressora
-        try {
-            const printers = await qz.printers.find();
-            const printer = printers.find(p => 
-                p.toUpperCase().includes('EPSON') && 
-                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
-            ) || printers[0];
+            monitorActive = true;
+            localStorage.setItem('printMonitorActive', 'true');
+            if (qzStatus) qzStatus.textContent = '✅ Conectado';
+            updateMonitorStatus('active', 'Monitor Ativo');
             
-            if (printer && printerNameEl) {
-                printerNameEl.textContent = printer;
-            } else if (printerNameEl) {
-                printerNameEl.textContent = 'Nenhuma impressora encontrada';
-            }
-        } catch (e) {
-            if (printerNameEl) printerNameEl.textContent = 'Erro ao detectar';
+            monitorInterval = setInterval(checkAndPrintOrders, 3000);
+            checkAndPrintOrders();
         }
         
-        // Ativar
-        monitorActive = true;
-        localStorage.setItem('printMonitorActive', 'true'); // Salvar estado
-        if (qzStatus) qzStatus.textContent = '✅ Conectado';
-        updateMonitorStatus('active', 'Monitor Ativo');
-        
-        // Iniciar polling
-        monitorInterval = setInterval(checkAndPrintOrders, 3000);
-        checkAndPrintOrders(); // Verificar imediatamente
-    }
-    
-    // Desativar monitor
-    function stopMonitor() {
-        monitorActive = false;
-        localStorage.setItem('printMonitorActive', 'false'); // Salvar estado
-        if (monitorInterval) {
-            clearInterval(monitorInterval);
-            monitorInterval = null;
-        }
-        updateMonitorStatus('inactive', 'Monitor Inativo');
-    }
-    
-    // Toggle monitor
-    if (btnToggleMonitor) {
-        btnToggleMonitor.addEventListener('click', function() {
-            if (monitorActive) {
-                stopMonitor();
-            } else {
-                startMonitor();
+        // Desativar monitor
+        function stopMonitor() {
+            monitorActive = false;
+            localStorage.setItem('printMonitorActive', 'false');
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
             }
-        });
-    }
-    
-    // Inicializar status do monitor
-    setTimeout(() => {
+            updateMonitorStatus('inactive', 'Monitor Inativo');
+        }
+        
+        // Toggle monitor
         if (btnToggleMonitor) {
-            // Verificar se monitor estava ativo antes (ao recarregar página)
-            const wasActive = localStorage.getItem('printMonitorActive') === 'true';
-            
-            if (wasActive && isQZTrayAvailable()) {
-                console.log('🔄 Restaurando monitor de impressão...');
-                startMonitor(); // Reativar automaticamente
-            } else if (isQZTrayAvailable()) {
-                updateMonitorStatus('inactive', 'Pronto para ativar');
-            } else {
-                updateMonitorStatus('error', 'QZ Tray não detectado');
-                if (qzStatus) qzStatus.textContent = '❌ Não instalado';
-                if (btnToggleText) btnToggleText.textContent = 'QZ Tray Necessário';
-            }
-        }
-    }, 500);
-    
-    // ===========================================
-    // IMPRESSÃO: CONFIGURAÇÃO DO TIPO
-    // ===========================================
-    const printerTypeCards = document.querySelectorAll('.printer-type-card');
-    const regularSettings = document.getElementById('regular-settings');
-    
-    if (printerTypeCards.length > 0) {
-        printerTypeCards.forEach(card => {
-            card.addEventListener('click', function() {
-                const type = this.dataset.type;
-                const radio = this.querySelector('input[type="radio"]');
-                
-                // Atualizar visual
-                printerTypeCards.forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                
-                // Marcar radio
-                if (radio) radio.checked = true;
-                
-                // Mostrar/ocultar configurações
-                if (regularSettings) {
-                    if (type === 'regular') {
-                        regularSettings.classList.remove('hidden');
-                    } else {
-                        regularSettings.classList.add('hidden');
-                    }
+            btnToggleMonitor.addEventListener('click', function() {
+                if (monitorActive) {
+                    stopMonitor();
+                } else {
+                    startMonitor();
                 }
             });
-        });
-    }
-    
-    // Visualizar exemplo de impressão
-    const btnTestPrint = document.getElementById('btn-test-print');
-    if (btnTestPrint) {
-        btnTestPrint.addEventListener('click', function() {
-            const printerType = document.querySelector('input[name="printer_type"]:checked')?.value;
-            const url = printerType === 'thermal' 
-                ? '/dashboard/orders/1/fiscal-receipt' // ID exemplo
-                : '/dashboard/orders/1/fiscal-receipt?format=a4';
-            
-            window.open(url, '_blank');
-        });
-    }
-    
-    // Inicializar ícones Lucide
-    if (window.lucide) {
-        lucide.createIcons();
-    }
-});
+        }
+        
+        // Inicializar status do monitor
+        setTimeout(() => {
+            if (btnToggleMonitor) {
+                const wasActive = localStorage.getItem('printMonitorActive') === 'true';
+                
+                if (wasActive && isQZTrayAvailable()) {
+                    startMonitor();
+                } else if (isQZTrayAvailable()) {
+                    updateMonitorStatus('inactive', 'Pronto para ativar');
+                } else {
+                    updateMonitorStatus('error', 'QZ Tray não detectado');
+                    if (qzStatus) qzStatus.textContent = '❌ Não instalado';
+                }
+            }
+        }, 500);
+        
+        // ===========================================
+        // IMPRESSÃO: CONFIGURAÇÃO DO TIPO
+        // ===========================================
+        const printerTypeCards = document.querySelectorAll('.printer-type-card');
+        const regularSettings = document.getElementById('regular-settings');
+        
+        if (printerTypeCards.length > 0) {
+            printerTypeCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const radio = this.querySelector('input[type="radio"]');
+                    
+                    printerTypeCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    if (radio) radio.checked = true;
+                    
+                    if (regularSettings) {
+                        if (type === 'regular') {
+                            regularSettings.classList.remove('hidden');
+                        } else {
+                            regularSettings.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+        }
+        
+        const btnTestPrint = document.getElementById('btn-test-print');
+        if (btnTestPrint) {
+            btnTestPrint.addEventListener('click', function() {
+                const printerType = document.querySelector('input[name="printer_type"]:checked')?.value;
+                const url = printerType === 'thermal' 
+                    ? '/dashboard/orders/1/fiscal-receipt' 
+                    : '/dashboard/orders/1/fiscal-receipt?format=a4';
+                
+                window.open(url, '_blank');
+            });
+        }
+        
+        // Inicializar ícones
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    });
 </script>
 
 <style>

@@ -264,7 +264,7 @@ class OrderController extends Controller
             })->values();
 
             \Log::info('OrderController:checkout - Cupons elegíveis', [
-                'total_public_coupons' => $allPublicCoupons->count(),
+                'total_public_coupons' => $allCoupons->count(),
                 'eligible_count' => $eligibleCoupons->count(),
                 'customer_id' => $customerId,
                 'is_first_order' => $isFirstOrder,
@@ -1396,8 +1396,12 @@ class OrderController extends Controller
         ));
     }
 
+
+
+
     /**
      * Calcular descontos em tempo real (cupom e cashback)
+
      * Também retorna dados do cliente se identificado (para preencher endereço)
      */
     public function calculateDiscounts(Request $request)

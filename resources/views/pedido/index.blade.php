@@ -586,14 +586,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // Busca
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-        let searchTimeout;
         searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            const query = e.target.value.trim();
-            if (query.length >= 2) {
-                searchTimeout = setTimeout(() => {
-                    window.location.href = '{{ route($rMenu . '.search') }}?q=' + encodeURIComponent(query);
-                }, 500);
+            const query = e.target.value.toLowerCase().trim();
+            const sections = document.querySelectorAll('.category-section');
+            let hasResults = false;
+            
+            sections.forEach(section => {
+                const products = section.querySelectorAll('.product-item');
+                let visibleInSection = 0;
+                
+                products.forEach(product => {
+                    const text = product.innerText.toLowerCase();
+                    if (text.includes(query)) {
+                        product.style.display = '';
+                        // Simple fade in effect
+                        product.style.opacity = '1';
+                        visibleInSection++;
+                        hasResults = true;
+                    } else {
+                        product.style.display = 'none';
+                        product.style.opacity = '0';
+                    }
+                });
+                
+                // Hide section if no products match
+                if (visibleInSection > 0) {
+                    section.style.display = '';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+            
+            // Handle "No products" message
+            const gridContainer = document.querySelector('main .max-w-7xl'); // Warning: simplistic selector
+            const existingMessage = document.getElementById('globalNoProductsMessage');
+            
+            if (!hasResults && query.length > 0) {
+                if (!existingMessage && gridContainer) {
+                    const message = document.createElement('div');
+                    message.id = 'globalNoProductsMessage';
+                    message.className = 'text-center py-12 animate-fade-in';
+                    message.innerHTML = `
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="bg-muted p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold">Nenhum produto encontrado</h3>
+                            <p class="text-muted-foreground">Tente buscar por outro termo.</p>
+                        </div>
+                    `;
+                    // Insert after header or at top of content
+                    const firstSection = document.querySelector('.category-section');
+                    if (firstSection) {
+                         firstSection.parentNode.insertBefore(message, firstSection);
+                    } else if (gridContainer) {
+                         gridContainer.appendChild(message);
+                    }
+                }
+            } else {
+                if (existingMessage) existingMessage.remove();
             }
         });
     }
@@ -726,14 +777,34 @@ function addToCart(productId, productName, price, buttonElement = null) {
                 showNotification('Produto adicionado!', productName, price);
             }
             
-            // Recarregar drawer APENAS se estiver aberto (evita requisição desnecessária)
-            // Otimização: não bloquear a resposta, fazer de forma completamente assíncrona
+            // Recarregar drawer e dar feedback visual
             const cartDrawer = document.getElementById('cartDrawer');
             if (cartDrawer && typeof loadCartIntoDrawer === 'function') {
-                const isOpen = !cartDrawer.classList.contains('translate-x-full');
-                if (isOpen) {
-                    // Carregar de forma totalmente assíncrona, sem bloquear a resposta
-                    requestIdleCallback ? requestIdleCallback(() => loadCartIntoDrawer()) : setTimeout(() => loadCartIntoDrawer(), 300);
+                // Sempre recarregar o carrinho
+                loadCartIntoDrawer();
+                
+                // Feedback visual: Desktop = Abre Drawer, Mobile = Pulsa Barra Inferior
+                const isDesktop = window.innerWidth >= 1024;
+                
+                if (isDesktop) {
+                    // Abrir Drawer
+                    const isOpen = !cartDrawer.classList.contains('translate-x-full');
+                    if (!isOpen) {
+                        cartDrawer.classList.remove('translate-x-full');
+                        // Adicionar overlay se não existir (simulado)
+                        // Idealmente deveria haver uma função openCartDrawer() no layout
+                    }
+                } else {
+                    // Feedback Mobile: Pulsar barra inferior
+                    const bottomBar = document.getElementById('cartBottomBar');
+                    if (bottomBar) {
+                        bottomBar.classList.remove('hidden');
+                        // Animação de pulso/highlight
+                        bottomBar.classList.add('ring-2', 'ring-primary', 'scale-[1.02]', 'transition-transform');
+                        setTimeout(() => {
+                            bottomBar.classList.remove('ring-2', 'ring-primary', 'scale-[1.02]');
+                        }, 500);
+                    }
                 }
             }
         } else {
@@ -783,7 +854,7 @@ function openProductModal(productId) {
     body.innerHTML = '<div class="h-64 flex items-center justify-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>';
 
     // Fetch Content
-    const url = '{{ route($rMenu . ".product.modal", ":id") }}'.replace(':id', productId);
+    const url = '{{ route($rMenu . ".product.modal", ":id") }}'.replace(':id', productId) + '?t=' + new Date().getTime();
     
     fetch(url)
         .then(res => res.text())
@@ -863,7 +934,7 @@ function refreshModalTotals() {
     if (totalEl) totalEl.textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
-function submitModalCart() {
+function submitModalCart(redirectToCheckout = false) {
     const qtyEl = document.getElementById('modalQty');
     const qty = parseInt(qtyEl.textContent) || 1;
     
@@ -921,6 +992,10 @@ function submitModalCart() {
     .then(r => r.json())
     .then(data => {
         if (data.ok || data.success) {
+            if (redirectToCheckout) {
+                window.location.href = '{{ route("pedido.checkout.index") }}';
+                return;
+            }
             closeProductModal();
             if (typeof window.updateCartBadge === 'function') {
                  try { window.updateCartBadge(data.cart_count); } catch(e){}

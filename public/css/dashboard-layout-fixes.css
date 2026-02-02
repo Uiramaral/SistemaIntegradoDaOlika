@@ -1,0 +1,81 @@
+/* Dashboard Layout Fixes - Alturas iguais e espaçamento */
+
+/* Grid principal - garantir que os itens tenham mesma altura */
+.dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3,
+.grid.grid-cols-1.lg\:grid-cols-3 {
+    align-items: stretch;
+    gap: 2rem; /* 32px - mais espaçamento */
+}
+
+.dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > div,
+.grid.grid-cols-1.lg\:grid-cols-3 > div {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Espaçamento adicional em mobile */
+@media (max-width: 1023px) {
+    .grid.grid-cols-1.lg\:grid-cols-3 {
+        gap: 1.5rem; /* 24px em mobile */
+    }
+}
+
+/* Gráfico - altura flexível */
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-6.flex.flex-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dashboard-wrapper .bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-6.flex.flex-col > div.mb-4 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 150px;
+}
+
+/* Tabela de pedidos - altura igual à sidebar (produtos + categorias) */
+.dashboard-wrapper .table-orders-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dashboard-wrapper .table-orders-container .overflow-x-auto {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.dashboard-wrapper .table-orders-container table {
+    width: 100%;
+}
+
+/* Sidebar - altura igual à tabela */
+.dashboard-wrapper .space-y-6.flex.flex-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Garantir que produtos e categorias ocupem espaço igual */
+.dashboard-wrapper .space-y-6.flex.flex-col > div {
+    flex: 1;
+    min-height: 0;
+}
+
+/* JavaScript para igualar alturas */
+@media (min-width: 1024px) {
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 {
+        display: grid;
+        grid-template-rows: auto;
+    }
+    
+    /* Forçar altura igual usando JavaScript será necessário */
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > div.lg\:col-span-2:first-child,
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 > div:last-child {
+        min-height: 350px;
+    }
+}

@@ -11,22 +11,22 @@ class PackagingsController extends Controller
     public function index(Request $request)
     {
         $clientId = currentClientId();
-        
+
         $query = Packaging::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->where(function($q) use ($clientId) {
+            ->where(function ($q) use ($clientId) {
                 $q->where('client_id', $clientId)->orWhereNull('client_id');
             });
-        
+
         if ($request->has('search') && $request->search) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
-        
+
         if ($request->has('active_only') && $request->active_only) {
             $query->where('is_active', true);
         }
-        
-        $packagings = $query->orderBy('name')->paginate(30)->withQueryString();
-        
+
+        $packagings = $query->orderBy('name')->paginate(500);
+
         return view('dashboard.producao.embalagens', compact('packagings'));
     }
 
@@ -56,22 +56,22 @@ class PackagingsController extends Controller
     public function edit(Packaging $embalagem)
     {
         $clientId = currentClientId();
-        
+
         $packaging = Packaging::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->where(function($q) use ($clientId) {
+            ->where(function ($q) use ($clientId) {
                 $q->where('client_id', $clientId)->orWhereNull('client_id');
             })
             ->findOrFail($embalagem->id);
-        
+
         return view('dashboard.producao.embalagens.edit', compact('packaging'));
     }
 
     public function update(Request $request, Packaging $embalagem)
     {
         $clientId = currentClientId();
-        
+
         $packaging = Packaging::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->where(function($q) use ($clientId) {
+            ->where(function ($q) use ($clientId) {
                 $q->where('client_id', $clientId)->orWhereNull('client_id');
             })
             ->findOrFail($embalagem->id);
@@ -94,9 +94,9 @@ class PackagingsController extends Controller
     public function destroy(Packaging $embalagem)
     {
         $clientId = currentClientId();
-        
+
         $packaging = Packaging::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-            ->where(function($q) use ($clientId) {
+            ->where(function ($q) use ($clientId) {
                 $q->where('client_id', $clientId)->orWhereNull('client_id');
             })
             ->findOrFail($embalagem->id);

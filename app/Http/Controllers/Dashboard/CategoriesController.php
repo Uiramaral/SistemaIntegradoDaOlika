@@ -22,7 +22,7 @@ class CategoriesController extends Controller
             });
         }
 
-        $categories = $query->orderBy('sort_order')->orderBy('name')->paginate(20)->withQueryString();
+        $categories = $query->orderBy('sort_order')->orderBy('name')->paginate(500)->withQueryString();
 
         // Se for requisição AJAX, retornar JSON sem paginação
         if ($request->ajax() || $request->wantsJson()) {

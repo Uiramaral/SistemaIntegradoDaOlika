@@ -55,9 +55,40 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Variante *</label>
-                        <select name="variant_id" id="variant-select" required class="form-input">
-                            <option value="">Selecione primeiro o produto...</option>
-                        </select>
+                    <div>
+                        <x-ui.searchable-select 
+                            name="product_id" 
+                            label="Produto" 
+                            required="true"
+                            id="product-select"
+                            :options="$products->map(function($p) {
+                                $vars = $p->getRelation('variants');
+                                if (!$vars || is_string($vars) || $vars->isEmpty()) {
+                                    $raw = $p->getRawOriginal('variants');
+                                    $vars = !empty($raw) ? json_decode($raw, true) : [];
+                                }
+                                return [
+                                    'id' => $p->id, 
+                                    'name' => $p->name . ($p->category ? ' - ' . $p->category->name : ''),
+                                    'category' => $p->category->name ?? '',
+                                    'variants' => $vars // Pass variants directly in item
+                                ];
+                            })->values()"
+                            wire:model="product_id"
+                            @change="updateVariants($event.detail.value)"
+                        />
+                    </div>
+                    <div>
+                        <x-ui.searchable-select 
+                            name="variant_id" 
+                            label="Variante" 
+                            required="true"
+                            id="variant-select"
+                            alpine-options="availableVariants"
+                            wire:model="variant_id"
+                            @change="updateRecipeNameAndWeight()"
+                        />
+                    </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Nome da Receita *</label>
@@ -162,15 +193,12 @@
                                     <div class="flex gap-2 items-end">
                                         <div class="flex-1">
                                             <label class="block text-xs font-medium mb-1">Ingrediente</label>
-                                            <select x-model="ing.ingredient_id"
-                                                :name="'steps[' + stepIndex + '][ingredients][' + ingIndex + '][ingredient_id]'"
-                                                required class="form-input"
-                                                :id="'ingredient-select-' + stepIndex + '-' + ingIndex">
-                                                <option value="">Selecione...</option>
-                                                @foreach($ingredients as $ingredient)
-                                                    <option value="{{ $ingredient->id }}">{{ $ingredient->name }}</option>
-                                                @endforeach
-                                            </select>
+                                            <x-ui.searchable-select 
+                                                name="'steps[' + stepIndex + '][ingredients][' + ingIndex + '][ingredient_id]'" 
+                                                placeholder="Selecione..."
+                                                :options="$ingredients->map(fn($i) => ['id' => $i->id, 'name' => $i->name])->values()"
+                                                x-model="ing.ingredient_id"
+                                            />
                                         </div>
                                         <div class="w-24">
                                             <label class="block text-xs font-medium mb-1 text-center">%</label>
@@ -284,7 +312,76 @@
                         }
                         return 0;
                     }
-                };
+                    // New Alpine Logic for Searchable Selects
+                    product_id: '',
+                    variant_id: '',
+                    products: @json($products->map(function($p) {
+                         $vars = $p->getRelation('variants');
+                         if (!$vars || is_string($vars) || $vars->isEmpty()) {
+                             $raw = $p->getRawOriginal('variants');
+                             $vars = !empty($raw) ? json_decode($raw, true) : [];
+                         }
+                         // Normalize dynamic variants
+                         if(is_array($vars)){
+                            $vars = array_map(function($v) {
+                                // Ensure standard structure if it's an array
+                                return (object)$v;
+                            }, $vars);
+                         }
+                         return [
+                             'id' => $p->id, 
+                             'name' => $p->name . ($p->category ? ' - ' . $p->category->name : ''),
+                             'category' => $p->category->name ?? '',
+                             'variants' => $vars
+                         ];
+                    })->values()),
+                    availableVariants: [],
+
+                    updateVariants(productId) {
+                        this.product_id = productId;
+                        const product = this.products.find(p => p.id == productId);
+                        this.availableVariants = [];
+                        this.variant_id = ''; // Reset variant
+                        
+                        if (product) {
+                            // Update Category
+                            if(product.category) {
+                                document.getElementById('category-input').value = product.category;
+                            }
+                            
+                            // Detect Bread
+                            this.is_bread = product.name.toLowerCase().includes('pão') || 
+                                           (product.category && product.category.toLowerCase().includes('pão'));
+
+                            // Populate Variants
+                            // Handle both Eloquent Collection (array of objects) and array arrays
+                            if (product.variants) {
+                                this.availableVariants = Object.values(product.variants).map(v => ({
+                                    id: v.id || v.name, // Fallback for legacy
+                                    name: (v.name || 'Padrão') + (v.price ? ' (R$ ' + v.price + ')' : ''),
+                                    weight: v.weight_grams || 0,
+                                    price: v.price
+                                }));
+                            }
+                        }
+                    },
+
+                    updateRecipeNameAndWeight() {
+                        if(!this.product_id || !this.variant_id) return;
+
+                        const product = this.products.find(p => p.id == this.product_id);
+                        const variant = this.availableVariants.find(v => v.id == this.variant_id);
+
+                        if (product && variant) {
+                            // Update Weight
+                            this.variant_weight = parseFloat(variant.weight || 0);
+
+                            // Update Name
+                            const rawVariantName = variant.name.split('(')[0].trim();
+                            const prodNameOnly = product.name.split(' - ')[0].trim();
+                            document.getElementById('recipe-name').value = prodNameOnly + ' - ' + rawVariantName;
+                        }
+                    }
             }
 
             document.addEventListener('DOMContentLoaded', function () {
@@ -292,90 +389,7 @@
                     window.lucide.createIcons();
                 }
 
-                const productSelect = document.getElementById('product-select');
-                const variantSelect = document.getElementById('variant-select');
-                const categoryInput = document.getElementById('category-input');
-                const recipeNameInput = document.getElementById('recipe-name');
-
-                if (productSelect && variantSelect && recipeNameInput) {
-                    productSelect.addEventListener('change', function () {
-                        const selectedOption = this.options[this.selectedIndex];
-                        variantSelect.innerHTML = '<option value="">Selecione a variante...</option>';
-
-                        if (selectedOption && selectedOption.value) {
-                            // Pre-fill category
-                            const prodCat = selectedOption.getAttribute('data-category');
-                            if (prodCat) {
-                                categoryInput.value = prodCat;
-                            }
-
-                            // Auto-detect if it is bread based on name
-                            const prodName = selectedOption.getAttribute('data-name') || '';
-                            const alpineEl = document.getElementById('recipe-form');
-                            if (alpineEl && alpineEl.__x) {
-                                const isBread = prodName.toLowerCase().includes('pão') || (prodCat && prodCat.toLowerCase().includes('pão'));
-                                alpineEl.__x.$data.is_bread = isBread;
-                            }
-
-                            try {
-                                const variantsJson = selectedOption.getAttribute('data-variants');
-                                const variants = JSON.parse(variantsJson || '[]');
-
-                                variants.forEach(variant => {
-                                    const option = document.createElement('option');
-                                    option.value = variant.id || variant.name;
-                                    option.textContent = variant.name + (variant.price ? ' (R$ ' + variant.price + ')' : '');
-                                    option.setAttribute('data-weight', variant.weight_grams || 0);
-
-                                    if (variant.id == "{{ old('variant_id') }}") {
-                                        option.selected = true;
-                                    }
-
-                                    variantSelect.appendChild(option);
-                                });
-                            } catch (e) {
-                                console.error('Error parsing variants:', e);
-                            }
-
-                            updateRecipeName();
-                            updateVariantWeight();
-                        }
-                    });
-
-                    variantSelect.addEventListener('change', () => {
-                        updateRecipeName();
-                        updateVariantWeight();
-                    });
-
-                    function updateVariantWeight() {
-                        const selected = variantSelect.options[variantSelect.selectedIndex];
-                        const weight = selected ? parseFloat(selected.getAttribute('data-weight') || 0) : 0;
-
-                        // Access Alpine data directly if available, otherwise it will be picked up on init
-                        const alpineEl = document.getElementById('recipe-form');
-                        if (alpineEl && alpineEl.__x) {
-                            alpineEl.__x.$data.variant_weight = weight;
-                        } else {
-                            // Fallback for initialization phase
-                            window._initial_variant_weight = weight;
-                        }
-                    }
-
-                    function updateRecipeName() {
-                        const selectedProduct = productSelect.options[productSelect.selectedIndex];
-                        const selectedVariant = variantSelect.options[variantSelect.selectedIndex];
-
-                        if (selectedProduct && selectedProduct.value && selectedVariant && selectedVariant.value) {
-                            const productName = selectedProduct.getAttribute('data-name');
-                            const variantName = selectedVariant.textContent.split('(')[0].trim();
-                            recipeNameInput.value = productName + ' - ' + variantName;
-                        }
-                    }
-
-                    if (productSelect.value) {
-                        productSelect.dispatchEvent(new Event('change'));
-                    }
-                }
+                // Removed legacy Vanilla JS listeners. Logic moved to Alpine component 'recipeSteps'.
             });
         </script>
     @endpush

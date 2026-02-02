@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serviço de Impressão OLIKA - Minimizado</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖨️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status-label {
+            opacity: 0.8;
+        }
+
+        .status-value {
+            font-weight: 600;
+        }
+
+        .indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .indicator.active {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator.inactive {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        .log-time {
+            opacity: 0.6;
+            margin-right: 10px;
+        }
+
+        .minimize-hint {
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+
+        .settings {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .settings label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .settings input[type="text"],
+        .settings input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .settings input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🖨️</div>
+            <h1>Serviço de Impressão OLIKA</h1>
+            <p class="subtitle">Rodando em segundo plano - pode minimizar esta janela</p>
+        </div>
+
+        <div class="status">
+            <div class="status-row">
+                <span class="status-label">Status:</span>
+                <span class="status-value">
+                    <span class="indicator" id="status-indicator"></span>
+                    <span id="status-text">Inicializando...</span>
+                </span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">QZ Tray:</span>
+                <span class="status-value" id="qz-status">Verificando...</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Impressora:</span>
+                <span class="status-value" id="printer-status">-</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Recibos Impressos:</span>
+                <span class="status-value" id="printed-count">0</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Última Verificação:</span>
+                <span class="status-value" id="last-check">-</span>
+            </div>
+        </div>
+
+        <div class="settings">
+            <label for="printer-name">Nome da Impressora (deixe vazio para auto-detectar EPSON):</label>
+            <input type="text" id="printer-name" placeholder="Ex: EPSON TM-T20X Receipt">
+
+            <label for="poll-interval">Intervalo de Verificação (segundos):</label>
+            <input type="number" id="poll-interval" min="1" max="60" value="3">
+
+            <label for="api-url">URL da API (deixe vazio para usar URL atual):</label>
+            <input type="text" id="api-url" placeholder="https://menuolika.com.br">
+        </div>
+
+        <div class="log" id="log">
+            <div class="log-entry">
+                <span class="log-time">[Iniciando]</span>
+                <span>Serviço de impressão iniciado. Aguardando conexão com QZ Tray...</span>
+            </div>
+        </div>
+
+        <div class="minimize-hint">
+            💡 Você pode minimizar esta janela. O serviço continuará rodando em segundo plano.
+        </div>
+    </div>
+
+    <!-- QZ Tray Script -->
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2/qz-tray.min.js"></script>
+
+    <script>
+        // Configurações
+        let config = {
+            printer: localStorage.getItem('printer_name') || '',
+            pollInterval: parseInt(localStorage.getItem('poll_interval') || '3') * 1000,
+            apiUrl: localStorage.getItem('api_url') || window.location.origin,
+        };
+
+        // Estado
+        let isRunning = false;
+        let pollTimer = null;
+        let printedCount = 0;
+        let processedOrders = new Set();
+        let qzConnected = false;
+
+        // Elementos DOM
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const qzStatus = document.getElementById('qz-status');
+        const printerStatus = document.getElementById('printer-status');
+        const printedCountEl = document.getElementById('printed-count');
+        const lastCheckEl = document.getElementById('last-check');
+        const logEl = document.getElementById('log');
+
+        // Inputs
+        const printerNameInput = document.getElementById('printer-name');
+        const pollIntervalInput = document.getElementById('poll-interval');
+        const apiUrlInput = document.getElementById('api-url');
+
+        // Inicializar inputs
+        printerNameInput.value = config.printer;
+        pollIntervalInput.value = config.pollInterval / 1000;
+        apiUrlInput.value = config.apiUrl === window.location.origin ? '' : config.apiUrl;
+
+        // Salvar configurações ao mudar
+        printerNameInput.addEventListener('change', function () {
+            config.printer = this.value;
+            localStorage.setItem('printer_name', this.value);
+            addLog('Impressora configurada: ' + (this.value || 'Auto-detectar'));
+        });
+
+        pollIntervalInput.addEventListener('change', function () {
+            config.pollInterval = parseInt(this.value) * 1000;
+            localStorage.setItem('poll_interval', this.value);
+            addLog('Intervalo atualizado: ' + this.value + 's');
+
+            // Reiniciar polling com novo intervalo
+            if (isRunning) {
+                clearInterval(pollTimer);
+                pollTimer = setInterval(checkAndPrintOrders, config.pollInterval);
+            }
+        });
+
+        apiUrlInput.addEventListener('change', function () {
+            config.apiUrl = this.value || window.location.origin;
+            localStorage.setItem('api_url', config.apiUrl);
+            addLog('URL da API: ' + config.apiUrl);
+        });
+
+        // Atualizar status visual
+        function updateStatus(status, message) {
+            statusText.textContent = message;
+
+            if (status === 'active') {
+                statusIndicator.className = 'indicator active';
+            } else {
+                statusIndicator.className = 'indicator inactive';
+            }
+        }
+
+        // Adicionar entrada ao log
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString('pt-BR');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span><span>${message}</span>`;
+
+            logEl.insertBefore(entry, logEl.firstChild);
+
+            // Manter apenas últimas 50 entradas
+            while (logEl.children.length > 50) {
+                logEl.removeChild(logEl.lastChild);
+            }
+        }
+
+        // Verificar se QZ Tray está conectado
+        function isQZTrayConnected() {
+            try {
+                return typeof qz !== 'undefined' &&
+                    qz !== null &&
+                    qz.websocket !== null &&
+                    qz.websocket.isActive();
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Conectar ao QZ Tray
+        async function connectQZTray() {
+            try {
+                if (typeof qz === 'undefined' || qz === null) {
+                    throw new Error('QZ Tray não está carregado');
+                }
+
+                if (isQZTrayConnected()) {
+                    qzConnected = true;
+                    qzStatus.textContent = '✅ Conectado';
+                    return true;
+                }
+
+                await qz.websocket.connect();
+
+                if (isQZTrayConnected()) {
+                    qzConnected = true;
+                    qzStatus.textContent = '✅ Conectado';
+                    addLog('✅ QZ Tray conectado com sucesso');
+
+                    // Buscar impressoras disponíveis
+                    const printers = await qz.printers.find();
+                    if (printers && printers.length > 0) {
+                        let printer = config.printer;
+                        if (!printer) {
+                            const epson = printers.find(p =>
+                                p.toUpperCase().includes('EPSON') &&
+                                (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+                            );
+                            printer = epson || printers[0];
+                        }
+                        printerStatus.textContent = printer;
+                        addLog('🖨️ Impressora detectada: ' + printer);
+                    }
+
+                    return true;
+                }
+            } catch (error) {
+                qzConnected = false;
+                qzStatus.textContent = '❌ Não conectado';
+                addLog('❌ Erro ao conectar QZ Tray: ' + error.message);
+                return false;
+            }
+        }
+
+        // Buscar pedidos para imprimir
+        async function checkAndPrintOrders() {
+            if (!isRunning) return;
+
+            try {
+                lastCheckEl.textContent = new Date().toLocaleTimeString('pt-BR');
+
+                // Verificar conexão QZ Tray
+                if (!isQZTrayConnected()) {
+                    addLog('⚠️ Reconectando ao QZ Tray...');
+                    const connected = await connectQZTray();
+                    if (!connected) {
+                        updateStatus('inactive', 'QZ Tray desconectado');
+                        return;
+                    }
+                }
+
+                // Buscar pedidos
+                const apiUrl = config.apiUrl + '/orders/orders-for-print';
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.success || !data.orders || data.orders.length === 0) {
+                    return;
+                }
+
+                // Processar pedidos
+                for (const orderInfo of data.orders) {
+                    if (orderInfo.printed_at || processedOrders.has(orderInfo.id)) {
+                        continue;
+                    }
+
+                    addLog(`📥 Novo pedido #${orderInfo.order_number} detectado`);
+
+                    try {
+                        // Buscar detalhes do pedido
+                        const detailsUrl = config.apiUrl + `/dashboard/orders/${orderInfo.id}/fiscal-receipt/escpos`;
+                        const detailsResponse = await fetch(detailsUrl, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'include'
+                        });
+
+                        if (!detailsResponse.ok) {
+                            throw new Error(`Erro ao buscar detalhes: ${detailsResponse.status}`);
+                        }
+
+                        const orderData = await detailsResponse.json();
+
+                        if (!orderData.success || !orderData.data) {
+                            throw new Error('Dados inválidos');
+                        }
+
+                        // Imprimir
+                        const printed = await printOrder(orderData);
+
+                        if (printed) {
+                            processedOrders.add(orderInfo.id);
+                            printedCount++;
+                            printedCountEl.textContent = printedCount;
+                            addLog(`✅ Pedido #${orderInfo.order_number} impresso com sucesso`);
+                        }
+                    } catch (error) {
+                        addLog(`❌ Erro ao processar #${orderInfo.order_number}: ${error.message}`);
+                    }
+                }
+
+                updateStatus('active', 'Monitorando...');
+
+            } catch (error) {
+                addLog(`❌ Erro na verificação: ${error.message}`);
+                updateStatus('inactive', 'Erro na verificação');
+            }
+        }
+
+        // Imprimir pedido
+        async function printOrder(orderData) {
+            try {
+                // Obter impressora
+                const printers = await qz.printers.find();
+                let printer = config.printer;
+
+                if (!printer) {
+                    const epson = printers.find(p =>
+                        p.toUpperCase().includes('EPSON') &&
+                        (p.toUpperCase().includes('TM-20') || p.toUpperCase().includes('TM-T20'))
+                    );
+                    printer = epson || printers[0];
+                }
+
+                if (!printer) {
+                    throw new Error('Nenhuma impressora encontrada');
+                }
+
+                // Configurar impressão
+                const printConfig = qz.configs.create(printer);
+
+                // Enviar para impressão
+                await qz.print(printConfig, [{
+                    type: 'raw',
+                    format: 'base64',
+                    data: orderData.data
+                }]);
+
+                // Marcar como impresso no servidor
+                const orderId = orderData.order_id || orderData.id;
+                if (orderId) {
+                    try {
+                        const markUrl = config.apiUrl + `/dashboard/orders/${orderId}/mark-printed`;
+                        await fetch(markUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({})
+                        });
+                    } catch (err) {
+                        console.error('Erro ao marcar como impresso:', err);
+                    }
+                }
+
+                return true;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Iniciar serviço automaticamente
+        async function startService() {
+            addLog('🚀 Iniciando serviço de impressão...');
+            updateStatus('inactive', 'Conectando...');
+
+            // Tentar conectar ao QZ Tray
+            let connected = false;
+            for (let i = 0; i < 5; i++) {
+                connected = await connectQZTray();
+                if (connected) break;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            if (!connected) {
+                updateStatus('inactive', 'QZ Tray não conectado');
+                addLog('❌ Não foi possível conectar ao QZ Tray. Verifique se está instalado e rodando.');
+                // Tentar novamente em 10 segundos
+                setTimeout(startService, 10000);
+                return;
+            }
+
+            // Iniciar monitoramento
+            isRunning = true;
+            updateStatus('active', 'Monitorando...');
+            addLog('✅ Serviço ativo - monitorando impressões');
+
+            pollTimer = setInterval(checkAndPrintOrders, config.pollInterval);
+            checkAndPrintOrders(); // Verificar imediatamente
+
+            // Verificar conexão QZ Tray periodicamente
+            setInterval(async function () {
+                if (isRunning && !isQZTrayConnected()) {
+                    addLog('⚠️ Conexão QZ Tray perdida, reconectando...');
+                    await connectQZTray();
+                }
+            }, 5000);
+        }
+
+        // Iniciar quando página carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                setTimeout(startService, 1000);
+            });
+        } else {
+            setTimeout(startService, 1000);
+        }
+
+        // Manter ativo quando a janela perde foco
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !isRunning) {
+                addLog('🔄 Página voltou ao foco, reiniciando serviço...');
+                startService();
+            }
+        });
+
+        // Evitar fechamento acidental
+        window.addEventListener('beforeunload', function (e) {
+            if (isRunning) {
+                e.preventDefault();
+                e.returnValue = 'O serviço de impressão está rodando. Tem certeza que deseja fechar?';
+                return e.returnValue;
+            }
+        });
+    </script>
+</body>
+
+</html>

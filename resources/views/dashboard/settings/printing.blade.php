@@ -520,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Buscar pedidos para imprimir
-            const response = await fetch('/dashboard/orders/orders-for-print', {
+            const response = await fetch('/orders/orders-for-print', {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }]);
                     
                     // Marcar como impresso - COM CSRF TOKEN e verificação de sucesso
-                    const markResponse = await fetch(`/dashboard/orders/${orderInfo.id}/mark-printed`, {
+                    const markResponse = await fetch(`/orders/${orderInfo.id}/mark-printed`, {
                         method: 'POST',
                         headers: {
                             'Accept': 'application/json',
@@ -615,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Limpar solicitações antigas ANTES de começar
         try {
-            const clearResponse = await fetch('/dashboard/orders/clear-old-print-requests', {
+            const clearResponse = await fetch('/orders/clear-old-print-requests', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

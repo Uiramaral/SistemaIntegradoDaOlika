@@ -41,14 +41,14 @@
     </style>
 
     <div class="bg-card rounded-xl border border-border animate-fade-in w-full overflow-x-hidden" id="recipes-page"
-        x-data="recipesLiveSearch('{{ request('q') ?? '' }}')">
+        x-data="recipesLiveSearch()">
         {{-- Header: Search & Actions --}}
         <div class="p-4 border-b border-border flex flex-col sm:flex-row gap-4 justify-between w-full">
             <div class="relative flex-1 w-full max-w-full sm:max-w-md">
                 <i data-lucide="search"
                     class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                <input type="text" name="q" x-model="search" @input.debounce.300ms="updateSearch()"
-                    placeholder="Buscar receita..." class="form-input pl-10 h-10 w-full" autocomplete="off">
+                <input type="text" name="q" x-model="search" placeholder="Buscar receita por nome, categoria ou notas..."
+                    class="form-input pl-10 h-10 w-full" autocomplete="off">
             </div>
 
             <button type="button" @click="$dispatch('open-recipe-modal')"
@@ -75,7 +75,7 @@
                     $initials = strtoupper(substr($parts[0] ?? '', 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
                 @endphp
                 <div class="recipe-card border border-border rounded-xl p-4 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between bg-white w-full min-w-0"
-                    data-search-name="{{ $searchName }}" data-search-category="{{ $searchCategory }}" x-show="matches($el)"
+                    data-search-name="{{ $searchName }}" data-search-category="{{ $searchCategory }}" x-show="matchesCard($el)"
                     @click="$dispatch('open-recipe-modal', { id: {{ $recipe->id }} })">
 
                     {{-- Header: Avatar, Name, Category --}}
@@ -118,7 +118,8 @@
                                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold truncate">
                                     PESO</p>
                                 <p class="text-sm font-bold text-foreground mt-0.5">
-                                    {{ number_format($totalWeight, 0, ',', '.') }}g</p>
+                                    {{ number_format($totalWeight, 0, ',', '.') }}g
+                                </p>
                             </div>
 
                             <div class="text-right min-w-0">
@@ -411,7 +412,8 @@
                                                                         continue;
                                                                 @endphp
                                                                 <option value="{{ (string) $singleIng->id }}">
-                                                                    {{ $singleIng->name }}</option>
+                                                                    {{ $singleIng->name }}
+                                                                </option>
                                                             @endforeach
                                                         </select>
                                                     </div>
@@ -555,7 +557,8 @@
                                 </div>
                                 <p x-show="item.observation"
                                     class="text-sm text-amber-700/80 bg-amber-50 rounded px-2 py-1 mt-2">
-                                    <strong>Obs:</strong> <span x-text="item.observation"></span></p>
+                                    <strong>Obs:</strong> <span x-text="item.observation"></span>
+                                </p>
                             </div>
                             <a :href="'{{ route('dashboard.producao.receitas.show', '') }}/' + item.recipe_id"
                                 target="_blank" class="btn-outline h-9 w-9 p-0 flex-shrink-0">
@@ -706,6 +709,42 @@
                 });
 
                 window.allProducts = @json($products);
+
+                window.recipesLiveSearch = function () {
+                    return {
+                        search: '',
+                        showNoResults: false,
+
+                        init() {
+                            this.$watch('search', () => {
+                                this.updateResults();
+                            });
+                        },
+
+                        updateResults() {
+                            const grid = document.getElementById('recipes-grid');
+                            if (!grid) return;
+                            const cards = grid.querySelectorAll('.recipe-card');
+                            let visibleCount = 0;
+                            cards.forEach(card => {
+                                if (this.matchesCard(card)) visibleCount++;
+                            });
+                            this.showNoResults = visibleCount === 0;
+                        },
+
+                        matchesCard(el) {
+                            if (!el) return false;
+                            const searchLower = this.search.toLowerCase();
+                            if (searchLower === '') return true;
+
+                            const searchTerms = [
+                                el.dataset.searchName || '',
+                                el.dataset.searchCategory || ''
+                            ];
+                            return searchTerms.some(term => term.toLowerCase().includes(searchLower));
+                        }
+                    };
+                };
 
                 Alpine.data('recipeModal', function () {
                     return {

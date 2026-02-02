@@ -12,34 +12,48 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        // Buscar configurações do WhatsApp
-        $whatsappSettings = DB::table('whatsapp_settings')->where('active', 1)->first();
-        
-        // Buscar configurações de pagamento
-        $paymentSettings = DB::table('payment_settings')->pluck('value', 'key');
-        
-        // Configurações gerais da loja
+        // Buscar configurações do WhatsApp filtradas por cliente
+        $clientId = currentClientId();
+        $whatsappSettings = DB::table('whatsapp_settings')
+            ->where('client_id', $clientId)
+            ->where('active', 1)
+            ->first();
+
+        // Buscar configurações de pagamento filtradas por cliente
+        $paymentSettings = DB::table('payment_settings')
+            ->where('client_id', $clientId)
+            ->pluck('value', 'key');
+
+        // Configurações gerais da loja (dinâmicas do modelo Client/Setting)
+        $client = \App\Models\Client::find($clientId);
+        $setting = \App\Models\Setting::getSettings($clientId);
+
         $storeSettings = [
-            'store_name' => 'Olika Cozinha Artesanal',
-            'store_email' => 'olikacozinhaartesanal@gmail.com',
-            'store_phone' => '(71) 987019420',
-            'store_cnpj' => '50.910.565/0001-84',
+            'store_name' => $setting->business_name ?? $client->name ?? 'Loja',
+            'store_email' => $setting->business_email ?? $client->email ?? '',
+            'store_phone' => $setting->business_phone ?? '',
+            'store_cnpj' => $setting->business_cnpj ?? '', // Adicionar se existir na tabela
             'service_fee' => 0,
-            'min_order' => 0,
+            'min_order' => $setting->min_delivery_value ?? 0,
         ];
-        
+
         // Chaves de API + loja (free shipping) salvas em settings
         // Nota: cashback_percent removido - agora gerenciado na aba dedicada de Cashback
         // APIs (OpenAI, Google Maps, Gemini) movidas para Master → /master/settings
         $apiSettings = $this->getSettingsFromFlexibleTable([
             'free_shipping_min_total',
-            'order_number_prefix','next_order_number',
+            'order_number_prefix',
+            'next_order_number',
             // BotConversa
-            'botconversa_webhook_url','botconversa_paid_webhook_url','botconversa_token',
+            'botconversa_webhook_url',
+            'botconversa_paid_webhook_url',
+            'botconversa_token',
             // Agendamento/Entrega
-            'delivery_slot_capacity','advance_order_days','default_cutoff_time',
+            'delivery_slot_capacity',
+            'advance_order_days',
+            'default_cutoff_time',
         ]);
-        
+
         // Limpar valores inválidos (emails no campo de URL) e usar .env como fallback
         foreach (['botconversa_webhook_url', 'botconversa_paid_webhook_url'] as $key) {
             $value = $apiSettings[$key] ?? '';
@@ -74,32 +88,40 @@ class SettingsController extends Controller
                 $dbValue = $apiSettings[$k] ?? '';
                 // Se o valor do banco é vazio ou inválido (email), usar .env
                 if (empty($dbValue) || (strpos($dbValue, '@') !== false && !filter_var($dbValue, FILTER_VALIDATE_URL))) {
-                    if ($v !== null && $v !== '') { 
+                    if ($v !== null && $v !== '') {
                         $apiSettings[$k] = $v;
                     }
                 }
             } else {
                 // Para outros campos, comportamento normal
                 if (!isset($apiSettings[$k]) || $apiSettings[$k] === null || $apiSettings[$k] === '') {
-                    if ($v !== null && $v !== '') { $apiSettings[$k] = $v; }
+                    if ($v !== null && $v !== '') {
+                        $apiSettings[$k] = $v;
+                    }
                 }
             }
         }
 
         $assistenteIaNome = \App\Models\PaymentSetting::getValue('assistente_ia_nome', 'ChefIA');
-        
+
         // Buscar configurações de produção
         $clientId = currentClientId();
         $productionSettings = \App\Models\Setting::getSettings($clientId);
 
         // Buscar configurações gerais
         $generalSettings = $this->getSettingsFromFlexibleTable([
-            'language', 'currency', 'company_name', 'company_phone', 'company_email'
+            'language',
+            'currency',
+            'company_name',
+            'company_phone',
+            'company_email'
         ]);
 
         // Buscar configurações de personalização
         $personalizationSettings = $this->getSettingsFromFlexibleTable([
-            'theme_color', 'logo', 'favicon'
+            'theme_color',
+            'logo',
+            'favicon'
         ]);
 
         // Adicionar URLs completas para logo e favicon se existirem
@@ -132,7 +154,7 @@ class SettingsController extends Controller
             'botconversa_paid_webhook_url_raw' => $r->input('botconversa_paid_webhook_url'),
             'botconversa_token_raw' => $r->has('botconversa_token') ? 'present' : 'absent',
         ]);
-        
+
         // Validação adicional: se o campo paid_webhook_url contém um email, rejeitar
         $paidWebhookUrl = $r->input('botconversa_paid_webhook_url');
         if (!empty($paidWebhookUrl) && strpos($paidWebhookUrl, '@') !== false && !filter_var($paidWebhookUrl, FILTER_VALIDATE_URL)) {
@@ -182,17 +204,22 @@ class SettingsController extends Controller
      */
     private function getSettingsFromFlexibleTable(array $keys): array
     {
+        $clientId = currentClientId();
         // Usar payment_settings como tabela principal para configurações flexíveis
         if (Schema::hasTable('payment_settings')) {
-            return DB::table('payment_settings')->whereIn('key', $keys)->pluck('value','key')->toArray();
+            return DB::table('payment_settings')
+                ->where('client_id', $clientId)
+                ->whereIn('key', $keys)
+                ->pluck('value', 'key')
+                ->toArray();
         }
-        
+
         // Fallback: tentar settings se tiver estrutura chave-valor (improvável)
         if (Schema::hasTable('settings')) {
-            $keyCol = collect(['key','name','config_key','setting_key','option','option_name'])
-                ->first(fn($c)=>Schema::hasColumn('settings',$c));
-            $valCol = collect(['value','val','config_value','content','data','option_value'])
-                ->first(fn($c)=>Schema::hasColumn('settings',$c));
+            $keyCol = collect(['key', 'name', 'config_key', 'setting_key', 'option', 'option_name'])
+                ->first(fn($c) => Schema::hasColumn('settings', $c));
+            $valCol = collect(['value', 'val', 'config_value', 'content', 'data', 'option_value'])
+                ->first(fn($c) => Schema::hasColumn('settings', $c));
             if ($keyCol && $valCol) {
                 return DB::table('settings')->whereIn($keyCol, $keys)->pluck($valCol, $keyCol)->toArray();
             }
@@ -221,10 +248,10 @@ class SettingsController extends Controller
                         $v = '';
                     }
                 }
-                
+
                 // Manter valor como está (não converter string vazia para null)
                 $value = $v;
-                
+
                 // Salvar em payment_settings usando Model (filtra por client_id automaticamente)
                 $clientId = currentClientId();
                 $result = \App\Models\PaymentSetting::updateOrCreate(
@@ -235,17 +262,17 @@ class SettingsController extends Controller
                     [
                         'value' => $value,
                         'is_active' => true,
-                        'updated_at' => now(), 
+                        'updated_at' => now(),
                         'created_at' => DB::raw('COALESCE(created_at, NOW())')
                     ]
                 );
-                
+
                 // Verificar se foi salvo corretamente
                 $saved = \App\Models\PaymentSetting::where('client_id', $clientId)->where('key', $k)->first();
                 $savedValue = $saved ? ($saved->value ?? 'NULL') : 'NOT_FOUND';
-                
+
                 Log::info('SettingsController: Salvo em payment_settings', [
-                    'key' => $k, 
+                    'key' => $k,
                     'value_preview' => is_string($value) ? substr($value, 0, 100) : (is_null($value) ? 'null' : gettype($value)),
                     'updateOrInsert_result' => $result,
                     'saved_value_preview' => is_string($savedValue) ? substr($savedValue, 0, 100) : $savedValue,
@@ -254,42 +281,46 @@ class SettingsController extends Controller
             }
             return;
         }
-        
+
         // Fallback: tentar settings se tiver estrutura chave-valor (improvável)
         if (Schema::hasTable('settings')) {
-            $keyCol = collect(['key','name','config_key','setting_key','option','option_name'])
-                ->first(fn($c)=>Schema::hasColumn('settings',$c));
-            $valCol = collect(['value','val','config_value','content','data','option_value'])
-                ->first(fn($c)=>Schema::hasColumn('settings',$c));
+            $keyCol = collect(['key', 'name', 'config_key', 'setting_key', 'option', 'option_name'])
+                ->first(fn($c) => Schema::hasColumn('settings', $c));
+            $valCol = collect(['value', 'val', 'config_value', 'content', 'data', 'option_value'])
+                ->first(fn($c) => Schema::hasColumn('settings', $c));
             if ($keyCol && $valCol) {
-                $hasCreated = Schema::hasColumn('settings','created_at');
-                $hasUpdated = Schema::hasColumn('settings','updated_at');
+                $hasCreated = Schema::hasColumn('settings', 'created_at');
+                $hasUpdated = Schema::hasColumn('settings', 'updated_at');
                 foreach ($data as $k => $v) {
                     $value = $v;
                     $update = [$valCol => $value];
-                    if ($hasUpdated) { $update['updated_at'] = now(); }
-                    if ($hasCreated) { $update['created_at'] = DB::raw('COALESCE(created_at, NOW())'); }
+                    if ($hasUpdated) {
+                        $update['updated_at'] = now();
+                    }
+                    if ($hasCreated) {
+                        $update['created_at'] = DB::raw('COALESCE(created_at, NOW())');
+                    }
                     DB::table('settings')->updateOrInsert([$keyCol => $k], $update);
                     Log::info('SettingsController: Salvo em settings (fallback)', ['key' => $k]);
                 }
                 return;
             }
         }
-        
+
         Log::error('SettingsController: Nenhuma tabela adequada encontrada para salvar configurações');
     }
     public function whatsapp()
     {
         $clientId = currentClientId();
-        
+
         // Buscar configurações do WhatsApp do cliente atual (filtrar por client_id)
         $row = DB::table('whatsapp_settings')
             ->where('active', 1)
-            ->when($clientId, function($q) use ($clientId) {
+            ->when($clientId, function ($q) use ($clientId) {
                 $q->where('client_id', $clientId);
             })
             ->first();
-        
+
         // Buscar múltiplas instâncias do cliente atual PRIMEIRO (antes de usar $connectedPhone)
         try {
             $instancesQuery = \App\Models\WhatsappInstance::query();
@@ -303,7 +334,7 @@ class SettingsController extends Controller
             $instances = collect([]);
             Log::warning('Tabela whatsapp_instances não encontrada. Execute o SQL de criação primeiro.');
         }
-        
+
         // Buscar plano do cliente para verificar limite de instâncias
         $maxInstances = 1; // Padrão: 1 instância
         $client = \App\Models\Client::find($clientId);
@@ -311,22 +342,22 @@ class SettingsController extends Controller
             $plan = $client->subscription->plan;
             $maxInstances = $plan->max_whatsapp_instances ?? 1;
         }
-        
+
         // Buscar instância conectada para número padrão de confirmação de pagamento
         $connectedInstance = $instances->firstWhere('status', 'CONNECTED');
         $connectedPhone = $connectedInstance ? $connectedInstance->phone_number : null;
-        
+
         // Se não tem instância conectada, usar primeira disponível
         if (!$connectedPhone && $instances->isNotEmpty()) {
             $connectedPhone = $instances->first()->phone_number;
         }
-        
+
         // Se não tem configuração, criar um registro básico para evitar erros na view
         if (!$row) {
-            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
-                             Schema::hasColumn('whatsapp_settings', 'updated_at');
+            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') &&
+                Schema::hasColumn('whatsapp_settings', 'updated_at');
             $hasClientId = Schema::hasColumn('whatsapp_settings', 'client_id');
-            
+
             $insertData = [
                 'instance_name' => 'Principal',
                 'api_url' => env('WHATSAPP_API_URL', ''),
@@ -337,20 +368,20 @@ class SettingsController extends Controller
                 'default_payment_confirmation_phone' => $connectedPhone, // Usar número conectado se disponível
                 'active' => 1
             ];
-            
+
             if ($hasClientId && $clientId) {
                 $insertData['client_id'] = $clientId;
             }
-            
+
             if ($hasTimestamps) {
                 $insertData['created_at'] = now();
                 $insertData['updated_at'] = now();
             }
-            
+
             DB::table('whatsapp_settings')->insert($insertData);
             $row = DB::table('whatsapp_settings')
                 ->where('active', 1)
-                ->when($clientId, function($q) use ($clientId) {
+                ->when($clientId, function ($q) use ($clientId) {
                     $q->where('client_id', $clientId);
                 })
                 ->first();
@@ -366,13 +397,13 @@ class SettingsController extends Controller
                     ->first();
             }
         }
-        
+
         // Se não tem configuração, criar um registro básico para evitar erros na view
         if (!$row) {
-            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
-                             Schema::hasColumn('whatsapp_settings', 'updated_at');
+            $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') &&
+                Schema::hasColumn('whatsapp_settings', 'updated_at');
             $hasClientId = Schema::hasColumn('whatsapp_settings', 'client_id');
-            
+
             $insertData = [
                 'instance_name' => 'Principal',
                 'api_url' => env('WHATSAPP_API_URL', ''),
@@ -381,30 +412,30 @@ class SettingsController extends Controller
                 'whatsapp_phone' => '',
                 'active' => 1
             ];
-            
+
             if ($hasClientId && $clientId) {
                 $insertData['client_id'] = $clientId;
             }
-            
+
             if ($hasTimestamps) {
                 $insertData['created_at'] = now();
                 $insertData['updated_at'] = now();
             }
-            
+
             DB::table('whatsapp_settings')->insert($insertData);
             $row = DB::table('whatsapp_settings')
                 ->where('active', 1)
-                ->when($clientId, function($q) use ($clientId) {
+                ->when($clientId, function ($q) use ($clientId) {
                     $q->where('client_id', $clientId);
                 })
                 ->first();
         }
-        
+
         // Buscar templates
         $templates = DB::table('whatsapp_templates')
             ->orderBy('slug')
             ->get();
-        
+
         // Buscar status e suas notificações
         $statuses = DB::table('order_statuses')
             ->leftJoin('whatsapp_templates', 'order_statuses.whatsapp_template_id', '=', 'whatsapp_templates.id')
@@ -414,7 +445,7 @@ class SettingsController extends Controller
             )
             ->orderBy('order_statuses.created_at')
             ->get();
-        
+
         // Estatísticas básicas
         $stats = [
             'total_templates' => $templates->count(),
@@ -426,24 +457,29 @@ class SettingsController extends Controller
         // URL da API do Railway (do banco ou .env)
         $whatsappApiUrl = $row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app');
         $whatsappApiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-        
+
         return view('dashboard.settings.whatsapp', compact('row', 'instances', 'templates', 'statuses', 'stats', 'whatsappApiUrl', 'whatsappApiKey', 'maxInstances', 'connectedPhone'));
     }
-    
+
     /**
      * Proxy para obter QR Code do bot WhatsApp
      */
     public function whatsappQR()
     {
         try {
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            $clientId = currentClientId();
+            $row = DB::table('whatsapp_settings')
+                ->where('client_id', $clientId)
+                ->where('active', 1)
+                ->first();
+
             if (!$row) {
                 return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
             }
-            
+
             $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
             $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-            
+
             $ch = curl_init($apiUrl . '/api/whatsapp/qr');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -453,36 +489,41 @@ class SettingsController extends Controller
                 ],
                 CURLOPT_TIMEOUT => 10
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode >= 200 && $httpCode < 300) {
                 return response()->json(json_decode($response, true));
             }
-            
+
             return response()->json(['error' => 'Erro ao buscar QR Code'], $httpCode);
         } catch (\Exception $e) {
             Log::error('Erro ao buscar QR Code: ' . $e->getMessage());
             return response()->json(['error' => 'Erro interno'], 500);
         }
     }
-    
+
     /**
      * Proxy para obter status da conexão WhatsApp
      */
     public function whatsappStatus()
     {
         try {
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            $clientId = currentClientId();
+            $row = DB::table('whatsapp_settings')
+                ->where('client_id', $clientId)
+                ->where('active', 1)
+                ->first();
+
             if (!$row) {
                 return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
             }
-            
+
             $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
             $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-            
+
             $ch = curl_init($apiUrl . '/api/whatsapp/status');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -492,36 +533,41 @@ class SettingsController extends Controller
                 ],
                 CURLOPT_TIMEOUT => 10
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode >= 200 && $httpCode < 300) {
                 return response()->json(json_decode($response, true));
             }
-            
+
             return response()->json(['error' => 'Erro ao buscar status'], $httpCode);
         } catch (\Exception $e) {
             Log::error('Erro ao buscar status: ' . $e->getMessage());
             return response()->json(['error' => 'Erro interno'], 500);
         }
     }
-    
+
     /**
      * Proxy para limpar credenciais corrompidas
      */
     public function whatsappClearAuth()
     {
         try {
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            $clientId = currentClientId();
+            $row = DB::table('whatsapp_settings')
+                ->where('client_id', $clientId)
+                ->where('active', 1)
+                ->first();
+
             if (!$row) {
                 return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
             }
-            
+
             $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
             $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-            
+
             $ch = curl_init($apiUrl . '/api/whatsapp/clear-auth');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -532,36 +578,41 @@ class SettingsController extends Controller
                 ],
                 CURLOPT_TIMEOUT => 15
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode >= 200 && $httpCode < 300) {
                 return response()->json(json_decode($response, true));
             }
-            
+
             return response()->json(['error' => 'Erro ao limpar credenciais'], $httpCode);
         } catch (\Exception $e) {
             Log::error('Erro ao limpar credenciais WhatsApp: ' . $e->getMessage());
             return response()->json(['error' => 'Erro interno'], 500);
         }
     }
-    
+
     /**
      * Proxy para iniciar conexão WhatsApp manualmente
      */
     public function whatsappConnect()
     {
         try {
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            $clientId = currentClientId();
+            $row = DB::table('whatsapp_settings')
+                ->where('client_id', $clientId)
+                ->where('active', 1)
+                ->first();
+
             if (!$row) {
                 return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
             }
-            
+
             $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
             $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-            
+
             $ch = curl_init($apiUrl . '/api/whatsapp/connect');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -572,36 +623,41 @@ class SettingsController extends Controller
                 ],
                 CURLOPT_TIMEOUT => 15
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode >= 200 && $httpCode < 300) {
                 return response()->json(json_decode($response, true));
             }
-            
+
             return response()->json(['error' => 'Erro ao iniciar conexão'], $httpCode);
         } catch (\Exception $e) {
             Log::error('Erro ao iniciar conexão WhatsApp: ' . $e->getMessage());
             return response()->json(['error' => 'Erro interno'], 500);
         }
     }
-    
+
     /**
      * Proxy para desconectar WhatsApp manualmente
      */
     public function whatsappDisconnect()
     {
         try {
-            $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+            $clientId = currentClientId();
+            $row = DB::table('whatsapp_settings')
+                ->where('client_id', $clientId)
+                ->where('active', 1)
+                ->first();
+
             if (!$row) {
                 return response()->json(['error' => 'Configuração WhatsApp não encontrada'], 404);
             }
-            
+
             $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
             $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-            
+
             $ch = curl_init($apiUrl . '/api/whatsapp/disconnect');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -612,15 +668,15 @@ class SettingsController extends Controller
                 ],
                 CURLOPT_TIMEOUT => 15
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode >= 200 && $httpCode < 300) {
                 return response()->json(json_decode($response, true));
             }
-            
+
             return response()->json(['error' => 'Erro ao desconectar'], $httpCode);
         } catch (\Exception $e) {
             Log::error('Erro ao desconectar WhatsApp: ' . $e->getMessage());
@@ -633,52 +689,53 @@ class SettingsController extends Controller
         // Se apenas admin_notification_phone foi enviado, validar apenas ele
         if ($r->has('admin_notification_phone') && !$r->has('instance_name')) {
             $clientId = currentClientId();
-            
+
             // Normalizar número de telefone antes de validar
             $phone = $r->input('admin_notification_phone');
             if ($phone) {
                 $phone = $this->normalizePhoneNumber($phone);
             }
-            
+
             $data = [
                 'admin_notification_phone' => $phone ?: null,
             ];
-            
+
             // Buscar configuração do cliente atual (filtrar por client_id)
             $row = DB::table('whatsapp_settings')
                 ->where('active', 1)
-                ->when($clientId, function($q) use ($clientId) {
+                ->when($clientId, function ($q) use ($clientId) {
                     $q->where('client_id', $clientId);
                 })
                 ->first();
-            
+
             if ($row) {
                 $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'updated_at');
-                
+
                 // Buscar instância conectada para definir número padrão de confirmação de pagamento
                 $connectedInstance = \App\Models\WhatsappInstance::withoutGlobalScopes()
                     ->where('client_id', $clientId)
                     ->where('status', 'CONNECTED')
                     ->first();
-                
+
                 $updateData = [
                     'admin_notification_phone' => $data['admin_notification_phone'] ?? null,
                 ];
-                
+
                 // Se tem instância conectada, atualizar número padrão de confirmação automaticamente
                 if ($connectedInstance && $connectedInstance->phone_number) {
                     $updateData['default_payment_confirmation_phone'] = $connectedInstance->phone_number;
                 }
-                
+
                 if ($hasTimestamps) {
                     $updateData['updated_at'] = now();
                 }
                 DB::table('whatsapp_settings')->where('id', $row->id)->update($updateData);
             } else {
                 // Se não existe registro, criar um básico
-                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
-                                 Schema::hasColumn('whatsapp_settings', 'updated_at');
+                $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') &&
+                    Schema::hasColumn('whatsapp_settings', 'updated_at');
                 $insertData = [
+                    'client_id' => $clientId,
                     'instance_name' => 'Principal',
                     'api_url' => env('WHATSAPP_API_URL', ''),
                     'api_key' => env('WHATSAPP_API_KEY', env('API_SECRET', '')),
@@ -694,10 +751,10 @@ class SettingsController extends Controller
                 }
                 DB::table('whatsapp_settings')->insert($insertData);
             }
-            
+
             return back()->with('success', 'Número de notificação de admin salvo com sucesso!');
         }
-        
+
         // Validação completa para o formulário antigo
         $data = $r->validate([
             'instance_name' => 'required|string|max:100',
@@ -709,11 +766,15 @@ class SettingsController extends Controller
             'default_payment_confirmation_phone' => 'nullable|string|max:20|regex:/^[0-9]+$/',
         ]);
 
-        $row = DB::table('whatsapp_settings')->where('active', 1)->first();
+        $clientId = currentClientId();
+        $row = DB::table('whatsapp_settings')
+            ->where('client_id', $clientId)
+            ->where('active', 1)
+            ->first();
 
         // Verificar se a tabela tem colunas de timestamp
-        $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') && 
-                         Schema::hasColumn('whatsapp_settings', 'updated_at');
+        $hasTimestamps = Schema::hasColumn('whatsapp_settings', 'created_at') &&
+            Schema::hasColumn('whatsapp_settings', 'updated_at');
 
         if ($row) {
             $updateData = $data;
@@ -733,12 +794,12 @@ class SettingsController extends Controller
         // Notificar o bot Node.js sobre a mudança do número (se mudou)
         if ($row && isset($data['whatsapp_phone']) && $row->whatsapp_phone !== $data['whatsapp_phone']) {
             Log::info('Número do WhatsApp alterado de ' . $row->whatsapp_phone . ' para ' . $data['whatsapp_phone']);
-            
+
             // Notificar o bot para reiniciar com o novo número
             try {
                 $apiUrl = rtrim($row->api_url ?? env('WHATSAPP_API_URL', 'https://olika-whatsapp-integration-production.up.railway.app'), '/');
                 $apiKey = $row->api_key ?? env('WHATSAPP_API_KEY', env('API_SECRET'));
-                
+
                 $ch = curl_init($apiUrl . '/api/whatsapp/restart');
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -749,11 +810,11 @@ class SettingsController extends Controller
                     ],
                     CURLOPT_TIMEOUT => 10
                 ]);
-                
+
                 $response = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
-                
+
                 if ($httpCode >= 200 && $httpCode < 300) {
                     Log::info('✅ Bot notificado para reiniciar com novo número');
                 } else {
@@ -763,10 +824,10 @@ class SettingsController extends Controller
                 Log::error('Erro ao notificar bot sobre mudança de número: ' . $e->getMessage());
             }
         }
-        
+
         return back()->with('success', 'Configurações do WhatsApp salvas com sucesso!');
     }
-    
+
     /**
      * API endpoint para retornar configurações do WhatsApp (usado pelo bot Node.js)
      */
@@ -775,7 +836,7 @@ class SettingsController extends Controller
         // Autenticação por token (para Node.js)
         $token = request()->header('X-API-Token');
         $validToken = env('API_SECRET') ?? env('WEBHOOK_TOKEN');
-        
+
         // Log para debug
         Log::info('whatsappSettingsApi: Verificando autenticação', [
             'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
@@ -786,7 +847,7 @@ class SettingsController extends Controller
             'token_valido_length' => $validToken ? strlen($validToken) : 0,
             'ip' => request()->ip()
         ]);
-        
+
         if (empty($validToken)) {
             Log::error('whatsappSettingsApi: Token de validação não configurado no .env (API_SECRET ou WEBHOOK_TOKEN)');
             return response()->json([
@@ -794,7 +855,7 @@ class SettingsController extends Controller
                 'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
             ], 500);
         }
-        
+
         if ($token !== $validToken) {
             Log::warning('whatsappSettingsApi: Tentativa de acesso não autorizado', [
                 'token_recebido' => $token ? '***' . substr($token, -4) : 'não fornecido',
@@ -807,17 +868,17 @@ class SettingsController extends Controller
                 'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420') // Fallback mesmo em erro
             ], 403);
         }
-        
+
         try {
             $row = DB::table('whatsapp_settings')->where('active', 1)->first();
-            
+
             if (!$row) {
                 Log::warning('whatsappSettingsApi: Nenhuma configuração ativa encontrada');
                 return response()->json([
                     'whatsapp_phone' => env('WHATSAPP_PHONE', '5571987019420')
                 ]);
             }
-            
+
             // Log para debug
             Log::info('whatsappSettingsApi: Configuração encontrada', [
                 'whatsapp_phone' => $row->whatsapp_phone,
@@ -826,16 +887,16 @@ class SettingsController extends Controller
                 'has_whatsapp_phone' => isset($row->whatsapp_phone) && !empty($row->whatsapp_phone),
                 'row_id' => $row->id ?? null
             ]);
-            
+
             // ✅ PRIORIDADE: Banco de dados primeiro, depois .env
             // Garantir que sempre retornamos uma string, nunca NULL
             $phone = !empty($row->whatsapp_phone) ? (string) trim($row->whatsapp_phone) : env('WHATSAPP_PHONE', '5571987019420');
-            
+
             Log::info('whatsappSettingsApi: Retornando número', [
                 'phone' => $phone,
                 'fonte' => !empty($row->whatsapp_phone) ? 'banco_de_dados' : 'env'
             ]);
-            
+
             return response()->json([
                 'whatsapp_phone' => $phone
             ]);
@@ -848,14 +909,14 @@ class SettingsController extends Controller
             ]);
         }
     }
-    
+
     /**
      * Atualiza notificações automáticas dos status
      */
     public function whatsappNotificationsSave(Request $r)
     {
         $notifications = $r->input('notifications', []);
-        
+
         foreach ($notifications as $statusId => $settings) {
             DB::table('order_statuses')
                 ->where('id', $statusId)
@@ -871,70 +932,75 @@ class SettingsController extends Controller
 
     public function waConnect()
     {
-        try{
+        try {
             $wa = new \App\Services\WhatsAppService();
             $res = $wa->connectInstance();
-            
-            if(!$res){ 
-                return response()->json(['ok'=>false,'msg'=>'Falha ao conectar. Veja os logs.']); 
+
+            if (!$res) {
+                return response()->json(['ok' => false, 'msg' => 'Falha ao conectar. Veja os logs.']);
             }
-            
+
             // Normalize possíveis campos
             $qrBase64 = $res['base64'] ?? $res['qrCode'] ?? null; // algumas builds usam 'base64', outras 'qrCode'
-            $pair     = $res['pairingCode'] ?? $res['code'] ?? null;
-            
+            $pair = $res['pairingCode'] ?? $res['code'] ?? null;
+
             return response()->json([
                 'ok' => true,
                 'pairing_code' => $pair,
                 'qr_base64' => $qrBase64,  // pode vir 'data:image/png;base64,...' ou só o base64 puro
                 'raw' => $res
             ]);
-            
-        } catch(\Throwable $e){
-            \Log::error('waConnect error: '.$e->getMessage());
-            return response()->json(['ok'=>false,'msg'=>'Erro interno ao conectar']);
+
+        } catch (\Throwable $e) {
+            \Log::error('waConnect error: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'msg' => 'Erro interno ao conectar']);
         }
     }
 
     public function waHealth()
     {
-        try{
-            $row = \DB::table('whatsapp_settings')->where('active',1)->first();
-            if(!$row) return response()->json(['ok'=>false,'msg'=>'Sem configuração.']);
+        try {
+            $row = \DB::table('whatsapp_settings')->where('active', 1)->first();
+            if (!$row)
+                return response()->json(['ok' => false, 'msg' => 'Sem configuração.']);
 
-            $url = rtrim($row->api_url,'/')."/instance/health/{$row->instance_name}";
-            $ch  = curl_init($url);
+            $url = rtrim($row->api_url, '/') . "/instance/health/{$row->instance_name}";
+            $ch = curl_init($url);
             curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER=>true,
+                CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => ["apikey: {$row->api_key}"],
                 CURLOPT_TIMEOUT => 15
             ]);
-            
+
             $resp = curl_exec($ch);
-            if($resp === false){ return response()->json(['ok'=>false,'msg'=>curl_error($ch)]); }
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
-            if($code >= 300) return response()->json(['ok'=>false,'msg'=>"HTTP {$code}",'raw'=>$resp]);
-            
-            $j = json_decode($resp,true);
-            return response()->json(['ok'=>true,'data'=>$j]);
-            
-        }catch(\Throwable $e){
-            \Log::error('waHealth error: '.$e->getMessage());
-            return response()->json(['ok'=>false,'msg'=>'erro interno']);
+            if ($resp === false) {
+                return response()->json(['ok' => false, 'msg' => curl_error($ch)]);
+            }
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($code >= 300)
+                return response()->json(['ok' => false, 'msg' => "HTTP {$code}", 'raw' => $resp]);
+
+            $j = json_decode($resp, true);
+            return response()->json(['ok' => true, 'data' => $j]);
+
+        } catch (\Throwable $e) {
+            \Log::error('waHealth error: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'msg' => 'erro interno']);
         }
     }
 
     public function mp()
     {
         $clientId = currentClientId();
-        
+
         // Usar Model PaymentSetting que já filtra por client_id automaticamente
         $keys = \App\Models\PaymentSetting::whereIn('key', [
-                'mercadopago_access_token',
-                'mercadopago_public_key',
-                'mercadopago_environment',
-                'mercadopago_webhook_url'
-            ])
+            'mercadopago_access_token',
+            'mercadopago_public_key',
+            'mercadopago_environment',
+            'mercadopago_webhook_url'
+        ])
             ->pluck('value', 'key')
             ->toArray();
 
@@ -951,27 +1017,27 @@ class SettingsController extends Controller
         $totalTransactions = $paidOrders->count();
 
         // Total de pedidos com pagamento (incluindo pendentes, pagos, falhados)
-        $totalOrdersWithPayment = \App\Models\Order::where(function($query) {
-                $query->whereNotNull('payment_id')
-                      ->orWhereNotNull('payment_status');
-            })
+        $totalOrdersWithPayment = \App\Models\Order::where(function ($query) {
+            $query->whereNotNull('payment_id')
+                ->orWhereNotNull('payment_status');
+        })
             ->count();
 
         // Taxa de aprovação (% de pedidos pagos vs total de pedidos com tentativa de pagamento)
-        $approvalRate = $totalOrdersWithPayment > 0 
+        $approvalRate = $totalOrdersWithPayment > 0
             ? round(($totalTransactions / $totalOrdersWithPayment) * 100, 1)
             : 0;
 
         // Ticket médio
-        $averageTicket = $totalTransactions > 0 
-            ? $totalProcessed / $totalTransactions 
+        $averageTicket = $totalTransactions > 0
+            ? $totalProcessed / $totalTransactions
             : 0;
 
         // Últimas transações (10 mais recentes pagas)
         $recentTransactions = $paidOrders
             ->sortByDesc('created_at')
             ->take(10)
-            ->map(function($order) {
+            ->map(function ($order) {
                 return [
                     'customer_name' => $order->customer ? $order->customer->name : 'Cliente não identificado',
                     'value' => $order->final_amount,
@@ -1018,7 +1084,7 @@ class SettingsController extends Controller
         ]);
 
         $clientId = currentClientId();
-        
+
         if (!$clientId) {
             return back()->with('error', 'Erro: client_id não encontrado.');
         }
@@ -1106,7 +1172,7 @@ class SettingsController extends Controller
             $requestClientId = currentClientId();
             $sessionClientId = session('client_id');
             $userClientId = auth()->check() ? auth()->user()->client_id : null;
-            
+
             // LOG DETALHADO para identificar a origem do problema
             Log::info('WhatsappInstance::whatsappInstanceStore - DEBUG client_id', [
                 'request_client_id' => $requestClientId,
@@ -1116,21 +1182,21 @@ class SettingsController extends Controller
                 'user_email' => auth()->check() ? auth()->user()->email : 'not_authenticated',
                 'user_id' => auth()->check() ? auth()->user()->id : null,
             ]);
-            
+
             // OBRIGATÓRIO: Usar client_id do usuário autenticado
             // Isso previne que usuários regulares criem instâncias para o master
             if (!auth()->check()) {
                 throw new \Exception('Usuário não autenticado. Faça login novamente.');
             }
-            
+
             $user = auth()->user();
             if (!$user->client_id) {
                 throw new \Exception('Usuário não possui estabelecimento associado. Entre em contato com o suporte.');
             }
-            
+
             // FORÇAR: Sempre usar o client_id do usuário autenticado (ignorar sessão/request)
             $clientId = $user->client_id;
-            
+
             Log::info('WhatsappInstance::whatsappInstanceStore - Usando client_id do usuário autenticado (FORÇADO)', [
                 'client_id_escolhido' => $clientId,
                 'user_id' => $user->id,
@@ -1139,7 +1205,7 @@ class SettingsController extends Controller
                 'session_client_id' => $sessionClientId,
                 'correcao_aplicada' => ($requestClientId != $clientId) || ($sessionClientId != $clientId),
             ]);
-            
+
             // PROTEÇÃO: Se for master (client_id = 1), verificar se o usuário é realmente master
             if ($clientId == 1) {
                 // Verificar se o usuário é realmente master/admin
@@ -1153,37 +1219,37 @@ class SettingsController extends Controller
                     throw new \Exception('Acesso negado: você não tem permissão para criar instâncias para este estabelecimento.');
                 }
             }
-            
+
             $client = \App\Models\Client::find($clientId);
-            
+
             if (!$client) {
                 throw new \Exception('Cliente não encontrado.');
             }
-            
+
             Log::info('WhatsappInstance::whatsappInstanceStore - Cliente confirmado', [
                 'client_id' => $client->id,
                 'client_name' => $client->name,
             ]);
-            
+
             // Buscar URL disponível do master (WhatsappInstanceUrl)
             $instanceUrl = \App\Models\WhatsappInstanceUrl::getNextAvailable();
-            
+
             if (!$instanceUrl) {
                 throw new \Exception('Nenhuma instância WhatsApp disponível no momento. Entre em contato com o suporte.');
             }
-            
+
             // Usar telefone do cadastro do cliente (whatsapp_phone)
             $phoneNumber = $client->whatsapp_phone ?? $client->phone ?? null;
-            
+
             // Atribuir URL ao cliente
             $instanceUrl->assignToClient($client);
-            
+
             // Usar telefone da requisição ou do cadastro
             $phoneNumber = $request->phone_number ?? $phoneNumber;
-            
+
             // Normalizar número: garantir que tenha código do país (55 para Brasil)
             $phoneNumber = $this->normalizePhoneNumber($phoneNumber);
-            
+
             // Criar instância WhatsApp usando create() mas desabilitando temporariamente o Global Scope
             // para garantir que o client_id seja salvo corretamente
             $instance = \App\Models\WhatsappInstance::withoutGlobalScopes()->create([
@@ -1194,12 +1260,12 @@ class SettingsController extends Controller
                 'api_token' => $instanceUrl->api_key,
                 'status' => 'DISCONNECTED',
             ]);
-            
+
             // Verificar se foi salvo corretamente consultando o banco diretamente
             $verificacao = \DB::table('whatsapp_instances')
                 ->where('id', $instance->id)
                 ->first(['id', 'client_id', 'name']);
-            
+
             Log::info('WhatsappInstance criada', [
                 'id' => $instance->id,
                 'name' => $instance->name,
@@ -1208,7 +1274,7 @@ class SettingsController extends Controller
                 'client_id_no_banco' => $verificacao->client_id ?? 'ERROR',
                 'verificacao_ok' => ($verificacao->client_id ?? null) == $clientId,
             ]);
-            
+
             // Se o client_id foi salvo incorretamente, corrigir
             if (($verificacao->client_id ?? null) != $clientId) {
                 Log::error('WhatsappInstance::whatsappInstanceStore - CORREÇÃO: client_id incorreto salvo! Corrigindo...', [
@@ -1216,14 +1282,14 @@ class SettingsController extends Controller
                     'client_id_esperado' => $clientId,
                     'client_id_salvo' => $verificacao->client_id ?? null,
                 ]);
-                
+
                 \DB::table('whatsapp_instances')
                     ->where('id', $instance->id)
                     ->update(['client_id' => $clientId]);
-                
+
                 $instance->refresh();
             }
-            
+
             // Vincular instância à URL
             $instanceUrl->update(['whatsapp_instance_id' => $instance->id]);
 
@@ -1234,7 +1300,7 @@ class SettingsController extends Controller
             return back()->with('success', 'Instância criada com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao criar instância WhatsApp', ['error' => $e->getMessage()]);
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
@@ -1246,11 +1312,11 @@ class SettingsController extends Controller
     /**
      * Exibir dados de uma instância específica (JSON)
      */
-    public function whatsappInstanceShow($instance)
+    public function whatsappInstanceShow($domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
-            
+
             // Tentar buscar status atualizado do Node.js
             $statusInfo = null;
             try {
@@ -1258,10 +1324,10 @@ class SettingsController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Não foi possível obter status da instância', ['id' => $instance, 'error' => $e->getMessage()]);
             }
-            
+
             $data = $inst->toArray();
             $data['status_info'] = $statusInfo;
-            
+
             return response()->json($data);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Instância não encontrada'], 404);
@@ -1271,11 +1337,11 @@ class SettingsController extends Controller
     /**
      * Atualizar instância WhatsApp
      */
-    public function whatsappInstanceUpdate(Request $request, $instance)
+    public function whatsappInstanceUpdate(Request $request, $domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
-            
+
             // Validar apenas campos editáveis (nome e telefone)
             // URL e token são gerenciados pelo master e não podem ser alterados
             $data = $request->validate([
@@ -1283,17 +1349,17 @@ class SettingsController extends Controller
                 'phone_number' => 'sometimes|nullable|string|max:20|regex:/^[0-9]+$/',
                 'status' => 'sometimes|string|max:50',
             ]);
-            
+
             // Não permitir alterar api_url e api_token (são gerenciados pelo master)
             unset($data['api_url'], $data['api_key']);
-            
+
             // Normalizar número de telefone se foi alterado
             if (isset($data['phone_number'])) {
                 $data['phone_number'] = $this->normalizePhoneNumber($data['phone_number']);
             }
-            
+
             $inst->update($data);
-            
+
             Log::info('WhatsappInstance atualizada', ['id' => $inst->id, 'changes' => $data]);
 
             if ($request->expectsJson()) {
@@ -1303,7 +1369,7 @@ class SettingsController extends Controller
             return back()->with('success', 'Instância atualizada com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao atualizar instância WhatsApp', ['error' => $e->getMessage()]);
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
@@ -1315,7 +1381,7 @@ class SettingsController extends Controller
     /**
      * Deletar instância WhatsApp
      */
-    public function whatsappInstanceDestroy($instance)
+    public function whatsappInstanceDestroy($domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1330,7 +1396,7 @@ class SettingsController extends Controller
             return back()->with('success', 'Instância removida com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao deletar instância WhatsApp', ['error' => $e->getMessage()]);
-            
+
             if (request()->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
@@ -1342,12 +1408,12 @@ class SettingsController extends Controller
     /**
      * Status de uma instância específica
      */
-    public function whatsappInstanceStatus($instance)
+    public function whatsappInstanceStatus($domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
             $status = $inst->getStatus();
-            
+
             return response()->json($status);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -1357,15 +1423,15 @@ class SettingsController extends Controller
     /**
      * Conectar instância WhatsApp
      */
-    public function whatsappInstanceConnect(Request $request, $instance)
+    public function whatsappInstanceConnect(Request $request, $domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
             $result = $inst->connect();
-            
+
             if (isset($result['success']) && $result['success']) {
                 Log::info('WhatsappInstance conectando', ['id' => $instance]);
-                
+
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => true,
@@ -1373,20 +1439,20 @@ class SettingsController extends Controller
                         'qrCode' => $result['qrCode'] ?? null,
                     ]);
                 }
-                
+
                 return back()->with('success', 'Conectando instância...');
             }
-            
+
             $error = $result['error'] ?? 'Erro desconhecido';
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $error], 400);
             }
-            
+
             return back()->with('error', 'Erro: ' . $error);
         } catch (\Exception $e) {
             Log::error('Erro ao conectar instância WhatsApp', ['error' => $e->getMessage()]);
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
@@ -1398,32 +1464,32 @@ class SettingsController extends Controller
     /**
      * Desconectar instância WhatsApp
      */
-    public function whatsappInstanceDisconnect(Request $request, $instance)
+    public function whatsappInstanceDisconnect(Request $request, $domain, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
             $result = $inst->disconnect();
-            
+
             if (isset($result['success']) && $result['success']) {
                 Log::info('WhatsappInstance desconectada', ['id' => $instance]);
-                
+
                 if ($request->expectsJson()) {
                     return response()->json(['success' => true]);
                 }
-                
+
                 return back()->with('success', 'Instância desconectada!');
             }
-            
+
             $error = $result['error'] ?? 'Erro desconhecido';
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $error], 400);
             }
-            
+
             return back()->with('error', 'Erro: ' . $error);
         } catch (\Exception $e) {
             Log::error('Erro ao desconectar instância WhatsApp', ['error' => $e->getMessage()]);
-            
+
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
@@ -1478,7 +1544,7 @@ class SettingsController extends Controller
 
         $clientId = currentClientId();
         $settings = \App\Models\Setting::getSettings($clientId);
-        
+
         $settings->update([
             'sales_multiplier' => $validated['sales_multiplier'],
             'resale_multiplier' => $validated['resale_multiplier'],
@@ -1501,6 +1567,7 @@ class SettingsController extends Controller
             'company_name' => 'nullable|string|max:255',
             'company_phone' => 'nullable|string|max:50',
             'company_email' => 'nullable|email|max:255',
+            'business_subtitle' => 'nullable|string|max:100',
         ]);
 
         $this->saveSettingsIntoFlexibleTable($data);
@@ -1549,13 +1616,13 @@ class SettingsController extends Controller
         unset($data['generate_favicon_from_logo']);
 
         $clientId = currentClientId();
-        
+
         // Salvar na tabela payment_settings (chave-valor)
         $this->saveSettingsIntoFlexibleTable($data);
-        
+
         // Também salvar no Setting model para uso no layout
         $settings = \App\Models\Setting::getSettings($clientId);
-        
+
         $updateData = [];
         if (isset($data['logo']) && $data['logo']) {
             $updateData['theme_logo_url'] = asset('storage/' . $data['logo']);
@@ -1567,7 +1634,7 @@ class SettingsController extends Controller
         if (isset($data['theme_color']) && $data['theme_color']) {
             $updateData['theme_primary_color'] = $data['theme_color'];
         }
-        
+
         if (!empty($updateData)) {
             $settings->update($updateData);
         }
@@ -1575,7 +1642,7 @@ class SettingsController extends Controller
         // Limpar cache para garantir que as mudanças sejam refletidas
         \Illuminate\Support\Facades\Cache::forget('theme_settings');
         \Illuminate\Support\Facades\Cache::flush();
-        
+
         // Limpar ícones PWA antigos para forçar regeneração
         if (isset($data['logo']) || isset($data['favicon'])) {
             $pwaIconsDir = storage_path('app/public/pwa-icons');
@@ -1627,23 +1694,23 @@ class SettingsController extends Controller
             $favicon = imagecreatetruecolor(32, 32);
             imagealphablending($favicon, false);
             imagesavealpha($favicon, true);
-            
+
             // Preencher com transparência
             $transparent = imagecolorallocatealpha($favicon, 0, 0, 0, 127);
             imagefill($favicon, 0, 0, $transparent);
-            
+
             // Redimensionar mantendo proporção
             imagecopyresampled($favicon, $sourceImage, 0, 0, 0, 0, 32, 32, $imageInfo[0], $imageInfo[1]);
-            
+
             // Salvar favicon
             $faviconPath = 'favicons/' . $clientId . '_' . time() . '.png';
             $fullPath = storage_path('app/public/' . $faviconPath);
-            
+
             $faviconsDir = storage_path('app/public/favicons');
             if (!file_exists($faviconsDir)) {
                 mkdir($faviconsDir, 0755, true);
             }
-            
+
             imagealphablending($favicon, false);
             imagesavealpha($favicon, true);
             imagepng($favicon, $fullPath);
@@ -1664,7 +1731,7 @@ class SettingsController extends Controller
     public function printing()
     {
         $clientId = currentClientId();
-        
+
         // Buscar configurações de impressão
         $settings = (object) [
             'printer_type' => $this->getSettingValue('printer_type', 'thermal'),
@@ -1674,7 +1741,7 @@ class SettingsController extends Controller
             'show_logo' => $this->getSettingValue('show_logo', true),
             'show_qrcode' => $this->getSettingValue('show_qrcode', true),
         ];
-        
+
         return view('dashboard.settings.printing', compact('settings'));
     }
 
@@ -1691,16 +1758,16 @@ class SettingsController extends Controller
             'show_logo' => 'nullable|boolean',
             'show_qrcode' => 'nullable|boolean',
         ]);
-        
+
         // Converter checkboxes
         $data['show_logo'] = $request->has('show_logo') ? 1 : 0;
         $data['show_qrcode'] = $request->has('show_qrcode') ? 1 : 0;
-        
+
         // Salvar usando o método existente
         $this->saveSettingsIntoFlexibleTable($data);
-        
+
         Log::info('Configurações de impressão salvas', $data);
-        
+
         return back()->with('success', 'Configurações de impressão salvas com sucesso!');
     }
 
@@ -1710,7 +1777,11 @@ class SettingsController extends Controller
     private function getSettingValue(string $key, $default = null)
     {
         if (Schema::hasTable('payment_settings')) {
-            $value = DB::table('payment_settings')->where('key', $key)->value('value');
+            $clientId = currentClientId();
+            $value = DB::table('payment_settings')
+                ->where('client_id', $clientId)
+                ->where('key', $key)
+                ->value('value');
             return $value !== null ? $value : $default;
         }
         return $default;

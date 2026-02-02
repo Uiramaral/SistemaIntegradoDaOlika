@@ -1,0 +1,87 @@
+/* OLIKA Override Final - Garantir que variáveis HSL tenham prioridade */
+/* Este arquivo deve ser carregado POR ÚLTIMO para sobrescrever qualquer CSS antigo */
+
+:root {
+  /* Forçar variáveis HSL do design system */
+  --background: 0 0% 98% !important;
+  --foreground: 222 47% 11% !important;
+  --card: 0 0% 100% !important;
+  --card-foreground: 222 47% 11% !important;
+  --primary: 24 95% 53% !important;
+  --primary-foreground: 0 0% 100% !important;
+  --secondary: 220 14% 96% !important;
+  --secondary-foreground: 222 47% 11% !important;
+  --muted: 220 14% 96% !important;
+  --muted-foreground: 220 9% 46% !important;
+  --accent: 24 95% 53% !important;
+  --accent-foreground: 0 0% 100% !important;
+  --success: 142 71% 45% !important;
+  --border: 220 13% 91% !important;
+  --ring: 24 95% 53% !important;
+  --radius: 0.75rem !important;
+  
+  /* Sidebar */
+  --sidebar-background: 222 47% 11% !important;
+  --sidebar-foreground: 0 0% 98% !important;
+  --sidebar-primary: 24 95% 53% !important;
+  --sidebar-border: 222 47% 15% !important;
+  --sidebar-accent: 24 95% 53% !important;
+  --sidebar-accent-foreground: 0 0% 100% !important;
+}
+
+/* Garantir que body use as variáveis corretas */
+body {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Garantir que sidebar use as variáveis corretas */
+#sidebar {
+  background: hsl(var(--sidebar-background)) !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+  border-right-color: hsl(var(--sidebar-border)) !important;
+}
+
+#sidebar .text-sidebar-primary,
+#sidebar .text-xl.font-bold {
+  color: hsl(var(--sidebar-primary)) !important;
+}
+
+/* Garantir que cards usem as variáveis corretas */
+.card, .metric-card {
+  background: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
+
+/* Garantir que textos usem as variáveis corretas */
+.text-foreground {
+  color: hsl(var(--foreground)) !important;
+}
+
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.text-primary {
+  color: hsl(var(--primary)) !important;
+}
+
+/* Garantir que backgrounds usem as variáveis corretas */
+.bg-background {
+  background-color: hsl(var(--background)) !important;
+}
+
+.bg-card {
+  background-color: hsl(var(--card)) !important;
+}
+
+.bg-primary {
+  background-color: hsl(var(--primary)) !important;
+}
+
+/* Garantir que borders usem as variáveis corretas */
+.border-border {
+  border-color: hsl(var(--border)) !important;
+}
+

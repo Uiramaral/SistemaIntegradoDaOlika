@@ -1,0 +1,798 @@
+/**
+ * 🌙 OLIKA Dashboard - Dark Theme Override
+ * Baseado EXATAMENTE no design do cadastro/login
+ * Este arquivo deve ser carregado POR ÚLTIMO para sobrescrever todos os outros CSS
+ */
+
+/* Google Fonts - Exo 2 */
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+/* ============================================
+   DARK THEME VARIABLES - Cores do Cadastro/Login
+   Sobrescrevendo TODAS as variáveis usadas pelo sistema
+   ============================================ */
+[data-theme="dark"] {
+    /* === Variáveis HSL do sistema Lovable (CRÍTICAS) === */
+    --background: 230 25% 15% !important;
+    /* #1a1a2e */
+    --foreground: 0 0% 100% !important;
+    /* branco */
+    --card: 220 30% 15% / 0.3 !important;
+    /* glass card */
+    --card-foreground: 0 0% 100% !important;
+    /* texto branco em cards */
+    --border: 0 0% 100% / 0.1 !important;
+    /* borda sutil */
+    --input: 0 0% 100% / 0.1 !important;
+    /* input border */
+    --muted: 220 20% 20% !important;
+    /* bg muted */
+    --muted-foreground: 0 0% 100% / 0.6 !important;
+    /* texto muted */
+    --primary: 24 95% 53% !important;
+    /* laranja #f97316 */
+    --primary-foreground: 0 0% 100% !important;
+    /* texto branco */
+    --secondary: 0 0% 100% / 0.1 !important;
+    /* secundário */
+    --secondary-foreground: 0 0% 100% !important;
+    /* texto secundário */
+    --accent: 142 71% 45% !important;
+    /* verde */
+    --accent-foreground: 0 0% 100% !important;
+    --destructive: 0 84% 60% !important;
+    /* vermelho */
+    --destructive-foreground: 0 0% 100% !important;
+    --ring: 24 95% 53% !important;
+    /* laranja para focus */
+    --success: 142 71% 45% !important;
+    --warning: 38 92% 50% !important;
+    --info: 199 89% 48% !important;
+
+    /* === Cores EXATAS do cadastro signup-v2 === */
+    --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    --bg-base: #1a1a2e !important;
+
+    /* Glass Card igual ao cadastro: rgba(255, 255, 255, 0.05) */
+    --bg-card: rgba(255, 255, 255, 0.05) !important;
+    --bg-card-hover: rgba(255, 255, 255, 0.08) !important;
+
+    /* Input igual ao cadastro */
+    --bg-input: rgba(255, 255, 255, 0.05) !important;
+    --bg-input-hover: rgba(255, 255, 255, 0.1) !important;
+
+    /* Bordas igual ao cadastro */
+    --border-color: rgba(255, 255, 255, 0.1) !important;
+    --border-focus: #f97316 !important;
+
+    /* Textos */
+    --text-primary: #ffffff !important;
+    --text-secondary: rgba(255, 255, 255, 0.8) !important;
+    --text-muted: rgba(255, 255, 255, 0.4) !important;
+
+    /* Override SweetSpot variables */
+    --ss-bg-primary: transparent !important;
+    --ss-bg-secondary: rgba(255, 255, 255, 0.03) !important;
+    --ss-bg-tertiary: rgba(255, 255, 255, 0.08) !important;
+    --ss-bg-card: rgba(255, 255, 255, 0.05) !important;
+    --ss-text-primary: #ffffff !important;
+    --ss-text-secondary: rgba(255, 255, 255, 0.8) !important;
+    --ss-text-tertiary: rgba(255, 255, 255, 0.6) !important;
+    --ss-border: rgba(255, 255, 255, 0.1) !important;
+    --ss-border-light: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ============================================
+   LIGHT THEME (Default - mantém original)
+   ============================================ */
+:root,
+[data-theme="light"] {
+    --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+    --bg-base: #f8fafc;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --border-color: #e2e8f0;
+}
+
+/* ============================================
+   GLOBAL - Aplicar fonte Exo 2 em tudo
+   ============================================ */
+* {
+    font-family: 'Exo 2', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* ============================================
+   DARK THEME - BODY com gradiente
+   ============================================ */
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    color: #ffffff !important;
+    min-height: 100vh !important;
+}
+
+/* Formas flutuantes (círculos desfocados) como no cadastro */
+[data-theme="dark"] body::before {
+    content: '' !important;
+    position: fixed !important;
+    width: 500px !important;
+    height: 500px !important;
+    background: rgba(249, 115, 22, 0.3) !important;
+    border-radius: 50% !important;
+    filter: blur(80px) !important;
+    opacity: 0.4 !important;
+    top: -150px !important;
+    right: -150px !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+[data-theme="dark"] body::after {
+    content: '' !important;
+    position: fixed !important;
+    width: 400px !important;
+    height: 400px !important;
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-radius: 50% !important;
+    filter: blur(80px) !important;
+    opacity: 0.4 !important;
+    bottom: -100px !important;
+    left: -100px !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+/* ============================================
+   DARK THEME - Sidebar (sempre dark)
+   ============================================ */
+[data-theme="dark"] #sidebar,
+[data-theme="dark"] aside.w-64,
+[data-theme="dark"] aside[class*="sidebar"],
+[data-theme="dark"] .sidebar {
+    background: linear-gradient(180deg, #0f0f1a 0%, #0a0a15 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+    position: relative !important;
+    z-index: 40 !important;
+}
+
+[data-theme="dark"] #sidebar *,
+[data-theme="dark"] aside.w-64 * {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #sidebar .text-gray-400,
+[data-theme="dark"] #sidebar .text-gray-500 {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-theme="dark"] #sidebar a:hover,
+[data-theme="dark"] #sidebar button:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================
+   DARK THEME - Header (glassmorphism)
+   ============================================ */
+[data-theme="dark"] header,
+[data-theme="dark"] header.sticky,
+[data-theme="dark"] header[class*="sticky"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    position: relative !important;
+    z-index: 30 !important;
+}
+
+[data-theme="dark"] header h1,
+[data-theme="dark"] header h2,
+[data-theme="dark"] header .text-gray-900,
+[data-theme="dark"] header .text-gray-800 {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] header .text-gray-500,
+[data-theme="dark"] header .text-gray-600,
+[data-theme="dark"] header .text-gray-700,
+[data-theme="dark"] header nav span,
+[data-theme="dark"] header p {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Header buttons */
+[data-theme="dark"] header button {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="dark"] header button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: #f97316 !important;
+}
+
+/* ============================================
+   DARK THEME - Main content
+   ============================================ */
+[data-theme="dark"] main,
+[data-theme="dark"] main#main-content,
+[data-theme="dark"] .main-content {
+    background: transparent !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+/* ============================================
+   DARK THEME CATCH-ALL - Força cores em TODOS elementos
+   Isso sobrescreve estilos inline!
+   ============================================ */
+
+/* Forçar fundo transparente/glass em cards e containers */
+[data-theme="dark"] main .bg-white,
+[data-theme="dark"] main [class*="rounded-xl"],
+[data-theme="dark"] main [class*="rounded-lg"][class*="shadow"],
+[data-theme="dark"] main [class*="border"][class*="shadow"],
+[data-theme="dark"] main>div>div,
+[data-theme="dark"] main button[class*="rounded-xl"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Forçar texto branco em títulos e parágrafos */
+[data-theme="dark"] main h1,
+[data-theme="dark"] main h2,
+[data-theme="dark"] main h3,
+[data-theme="dark"] main h4,
+[data-theme="dark"] main h5,
+[data-theme="dark"] main h6 {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] main p,
+[data-theme="dark"] main span:not([class*="text-green"]):not([class*="text-red"]):not([class*="text-orange"]) {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Ícones */
+[data-theme="dark"] main [data-lucide] {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Manter cores de status para ícones */
+[data-theme="dark"] main [style*="color: #16a34a"] [data-lucide],
+[data-theme="dark"] main [style*="color: #22c55e"] [data-lucide],
+[data-theme="dark"] main .text-green-600 [data-lucide] {
+    color: #22c55e !important;
+}
+
+[data-theme="dark"] main [style*="color: #dc2626"] [data-lucide],
+[data-theme="dark"] main [style*="color: #ef4444"] [data-lucide],
+[data-theme="dark"] main .text-red-600 [data-lucide] {
+    color: #ef4444 !important;
+}
+
+[data-theme="dark"] main [style*="color: #f97316"] [data-lucide],
+[data-theme="dark"] main [style*="color: #ea580c"] [data-lucide],
+[data-theme="dark"] main .text-orange-600 [data-lucide] {
+    color: #f97316 !important;
+}
+
+/* Links dentro do main */
+[data-theme="dark"] main a:not([class*="bg-"]) {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="dark"] main a:not([class*="bg-"]):hover {
+    color: #f97316 !important;
+}
+
+/* Botões de ação dentro de cards */
+[data-theme="dark"] main button[class*="rounded-xl"]:hover,
+[data-theme="dark"] main a[class*="rounded-xl"]:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(249, 115, 22, 0.5) !important;
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   DARK THEME - Classes personalizadas do sistema
+   ============================================ */
+
+/* Classe .bg-card - Container principal */
+[data-theme="dark"] .bg-card {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Classe .customer-card - Cards de clientes */
+[data-theme="dark"] .customer-card {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .customer-card:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(249, 115, 22, 0.4) !important;
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.15) !important;
+}
+
+/* Textos personalizados */
+[data-theme="dark"] .text-foreground {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .text-muted-foreground {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+[data-theme="dark"] .text-primary {
+    color: #f97316 !important;
+}
+
+/* Bordas personalizadas */
+[data-theme="dark"] .border-border {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Inputs e selects com classes personalizadas */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .border-input {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+/* Botões personalizados */
+[data-theme="dark"] .btn-primary {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4) !important;
+}
+
+[data-theme="dark"] .btn-outline {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-outline:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Paginação */
+[data-theme="dark"] .bg-muted\/20 {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Textos dentro de customer-cards (IMPORTANTE) */
+[data-theme="dark"] .customer-card h3,
+[data-theme="dark"] .customer-card .font-semibold,
+[data-theme="dark"] .customer-card .font-bold,
+[data-theme="dark"] .customer-card .font-medium {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .customer-card a {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .customer-card a:hover {
+    color: #f97316 !important;
+}
+
+[data-theme="dark"] .customer-card .text-xs,
+[data-theme="dark"] .customer-card .text-sm:not(.text-primary):not(.font-bold) {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="dark"] .customer-card .text-\[10px\],
+[data-theme="dark"] .customer-card .text-\[11px\] {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-theme="dark"] .customer-card .uppercase {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Ícones nas ações dos cards */
+[data-theme="dark"] .customer-card [data-lucide] {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+[data-theme="dark"] .customer-card a:hover [data-lucide],
+[data-theme="dark"] .customer-card button:hover [data-lucide] {
+    color: #f97316 !important;
+}
+
+/* Textos dentro do header principal (filtros) */
+[data-theme="dark"] #customers-page .border-b {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-theme="dark"] #customers-page select {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] #customers-page select option {
+    background: #1a1a2e !important;
+    color: #ffffff !important;
+}
+
+/* ============================================
+   DARK THEME - Cards (glassmorphism)
+   ============================================ */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-card,
+[data-theme="dark"] [class*="rounded-xl"][class*="border"],
+[data-theme="dark"] [class*="rounded-lg"][class*="border"][class*="shadow"],
+[data-theme="dark"] div[style*="background: #fff"],
+[data-theme="dark"] div[style*="background:#fff"],
+[data-theme="dark"] div[style*="background-color: #fff"],
+[data-theme="dark"] div[style*="background: white"],
+[data-theme="dark"] div[style*="background-color: white"],
+[data-theme="dark"] div[style*="background: rgb(255, 255, 255)"],
+[data-theme="dark"] div[style*="background-color: rgb(255, 255, 255)"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none !important;
+}
+
+[data-theme="dark"] .bg-white:hover,
+[data-theme="dark"] [class*="rounded-xl"][class*="border"]:hover,
+[data-theme="dark"] [class*="rounded-lg"][class*="border"][class*="shadow"]:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(249, 115, 22, 0.5) !important;
+    box-shadow: 0 0 30px rgba(249, 115, 22, 0.15) !important;
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   DARK THEME - Textos
+   ============================================ */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] [style*="color: #111827"],
+[data-theme="dark"] [style*="color:#111827"],
+[data-theme="dark"] [style*="color: #374151"],
+[data-theme="dark"] [style*="color:#374151"],
+[data-theme="dark"] [style*="color: #1f2937"],
+[data-theme="dark"] [style*="color:#1f2937"] {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] [style*="color: #4b5563"],
+[data-theme="dark"] [style*="color:#4b5563"] {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] [style*="color: #6b7280"],
+[data-theme="dark"] [style*="color:#6b7280"] {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] [style*="color: #9ca3af"],
+[data-theme="dark"] [style*="color:#9ca3af"] {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Manter cores de brand */
+[data-theme="dark"] .text-orange-500,
+[data-theme="dark"] .text-orange-600,
+[data-theme="dark"] .text-primary,
+[data-theme="dark"] [style*="color: #f97316"],
+[data-theme="dark"] [style*="color:#f97316"],
+[data-theme="dark"] [style*="color: #ea580c"] {
+    color: #f97316 !important;
+}
+
+[data-theme="dark"] .text-green-600,
+[data-theme="dark"] .text-green-500,
+[data-theme="dark"] [style*="color: #16a34a"],
+[data-theme="dark"] [style*="color: #22c55e"] {
+    color: #22c55e !important;
+}
+
+[data-theme="dark"] .text-red-600,
+[data-theme="dark"] .text-red-500,
+[data-theme="dark"] [style*="color: #dc2626"],
+[data-theme="dark"] [style*="color: #ef4444"] {
+    color: #ef4444 !important;
+}
+
+/* ============================================
+   DARK THEME - Backgrounds
+   ============================================ */
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] [style*="background: #f9fafb"],
+[data-theme="dark"] [style*="background:#f9fafb"],
+[data-theme="dark"] [style*="background: #f3f4f6"],
+[data-theme="dark"] [style*="background:#f3f4f6"],
+[data-theme="dark"] [style*="background-color: #f9fafb"],
+[data-theme="dark"] [style*="background-color: #f3f4f6"] {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-theme="dark"] .bg-gray-200,
+[data-theme="dark"] [style*="background: #e5e7eb"],
+[data-theme="dark"] [style*="background-color: #e5e7eb"] {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Status backgrounds */
+[data-theme="dark"] .bg-green-100,
+[data-theme="dark"] [style*="background: #dcfce7"] {
+    background: rgba(34, 197, 94, 0.15) !important;
+}
+
+[data-theme="dark"] .bg-red-100,
+[data-theme="dark"] [style*="background: #fee2e2"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+[data-theme="dark"] .bg-orange-100,
+[data-theme="dark"] [style*="background: #fed7aa"],
+[data-theme="dark"] [style*="background: #fff7ed"] {
+    background: rgba(249, 115, 22, 0.15) !important;
+}
+
+/* ============================================
+   DARK THEME - Borders
+   ============================================ */
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300,
+[data-theme="dark"] [style*="border: 1px solid #e5e7eb"],
+[data-theme="dark"] [style*="border-color: #e5e7eb"] {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ============================================
+   DARK THEME - Buttons (gradiente igual cadastro)
+   ============================================ */
+[data-theme="dark"] button[class*="bg-primary"],
+[data-theme="dark"] button[class*="bg-orange"],
+[data-theme="dark"] a[class*="bg-primary"],
+[data-theme="dark"] a[class*="bg-orange"],
+[data-theme="dark"] .btn-primary {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4) !important;
+}
+
+[data-theme="dark"] button[class*="bg-primary"]:hover,
+[data-theme="dark"] button[class*="bg-orange"]:hover,
+[data-theme="dark"] a[class*="bg-primary"]:hover,
+[data-theme="dark"] a[class*="bg-orange"]:hover {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 30px rgba(249, 115, 22, 0.5) !important;
+}
+
+/* Botão secundário */
+[data-theme="dark"] button[class*="border-gray"],
+[data-theme="dark"] a[class*="border-gray"],
+[data-theme="dark"] .btn-secondary {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] button[class*="border-gray"]:hover,
+[data-theme="dark"] a[class*="border-gray"]:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ============================================
+   DARK THEME - Inputs (igual cadastro)
+   ============================================ */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="search"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-radius: 0.5rem !important;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2) !important;
+    outline: none !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+[data-theme="dark"] label {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ============================================
+   DARK THEME - Modals (glassmorphism)
+   ============================================ */
+[data-theme="dark"] [id*="modal"],
+[data-theme="dark"] [role="dialog"]>div[class*="bg-white"],
+[data-theme="dark"] .modal-content {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] [id*="modal"] .border-b,
+[data-theme="dark"] [role="dialog"] .border-b {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* ============================================
+   DARK THEME - Notifications dropdown
+   ============================================ */
+[data-theme="dark"] #notification-dropdown {
+    background: rgba(26, 26, 46, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] #notification-dropdown .bg-gray-50 {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] #notification-dropdown a:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ============================================
+   DARK THEME - Tables
+   ============================================ */
+[data-theme="dark"] table {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-theme="dark"] table thead {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] table thead th {
+    color: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] table tbody tr {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] table tbody td {
+    color: #ffffff !important;
+}
+
+/* ============================================
+   DARK THEME - Scrollbar
+   ============================================ */
+[data-theme="dark"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================
+   THEME TOGGLE ICONS
+   ============================================ */
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+[data-theme="light"] .theme-toggle .icon-sun {
+    display: none !important;
+}
+
+[data-theme="light"] .theme-toggle .icon-moon {
+    display: block !important;
+}
+
+[data-theme="dark"] .theme-toggle .icon-sun {
+    display: block !important;
+}
+
+[data-theme="dark"] .theme-toggle .icon-moon {
+    display: none !important;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes glow-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 35px rgba(249, 115, 22, 0.5);
+    }
+}
+
+/* ============================================
+   TRANSITIONS
+   ============================================ */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+    transition:
+        background 0.4s ease,
+        background-color 0.4s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease !important;
+}
+
+/* ============================================
+   RESPONSIVE - Reduce floating shapes on mobile
+   ============================================ */
+@media (max-width: 768px) {
+    [data-theme="dark"] body::before {
+        width: 300px !important;
+        height: 300px !important;
+        top: -100px !important;
+        right: -100px !important;
+    }
+
+    [data-theme="dark"] body::after {
+        width: 250px !important;
+        height: 250px !important;
+        bottom: -50px !important;
+        left: -50px !important;
+    }
+}

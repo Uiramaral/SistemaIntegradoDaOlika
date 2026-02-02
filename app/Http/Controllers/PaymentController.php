@@ -490,6 +490,11 @@ class PaymentController extends Controller
      */
     public function success(Order $order)
     {
+        // Limpar sessão imediatamente ao chegar na tela de sucesso para evitar problemas
+        // se houver erro no processamento posterior (cashback, notificações, etc)
+        session()->forget('cart');
+        session()->forget('cart_count');
+        session()->save(); // Forçar persistência imediata
         // Marcar como pago se ainda não marcado e alimentar fidelidade
         // IMPORTANTE: Preservar notified_paid_at se já foi definido para evitar notificações duplicadas
         $wasAlreadyPaid = $order->payment_status === 'paid';
@@ -713,8 +718,7 @@ class PaymentController extends Controller
         }
 
         // Limpar sessão quando o pagamento é confirmado para evitar refinalização
-        session()->forget('cart');
-        session()->forget('cart_count');
+
 
         return view('pedido.payment.success', compact('order'));
     }

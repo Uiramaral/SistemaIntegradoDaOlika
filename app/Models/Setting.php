@@ -91,7 +91,7 @@ class Setting extends Model
         if ($clientId === null) {
             $clientId = session('client_id') ?? config('olika.default_client_id');
         }
-        
+
         // Buscar settings do cliente específico
         if ($clientId) {
             $settings = static::where('client_id', $clientId)->first();
@@ -99,9 +99,8 @@ class Setting extends Model
                 return $settings;
             }
         }
-        
-        // Fallback: buscar primeiro registro (compatível com sistema antigo)
-        return static::first() ?? new static(['client_id' => $clientId]);
+
+        return new static(['client_id' => $clientId]);
     }
 
     /**
@@ -110,8 +109,8 @@ class Setting extends Model
     public static function getSettingsFor(int $clientId): static
     {
         return static::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
-                     ->where('client_id', $clientId)
-                     ->first() ?? new static(['client_id' => $clientId]);
+            ->where('client_id', $clientId)
+            ->first() ?? new static(['client_id' => $clientId]);
     }
 
     /**

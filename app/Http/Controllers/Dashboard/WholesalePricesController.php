@@ -47,7 +47,7 @@ class WholesalePricesController extends Controller
             }
         }
 
-        $prices = $query->paginate(20)->withQueryString();
+        $prices = $query->orderBy('name')->paginate(500)->withQueryString();
 
         // Preparar lista de produtos para o Modal (mesma lógica do create)
         $productsList = collect();

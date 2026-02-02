@@ -14,7 +14,7 @@ class MenuController extends Controller
     /**
      * Exibe a página inicial do cardápio do tenant atual
      */
-    public function index(Request $request)
+    public function index(Request $request, $slug = null)
     {
         // O tenant (client_id) já é gerenciado pelo middleware e Trait BelongsToClient.
         // Apenas buscamos os dados, e o escopo global filtra automaticamente pelo cliente.
@@ -24,6 +24,9 @@ class MenuController extends Controller
             'products' => function ($query) {
                 $query->where('is_active', true)
                     ->where('is_available', true)
+                    ->where('show_in_catalog', true)
+
+
                     ->orderBy('sort_order')
                     ->orderBy('name');
             }
@@ -35,6 +38,9 @@ class MenuController extends Controller
         // Lista plana de produtos ativos para contagem geral e busca rápida se necessário (opcional na view)
         $products = Product::where('is_active', true)
             ->where('is_available', true)
+            ->where('show_in_catalog', true)
+
+
             ->get();
 
         return view('pedido.index', compact('categories', 'products'));
@@ -43,13 +49,15 @@ class MenuController extends Controller
     /**
      * Exibe uma categoria específica
      */
-    public function category(Request $request, $category)
+    public function category(Request $request, $slug, $category)
     {
         // Se category for slug ou ID
         $query = Category::with([
             'products' => function ($q) {
                 $q->where('is_active', true)
                     ->where('is_available', true)
+                    ->where('show_in_catalog', true)
+
                     ->orderBy('sort_order')
                     ->orderBy('name');
             }
@@ -73,7 +81,12 @@ class MenuController extends Controller
             return view('pedido.category', ['category' => $cat, 'products' => $cat->products]);
         }
 
-        $products = $cat->products()->where('is_active', true)->get();
+        $products = $cat->products()
+            ->where('is_active', true)
+            ->where('show_in_catalog', true)
+
+
+            ->get();
 
         return view('pedido.index', [
             'categories' => collect([$cat]),
@@ -84,17 +97,24 @@ class MenuController extends Controller
     /**
      * Exibe detalhes de um produto
      */
-    public function product(Request $request, $product)
+    public function product(Request $request, $slug, $product)
     {
         // Carregar produto com variações e imagens
+        // Carregar produto com variações e imagens
         $prod = Product::with(['category', 'variants', 'images', 'allergens'])
-            ->where('is_active', true) // Segurança extra
+            ->where('is_active', true)
+            ->where('show_in_catalog', true)
+
+
             ->find($product);
 
         if (!$prod) {
             // Tenta buscar pelo ID na URL se passed as object binding falhar ou se for integer
             $prod = Product::with(['category', 'variants', 'images', 'allergens'])
                 ->where('is_active', true)
+                ->where('show_in_catalog', true)
+
+
                 ->find($product);
         }
 
@@ -107,6 +127,9 @@ class MenuController extends Controller
             ->where('id', '!=', $prod->id)
             ->where('is_active', true)
             ->where('is_available', true)
+            ->where('show_in_catalog', true)
+
+
             ->limit(4)
             ->get();
 
@@ -133,6 +156,9 @@ class MenuController extends Controller
             'allergens'
         ])
             ->where('is_active', true)
+            ->where('show_in_catalog', true)
+
+
             ->find($product);
 
         if (!$prod) {
@@ -145,10 +171,13 @@ class MenuController extends Controller
     /**
      * Retorna JSON do produto (para modais/quickview)
      */
-    public function productJson($product)
+    public function productJson($slug, $product)
     {
         $prod = Product::with(['variants', 'images', 'allergens'])
             ->where('is_active', true)
+            ->where('show_in_catalog', true)
+
+
             ->find($product);
 
         if (!$prod) {
@@ -161,7 +190,7 @@ class MenuController extends Controller
     /**
      * Busca produtos
      */
-    public function search(Request $request)
+    public function search(Request $request, $slug = null)
     {
         $query = $request->input('q');
 
@@ -175,6 +204,9 @@ class MenuController extends Controller
                     ->orWhere('description', 'like', "%{$query}%");
             })
             ->where('is_available', true)
+            ->where('show_in_catalog', true)
+
+
             ->get();
 
         // Se existir view de search, usar (mas verificamos que search.blade.php existe e é pequena, talvez incompleta? Vamos usar index por segurança)

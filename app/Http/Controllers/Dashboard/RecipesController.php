@@ -59,7 +59,7 @@ class RecipesController extends Controller
             ]);
         }
 
-        $recipes = $query->paginate(20)->withQueryString();
+        $recipes = $query->orderBy('name')->paginate(500)->withQueryString();
         $categories = Recipe::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
             ->distinct()
             ->pluck('category')

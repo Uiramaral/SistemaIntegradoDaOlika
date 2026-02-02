@@ -4,8 +4,8 @@
 @section('page_subtitle', 'Gerenciamento de tabela de preços para revendedores')
 
 @section('content')
-    <div x-data="wholesalePricesPage({{ json_encode($productsList) }}, {{ json_encode(request('q')) }})"
-        id="wholesale-prices-page" class="bg-card rounded-xl border border-border overflow-hidden">
+    <div x-data="wholesalePricesPage({{ json_encode($productsList) }})" id="wholesale-prices-page"
+        class="bg-card rounded-xl border border-border overflow-hidden">
 
         {{-- Card Header: Busca + Botão Novo --}}
         <div class="p-4 sm:p-6 border-b border-border">
@@ -87,29 +87,32 @@
                         <div>
                             <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Valor Revenda</p>
                             <p class="text-sm font-bold text-primary mt-0.5">R$
-                                {{ number_format($wholesaleValue, 2, ',', '.') }}</p>
+                                {{ number_format($wholesaleValue, 2, ',', '.') }}
+                            </p>
                         </div>
 
-                        <div class="flex flex-col items-end" x-data="{ isActive: {{ $isActive ? 'true' : 'false' }}, isLoading: false }">
+                        <div class="flex flex-col items-end"
+                            x-data="{ isActive: {{ $isActive ? 'true' : 'false' }}, isLoading: false }">
                             <p class="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Ativo</p>
                             <label class="relative inline-flex cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" :checked="isActive"
-                                    @click="
-                                        if(isLoading) return;
-                                        isLoading = true;
-                                        fetch('{{ route('dashboard.wholesale-prices.toggle-status', $price->id) }}', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                            }
-                                        })
-                                        .then(r => r.json())
-                                        .then(data => { if(data.success) isActive = data.is_active; })
-                                        .catch(e => console.error(e))
-                                        .finally(() => isLoading = false);
-                                    ">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <input type="checkbox" class="sr-only peer" :checked="isActive" @click="
+                                                                if(isLoading) return;
+                                                                isLoading = true;
+                                                                fetch('{{ route('dashboard.wholesale-prices.toggle-status', $price->id) }}', {
+                                                                    method: 'POST',
+                                                                    headers: {
+                                                                        'Content-Type': 'application/json',
+                                                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                                    }
+                                                                })
+                                                                .then(r => r.json())
+                                                                .then(data => { if(data.success) isActive = data.is_active; })
+                                                                .catch(e => console.error(e))
+                                                                .finally(() => isLoading = false);
+                                                            ">
+                                <div
+                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+                                </div>
                             </label>
                         </div>
 
@@ -196,7 +199,8 @@
                                     <option value="">Selecione um produto...</option>
                                     @foreach($productsList as $index => $item)
                                         <option value="{{ $index }}">{{ $item['display_name'] }} (R$
-                                            {{ number_format($item['price'], 2, ',', '.') }})</option>
+                                            {{ number_format($item['price'], 2, ',', '.') }})
+                                        </option>
                                     @endforeach
                                 </select>
                                 <div class="flex justify-between items-center mt-1.5 gap-2">
@@ -280,14 +284,17 @@
                             </div>
 
                             {{-- Active Toggle --}}
-                            <label class="flex items-center justify-between bg-muted/20 p-4 rounded-xl border border-border/50 cursor-pointer group">
+                            <label
+                                class="flex items-center justify-between bg-muted/20 p-4 rounded-xl border border-border/50 cursor-pointer group">
                                 <div>
                                     <span class="font-medium text-foreground block">Preço Ativo</span>
                                     <span class="text-xs text-muted-foreground">Define se este preço está disponível.</span>
                                 </div>
                                 <div class="relative">
                                     <input type="checkbox" x-model="formData.is_active" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    <div
+                                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+                                    </div>
                                 </div>
                                 <input type="hidden" name="is_active" :value="formData.is_active ? 1 : 0">
                             </label>
@@ -322,14 +329,24 @@
     @push('scripts')
         <script>
             document.addEventListener('alpine:init', function () {
-                Alpine.data('wholesalePricesPage', function (productsList, initialSearch) {
+                Alpine.data('wholesalePricesPage', function (productsList) {
                     return {
-                        search: initialSearch || '',
+                        search: '',
                         showNoResults: false,
                         isModalOpen: false,
                         isEditMode: false,
                         formAction: '',
+                        formAction: '',
                         productsAvailable: productsList || [],
+
+                        matchesCard(el) {
+                            if (!el) return false;
+                            const searchLower = this.search.toLowerCase();
+                            if (searchLower === '') return true;
+
+                            const name = el.dataset.searchName || '';
+                            return name.toLowerCase().includes(searchLower);
+                        },
 
                         formData: {
                             id: null,
@@ -358,13 +375,11 @@
                             });
                         },
 
-                        matchesCard(el) {
-                            const q = this.search.trim().toLowerCase();
-                            if (!q) return true;
-                            const name = (el.getAttribute('data-search-name') || '').toLowerCase();
-                            const nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                            const qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                            return name.includes(q) || nameNorm.includes(qNorm);
+                        performSearch() {
+                            let url = new URL(window.location.href);
+                            url.searchParams.set('q', this.search);
+                            url.searchParams.delete('page');
+                            window.location.href = url.toString();
                         },
 
                         openModal(mode, data = null) {
@@ -463,4 +478,4 @@
             });
         </script>
     @endpush
-@endsection
+@endsection```

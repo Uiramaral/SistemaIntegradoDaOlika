@@ -128,7 +128,7 @@ return [
 
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug(env('APP_NAME', 'laravel'), '_').'_session'
+        Str::slug(env('APP_NAME', 'laravel'), '_') . '_session'
     ),
 
     /*
@@ -155,7 +155,37 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => (function () {
+        // Lógica dinâmica para suportar múltiplos domínios e subdomínios
+        $domain = env('SESSION_DOMAIN');
+
+        // Se estiver definido no .env, usar (mas cuidado com subdomínios)
+        if (!empty($domain)) {
+            return $domain;
+        }
+
+        // Se não houver request (ex: artisan), null é seguro
+        if (!app()->bound('request')) {
+            return null;
+        }
+
+        $host = request()->getHost();
+
+        // Se for localhost ou IP, null é o correto
+        if ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP)) {
+            return null;
+        }
+
+        // Se for um dos domínios principais conhecidos, permitir subdomínios
+        // Isso permite login compartilhado entre dashboard.X e pedido.X se necessário
+        // MAS para evitar o erro 419, o mais seguro é NULL (cookie restrito ao host exato)
+        // a menos que queiramos compartilhar sessão.
+    
+        // CORREÇÃO PARA ERRO 419/CSRF:
+        // Usar null força o cookie a ser válido apenas para o domínio exato da requisição.
+        // Isso resolve conflitos entre dashboard.menuolika.com.br e outros.
+        return null;
+    })(),
 
     /*
     |--------------------------------------------------------------------------

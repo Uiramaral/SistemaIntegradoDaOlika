@@ -12,33 +12,78 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
+use Illuminate\Support\Facades\URL;
 
-$primaryDomain = parse_url(config('app.url', 'https://menuolika.com.br'), PHP_URL_HOST) ?: 'menuolika.com.br';
-
-// Novo domínio para multi-tenancy
-$cozinhaDomain = 'cozinhapro.app.br';
-
-// Detectar ambiente baseado no host acessado
-$currentHost = request()->getHost();
-$isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
-
-if ($isDevDomain) {
-    // Desenvolvimento: usar subdomínios de dev
-    $pedidoDomain = env('PEDIDO_DOMAIN', 'devpedido.' . $primaryDomain);
-    $dashboardDomain = env('DASHBOARD_DOMAIN', 'devdashboard.' . $primaryDomain);
-} else {
-    // Produção: usar subdomínios padrão
-    $pedidoDomain = env('PEDIDO_DOMAIN', 'pedido.' . $primaryDomain);
-    $dashboardDomain = env('DASHBOARD_DOMAIN', 'dashboard.' . $primaryDomain);
+if (app()->environment('production')) {
+    URL::forceScheme('https');
 }
 
-// Debug: Log dos domínios detectados (remover em produção se necessário)
-// \Log::info('Rotas configuradas', [
-//     'current_host' => $currentHost,
-//     'is_dev_domain' => $isDevDomain,
-//     'pedido_domain' => $pedidoDomain,
-//     'dashboard_domain' => $dashboardDomain,
-// ]);
+$primaryDomain = 'cozinhapro.app.br'; // O novo principal
+$oldDomain = 'menuolika.com.br';      // O atual que deve se manter
+$gastroDomain = 'gastroflow.online';  // O dashboard
+
+// Agora o sistema aceita subdomínios em qualquer um dos três
+$tenantDomains = [$primaryDomain, $oldDomain, $gastroDomain];
+
+$domainPattern = '(' . implode('|', array_map(function ($d) {
+    return str_replace('.', '\\.', $d);
+}, $tenantDomains)) . ')';
+
+Route::pattern('tenant_domain', $domainPattern);
+
+// Detectar ambiente e base de domínio baseado no host acessado
+$currentHost = request()->getHost();
+
+// Identificar qual dos domínios base está sendo usado
+$activeBaseDomain = $primaryDomain;
+foreach ($tenantDomains as $td) {
+    if (str_ends_with($currentHost, $td)) {
+        $activeBaseDomain = $td;
+        break;
+    }
+}
+
+// Detectar se estamos em ambiente de dev
+$isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
+
+// Tentar detectar o prefixo do subdomínio atual para mantê-lo
+$currentPrefix = explode('.', $currentHost)[0];
+$isDashboard = str_contains($currentPrefix, 'dashboard');
+
+if ($isDevDomain) {
+    $pedidoDomain = 'devpedido.' . $activeBaseDomain;
+    $dashboardDomain = 'devdashboard.' . $activeBaseDomain;
+} else {
+    // Se o usuário está acessando via 'pedido.', manter 'pedido.'. Se for 'sistema-pedidos.', manter 'sistema-pedidos.'
+    $pPrefix = (str_contains($currentHost, 'sistema-pedidos.')) ? 'sistema-pedidos.' : 'pedido.';
+    $pedidoDomain = $pPrefix . $activeBaseDomain;
+    // Suporte para o domínio dedicado do dashboard (gastroflow.online)
+    if ($activeBaseDomain === $gastroDomain && !str_starts_with($currentHost, 'dashboard.')) {
+        $dashboardDomain = $activeBaseDomain;
+    } else {
+        $dashboardDomain = 'dashboard.' . $activeBaseDomain;
+    }
+}
+
+// Regex para todos os domínios de dashboard permitidos (production e dev)
+// Isso permite que as rotas sejam cacheadas corretamente sem "travar" em um único domínio
+$dashboardDomainsList = [
+    'dashboard.' . $primaryDomain,
+    'dashboard.' . $oldDomain,
+    'gastroflow.online',
+    // Dev domains
+    'devdashboard.' . $primaryDomain,
+    'devdashboard.' . $oldDomain,
+];
+
+$dashboardDomainPattern = '(' . implode('|', array_map(function ($d) {
+    return str_replace('.', '\\.', $d);
+}, $dashboardDomainsList)) . ')';
+
+Route::pattern('dashboard_domain', $dashboardDomainPattern);
+
+// Debug (opcional)
+// \Log::info('Domínios Detectados', ['host' => $currentHost, 'base' => $activeBaseDomain, 'pedido' => $pedidoDomain]);
 
 use App\Http\Controllers\LoyaltyController;
 use App\Http\Controllers\ReferralController;
@@ -51,74 +96,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BotConversaController;
 use App\Http\Controllers\ProfileController;
 
-// ============================================
-// ROTAS MULTI-TENANT (cozinhapro.app.br)
-// ============================================
-
-// 1. LOJA DO CLIENTE (Ex: padaria-do-jose.cozinhapro.app.br)
-Route::domain('{slug}.' . $cozinhaDomain)->middleware(['identify.tenant'])->group(function () {
-    Route::get('/', [MenuController::class, 'index'])->name('store.index');
-    Route::get('/menu', [MenuController::class, 'index'])->name('store.menu');
-    Route::get('/produto/{product}', [MenuController::class, 'product'])->name('store.menu.product'); // Renamed to match prefix logic
-    Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('store.menu.product.modal');
-    Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('store.menu.product.json');
-    Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('store.menu.category');
-    Route::get('/buscar', [MenuController::class, 'search'])->name('store.menu.search');
-
-    // Carrinho
-    Route::prefix('cart')->name('store.cart.')->group(function () {
-        Route::get('/', [CartController::class, 'show'])->name('index');
-        Route::get('/count', [CartController::class, 'count'])->name('count');
-        Route::get('/items', [CartController::class, 'items'])->name('items');
-        Route::post('/add', [CartController::class, 'add'])->name('add');
-        Route::post('/update', [CartController::class, 'update'])->name('update');
-        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
-        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
-        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
-    });
-
-    // Checkout
-    Route::prefix('checkout')->name('store.checkout.')->group(function () {
-        Route::get('/', [OrderController::class, 'checkout'])->name('index');
-        Route::post('/', [OrderController::class, 'store'])->name('store');
-        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
-        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
-    });
-
-    // Payment
-    Route::prefix('payment')->name('store.payment.')->group(function () {
-        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
-        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
-        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
-        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
-        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
-    });
-});
-
-// 2. DASHBOARD DO ASSINANTE (Ex: dashboard.cozinhapro.app.br)
-Route::domain('dashboard.' . $cozinhaDomain)->group(function () {
-    // Rotas públicas
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('cozinha.dashboard.login');
-    Route::post('/login', [LoginController::class, 'login'])->name('cozinha.dashboard.auth.login');
-
-    // Rotas autenticadas
-    Route::middleware('auth')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('cozinha.dashboard.index');
-
-        // Gerenciamento de Perfil e Slug
-        Route::get('/perfil', [ProfileController::class, 'index'])->name('cozinha.profile.index');
-        Route::post('/perfil/update-slug', [ProfileController::class, 'updateSlug'])->name('cozinha.profile.slug.update');
-        Route::post('/perfil/check-slug', [ProfileController::class, 'checkSlugAvailability'])->name('cozinha.profile.slug.check');
-        Route::post('/perfil/update', [ProfileController::class, 'update'])->name('cozinha.profile.update');
-    });
-});
-
-// 3. LANDING PAGE (cozinhapro.app.br)
-Route::domain($cozinhaDomain)->group(function () {
-    Route::get('/', function () {
-        return view('site.cozinha-home');
-    })->name('cozinha.home');
-});
+// (Rotas multi-tenant movidas para o final do arquivo para evitar conflitos com subdomínios reservados)
 
 // ============================================
 // API BotConversa - Sincronização de clientes (sem CSRF)
@@ -447,11 +425,12 @@ Route::get('/storage/{path}', function (string $path) {
 
         // Verificar se o arquivo realmente existe
         if (!file_exists($filePath)) {
-            \Log::error('Arquivo não existe fisicamente', [
+            // Logar como warning apenas, não erro (evita poluição do log)
+            \Log::warning('Arquivo de storage não encontrado fisicamente', [
                 'path' => $path,
-                'file_path' => $filePath,
+                'full_path' => $filePath,
             ]);
-            abort(404, 'Arquivo não encontrado fisicamente');
+            abort(404);
         }
 
         $mimeType = $disk->mimeType($path) ?: 'application/octet-stream';
@@ -461,12 +440,17 @@ Route::get('/storage/{path}', function (string $path) {
             'Cache-Control' => 'public, max-age=31536000', // Cache de 1 ano
         ]);
     } catch (\Exception $e) {
+        // Erros reais de permissão ou outros problemas ainda são logados como erro
+        // mas 404 simples não gera stack trace no log
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+            throw $e;
+        }
+
         \Log::error('Erro ao servir arquivo do storage', [
             'path' => $path ?? 'unknown',
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
         ]);
-        abort(404, 'Erro ao servir arquivo: ' . $e->getMessage());
+        abort(404);
     }
 })->where('path', '.*')->name('storage.serve');
 
@@ -490,6 +474,9 @@ Route::prefix('customer')->group(function () {
 Route::get('/tracking/{token}', [\App\Http\Controllers\DeliveryTrackingController::class, 'show'])->name('tracking.show');
 Route::get('/tracking/{token}/location', [\App\Http\Controllers\DeliveryTrackingController::class, 'getLocation'])->name('tracking.location');
 
+// Rota para o modal do produto (necessária para funcionamento do modal via AJAX)
+Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('pedido.product.modal');
+
 // ============================================
 // ROTAS DO DASHBOARD (REQUEREM AUTENTICAÇÃO)
 // IMPORTANTE: Devem vir ANTES das rotas do pedido para garantir prioridade
@@ -500,9 +487,22 @@ Route::get('/tracking/{token}/location', [\App\Http\Controllers\DeliveryTracking
 // Manifest dinâmico para PWA (deve estar fora do middleware auth para funcionar)
 // Funciona em ambos os domínios
 Route::get('/manifest.json', [\App\Http\Controllers\ManifestController::class, 'index'])->name('manifest.json');
-Route::domain($dashboardDomain)->get('/manifest.json', [\App\Http\Controllers\ManifestController::class, 'index']);
+// Rota de emergência para limpar cache em servidor compartilhado
+Route::get('/fix-cache', function () {
+    try {
+        Artisan::call('route:clear');
+        Artisan::call('config:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('view:clear');
+        return "Caches limpos com sucesso! <br>Rota: " . Artisan::output();
+    } catch (\Exception $e) {
+        return "Erro ao limpar cache: " . $e->getMessage();
+    }
+});
 
-Route::domain($dashboardDomain)->group(function () {
+Route::domain('{dashboard_domain}')->get('/manifest.json', [\App\Http\Controllers\ManifestController::class, 'index']);
+
+Route::domain('{dashboard_domain}')->group(function () {
     // Rota de teste SEM autenticação para diagnosticar
     Route::get('/test-dashboard-access', function () {
         return response()->json([
@@ -520,7 +520,7 @@ Route::domain($dashboardDomain)->group(function () {
 });
 
 // Rotas do dashboard COM autenticação
-Route::domain($dashboardDomain)->middleware('auth')->group(function () {
+Route::domain('{dashboard_domain}')->middleware('auth')->group(function () {
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
 
@@ -621,6 +621,9 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         Route::delete('/{order}/discount', [\App\Http\Controllers\Dashboard\OrdersController::class, 'removeDiscount'])->name('removeDiscount');
         Route::post('/{order}/refund', [\App\Http\Controllers\Dashboard\OrdersController::class, 'refund'])->name('refund');
         Route::post('/{order}/send-receipt', [\App\Http\Controllers\Dashboard\OrdersController::class, 'sendReceipt'])->name('sendReceipt');
+        Route::post('/{order}/send-payment-charge', [\App\Http\Controllers\Dashboard\OrdersController::class, 'sendPaymentCharge'])->name('sendPaymentCharge');
+        Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('requestPrint');
+        Route::post('/{order}/request-print-check', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrintCheck'])->name('requestPrintCheck');
 
         // Rotas para edição de itens
         Route::post('/{order}/items', [\App\Http\Controllers\Dashboard\OrdersController::class, 'addItem'])->name('addItem');
@@ -817,6 +820,9 @@ Route::domain($dashboardDomain)->middleware('auth')->group(function () {
         });
         Route::get('/reports', [\App\Http\Controllers\Dashboard\ProductionController::class, 'relatorios'])->name('relatorios-producao.index');
 
+        // Embalagens
+        Route::resource('embalagens', \App\Http\Controllers\Dashboard\PackagingsController::class);
+
         // Configurações de Custos de Produção
         Route::get('/configuracoes-custos', [\App\Http\Controllers\Dashboard\ProductionController::class, 'configuracoesCustos'])->name('configuracoes-custos.index');
         Route::post('/configuracoes-custos', [\App\Http\Controllers\Dashboard\ProductionController::class, 'salvarConfiguracoesCustos'])->name('configuracoes-custos.save');
@@ -939,6 +945,13 @@ Route::domain($pedidoDomain)->name('pedido.')->group(function () {
         Route::get('/buscar', [MenuController::class, 'search'])->name('search');
     });
 
+    // Alias routes to support cleaner URLs and compatibility with store logic
+    // This fixes the issue where the frontend generates /produto/ID/modal URLs
+    Route::get('/produto/{product}', [MenuController::class, 'product'])->name('product.root');
+    Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('product.modal.root');
+    Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('product.json.root');
+    Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('category.root');
+
     // Carrinho
     Route::prefix('cart')->name('cart.')->group(function () {
         Route::get('/', [CartController::class, 'show'])->name('index');
@@ -958,6 +971,7 @@ Route::domain($pedidoDomain)->name('pedido.')->group(function () {
         Route::post('/', [OrderController::class, 'store'])->name('store');
         Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
         Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
+        Route::post('/locate-address', [OrderController::class, 'locateAddress'])->name('locate-address');
     });
 
     // Finalizar pedido do PDV
@@ -975,7 +989,7 @@ Route::domain($pedidoDomain)->name('pedido.')->group(function () {
 
 // Rotas públicas equivalentes (sem depender do subdomínio) - fallback PÚBLICO
 // IMPORTANTE: Estas rotas funcionam quando o DNS não está configurado com subdomínio
-Route::prefix('pedido')->name('pedido.')->group(function () {
+Route::prefix('sys-olika')->name('fallback.pedido.')->group(function () {
     // Página inicial - /pedido/
     Route::get('/', [MenuController::class, 'index'])->name('index');
 
@@ -1007,6 +1021,7 @@ Route::prefix('pedido')->name('pedido.')->group(function () {
         Route::get('/', [OrderController::class, 'checkout'])->name('index');
         Route::post('/', [OrderController::class, 'store'])->name('store');
         Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
         Route::post('/locate-address', [OrderController::class, 'locateAddress'])->name('locate-address');
     });
 
@@ -1090,25 +1105,25 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
 
     // Rotas de orders no fallback (incluindo orders-for-print)
     Route::prefix('orders')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('dashboard.orders.index');
-        Route::get('/orders-for-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getOrdersForPrint'])->name('dashboard.orders.forPrint');
-        Route::get('/delivery-slots', [\App\Http\Controllers\Dashboard\OrdersController::class, 'deliverySlots'])->name('dashboard.orders.deliverySlots');
-        Route::get('/printer-monitor', [\App\Http\Controllers\Dashboard\OrdersController::class, 'printerMonitor'])->name('dashboard.orders.printerMonitor');
-        Route::get('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'show'])->name('dashboard.orders.show');
-        Route::get('/{order}/edit', [\App\Http\Controllers\Dashboard\OrdersController::class, 'edit'])->name('dashboard.orders.edit');
-        Route::put('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'update'])->name('dashboard.orders.update');
-        Route::post('/{order}/status', [\App\Http\Controllers\Dashboard\OrdersController::class, 'updateStatus'])->name('dashboard.orders.updateStatus');
-        Route::post('/{order}/duplicate', [\App\Http\Controllers\Dashboard\OrdersController::class, 'duplicate'])->name('dashboard.orders.duplicate');
-        Route::post('/{order}/send-payment-charge', [\App\Http\Controllers\Dashboard\OrdersController::class, 'sendPaymentCharge'])->name('dashboard.orders.sendPaymentCharge');
-        Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('dashboard.orders.fiscalReceiptEscPos');
-        Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('dashboard.orders.requestPrint');
-        Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('dashboard.orders.markPrinted');
+        Route::get('/', [\App\Http\Controllers\Dashboard\OrdersController::class, 'index'])->name('fb.dashboard.orders.index');
+        Route::get('/orders-for-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'getOrdersForPrint'])->name('fb.dashboard.orders.forPrint');
+        Route::get('/delivery-slots', [\App\Http\Controllers\Dashboard\OrdersController::class, 'deliverySlots'])->name('fb.dashboard.orders.deliverySlots');
+        Route::get('/printer-monitor', [\App\Http\Controllers\Dashboard\OrdersController::class, 'printerMonitor'])->name('fb.dashboard.orders.printerMonitor');
+        Route::get('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'show'])->name('fb.dashboard.orders.show');
+        Route::get('/{order}/edit', [\App\Http\Controllers\Dashboard\OrdersController::class, 'edit'])->name('fb.dashboard.orders.edit');
+        Route::put('/{order}', [\App\Http\Controllers\Dashboard\OrdersController::class, 'update'])->name('fb.dashboard.orders.update');
+        Route::post('/{order}/status', [\App\Http\Controllers\Dashboard\OrdersController::class, 'updateStatus'])->name('fb.dashboard.orders.updateStatus');
+        Route::post('/{order}/duplicate', [\App\Http\Controllers\Dashboard\OrdersController::class, 'duplicate'])->name('fb.dashboard.orders.duplicate');
+        Route::post('/{order}/send-payment-charge', [\App\Http\Controllers\Dashboard\OrdersController::class, 'sendPaymentCharge'])->name('fb.dashboard.orders.sendPaymentCharge');
+        Route::get('/{order}/fiscal-receipt/escpos', [\App\Http\Controllers\Dashboard\OrdersController::class, 'fiscalReceiptEscPos'])->name('fb.dashboard.orders.fiscalReceiptEscPos');
+        Route::post('/{order}/request-print', [\App\Http\Controllers\Dashboard\OrdersController::class, 'requestPrint'])->name('fb.dashboard.orders.requestPrint');
+        Route::post('/{order}/mark-printed', [\App\Http\Controllers\Dashboard\OrdersController::class, 'markAsPrinted'])->name('fb.dashboard.orders.markPrinted');
     });
 
     // Rotas de clientes no fallback
     Route::prefix('customers')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Dashboard\CustomersController::class, 'index'])->name('dashboard.customers.index');
-        Route::get('/{customer}', [\App\Http\Controllers\Dashboard\CustomersController::class, 'show'])->name('dashboard.customers.show');
+        Route::get('/', [\App\Http\Controllers\Dashboard\CustomersController::class, 'index'])->name('fb.dashboard.customers.index');
+        Route::get('/{customer}', [\App\Http\Controllers\Dashboard\CustomersController::class, 'show'])->name('fb.dashboard.customers.show');
     });
 
     // Configurações: Dias e horários de entrega (fallback)
@@ -1127,6 +1142,81 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
         Route::put('/{pricing}', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'update'])->name('fb.dashboard.delivery-pricing.update');
         Route::delete('/{pricing}', [\App\Http\Controllers\Dashboard\DeliveryPricingController::class, 'destroy'])->name('fb.dashboard.delivery-pricing.destroy');
     });
+});
+
+
+// ============================================
+// ROTAS MULTI-TENANT (Dinâmicas) - CONSOLIDADO
+// Definição tardia para não interceptar subdomínios reservados (pedido, dashboard)
+// ============================================
+
+// 1. DASHBOARD DO ASSINANTE (Ex: dashboard.cozinhapro.app.br ou dashboard.menuolika.com.br)
+// *************** IMPORTANTE ***************
+// ESTA ROTA DEVE VIR ANTES DA ROTA GENÉRICA {slug}.{tenant_domain}
+// CASO CONTRÁRIO, O "dashboard" SERÁ INTERPRETADO COMO UM SLUG DE CLIENTE
+// *******************************************
+Route::domain('dashboard.{tenant_domain}')->group(function () {
+    // Rotas públicas
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('cozinha.dashboard.login');
+    Route::post('/login', [LoginController::class, 'login'])->name('cozinha.dashboard.auth.login');
+
+    // Rotas autenticadas
+    Route::middleware('auth')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('cozinha.dashboard.index');
+
+        // Gerenciamento de Perfil e Slug
+        Route::get('/perfil', [ProfileController::class, 'index'])->name('cozinha.profile.index');
+        Route::post('/perfil/update-slug', [ProfileController::class, 'updateSlug'])->name('cozinha.profile.slug.update');
+        Route::post('/perfil/check-slug', [ProfileController::class, 'checkSlugAvailability'])->name('cozinha.profile.slug.check');
+        Route::post('/perfil/update', [ProfileController::class, 'update'])->name('cozinha.profile.update');
+    });
+});
+
+// 2. LOJA DO CLIENTE (Ex: padaria-do-jose.cozinhapro.app.br ou padaria-do-jose.menuolika.com.br)
+Route::domain('{slug}.{tenant_domain}')->middleware(['identify.tenant'])->group(function () {
+    Route::get('/', [MenuController::class, 'index'])->name('store.index');
+    Route::get('/menu', [MenuController::class, 'index'])->name('store.menu');
+    Route::get('/produto/{product}', [MenuController::class, 'product'])->name('store.menu.product');
+    Route::get('/produto/{product}/modal', [MenuController::class, 'productModal'])->name('store.menu.product.modal');
+    Route::get('/produto/{product}/json', [MenuController::class, 'productJson'])->name('store.menu.product.json');
+    Route::get('/categoria/{category}', [MenuController::class, 'category'])->name('store.menu.category');
+    Route::get('/buscar', [MenuController::class, 'search'])->name('store.menu.search');
+
+    // Carrinho
+    Route::prefix('cart')->name('store.cart.')->group(function () {
+        Route::get('/', [CartController::class, 'show'])->name('index');
+        Route::get('/count', [CartController::class, 'count'])->name('count');
+        Route::get('/items', [CartController::class, 'items'])->name('items');
+        Route::post('/add', [CartController::class, 'add'])->name('add');
+        Route::post('/update', [CartController::class, 'update'])->name('update');
+        Route::post('/remove', [CartController::class, 'remove'])->name('remove');
+        Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+        Route::post('/calculate-delivery-fee', [CartController::class, 'calculateDeliveryFee'])->name('calculateDeliveryFee');
+    });
+
+    // Checkout
+    Route::prefix('checkout')->name('store.checkout.')->group(function () {
+        Route::get('/', [OrderController::class, 'checkout'])->name('index');
+        Route::post('/', [OrderController::class, 'store'])->name('store');
+        Route::post('/calculate-discounts', [OrderController::class, 'calculateDiscounts'])->name('calculate-discounts');
+        Route::post('/lookup-customer', [OrderController::class, 'lookupCustomer'])->name('lookup-customer');
+    });
+
+    // Payment
+    Route::prefix('payment')->name('store.payment.')->group(function () {
+        Route::get('/pix/{order}', [PaymentController::class, 'pixPayment'])->name('pix');
+        Route::get('/checkout/{order}', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::get('/status/{order}', [PaymentController::class, 'status'])->name('status');
+        Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
+        Route::get('/failure/{order}', [PaymentController::class, 'failure'])->name('failure');
+    });
+});
+
+// 3. LANDING PAGE (cozinhapro.app.br ou menuolika.com.br)
+Route::domain('{tenant_domain}')->group(function () {
+    Route::get('/', function () {
+        return view('site.cozinha-home');
+    })->name('cozinha.home');
 });
 
 // Rota para criar symlink do storage (acessar via navegador)

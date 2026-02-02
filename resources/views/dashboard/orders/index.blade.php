@@ -67,7 +67,7 @@
 
 @section('content')
     <div class="bg-card rounded-xl border border-border animate-fade-in max-w-full" id="orders-page"
-        x-data="ordersLiveSearch('{{ request('q') ?? '' }}', '{{ request('status') ?? 'all' }}')">
+        x-data="ordersLiveSearch()">
         <!-- Card Header: Busca, Filtros e Botão -->
         <div class="p-3 sm:p-4 md:p-6 border-b border-border overflow-visible">
             <form method="GET" action="{{ route('dashboard.orders.index') }}" class="flex flex-col gap-3">
@@ -77,9 +77,7 @@
                     <div class="relative flex-1">
                         <i data-lucide="search"
                             class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                        <input type="text" name="q" x-model="search"
-                            @input.debounce.500ms="$event.target.form && $event.target.form.submit()"
-                            placeholder="Buscar por cliente, número do pedido..."
+                        <input type="text" name="q" x-model="search" placeholder="Buscar por cliente, número do pedido..."
                             class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
                             autocomplete="off">
                     </div>
@@ -119,9 +117,7 @@
                     <div class="relative w-full">
                         <i data-lucide="search"
                             class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                        <input type="text" name="q" x-model="search"
-                            @input.debounce.500ms="$event.target.form && $event.target.form.submit()"
-                            placeholder="Buscar por cliente, número do pedido..."
+                        <input type="text" name="q" x-model="search" placeholder="Buscar por cliente, número do pedido..."
                             class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
                             autocomplete="off">
                     </div>
@@ -199,9 +195,8 @@
                     @endphp
 
                     <div class="order-card bg-white border border-border rounded-xl p-3 sm:p-4 hover:shadow-md transition-all"
-                        data-search-customer="{{ $searchCustomer }}" data-search-order="{{ $searchOrder }}"
-                        data-search-status="{{ $searchStatus }}" data-order-status="{{ $order->status }}"
-                        x-show="matchesCard($el)">
+                        data-search-id="{{ $searchOrder }}" data-search-customer="{{ $searchCustomer }}"
+                        data-status="{{ $order->status }}" x-show="matchesCard($el)">
                         <!-- Header: Avatar, Nome, Status, Ações -->
                         <div class="flex items-start justify-between gap-2 mb-3">
                             <div class="flex items-center gap-2 flex-1 overflow-hidden">
@@ -221,58 +216,59 @@
                                     <span class="hidden md:inline xl:hidden 2xl:inline">{{ $statusData['label'] }}</span>
                                 </span>
                                 <div x-data="{
-                                                                            open: false,
-                                                                            toggle() {
-                                                                                if (this.open) {
-                                                                                    this.open = false;
-                                                                                } else {
-                                                                                    // Fechar outros menus antes de abrir este
-                                                                                    window.dispatchEvent(new CustomEvent('close-all-menus', { detail: { except: this.$el } }));
-                                                                                    this.open = true;
-                                                                                    this.updatePosition();
-                                                                                }
-                                                                            },
-                                                                            updatePosition() {
-                                                                                this.$nextTick(() => {
-                                                                                    const trigger = this.$refs.trigger;
-                                                                                    const dropdown = this.$refs.dropdown;
-                                                                                    if (!trigger || !dropdown) return;
+                                                                                                                                                    open: false,
+                                                                                                                                                    toggle() {
+                                                                                                                                                        if (this.open) {
+                                                                                                                                                            this.open = false;
+                                                                                                                                                        } else {
+                                                                                                                                                            // Fechar outros menus antes de abrir este
+                                                                                                                                                            window.dispatchEvent(new CustomEvent('close-all-menus', { detail: { except: this.$el } }));
+                                                                                                                                                            this.open = true;
+                                                                                                                                                            this.updatePosition();
+                                                                                                                                                        }
+                                                                                                                                                    },
+                                                                                                                                                    updatePosition() {
+                                                                                                                                                        this.$nextTick(() => {
+                                                                                                                                                            const trigger = this.$refs.trigger;
+                                                                                                                                                            const dropdown = this.$refs.dropdown;
+                                                                                                                                                            if (!trigger || !dropdown) return;
 
-                                                                                    const rect = trigger.getBoundingClientRect();
-                                                                                    const dropdownHeight = 320; // Altura estimada máxima
-                                                                                    const viewportHeight = window.innerHeight;
-                                                                                    const spaceBelow = viewportHeight - rect.bottom;
+                                                                                                                                                            const rect = trigger.getBoundingClientRect();
+                                                                                                                                                            const dropdownHeight = 320; // Altura estimada máxima
+                                                                                                                                                            const viewportHeight = window.innerHeight;
+                                                                                                                                                            const spaceBelow = viewportHeight - rect.bottom;
 
-                                                                                    // Resetar estilos base
-                                                                                    dropdown.style.position = 'fixed';
-                                                                                    dropdown.style.right = 'auto';
-                                                                                    dropdown.style.left = (rect.right - 224) + 'px'; // 224px = w-56
+                                                                                                                                                            // Resetar estilos base
+                                                                                                                                                            dropdown.style.position = 'fixed';
+                                                                                                                                                            dropdown.style.right = 'auto';
+                                                                                                                                                            dropdown.style.left = (rect.right - 224) + 'px'; // 224px = w-56
 
-                                                                                    // Decidir se abre para cima ou para baixo
-                                                                                    if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
-                                                                                        // Abrir para cima
-                                                                                        dropdown.style.top = 'auto';
-                                                                                        dropdown.style.bottom = (viewportHeight - rect.top + 4) + 'px';
-                                                                                        dropdown.style.maxHeight = (rect.top - 20) + 'px';
-                                                                                    } else {
-                                                                                        // Abrir para baixo
-                                                                                        dropdown.style.bottom = 'auto';
-                                                                                        dropdown.style.top = (rect.bottom + 4) + 'px';
-                                                                                        dropdown.style.maxHeight = (spaceBelow - 20) + 'px';
-                                                                                    }
-                                                                                });
-                                                                            },
-                                                                            init() {
-                                                                                // Escutar evento global para fechar
-                                                                                window.addEventListener('close-all-menus', (e) => {
-                                                                                    if (e.detail && e.detail.except === this.$el) return;
-                                                                                    this.open = false;
-                                                                                });
+                                                                                                                                                            // Decidir se abre para cima ou para baixo
+                                                                                                                                                            if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
+                                                                                                                                                                // Abrir para cima
+                                                                                                                                                                dropdown.style.top = 'auto';
+                                                                                                                                                                dropdown.style.bottom = (viewportHeight - rect.top + 4) + 'px';
+                                                                                                                                                                dropdown.style.maxHeight = (rect.top - 20) + 'px';
+                                                                                                                                                            } else {
+                                                                                                                                                                // Abrir para baixo
+                                                                                                                                                                dropdown.style.bottom = 'auto';
+                                                                                                                                                                dropdown.style.top = (rect.bottom + 4) + 'px';
+                                                                                                                                                                dropdown.style.maxHeight = (spaceBelow - 20) + 'px';
+                                                                                                                                                            }
+                                                                                                                                                        });
+                                                                                                                                                    },
+                                                                                                                                                    init() {
+                                                                                                                                                        // Escutar evento global para fechar
+                                                                                                                                                        window.addEventListener('close-all-menus', (e) => {
+                                                                                                                                                            if (e.detail && e.detail.except === this.$el) return;
+                                                                                                                                                            this.open = false;
+                                                                                                                                                        });
 
-                                                                                // Fechar ao rolar a página para evitar desconexão visual
-                                                                                window.addEventListener('scroll', () => { if(this.open) this.open = false; }, true);
-                                                                            }
-                                                                        }" @click.outside="open = false" class="relative">
+                                                                                                                                                        // Fechar ao rolar a página para evitar desconexão visual
+                                                                                                                                                        window.addEventListener('scroll', () => { if(this.open) this.open = false; }, true);
+                                                                                                                                                    }
+                                                                                                                                                }"
+                                    @click.outside="open = false" class="relative">
                                     <button type="button" x-ref="trigger" @click.stop="toggle()"
                                         class="inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                                         :class="{ 'bg-muted': open }" title="Ações">
@@ -283,7 +279,7 @@
                                     <div x-show="open" x-cloak x-transition x-ref="dropdown"
                                         class="fixed w-56 bg-white rounded-lg shadow-xl border border-border z-[9999] py-1 overflow-y-auto"
                                         style="display: none;">
-                                        <a href="{{ route('dashboard.orders.show', $order->id) }}"
+                                        <a href="{{ route('dashboard.orders.show', ['dashboard_domain' => request()->getHost(), 'order' => $order->id]) }}"
                                             class="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left">
                                             <i data-lucide="eye" class="w-4 h-4 shrink-0"></i>
                                             <span>Ver detalhes</span>
@@ -454,13 +450,6 @@
                     </div>
                 @endforelse
                 @if($orders->count() > 0)
-                    <div class="order-filter-no-results col-span-full text-center text-muted-foreground py-8"
-                        x-show="search && showNoResults" x-cloak x-transition>
-                        <div class="flex flex-col items-center gap-2">
-                            <i data-lucide="search-x" class="w-10 h-10 opacity-40"></i>
-                            <p class="text-sm">Nenhum pedido encontrado para "<span x-text="search"></span>"</p>
-                        </div>
-                    </div>
                 @endif
 
             </div>
@@ -488,65 +477,35 @@
 
 @push('scripts')
     <script>
-        document.addEventListener('alpine:init', function () {
-            Alpine.data('ordersLiveSearch', function (initialQ, initialStatus) {
-                return {
-                    search: (typeof initialQ === 'string' ? initialQ : '') || '',
-                    statusFilter: (typeof initialStatus === 'string' ? initialStatus : 'all') || 'all',
-                    showNoResults: false,
+        window.ordersLiveSearch = function (initialQ, initialStatus) {
+            return {
+                search: (typeof initialQ === 'string' ? initialQ : '') || '',
+                statusFilter: (typeof initialStatus === 'string' ? initialStatus : 'all') || 'all',
 
-                    init: function () {
-                        var self = this;
-                        function updateNoResults() {
-                            self.$nextTick(function () {
-                                var root = document.getElementById('orders-page');
-                                var cards = root ? root.querySelectorAll('.order-card') : [];
-                                var visible = 0;
-                                cards.forEach(function (el) {
-                                    if (self.matchesCard(el)) visible++;
-                                });
-                                self.showNoResults = self.search.trim() !== '' && visible === 0;
-                            });
-                        }
-                        this.$watch('search', updateNoResults);
-                        this.$watch('statusFilter', updateNoResults);
-                        updateNoResults();
-                    },
+                matchesCard(el) {
+                    if (!el) return false;
 
-                    matchesCard: function (el) {
-                        var q = this.search.trim().toLowerCase();
-                        var statusFilter = this.statusFilter;
+                    const searchLower = this.search.toLowerCase();
 
-                        // Filtro de status
-                        var orderStatus = el.getAttribute('data-order-status') || '';
-                        if (statusFilter === 'active') {
-                            if (orderStatus !== 'confirmed' && orderStatus !== 'pending') return false;
-                        } else if (statusFilter !== 'all') {
-                            if (orderStatus !== statusFilter) return false;
-                        }
-
-                        // Se não há busca de texto, mostrar
-                        if (!q) return true;
-
-                        // Busca de texto
-                        var customer = (el.getAttribute('data-search-customer') || '').toLowerCase();
-                        var order = (el.getAttribute('data-search-order') || '').toLowerCase();
-                        var status = (el.getAttribute('data-search-status') || '').toLowerCase();
-
-                        var customerNorm = customer.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        var orderNorm = order.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        var statusNorm = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-                        if (customer.includes(q) || customerNorm.includes(qNorm)) return true;
-                        if (order.includes(q) || orderNorm.includes(qNorm)) return true;
-                        if (status.includes(q) || statusNorm.includes(qNorm)) return true;
-
+                    // Filter by status first
+                    const orderStatus = el.dataset.orderStatus || 'all';
+                    if (this.statusFilter !== 'all' && orderStatus !== this.statusFilter) {
                         return false;
                     }
-                };
-            });
-        });
+
+                    // Then by search term
+                    if (searchLower === '') return true;
+
+                    const searchTerms = [
+                        el.dataset.searchId || '',
+                        el.dataset.searchCustomer || '',
+                        el.dataset.searchTotal || ''
+                    ];
+
+                    return searchTerms.some(term => term.toLowerCase().includes(searchLower));
+                }
+            };
+        };
 
         // Função global para fechar todos os menus
         window.closeAllMenus = function () {

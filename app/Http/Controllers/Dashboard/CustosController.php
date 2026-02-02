@@ -40,12 +40,22 @@ class CustosController extends Controller
         $averageMargin = $recipes->avg('margin') ?? 0;
         $averageCost = $recipes->avg('cost') ?? 0;
 
+        // Buscar embalagens
+        $packagings = \App\Models\Packaging::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+            ->where(function ($q) use ($clientId) {
+                $q->where('client_id', $clientId)->orWhereNull('client_id');
+            })
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         return view('dashboard.producao.custos', compact(
             'recipes',
             'totalMonthlyCost',
             'averageMargin',
             'averageCost',
-            'settings'
+            'settings',
+            'packagings'
         ));
     }
 

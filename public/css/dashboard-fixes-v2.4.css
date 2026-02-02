@@ -1,0 +1,125 @@
+/* ================= OLIKA DASHBOARD v2.4 ================= */
+
+/* --- Cards de métricas (Visão Geral, Relatórios, etc) --- */
+.stat-card,
+.card-metric {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 0.9rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease-in-out;
+  min-height: 80px;
+}
+
+.stat-card:hover {
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Ícone à direita */
+.stat-card i,
+.stat-card svg {
+  color: #ea580c;
+  background-color: rgba(234, 88, 12, 0.08);
+  border-radius: 8px;
+  padding: 0.6rem;
+  font-size: 1.2rem;
+}
+
+/* Texto e título */
+.stat-card h3,
+.stat-card .label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.stat-card .value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* --- Layout das métricas (2 linhas em telas médias, 4 em desktop) --- */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Títulos e blocos principais --- */
+.section-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 1rem;
+}
+
+/* --- Listagens e tabelas compactas --- */
+.table,
+.table-list {
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.table td {
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+/* --- Correção de espaçamento geral --- */
+main {
+  padding: 1.5rem;
+}
+
+section {
+  margin-bottom: 1.5rem;
+}
+
+/* --- Botões principais --- */
+.btn-primary {
+  background-color: #ea580c;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #f97316;
+}
+
+/* --- Suaviza bordas das divisões --- */
+hr, .divider {
+  border: none;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* --- Responsividade --- */
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+

@@ -138,12 +138,17 @@
                                         Usando peso padrão da receita
                                     </p>
                                 </div>
-                                <div class="space-y-1.5">
-                                    <label class="block text-sm font-semibold mb-1.5">Embalagem</label>
+                                <div class="space-y-1.5 line-clamp-1">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="text-sm font-semibold">Embalagem</label>
+                                        <a href="{{ route('dashboard.producao.embalagens.index') }}" class="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+                                            Gerenciar <i data-lucide="external-link" class="w-2 h-2"></i>
+                                        </a>
+                                    </div>
                                     <select x-model="form.packaging_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                         <option value="">Nenhuma</option>
-                                        @foreach(\App\Models\Packaging::where('is_active', true)->orderBy('name')->get() as $pkg)
-                                            <option value="{{ $pkg->id }}">{{ $pkg->name }}</option>
+                                        @foreach($packagings as $pkg)
+                                            <option value="{{ $pkg->id }}">{{ $pkg->name }} (R$ {{ number_format($pkg->cost, 2, ',', '.') }})</option>
                                         @endforeach
                                     </select>
                                 </div>

@@ -71,7 +71,7 @@ class ProductsController extends Controller
             ]);
         }
 
-        $products = $query->paginate(20)->withQueryString();
+        $products = $query->orderBy('name')->paginate(500)->withQueryString();
         $categories = Category::active()->ordered()->get();
 
         return view('dashboard.products.index', compact('products', 'categories'));

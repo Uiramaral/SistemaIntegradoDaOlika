@@ -162,6 +162,8 @@
 <script>
 // Otimização de carregamento de imagens com Intersection Observer
 document.addEventListener('DOMContentLoaded', function() {
+    const viewportHeight = window.innerHeight; // Moved to top scope
+
     // Forçar carregamento imediato das imagens eager (marcadas no PHP)
     const eagerImages = document.querySelectorAll('img[loading="eager"]');
     eagerImages.forEach((img) => {
@@ -209,6 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const lazyImages = document.querySelectorAll('img[loading="lazy"]');
     
     if (lazyImages.length > 0 && 'IntersectionObserver' in window) {
+        // viewportHeight defined in outer scope
         const imageObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {

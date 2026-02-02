@@ -1,0 +1,160 @@
+/* ============ PADRONIZAÇÃO DE MODAIS ============ */
+/* Todos os modais devem seguir este padrão visual */
+
+/* Container do modal */
+.modal-overlay,
+[id*="-modal"]:not(.hidden):not([style*="display: none"]) {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+}
+
+/* Conteúdo do modal */
+.modal-content,
+.modal-overlay > div:first-child,
+[id*="-modal"] > div:first-child {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 1rem;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Modais específicos - reduzir tamanho - FORÇAR APLICAÇÃO */
+#edit-instance-modal > div,
+#add-instance-modal > div,
+#pairing-code-modal > div,
+div#edit-instance-modal > div,
+div#add-instance-modal > div,
+div#pairing-code-modal > div,
+[id="edit-instance-modal"] > div,
+[id="add-instance-modal"] > div,
+[id="pairing-code-modal"] > div {
+    max-width: 28rem !important;
+    width: calc(100% - 2rem) !important;
+    padding: 1.25rem !important;
+    margin: 0 1rem !important;
+    box-sizing: border-box !important;
+}
+
+/* Modais maiores */
+.modal-content-lg,
+[id*="-modal"][class*="max-w-2xl"] > div:first-child,
+[id*="-modal"][class*="max-w-3xl"] > div:first-child,
+[id*="-modal"][class*="max-w-4xl"] > div:first-child {
+    max-width: 42rem;
+}
+
+.modal-content-xl {
+    max-width: 56rem;
+}
+
+/* Header do modal */
+.modal-header,
+.modal-content > div:first-child,
+[id*="-modal"] > div > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.modal-title,
+.modal-header h3,
+[id*="-modal"] h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+}
+
+/* Botão de fechar */
+.modal-close,
+.modal-header button:last-child,
+[id*="-modal"] button[class*="close"],
+button[id*="close"][id*="modal"] {
+    color: hsl(var(--muted-foreground));
+    transition: color 0.2s;
+}
+
+.modal-close:hover,
+.modal-header button:last-child:hover {
+    color: hsl(var(--foreground));
+}
+
+/* Body do modal */
+.modal-body,
+.modal-content > div:not(:first-child):not(:last-child),
+[id*="-modal"] form,
+[id*="-modal"] > div > div:not(:first-child):not(:last-child) {
+    padding: 1.5rem;
+}
+
+/* Footer do modal */
+.modal-footer,
+.modal-content > div:last-child:not(:first-child),
+[id*="-modal"] > div > div:last-child:not(:first-child) {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid hsl(var(--border));
+    justify-content: flex-end;
+}
+
+/* Esconder modais por padrão */
+[id*="-modal"].hidden,
+[id*="-modal"][style*="display: none"] {
+    display: none !important;
+}
+
+/* Animações suaves */
+.modal-overlay,
+[id*="-modal"] {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content,
+[id*="-modal"] > div:first-child {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(1rem);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+    .modal-content,
+    [id*="-modal"] > div:first-child {
+        margin: 0;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
+

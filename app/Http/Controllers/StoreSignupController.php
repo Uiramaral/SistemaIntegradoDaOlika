@@ -24,24 +24,24 @@ class StoreSignupController extends Controller
         // Buscar TODOS os planos (ativos e inativos) ordenados
         // Landing page pública deve mostrar todos os planos disponíveis
         $plansFromDb = \App\Models\Plan::ordered()->get();
-        
+
         // Obter configurações do master settings (fonte única de verdade)
         $commission = \App\Models\MasterSetting::get('registration_default_commission', 0.49);
         $trialDays = \App\Models\MasterSetting::getRegistrationTrialDays(); // Usar sempre master settings
-        
+
         // Mapear planos do banco para formato esperado pela view
         $plans = [];
         foreach ($plansFromDb as $plan) {
             $features = $plan->features_list; // Usar accessor
-            
+
             // Adicionar informação de comissão na feature "Integração Mercado Pago"
-            $features = array_map(function($feature) use ($commission) {
+            $features = array_map(function ($feature) use ($commission) {
                 if (stripos($feature, 'Integração') !== false && stripos($feature, 'Mercado') !== false) {
                     return $feature . ' (taxa de R$ ' . number_format($commission, 2, ',', '.') . ' por venda)';
                 }
                 return $feature;
             }, $features);
-            
+
             $plans[$plan->slug] = [
                 'name' => $plan->name,
                 'description' => $plan->description,
@@ -52,7 +52,7 @@ class StoreSignupController extends Controller
                 'trial_days' => $trialDays, // SEMPRE usar master settings
             ];
         }
-        
+
         // Se não houver planos no banco, usar hardcoded como fallback
         if (empty($plans)) {
             $plans = [
@@ -101,7 +101,7 @@ class StoreSignupController extends Controller
         $systemLogoUrl = \App\Models\MasterSetting::get('system_logo_url', '');
         $termsOfUse = \App\Models\MasterSetting::get('terms_of_use', '');
         $privacyPolicy = \App\Models\MasterSetting::get('privacy_policy', '');
-        
+
         return view('store-signup-v2', compact('plans', 'commission', 'trialDays', 'systemName', 'systemLogoUrl', 'termsOfUse', 'privacyPolicy'));
     }
 
@@ -135,7 +135,7 @@ class StoreSignupController extends Controller
         // Verificar se o WhatsApp foi verificado
         $phone = $this->normalizePhone($validated['whatsapp_phone'] ?? null);
         $verifiedPhone = Session::get('whatsapp_verified_phone');
-        
+
         if (!$phone || $phone !== $verifiedPhone) {
             return redirect()->back()
                 ->withInput()
@@ -147,13 +147,13 @@ class StoreSignupController extends Controller
         $existingPhones = Client::whereNotNull('whatsapp_phone')
             ->where('whatsapp_phone', '!=', '')
             ->pluck('whatsapp_phone')
-            ->map(function($existingPhone) {
+            ->map(function ($existingPhone) {
                 return $this->normalizePhone($existingPhone);
             })
             ->filter()
             ->unique()
             ->toArray();
-        
+
         if (in_array($phone, $existingPhones)) {
             return redirect()->back()
                 ->withInput()
@@ -163,7 +163,7 @@ class StoreSignupController extends Controller
         // Validar se o plano existe no banco e está ativo
         $planSlug = $validated['plan'];
         $planModel = \App\Models\Plan::where('slug', $planSlug)->first();
-        
+
         if (!$planModel) {
             return redirect()->back()
                 ->withInput()
@@ -183,7 +183,7 @@ class StoreSignupController extends Controller
         $clientPlan = $planModel->has_whatsapp ? 'ia' : 'basic';
 
         DB::beginTransaction();
-        
+
         try {
             // Verificar se email já existe (ANTES de criar cliente)
             if (User::where('email', $validated['email'])->exists()) {
@@ -191,13 +191,16 @@ class StoreSignupController extends Controller
                     ->withInput()
                     ->withErrors(['email' => 'Este e-mail já está cadastrado. Use outro e-mail ou faça login.']);
             }
-            
+
             // Gerar slug único baseado no nome da empresa
             $baseSlug = Str::slug($validated['company_name']);
             $slug = $baseSlug;
             $counter = 1;
-            
-            while (Client::where('slug', $slug)->exists()) {
+
+            // Slugs reservados que não podem ser usados por clientes
+            $reservedSlugs = ['admin', 'dashboard', 'sistema-pedidos', 'api', 'mail', 'smtp', 'ftp', 'webmail', 'cpanel'];
+
+            while (Client::where('slug', $slug)->exists() || in_array($slug, $reservedSlugs)) {
                 $slug = $baseSlug . '-' . $counter;
                 $counter++;
             }
@@ -207,7 +210,7 @@ class StoreSignupController extends Controller
             $defaultCommission = \App\Models\MasterSetting::getRegistrationDefaultCommission();
             $commissionEnabled = \App\Models\MasterSetting::isRegistrationCommissionEnabled();
             $requireApproval = \App\Models\MasterSetting::isRegistrationApprovalRequired();
-            
+
             $trialStartedAt = now();
             $trialEndsAt = $trialStartedAt->copy()->addDays($trialDays);
 
@@ -259,7 +262,7 @@ class StoreSignupController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Erro ao cadastrar novo lojista', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -302,7 +305,7 @@ class StoreSignupController extends Controller
 
         $code = (string) random_int(100000, 999999);
         $expiresAt = Carbon::now()->addMinutes(5);
-        
+
         $payload = [
             'hash' => hash('sha256', $code),
             'attempts' => 0,
@@ -322,15 +325,15 @@ class StoreSignupController extends Controller
                 if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
                     $phoneNormalized = '55' . $phoneNormalized;
                 }
-                
+
                 $message = "Seu código de verificação para cadastro na Olika é {$code}. Ele expira em 5 minutos.";
                 $whatsApp->sendText($phoneNormalized, $message);
-                
+
                 Log::info('Código de verificação WhatsApp enviado para cadastro', [
                     'phone' => $phone,
                     'phone_normalized' => $phoneNormalized,
                 ]);
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Código enviado com sucesso!'
@@ -346,7 +349,7 @@ class StoreSignupController extends Controller
                 'phone' => $phone,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Não foi possível enviar o código. Tente novamente em instantes.'
@@ -396,7 +399,7 @@ class StoreSignupController extends Controller
         if (!hash_equals($payload['hash'], $codeHash)) {
             $payload['attempts']++;
             Cache::put($cacheKey, $payload, Carbon::createFromTimestamp($payload['expires_at']));
-            
+
             if ($payload['attempts'] >= 3) {
                 Cache::forget($cacheKey);
                 return response()->json([
@@ -404,7 +407,7 @@ class StoreSignupController extends Controller
                     'message' => 'Muitas tentativas incorretas. Solicite um novo código.'
                 ], 400);
             }
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Código inválido. Tente novamente.'
@@ -431,20 +434,20 @@ class StoreSignupController extends Controller
         }
 
         $digits = preg_replace('/\D+/', '', $value);
-        
+
         if (strlen($digits) < 10 || strlen($digits) > 11) {
             return null;
         }
-        
+
         if (strlen($digits) === 11 && $digits[0] === '0') {
             $digits = substr($digits, 1);
         }
-        
+
         $ddd = substr($digits, 0, 2);
         if (!preg_match('/^[1-9][1-9]$/', $ddd)) {
             return null;
         }
-        
+
         return $digits;
     }
 }

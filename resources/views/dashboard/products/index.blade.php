@@ -30,14 +30,14 @@
     </style>
 
     <div class="bg-card rounded-xl border border-border animate-fade-in w-full overflow-x-hidden" id="products-page"
-        x-data="productsLiveSearch('{{ request('q') ?? '' }}')">
+        x-data="productsLiveSearch('')">
         {{-- Header: Search & Actions --}}
         <div class="p-4 border-b border-border flex flex-col sm:flex-row gap-4 justify-between w-full">
             <div class="relative flex-1 w-full max-w-full sm:max-w-md">
                 <i data-lucide="search"
                     class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                <input type="text" name="q" x-model="search" @input.debounce.300ms="updateSearch()"
-                    placeholder="Buscar produto por nome..." class="form-input pl-10 h-10 w-full" autocomplete="off">
+                <input type="text" name="q" x-model="search" placeholder="Buscar produto por nome..."
+                    class="form-input pl-10 h-10 w-full" autocomplete="off">
             </div>
 
             <a href="{{ route('dashboard.products.create') }}"
@@ -62,7 +62,7 @@
                 @endphp
                 <div class="product-card searchable-item border border-border rounded-xl p-4 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between bg-white w-full min-w-0"
                     data-search-name="{{ $searchName }}" data-search-category="{{ $searchCategory }}"
-                    data-search-sku="{{ $sku }}" x-show="matches($el)" @click="openProductModal({{ $product->id }})">
+                    data-search-sku="{{ $sku }}" x-show="matchesCard($el)" @click="openProductModal({{ $product->id }})">
 
                     {{-- Header: Image, Name, Category, Actions --}}
                     <div class="flex items-start justify-between mb-4 gap-3">
@@ -104,14 +104,16 @@
                                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold truncate">
                                     PREÇO</p>
                                 <p class="text-sm font-bold text-primary mt-0.5 truncate">R$
-                                    {{ number_format($price, 2, ',', '.') }}</p>
+                                    {{ number_format($price, 2, ',', '.') }}
+                                </p>
                             </div>
 
                             <div class="text-center min-w-0">
                                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold truncate">
                                     VENDAS</p>
                                 <p class="text-sm font-bold text-foreground mt-0.5">
-                                    {{ (int) ($product->order_items_sum_quantity ?? 0) }}</p>
+                                    {{ (int) ($product->order_items_sum_quantity ?? 0) }}
+                                </p>
                             </div>
 
                             <div class="text-right min-w-0">
@@ -312,125 +314,118 @@
 
     @push('scripts')
         <script>
-            document.addEventListener('alpine:init', function () {
-                Alpine.data('productsLiveSearch', function (initialQ) {
-                    return {
-                        search: (typeof initialQ === 'string' ? initialQ : '') || '',
-                        showNoResults: false,
-                        modalOpen: false,
-                        loading: false,
-                        selectedProduct: null,
+            window.productsLiveSearch = function (initialQ) {
+                return {
+                    search: (typeof initialQ === 'string' ? initialQ : '') || '',
+                    showNoResults: false,
+                    modalOpen: false,
+                    loading: false,
+                    selectedProduct: null,
 
-                        init: function () {
-                            this.updateSearch();
-                            this.$watch('search', () => this.updateSearch());
+                    init: function () {
+                        this.updateSearch();
+                        this.$watch('search', () => this.updateSearch());
 
-                            // Fechar modal com ESC
-                            window.addEventListener('keydown', (e) => {
-                                if (e.key === 'Escape' && this.modalOpen) this.closeModal();
-                            });
-                        },
+                        // Fechar modal com ESC
+                        window.addEventListener('keydown', (e) => {
+                            if (e.key === 'Escape' && this.modalOpen) this.closeModal();
+                        });
+                    },
 
-                        updateSearch() {
-                            const q = this.search.trim().toLowerCase();
-                            const qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    updateSearch() {
+                        const q = this.search.trim().toLowerCase();
+                        const qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-                            let visibleCount = 0;
+                        let visibleCount = 0;
 
-                            document.querySelectorAll('.searchable-item').forEach(el => {
-                                const name = (el.getAttribute('data-search-name') || '').toLowerCase();
-                                const category = (el.getAttribute('data-search-category') || '').toLowerCase();
-                                const sku = (el.getAttribute('data-search-sku') || '').toLowerCase();
-                                const nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                                const categoryNorm = category.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        document.querySelectorAll('.searchable-item').forEach(el => {
+                            const name = (el.getAttribute('data-search-name') || '').toLowerCase();
+                            const category = (el.getAttribute('data-search-category') || '').toLowerCase();
+                            const sku = (el.getAttribute('data-search-sku') || '').toLowerCase();
+                            const nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                            const categoryNorm = category.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-                                let matches = true;
-                                if (q) {
-                                    matches = name.includes(q) || nameNorm.includes(qNorm) ||
-                                        category.includes(q) || categoryNorm.includes(qNorm) ||
-                                        sku.includes(q);
-                                }
-
-                                if (matches) visibleCount++;
-                            });
-
-                            this.showNoResults = q !== '' && visibleCount === 0;
-                        },
-
-                        matches: function (el) {
-                            var q = this.search.trim().toLowerCase();
-                            if (!q) return true;
-                            var name = (el.getAttribute('data-search-name') || '').toLowerCase();
-                            var category = (el.getAttribute('data-search-category') || '').toLowerCase();
-                            var sku = (el.getAttribute('data-search-sku') || '').toLowerCase();
-                            var nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                            var categoryNorm = category.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                            var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-                            if (name.includes(q) || nameNorm.includes(qNorm)) return true;
-                            if (category.includes(q) || categoryNorm.includes(qNorm)) return true;
-                            if (sku.includes(q)) return true;
-                            return false;
-                        },
-
-                        async openProductModal(productId) {
-                            this.modalOpen = true;
-                            this.loading = true;
-                            this.selectedProduct = null;
-
-                            // Prevent background scrolling
-                            document.body.style.overflow = 'hidden';
-
-                            try {
-                                const response = await fetch(`{{ route('dashboard.products.show', '') }}/${productId}`, {
-                                    headers: {
-                                        'Accept': 'application/json',
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    }
-                                });
-
-                                if (!response.ok) throw new Error('Erro ao carregar produto');
-
-                                const data = await response.json();
-                                this.selectedProduct = data;
-                            } catch (error) {
-                                console.error('Erro:', error);
-                                // alert('Não foi possível carregar os detalhes do produto.');
-                                // Keep modal open but maybe show error state inside?
-                                // For now, close it
-                                this.closeModal();
-                            } finally {
-                                this.loading = false;
+                            let matches = true;
+                            if (q) {
+                                matches = name.includes(q) || nameNorm.includes(qNorm) ||
+                                    category.includes(q) || categoryNorm.includes(qNorm) ||
+                                    sku.includes(q);
                             }
-                        },
 
-                        closeModal() {
-                            this.modalOpen = false;
-                            // Restore background scrolling
-                            document.body.style.overflow = '';
+                            if (matches) visibleCount++;
+                        });
 
-                            setTimeout(() => {
-                                this.selectedProduct = null;
-                            }, 300);
-                        },
+                        this.showNoResults = q !== '' && visibleCount === 0;
+                    },
 
-                        formatCurrency(value) {
-                            return new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                            }).format(value || 0);
-                        },
+                    matchesCard: function (el) {
+                        var q = this.search.trim().toLowerCase();
+                        if (!q) return true;
+                        var name = (el.getAttribute('data-search-name') || '').toLowerCase();
+                        var category = (el.getAttribute('data-search-category') || '').toLowerCase();
+                        var sku = (el.getAttribute('data-search-sku') || '').toLowerCase();
+                        var nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var categoryNorm = category.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-                        getProductImageUrl(path) {
-                            if (!path) return '';
-                            // Se já for uma URL completa (ex: http...), retorna ela.
-                            if (path.startsWith('http')) return path;
-                            // Caso contrário, usa o helper de storage do Laravel
-                            return `{{ Storage::url('') }}${path}`;
+                        if (name.includes(q) || nameNorm.includes(qNorm)) return true;
+                        if (category.includes(q) || categoryNorm.includes(qNorm)) return true;
+                        if (sku.includes(q)) return true;
+                        return false;
+                    },
+
+                    async openProductModal(productId) {
+                        this.modalOpen = true;
+                        this.loading = true;
+                        this.selectedProduct = null;
+
+                        // Prevent background scrolling
+                        document.body.style.overflow = 'hidden';
+
+                        try {
+                            const response = await fetch(`{{ route('dashboard.products.show', '') }}/${productId}`, {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+
+                            if (!response.ok) throw new Error('Erro ao carregar produto');
+
+                            const data = await response.json();
+                            this.selectedProduct = data;
+                        } catch (error) {
+                            console.error('Erro:', error);
+                            this.closeModal();
+                        } finally {
+                            this.loading = false;
                         }
-                    };
-                });
-            });
+                    },
+
+                    closeModal() {
+                        this.modalOpen = false;
+                        // Restore background scrolling
+                        document.body.style.overflow = '';
+
+                        setTimeout(() => {
+                            this.selectedProduct = null;
+                        }, 300);
+                    },
+
+                    formatCurrency(value) {
+                        return new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                        }).format(value || 0);
+                    },
+
+                    getProductImageUrl(path) {
+                        if (!path) return '';
+                        if (path.startsWith('http')) return path;
+                        return `{{ Storage::url('') }}${path}`;
+                    }
+                };
+            };
         </script>
     @endpush
 @endsection

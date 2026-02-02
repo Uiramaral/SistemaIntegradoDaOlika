@@ -1,0 +1,290 @@
+/* ================================================================
+   OLIKA THEME V2.3 - Tema Completo
+   Sidebar + Cores + Divisores + Botões
+   Data: 30/11/2025
+   Versão: 2.3
+   ================================================================ */
+
+/* ==================== FUNDO GERAL ==================== */
+body {
+  background-color: #faf9f8 !important;
+  color: #1f2937 !important;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ==================== SIDEBAR ==================== */
+#sidebar,
+aside#sidebar,
+.sidebar,
+[class*="bg-sidebar"] {
+  background-color: #0f172a !important;
+  border-right: none !important;
+}
+
+/* Links da sidebar */
+#sidebar a,
+aside#sidebar a,
+.sidebar a,
+#sidebar nav a,
+aside#sidebar nav a {
+  color: #e5e7eb !important;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+/* Hover e estado ativo */
+#sidebar a:hover,
+aside#sidebar a:hover,
+.sidebar a:hover,
+#sidebar nav a:hover,
+aside#sidebar nav a:hover,
+#sidebar a[class*="hover:bg-sidebar-accent"],
+aside#sidebar a[class*="hover:bg-sidebar-accent"] {
+  background-color: #ea580c !important;
+  color: #fff !important;
+}
+
+#sidebar a.active,
+aside#sidebar a.active,
+.sidebar a.active,
+#sidebar a[class*="bg-sidebar-accent"],
+aside#sidebar a[class*="bg-sidebar-accent"] {
+  background-color: #ea580c !important;
+  color: #fff !important;
+}
+
+/* Ícones da sidebar */
+#sidebar a svg,
+aside#sidebar a svg,
+.sidebar a svg,
+#sidebar a i[data-lucide],
+aside#sidebar a i[data-lucide],
+.sidebar a i[data-lucide],
+#sidebar nav a svg,
+aside#sidebar nav a svg,
+#sidebar nav a i[data-lucide],
+aside#sidebar nav a i[data-lucide] {
+  color: #fef3c7 !important;
+}
+
+/* Ícones quando ativo */
+#sidebar a.active svg,
+aside#sidebar a.active svg,
+.sidebar a.active svg,
+#sidebar a.active i[data-lucide],
+aside#sidebar a.active i[data-lucide],
+.sidebar a.active i[data-lucide],
+#sidebar a[class*="bg-sidebar-accent"] svg,
+aside#sidebar a[class*="bg-sidebar-accent"] svg,
+#sidebar a[class*="bg-sidebar-accent"] i[data-lucide],
+aside#sidebar a[class*="bg-sidebar-accent"] i[data-lucide] {
+  color: #fff !important;
+}
+
+/* Texto da sidebar */
+#sidebar,
+aside#sidebar,
+.sidebar,
+[class*="text-sidebar-foreground"] {
+  color: #e5e7eb !important;
+}
+
+/* ==================== HEADER ==================== */
+header {
+  background-color: #fff !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+/* ==================== CARDS ==================== */
+.card,
+.stat-card {
+  background-color: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.05);
+}
+
+.stat-card:hover,
+.card:hover {
+  background-color: #fff7f3 !important;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.08);
+}
+
+/* ==================== TÍTULOS ==================== */
+h1, h2, h3, h4, h5, h6 {
+  color: #1f2937 !important;
+}
+
+.value {
+  color: #ea580c !important;
+  font-weight: 700;
+}
+
+/* ==================== BOTÕES ==================== */
+.btn,
+button,
+.btn-primary,
+button[type="submit"],
+button[type="button"].btn-primary {
+  background-color: #ea580c !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn:hover,
+button:hover,
+.btn-primary:hover,
+button[type="submit"]:hover,
+button[type="button"].btn-primary:hover {
+  background-color: #f97316 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.2);
+}
+
+/* ==================== LINHAS E DIVISORES ==================== */
+hr,
+.border-t,
+.border-b,
+.border-top,
+.border-bottom,
+.divider,
+[class*="border"] {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Sobrescrever bordas específicas do Tailwind */
+.border-gray-200,
+.border-gray-300,
+.border-gray-400,
+.border-input {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ==================== TABELAS ==================== */
+table,
+.table {
+  border-collapse: separate !important;
+  border-spacing: 0 6px;
+}
+
+table tbody tr,
+.table tbody tr {
+  border-radius: 10px;
+  border: 1px solid #f3f4f6 !important;
+  background: #fff;
+}
+
+table tbody tr:hover,
+.table tbody tr:hover {
+  background: #fff7f3 !important;
+}
+
+table th,
+.table th {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+table td,
+.table td {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ==================== PAGINAÇÃO ==================== */
+.pagination a,
+.pagination button {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.pagination a:hover,
+.pagination button:hover {
+  background: #fff7f3 !important;
+  color: #ea580c !important;
+  border-color: #ea580c !important;
+}
+
+.pagination a.active,
+.pagination .active,
+.pagination span.active {
+  background: #ea580c !important;
+  color: white !important;
+  border-color: #ea580c !important;
+}
+
+/* ==================== RODAPÉ ==================== */
+footer {
+  border-top: 1px solid #f3f4f6 !important;
+  background-color: #faf9f8 !important;
+  color: #6b7280 !important;
+}
+
+/* ==================== ÁREA PRINCIPAL ==================== */
+main,
+.main {
+  background-color: #faf9f8 !important;
+}
+
+/* ==================== ÍCONES GERAL ==================== */
+svg[data-lucide],
+i[data-lucide] {
+  color: inherit;
+}
+
+/* Ícones em cards de estatísticas */
+.stat-card svg,
+.stat-card i[data-lucide] {
+  color: #ea580c !important;
+}
+
+/* ==================== INPUTS E FORMULÁRIOS ==================== */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+}
+
+/* ==================== BADGES E LABELS ==================== */
+.badge,
+.label {
+  color: #6b7280 !important;
+}
+
+/* ==================== SOBRESCREVER CORES DO TAILWIND ==================== */
+.text-gray-400,
+.text-gray-500,
+.text-gray-600 {
+  color: #6b7280 !important;
+}
+
+.text-gray-700,
+.text-gray-800,
+.text-gray-900 {
+  color: #1f2937 !important;
+}
+
+.bg-gray-50 {
+  background-color: #f9fafb !important;
+}
+
+.bg-gray-100 {
+  background-color: #f3f4f6 !important;
+}
+

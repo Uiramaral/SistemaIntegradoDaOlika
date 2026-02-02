@@ -179,58 +179,59 @@
                                     <span class="hidden md:inline xl:hidden 2xl:inline">{{ $statusData['label'] }}</span>
                                 </span>
                                 <div x-data="{
-                                                                            open: false,
-                                                                            toggle() {
-                                                                                if (this.open) {
-                                                                                    this.open = false;
-                                                                                } else {
-                                                                                    // Fechar outros menus antes de abrir este
-                                                                                    window.dispatchEvent(new CustomEvent('close-all-menus', { detail: { except: this.$el } }));
-                                                                                    this.open = true;
-                                                                                    this.updatePosition();
-                                                                                }
-                                                                            },
-                                                                            updatePosition() {
-                                                                                this.$nextTick(() => {
-                                                                                    const trigger = this.$refs.trigger;
-                                                                                    const dropdown = this.$refs.dropdown;
-                                                                                    if (!trigger || !dropdown) return;
+                                                                                    open: false,
+                                                                                    toggle() {
+                                                                                        if (this.open) {
+                                                                                            this.open = false;
+                                                                                        } else {
+                                                                                            // Fechar outros menus antes de abrir este
+                                                                                            window.dispatchEvent(new CustomEvent('close-all-menus', { detail: { except: this.$el } }));
+                                                                                            this.open = true;
+                                                                                            this.updatePosition();
+                                                                                        }
+                                                                                    },
+                                                                                    updatePosition() {
+                                                                                        this.$nextTick(() => {
+                                                                                            const trigger = this.$refs.trigger;
+                                                                                            const dropdown = this.$refs.dropdown;
+                                                                                            if (!trigger || !dropdown) return;
 
-                                                                                    const rect = trigger.getBoundingClientRect();
-                                                                                    const dropdownHeight = 320; // Altura estimada máxima
-                                                                                    const viewportHeight = window.innerHeight;
-                                                                                    const spaceBelow = viewportHeight - rect.bottom;
+                                                                                            const rect = trigger.getBoundingClientRect();
+                                                                                            const dropdownHeight = 320; // Altura estimada máxima
+                                                                                            const viewportHeight = window.innerHeight;
+                                                                                            const spaceBelow = viewportHeight - rect.bottom;
 
-                                                                                    // Resetar estilos base
-                                                                                    dropdown.style.position = 'fixed';
-                                                                                    dropdown.style.right = 'auto';
-                                                                                    dropdown.style.left = (rect.right - 224) + 'px'; // 224px = w-56
+                                                                                            // Resetar estilos base
+                                                                                            dropdown.style.position = 'fixed';
+                                                                                            dropdown.style.right = 'auto';
+                                                                                            dropdown.style.left = (rect.right - 224) + 'px'; // 224px = w-56
 
-                                                                                    // Decidir se abre para cima ou para baixo
-                                                                                    if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
-                                                                                        // Abrir para cima
-                                                                                        dropdown.style.top = 'auto';
-                                                                                        dropdown.style.bottom = (viewportHeight - rect.top + 4) + 'px';
-                                                                                        dropdown.style.maxHeight = (rect.top - 20) + 'px';
-                                                                                    } else {
-                                                                                        // Abrir para baixo
-                                                                                        dropdown.style.bottom = 'auto';
-                                                                                        dropdown.style.top = (rect.bottom + 4) + 'px';
-                                                                                        dropdown.style.maxHeight = (spaceBelow - 20) + 'px';
+                                                                                            // Decidir se abre para cima ou para baixo
+                                                                                            if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
+                                                                                                // Abrir para cima
+                                                                                                dropdown.style.top = 'auto';
+                                                                                                dropdown.style.bottom = (viewportHeight - rect.top + 4) + 'px';
+                                                                                                dropdown.style.maxHeight = (rect.top - 20) + 'px';
+                                                                                            } else {
+                                                                                                // Abrir para baixo
+                                                                                                dropdown.style.bottom = 'auto';
+                                                                                                dropdown.style.top = (rect.bottom + 4) + 'px';
+                                                                                                dropdown.style.maxHeight = (spaceBelow - 20) + 'px';
+                                                                                            }
+                                                                                        });
+                                                                                    },
+                                                                                    init() {
+                                                                                        // Escutar evento global para fechar
+                                                                                        window.addEventListener('close-all-menus', (e) => {
+                                                                                            if (e.detail && e.detail.except === this.$el) return;
+                                                                                            this.open = false;
+                                                                                        });
+
+                                                                                        // Fechar ao rolar a página para evitar desconexão visual
+                                                                                        window.addEventListener('scroll', () => { if(this.open) this.open = false; }, true);
                                                                                     }
-                                                                                });
-                                                                            },
-                                                                            init() {
-                                                                                // Escutar evento global para fechar
-                                                                                window.addEventListener('close-all-menus', (e) => {
-                                                                                    if (e.detail && e.detail.except === this.$el) return;
-                                                                                    this.open = false;
-                                                                                });
-
-                                                                                // Fechar ao rolar a página para evitar desconexão visual
-                                                                                window.addEventListener('scroll', () => { if(this.open) this.open = false; }, true);
-                                                                            }
-                                                                        }" @click.outside="open = false" class="relative">
+                                                                                }" @click.outside="open = false"
+                                    class="relative">
                                     <button type="button" x-ref="trigger" @click.stop="toggle()"
                                         class="inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                                         :class="{ 'bg-muted': open }" title="Ações">
@@ -293,11 +294,11 @@
                                         @if(in_array($order->status, ['confirmed', 'preparing', 'ready']))
                                             <div class="border-t border-border my-1"></div>
                                             <button type="button" @click="$dispatch('open-start-delivery', { 
-                                                                                        id: {{ $order->id }}, 
-                                                                                        number: '{{ $orderNumberDisplay }}', 
-                                                                                        customer: '{{ addslashes($customerName) }}', 
-                                                                                        address: '{{ addslashes($order->delivery_address ?? 'Sem endereço') }}' 
-                                                                                    })"
+                                                                                                    id: {{ $order->id }}, 
+                                                                                                    number: '{{ $orderNumberDisplay }}', 
+                                                                                                    customer: '{{ addslashes($customerName) }}', 
+                                                                                                    address: '{{ addslashes($order->delivery_address ?? 'Sem endereço') }}' 
+                                                                                                })"
                                                 class="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 w-full text-left">
                                                 <i data-lucide="truck" class="w-4 h-4 shrink-0"></i>
                                                 <span>Iniciar Entrega</span>
@@ -305,9 +306,9 @@
                                         @elseif($order->status === 'out_for_delivery')
                                             <div class="border-t border-border my-1"></div>
                                             <button type="button" @click="$dispatch('open-finish-delivery', { 
-                                                                                        id: {{ $order->id }}, 
-                                                                                        number: '{{ $orderNumberDisplay }}' 
-                                                                                    })"
+                                                                                                    id: {{ $order->id }}, 
+                                                                                                    number: '{{ $orderNumberDisplay }}' 
+                                                                                                })"
                                                 class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left">
                                                 <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
                                                 <span>Confirmar Entrega</span>
@@ -363,160 +364,160 @@
     </div>
     {{-- Modals de Início/Fim de Entrega --}}
     <div x-data="{
-                    startModalOpen: false,
-                    finishModalOpen: false,
-                    deliveryData: { id: null, number: '', customer: '', address: '' },
-                    message: '',
-                    waze: false,
-                    finishNote: '',
+                        startModalOpen: false,
+                        finishModalOpen: false,
+                        deliveryData: { id: null, number: '', customer: '', address: '' },
+                        message: '',
+                        waze: false,
+                        finishNote: '',
 
-                    init() {
-                        window.addEventListener('open-start-delivery', (e) => {
-                            this.deliveryData = e.detail;
-                            this.message = ''; 
-                            this.waze = false;
-                            this.startModalOpen = true;
-                        });
+                        init() {
+                            window.addEventListener('open-start-delivery', (e) => {
+                                this.deliveryData = e.detail;
+                                this.message = ''; 
+                                this.waze = false;
+                                this.startModalOpen = true;
+                            });
 
-                        window.addEventListener('open-finish-delivery', (e) => {
-                            this.deliveryData = e.detail;
-                            this.finishNote = '';
-                            this.finishModalOpen = true;
-                        });
-                    },
+                            window.addEventListener('open-finish-delivery', (e) => {
+                                this.deliveryData = e.detail;
+                                this.finishNote = '';
+                                this.finishModalOpen = true;
+                            });
+                        },
 
-                    async startDelivery() {
-                        if(!this.deliveryData.id) return;
+                        async startDelivery() {
+                            if(!this.deliveryData.id) return;
 
-                        // 1. Solicitar permissão GPS IMEDIATAMENTE antes de qualquer fetch
-                        if (navigator.geolocation) {
+                            // 1. Solicitar permissão GPS IMEDIATAMENTE antes de qualquer fetch
+                            if (navigator.geolocation) {
+                                try {
+                                    await new Promise((resolve, reject) => {
+                                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                                    });
+                                } catch (e) {
+                                    alert('⚠️ Precisamos do seu GPS para rastrear a entrega.\n\nPor favor, permita o acesso à localização e tente novamente.');
+                                    return; // Abortar se negar
+                                }
+                            } else {
+                                alert('❌ GPS não suportado neste navegador.');
+                                return;
+                            }
+
                             try {
-                                await new Promise((resolve, reject) => {
-                                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-                                });
-                            } catch (e) {
-                                alert('⚠️ Precisamos do seu GPS para rastrear a entrega.\n\nPor favor, permita o acesso à localização e tente novamente.');
-                                return; // Abortar se negar
-                            }
-                        } else {
-                            alert('❌ GPS não suportado neste navegador.');
-                            return;
-                        }
-
-                        try {
-                            // Iniciar Rastreamento no backend
-                            const trackResp = await fetch(`/deliveries/${this.deliveryData.id}/tracking/start`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
-                                    'Accept': 'application/json',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-
-                            if(!trackResp.ok) throw new Error('Erro ao iniciar rastreamento');
-
-                            // Iniciar loop de GPS (função global)
-                            if(typeof startGPSTracking === 'function') {
-                                startGPSTracking(this.deliveryData.id);
-                            }
-
-                            // Abrir Waze se solicitado
-                            if(this.waze) {
-                                 const encodedAddr = encodeURIComponent(this.deliveryData.address);
-                                 window.open(`https://waze.com/ul?q=${encodedAddr}&navigate=yes`, '_blank');
-                            }
-
-                            // Aguardar um pouco para garantir que o GPS iniciou antes de submeter
-                            await new Promise(r => setTimeout(r, 500));
-
-                            // Salvar flag de rastreamento para retomar após reload
-                            localStorage.setItem('active_tracking_order', this.deliveryData.id);
-
-                            // Submit Form
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            // Usar rota padrão de orders para garantir compatibilidade
-                            form.action = `/orders/${this.deliveryData.id}/status`;
-
-                            const csrf = document.createElement('input');
-                            csrf.type = 'hidden';
-                            csrf.name = '_token';
-                            csrf.value = document.querySelector('meta[name=\'csrf-token\']').content;
-                            form.appendChild(csrf);
-
-                            const status = document.createElement('input');
-                            status.type = 'hidden';
-                            status.name = 'status';
-                            status.value = 'out_for_delivery';
-                            form.appendChild(status);
-
-                            document.body.appendChild(form);
-                            form.submit();
-
-                        } catch(e) {
-                            console.error(e);
-                            // Mostrar erro detalhado se for resposta de rede
-                            alert('Erro ao iniciar entrega: ' + (e.message || 'Erro desconhecido'));
-                        }
-                    },
-
-                    async finishDelivery() {
-                        if(!this.deliveryData.id) return;
-
-                        try {
-                            // Parar Rastreamento
-                            await fetch(`/deliveries/${this.deliveryData.id}/tracking/stop`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
-                                    'Accept': 'application/json'
-                                }
-                            });
-
-                            if(typeof stopGPSTracking === 'function') {
-                                stopGPSTracking();
-                            }
-
-                            // Salvar Nota se houver
-                            if(this.finishNote.trim()) {
-                                 await fetch(`/dashboard/orders/${this.deliveryData.id}`, {
-                                    method: 'PUT',
+                                // Iniciar Rastreamento no backend
+                                const trackResp = await fetch(`/deliveries/${this.deliveryData.id}/tracking/start`, {
+                                    method: 'POST',
                                     headers: {
-                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                if(!trackResp.ok) throw new Error('Erro ao iniciar rastreamento');
+
+                                // Iniciar loop de GPS (função global)
+                                if(typeof startGPSTracking === 'function') {
+                                    startGPSTracking(this.deliveryData.id);
+                                }
+
+                                // Abrir Waze se solicitado
+                                if(this.waze) {
+                                     const encodedAddr = encodeURIComponent(this.deliveryData.address);
+                                     window.open(`https://waze.com/ul?q=${encodedAddr}&navigate=yes`, '_blank');
+                                }
+
+                                // Aguardar um pouco para garantir que o GPS iniciou antes de submeter
+                                await new Promise(r => setTimeout(r, 500));
+
+                                // Salvar flag de rastreamento para retomar após reload
+                                localStorage.setItem('active_tracking_order', this.deliveryData.id);
+
+                                // Submit Form
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                // Usar rota padrão de orders para garantir compatibilidade
+                                form.action = `/orders/${this.deliveryData.id}/status`;
+
+                                const csrf = document.createElement('input');
+                                csrf.type = 'hidden';
+                                csrf.name = '_token';
+                                csrf.value = document.querySelector('meta[name=\'csrf-token\']').content;
+                                form.appendChild(csrf);
+
+                                const status = document.createElement('input');
+                                status.type = 'hidden';
+                                status.name = 'status';
+                                status.value = 'out_for_delivery';
+                                form.appendChild(status);
+
+                                document.body.appendChild(form);
+                                form.submit();
+
+                            } catch(e) {
+                                console.error(e);
+                                // Mostrar erro detalhado se for resposta de rede
+                                alert('Erro ao iniciar entrega: ' + (e.message || 'Erro desconhecido'));
+                            }
+                        },
+
+                        async finishDelivery() {
+                            if(!this.deliveryData.id) return;
+
+                            try {
+                                // Parar Rastreamento
+                                await fetch(`/deliveries/${this.deliveryData.id}/tracking/stop`, {
+                                    method: 'POST',
+                                    headers: {
                                         'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
                                         'Accept': 'application/json'
-                                    },
-                                    body: JSON.stringify({ delivery_instructions: this.finishNote })
+                                    }
                                 });
+
+                                if(typeof stopGPSTracking === 'function') {
+                                    stopGPSTracking();
+                                }
+
+                                // Salvar Nota se houver
+                                if(this.finishNote.trim()) {
+                                     await fetch(`/orders/${this.deliveryData.id}`, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
+                                            'Accept': 'application/json'
+                                        },
+                                        body: JSON.stringify({ delivery_instructions: this.finishNote })
+                                    });
+                                }
+
+                                // Submit Form
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = `/deliveries/${this.deliveryData.id}/status`;
+
+                                const csrf = document.createElement('input');
+                                csrf.type = 'hidden';
+                                csrf.name = '_token';
+                                csrf.value = document.querySelector('meta[name=\'csrf-token\']').content;
+                                form.appendChild(csrf);
+
+                                const status = document.createElement('input');
+                                status.type = 'hidden';
+                                status.name = 'status';
+                                status.value = 'delivered';
+                                form.appendChild(status);
+
+                                document.body.appendChild(form);
+                                form.submit();
+
+                            } catch(e) {
+                                console.error(e);
+                                alert('Erro ao finalizar entrega: ' + e.message);
                             }
-
-                            // Submit Form
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            form.action = `/deliveries/${this.deliveryData.id}/status`;
-
-                            const csrf = document.createElement('input');
-                            csrf.type = 'hidden';
-                            csrf.name = '_token';
-                            csrf.value = document.querySelector('meta[name=\'csrf-token\']').content;
-                            form.appendChild(csrf);
-
-                            const status = document.createElement('input');
-                            status.type = 'hidden';
-                            status.name = 'status';
-                            status.value = 'delivered';
-                            form.appendChild(status);
-
-                            document.body.appendChild(form);
-                            form.submit();
-
-                        } catch(e) {
-                            console.error(e);
-                            alert('Erro ao finalizar entrega: ' + e.message);
                         }
-                    }
-                }" x-cloak>
+                    }" x-cloak>
 
         {{-- Modal Start --}}
         <div x-show="startModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
@@ -1040,7 +1041,7 @@
             document.getElementById('schedule-order-number').textContent = orderNumber;
             try {
                 console.log('🔍 Buscando slots de entrega...');
-                const response = await fetch('/dashboard/orders/delivery-slots', {
+                const response = await fetch('/orders/delivery-slots', {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
@@ -1099,7 +1100,7 @@
                 return;
             }
             try {
-                const response = await fetch(`/dashboard/orders/${orderId}`, {
+                const response = await fetch(`/orders/${orderId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1142,7 +1143,7 @@
                 return;
             }
             try {
-                const response = await fetch(`/dashboard/orders/${orderId}`, {
+                const response = await fetch(`/orders/${orderId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

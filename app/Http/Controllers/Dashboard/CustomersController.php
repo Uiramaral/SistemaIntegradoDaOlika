@@ -92,7 +92,7 @@ class CustomersController extends Controller
             $query->orderBy('name', 'asc');
         }
 
-        $customers = $query->paginate(30)->withQueryString();
+        $customers = $query->paginate(500)->withQueryString();
 
         return view('dashboard.customers.index', compact('customers', 'search'));
     }

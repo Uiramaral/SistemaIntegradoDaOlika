@@ -32,13 +32,13 @@
 
 @section('content')
     <div class="bg-card rounded-xl border border-border animate-fade-in" id="categories-page"
-        x-data="categoriesLiveSearch('{{ request('q') ?? '' }}')">
+        x-data="categoriesLiveSearch()">
         <div class="p-4 border-b border-border flex flex-col sm:flex-row gap-4 justify-between">
             <div class="relative flex-1 max-w-md">
                 <i data-lucide="search"
                     class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                <input type="text" x-model="search" @input="filterCategories()" placeholder="Buscar categoria..."
-                    class="form-input pl-10" autocomplete="off" />
+                <input type="text" x-model="search" placeholder="Buscar categoria..." class="form-input pl-10 h-10 w-full"
+                    autocomplete="off" />
             </div>
             <a href="{{ route('dashboard.categories.create') }}" class="btn-primary gap-2 h-9 px-4">
                 <i data-lucide="plus" class="h-4 w-4"></i>
@@ -52,8 +52,7 @@
                     $productsCount = $category->products_count ?? 0;
                 @endphp
                 <div class="category-card border border-border rounded-xl p-4 hover:shadow-md transition-all"
-                    data-search-name="{{ mb_strtolower($category->name, 'UTF-8') }}"
-                    data-search-description="{{ mb_strtolower($category->description ?? '', 'UTF-8') }}">
+                    data-search-name="{{ mb_strtolower($category->name, 'UTF-8') }}" x-show="matchesCard($el)">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -80,13 +79,7 @@
                 </div>
             @endforeach
             @if($categories->count() > 0)
-                <div class="category-filter-no-results col-span-full text-center text-muted-foreground py-8"
-                    x-show="search && showNoResults" x-cloak x-transition>
-                    <div class="flex flex-col items-center gap-2">
-                        <i data-lucide="search-x" class="w-10 h-10 opacity-40"></i>
-                        <p class="text-sm">Nenhuma categoria encontrada para "<span x-text="search"></span>"</p>
-                    </div>
-                </div>
+                {{-- No results message handled by empty state if needed, or loop is empty --}}
             @else
                 <div class="col-span-full text-center text-muted-foreground py-8">
                     Nenhuma categoria cadastrada.
@@ -112,176 +105,20 @@
 
     @push('scripts')
         <script>
-            document.addEventListener('alpine:init', function () {
-                Alpine.data('categoriesLiveSearch', function (initialQ) {
-                    return {
-                        search: (typeof initialQ === 'string' ? initialQ : '') || '',
-                        showNoResults: false,
-                        loading: false,
-                        searchTimeout: null,
-                        allCategories: [],
+            window.categoriesLiveSearch = function () {
+                return {
+                    search: '',
 
-                        init: function () {
-                            this.saveInitialCategories();
-                        },
+                    matchesCard(el) {
+                        if (!el) return false;
+                        const searchLower = this.search.toLowerCase();
+                        if (searchLower === '') return true;
 
-                        saveInitialCategories: function () {
-                            var grid = document.getElementById('categories-grid');
-                            if (!grid) return;
-                            var cards = grid.querySelectorAll('.category-card');
-                            this.allCategories = Array.from(cards).map(function (card) {
-                                return {
-                                    element: card.cloneNode(true),
-                                    name: card.getAttribute('data-search-name') || '',
-                                    description: card.getAttribute('data-search-description') || ''
-                                };
-                            });
-                        },
-
-                        restoreInitialCategories: function () {
-                            var grid = document.getElementById('categories-grid');
-                            if (!grid) return;
-
-                            grid.innerHTML = '';
-                            this.allCategories.forEach(function (item) {
-                                if (item.element) {
-                                    grid.appendChild(item.element.cloneNode(true));
-                                }
-                            });
-
-                            if (window.lucide) {
-                                window.lucide.createIcons();
-                            }
-                        },
-
-                        filterCategories: function () {
-                            var self = this;
-
-                            if (self.searchTimeout) {
-                                clearTimeout(self.searchTimeout);
-                            }
-
-                            var searchTerm = self.search.trim();
-
-                            if (!searchTerm) {
-                                self.restoreInitialCategories();
-                                self.showNoResults = false;
-                                return;
-                            }
-
-                            self.searchTimeout = setTimeout(function () {
-                                self.loading = true;
-
-                                fetch('{{ route("dashboard.categories.index") }}?q=' + encodeURIComponent(searchTerm), {
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                        'Accept': 'application/json'
-                                    }
-                                })
-                                    .then(function (response) {
-                                        return response.json();
-                                    })
-                                    .then(function (data) {
-                                        self.loading = false;
-                                        if (data.categories && data.categories.length > 0) {
-                                            self.renderSearchResults(data.categories);
-                                            self.showNoResults = false;
-                                        } else {
-                                            self.clearCategories();
-                                            self.showNoResults = true;
-                                        }
-                                    })
-                                    .catch(function (error) {
-                                        console.error('Erro na busca:', error);
-                                        self.loading = false;
-                                        self.filterLocal();
-                                    });
-                            }, 300);
-                        },
-
-
-                        renderSearchResults: function (categories) {
-                            var self = this;
-                            var grid = document.getElementById('categories-grid');
-                            if (!grid) return;
-
-                            grid.innerHTML = '';
-
-                            categories.forEach(function (category) {
-                                var editUrl = '{{ route("dashboard.categories.edit", ":id") }}'.replace(':id', category.id);
-
-                                var card = document.createElement('div');
-                                card.className = 'category-card border border-border rounded-xl p-4 hover:shadow-md transition-all';
-
-                                card.innerHTML =
-                                    '<div class="flex items-start justify-between mb-4">' +
-                                    '<div class="flex items-center gap-3">' +
-                                    '<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">' +
-                                    '<i data-lucide="package" class="h-6 w-6 text-primary"></i>' +
-                                    '</div>' +
-                                    '<div>' +
-                                    '<h3 class="font-semibold">' + (category.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</h3>' +
-                                    '<p class="text-sm text-muted-foreground">' + (category.products_count || 0) + ' produtos</p>' +
-                                    '</div>' +
-                                    '</div>' +
-                                    '<div class="flex gap-1">' +
-                                    '<a href="' + editUrl + '" class="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted">' +
-                                    '<i data-lucide="edit" class="h-4 w-4"></i>' +
-                                    '</a>' +
-                                    '<button type="button" class="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted text-destructive">' +
-                                    '<i data-lucide="trash-2" class="h-4 w-4"></i>' +
-                                    '</button>' +
-                                    '</div>' +
-                                    '</div>' +
-                                    '<p class="text-sm text-muted-foreground">' + ((category.description || 'Sem descrição').replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</p>';
-
-                                grid.appendChild(card);
-                            });
-
-                            if (window.lucide) {
-                                window.lucide.createIcons();
-                            }
-                        },
-
-                        clearCategories: function () {
-                            var grid = document.getElementById('categories-grid');
-                            if (grid) {
-                                grid.innerHTML = '';
-                            }
-                        },
-
-                        filterLocal: function () {
-                            var self = this;
-                            var q = self.search.trim().toLowerCase();
-                            if (!q) {
-                                self.restoreInitialCategories();
-                                self.showNoResults = false;
-                                return;
-                            }
-
-                            var visible = 0;
-                            this.allCategories.forEach(function (item) {
-                                if (item.element) {
-                                    var name = item.name.toLowerCase();
-                                    var description = item.description.toLowerCase();
-                                    var nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                                    var descNorm = description.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                                    var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-                                    if (name.includes(q) || nameNorm.includes(qNorm) || description.includes(q) || descNorm.includes(qNorm)) {
-                                        item.element.style.display = '';
-                                        visible++;
-                                    } else {
-                                        item.element.style.display = 'none';
-                                    }
-                                }
-                            });
-
-                            self.showNoResults = visible === 0;
-                        }
-                    };
-                });
-            });
+                        const name = el.dataset.searchName || '';
+                        return name.toLowerCase().includes(searchLower);
+                    }
+                };
+            };
         </script>
     @endpush
 @endsection

@@ -104,6 +104,14 @@
                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
                                    placeholder="contato@confeitaria.com" required>
                         </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="business_subtitle">Subtítulo do Sidebar</label>
+                            <input name="business_subtitle" id="business_subtitle" 
+                                   value="{{ $generalSettings['business_subtitle'] ?? 'Gestão profissional' }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   placeholder="Ex.: Gestão profissional">
+                            <p class="text-[11px] text-muted-foreground">Texto que aparece abaixo do nome da marca no menu lateral</p>
+                        </div>
                     </div>
                     <div class="pt-4 flex justify-end">
                         <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
@@ -676,8 +684,9 @@
                 }
                 
                 // Buscar pedidos para imprimir
-                console.log('🔍 Buscando pedidos para imprimir...');
-                const response = await fetch('/dashboard/orders/orders-for-print', {
+                console.log('🔍 Buscando pedidos para imprimir... (v3.0 - FIX)');
+                console.log('DEBUG: URL deveria ser /orders/orders-for-print');
+                const response = await fetch('/orders/orders-for-print', {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -686,8 +695,10 @@
                 });
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
                     console.error('❌ Erro HTTP ao buscar pedidos:', response.status);
-                    throw new Error(`Erro HTTP: ${response.status}`);
+                    console.error('📜 Detalhes do erro:', errorText);
+                    throw new Error(`Erro HTTP: ${response.status} - ${errorText.substring(0, 100)}`);
                 }
                 
                 const data = await response.json();
@@ -754,7 +765,7 @@
                         }]);
                         
                         // Marcar como impresso
-                        const markResponse = await fetch(`/dashboard/orders/${orderInfo.id}/mark-printed`, {
+                        const markResponse = await fetch(`/orders/${orderInfo.id}/mark-printed`, {
                             method: 'POST',
                             headers: {
                                 'Accept': 'application/json',
@@ -786,7 +797,7 @@
             if (btnToggleText) btnToggleText.textContent = 'Conectando...';
             
             try {
-                const clearResponse = await fetch('/dashboard/orders/clear-old-print-requests', {
+                const clearResponse = await fetch('/orders/clear-old-print-requests', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -901,8 +912,8 @@
             btnTestPrint.addEventListener('click', function() {
                 const printerType = document.querySelector('input[name="printer_type"]:checked')?.value;
                 const url = printerType === 'thermal' 
-                    ? '/dashboard/orders/1/fiscal-receipt' 
-                    : '/dashboard/orders/1/fiscal-receipt?format=a4';
+                    ? '/orders/1/fiscal-receipt' 
+                    : '/orders/1/fiscal-receipt?format=a4';
                 
                 window.open(url, '_blank');
             });

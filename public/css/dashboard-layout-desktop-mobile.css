@@ -1,0 +1,120 @@
+/* Dashboard Layout - Desktop e Mobile Fixes */
+
+/* Desktop: Layout lado a lado */
+@media (min-width: 1024px) {
+    /* Garantir que pedidos e sidebar tenham mesma altura */
+    .dashboard-wrapper .grid.grid-cols-1.lg\:grid-cols-3 {
+        align-items: stretch;
+    }
+    
+    .dashboard-wrapper .table-orders-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .dashboard-wrapper .table-orders-container .orders-table-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .dashboard-wrapper .lg\:col-span-1.space-y-6 {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .dashboard-wrapper .lg\:col-span-1.space-y-6 > div {
+        flex: 1;
+    }
+}
+
+/* Mobile: Remover rolagem horizontal da tabela */
+@media (max-width: 1023px) {
+    /* Tabela responsiva - empilhar colunas ou ajustar layout */
+    .dashboard-wrapper .orders-table-wrapper {
+        overflow-x: visible !important;
+        overflow-y: visible;
+    }
+    
+    .dashboard-wrapper .orders-table {
+        display: block;
+        width: 100%;
+    }
+    
+    .dashboard-wrapper .orders-table thead {
+        display: none;
+    }
+    
+    .dashboard-wrapper .orders-table tbody {
+        display: block;
+        width: 100%;
+    }
+    
+    .dashboard-wrapper .orders-table tbody tr {
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        background-color: white;
+    }
+    
+    .dashboard-wrapper .orders-table tbody td {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .dashboard-wrapper .orders-table tbody td:last-child {
+        border-bottom: none;
+    }
+    
+    .dashboard-wrapper .orders-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #6b7280;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    
+    .dashboard-wrapper .orders-table tbody td.whitespace-nowrap {
+        white-space: normal;
+    }
+}
+
+/* Reduzir espaço superior no mobile */
+@media (max-width: 640px) {
+    .dashboard-content-wrapper {
+        padding-top: 0.5rem;
+    }
+    
+    .dashboard-content-wrapper .controls-section {
+        margin-bottom: 0.5rem;
+        gap: 0.75rem;
+    }
+    
+    .dashboard-content-wrapper .space-y-6 > *:first-child {
+        margin-top: 0;
+    }
+    
+    /* Reduzir espaçamento entre seções */
+    .dashboard-content-wrapper .space-y-6 > * + * {
+        margin-top: 1rem;
+    }
+}
+
+/* Ajustar espaçamento dos cards de métricas em mobile */
+@media (max-width: 640px) {
+    .dashboard-content-wrapper .grid.grid-cols-1.md\:grid-cols-3 {
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+}

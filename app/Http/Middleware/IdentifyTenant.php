@@ -16,7 +16,7 @@ class IdentifyTenant
     protected const RESERVED_SUBDOMAINS = [
         'www',
         'dashboard',
-        'pedido',
+        // 'pedido', // Permitido como slug de cliente
         'admin',
         'api',
         'suporte',
@@ -64,6 +64,17 @@ class IdentifyTenant
 
                 // Injeta _client_id na requisição (para Trait, se usar input)
                 $request->merge(['_client_id' => $tenant->id]);
+
+                // Define parâmetros padrão para rotas (slug e tenant_domain)
+                // Isso corrige erro "Missing required parameters" ao usar route()
+                $domainParts = explode('.', $host);
+                array_shift($domainParts); // Remove o slug
+                $tenantDomain = implode('.', $domainParts);
+
+                \Illuminate\Support\Facades\URL::defaults([
+                    'slug' => $slug,
+                    'tenant_domain' => $tenantDomain,
+                ]);
             }
         }
 

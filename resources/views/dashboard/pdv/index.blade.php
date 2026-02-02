@@ -765,30 +765,35 @@
                 }
 
                 customerSearchTimeout = setTimeout(() => {
-                    fetch(`{{ route('api.pdv.customers.search') }}?q=${encodeURIComponent(query)}`)
+                    fetch(`{{ route('api.pdv.customers.search') }}?q=${encodeURIComponent(query)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
                         .then(res => res.json())
                         .then(data => {
                             if (data.customers && data.customers.length > 0) {
                                 resultsEl.innerHTML = data.customers.map(c => `
-                                                                                <button type="button" class="customer-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
-                                                                                        data-customer-id="${c.id}" 
-                                                                                        data-customer-name="${c.name || 'Sem nome'}"
-                                                                                        data-customer-phone="${c.phone || ''}"
-                                                                                        data-customer-email="${c.email || ''}"
-                                                                                        data-customer-zip="${c.zip_code || ''}"
-                                                                                        data-customer-address="${c.address || ''}"
-                                                                                        data-customer-neighborhood="${c.neighborhood || ''}"
-                                                                                        data-customer-city="${c.city || ''}"
-                                                                                        data-customer-state="${c.state || ''}"
-                                                                                        data-customer-fee="${c.custom_delivery_fee ?? ''}"
-                                                                                        data-customer-wholesale="${Number(c.is_wholesale) === 1 ? '1' : '0'}"
-                                                                                        data-customer-cashback="${c.cashback_balance || 0}">
-                                                                                    <p class="font-medium">${c.name || 'Sem nome'}</p>
-                                                                                    ${c.phone ? `<p class="text-xs text-muted-foreground">${c.phone}</p>` : ''}
-                                                                                    ${c.email ? `<p class="text-xs text-muted-foreground">${c.email}</p>` : ''}
-                                                                                    ${parseFloat(c.cashback_balance || 0) > 0 ? `<p class="text-xs text-amber-600 font-medium">💰 Cashback: R$ ${parseFloat(c.cashback_balance).toFixed(2).replace('.', ',')}</p>` : ''}
-                                                                                </button>
-                                                                            `).join('');
+                                                                                                        <button type="button" class="customer-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
+                                                                                                                data-customer-id="${c.id}" 
+                                                                                                                data-customer-name="${c.name || 'Sem nome'}"
+                                                                                                                data-customer-phone="${c.phone || ''}"
+                                                                                                                data-customer-email="${c.email || ''}"
+                                                                                                                data-customer-zip="${c.zip_code || ''}"
+                                                                                                                data-customer-address="${c.address || ''}"
+                                                                                                                data-customer-neighborhood="${c.neighborhood || ''}"
+                                                                                                                data-customer-city="${c.city || ''}"
+                                                                                                                data-customer-state="${c.state || ''}"
+                                                                                                                data-customer-fee="${c.custom_delivery_fee ?? ''}"
+                                                                                                                data-customer-wholesale="${Number(c.is_wholesale) === 1 ? '1' : '0'}"
+                                                                                                                data-customer-cashback="${c.cashback_balance || 0}">
+                                                                                                            <p class="font-medium">${c.name || 'Sem nome'}</p>
+                                                                                                            ${c.phone ? `<p class="text-xs text-muted-foreground">${c.phone}</p>` : ''}
+                                                                                                            ${c.email ? `<p class="text-xs text-muted-foreground">${c.email}</p>` : ''}
+                                                                                                            ${parseFloat(c.cashback_balance || 0) > 0 ? `<p class="text-xs text-amber-600 font-medium">💰 Cashback: R$ ${parseFloat(c.cashback_balance).toFixed(2).replace('.', ',')}</p>` : ''}
+                                                                                                </button>
+                                                                                    `).join('');
                                 resultsEl.classList.remove('hidden');
                             } else {
                                 resultsEl.innerHTML = '<p class="p-2 text-sm text-muted-foreground">Nenhum cliente encontrado</p>';
@@ -974,7 +979,12 @@
                     if (btnCalc) btnCalc.disabled = true;
                     fetch('{{ route("api.pdv.calculateDeliveryFee") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
                         body: JSON.stringify({
                             cep: String(pdvState.customer.zip_code).replace(/\D/g, ''),
                             subtotal: Math.max(0, subtotal),
@@ -1040,7 +1050,12 @@
                     }
 
                     // Buscar preços atualizados via API
-                    fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productId)}&customer_id=${customerId}&product_id=${productId}`)
+                    fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productId)}&customer_id=${customerId}&product_id=${productId}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
                         .then(res => res.json())
                         .then(data => {
                             if (data.products && data.products.length > 0) {
@@ -1092,7 +1107,12 @@
                     const productName = btn.dataset.productName;
 
                     // Buscar sem customer_id para obter preços normais
-                    fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productName)}&product_id=${productId}`)
+                    fetch(`{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(productName)}&product_id=${productId}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
                         .then(res => res.json())
                         .then(data => {
                             if (data.products && data.products.length > 0) {
@@ -1139,7 +1159,12 @@
                 productSearchTimeout = setTimeout(() => {
                     const customerId = pdvState.customer?.id || '';
                     const url = `{{ route('api.pdv.products.search') }}?q=${encodeURIComponent(query)}${customerId ? '&customer_id=' + customerId : ''}`;
-                    fetch(url)
+                    fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
                         .then(res => res.json())
                         .then(data => {
                             const resultsEl = document.getElementById('product-results');
@@ -1149,21 +1174,21 @@
                                     const displayPrice = hasVariants ? (p.variants[0]?.price || p.price) : p.price;
                                     const category = p.category?.name || p.category_name || 'Produto';
                                     return `
-                                                                                    <button type="button" class="product-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
-                                                                                            data-product-id="${p.id}" 
-                                                                                            data-product-name="${p.name}"
-                                                                                            data-product-price="${displayPrice}"
-                                                                                            data-category="${category}"
-                                                                                            data-has-variants="${hasVariants ? 'true' : 'false'}"
-                                                                                            data-variants='${JSON.stringify(p.variants || [])}'>
-                                                                                        <p class="font-medium">${p.name}</p>
-                                                                                        ${hasVariants
+                                                                                                            <button type="button" class="product-option w-full text-left p-2 hover:bg-accent cursor-pointer" 
+                                                                                                                    data-product-id="${p.id}" 
+                                                                                                                    data-product-name="${p.name}"
+                                                                                                                    data-product-price="${displayPrice}"
+                                                                                                                    data-category="${category}"
+                                                                                                                    data-has-variants="${hasVariants ? 'true' : 'false'}"
+                                                                                                                    data-variants='${JSON.stringify(p.variants || [])}'>
+                                                                                                                <p class="font-medium">${p.name}</p>
+                                                                                                                ${hasVariants
                                             ? `<p class="text-xs text-muted-foreground">A partir de R$ ${parseFloat(displayPrice).toFixed(2).replace('.', ',')}</p>
-                                                                                               <p class="text-xs text-blue-600">Escolher opção</p>`
+                                                                                                                       <p class="text-xs text-blue-600">Escolher opção</p>`
                                             : `<p class="text-xs text-muted-foreground">R$ ${parseFloat(displayPrice).toFixed(2).replace('.', ',')}</p>`
                                         }
-                                                                                    </button>
-                                                                                `;
+                                                                                                            </button>
+                                                                                                        `;
                                 }).join('');
                                 resultsEl.classList.remove('hidden');
                             } else {
@@ -1214,49 +1239,49 @@
                 };
 
                 modal.innerHTML = `
-                                                                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
-                                                                    <div class="p-6 space-y-4">
-                                                                        <div class="flex items-center gap-4">
-                                                                            <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                                                                                <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
-                                                                            </div>
-                                                                            <div>
-                                                                                <p class="text-xs text-muted-foreground">${productCategory}</p>
-                                                                                <h3 class="text-lg font-semibold">${productName}</h3>
-                                                                                <p class="text-blue-600 font-semibold">R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
-                                                                            </div>
-                                                                        </div>
+                                                                                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+                                                                                            <div class="p-6 space-y-4">
+                                                                                                <div class="flex items-center gap-4">
+                                                                                                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                                                                        <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
+                                                                                                    </div>
+                                                                                                    <div>
+                                                                                                        <p class="text-xs text-muted-foreground">${productCategory}</p>
+                                                                                                        <h3 class="text-lg font-semibold">${productName}</h3>
+                                                                                                        <p class="text-blue-600 font-semibold">R$ ${productPrice.toFixed(2).replace('.', ',')}</p>
+                                                                                                    </div>
+                                                                                                </div>
 
-                                                                        <div class="space-y-2">
-                                                                            <p class="text-sm font-semibold">Quantidade</p>
-                                                                            <div class="flex items-center gap-3">
-                                                                                <button type="button" id="btn-decrease-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
-                                                                                <span id="quantity-display" class="text-lg font-semibold w-6 text-center">${quantity}</span>
-                                                                                <button type="button" id="btn-increase-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
-                                                                            </div>
-                                                                        </div>
+                                                                                                <div class="space-y-2">
+                                                                                                    <p class="text-sm font-semibold">Quantidade</p>
+                                                                                                    <div class="flex items-center gap-3">
+                                                                                                        <button type="button" id="btn-decrease-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
+                                                                                                        <span id="quantity-display" class="text-lg font-semibold w-6 text-center">${quantity}</span>
+                                                                                                        <button type="button" id="btn-increase-qty" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
+                                                                                                    </div>
+                                                                                                </div>
 
-                                                                        <div class="space-y-2">
-                                                                            <p class="text-sm font-semibold">Observação (opcional)</p>
-                                                                            <textarea id="item-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado, cortar em fatias..."></textarea>
-                                                                        </div>
+                                                                                                <div class="space-y-2">
+                                                                                                    <p class="text-sm font-semibold">Observação (opcional)</p>
+                                                                                                    <textarea id="item-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado, cortar em fatias..."></textarea>
+                                                                                                </div>
 
-                                                                        <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
-                                                                            <span class="text-sm text-blue-700">Total do item</span>
-                                                                            <span id="quantity-total" class="text-blue-700 font-semibold">R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}</span>
-                                                                        </div>
+                                                                                                <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
+                                                                                                    <span class="text-sm text-blue-700">Total do item</span>
+                                                                                                    <span id="quantity-total" class="text-blue-700 font-semibold">R$ ${(quantity * productPrice).toFixed(2).replace('.', ',')}</span>
+                                                                                                </div>
 
-                                                                        <div class="flex gap-3">
-                                                                            <button type="button" id="btn-cancel-quantity" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">
-                                                                                Cancelar
-                                                                            </button>
-                                                                            <button type="button" id="btn-add-quantity" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">
-                                                                                Adicionar
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            `;
+                                                                                                <div class="flex gap-3">
+                                                                                                    <button type="button" id="btn-cancel-quantity" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">
+                                                                                                        Cancelar
+                                                                                                    </button>
+                                                                                                    <button type="button" id="btn-add-quantity" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">
+                                                                                                        Adicionar
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    `;
 
                 document.body.appendChild(modal);
                 if (window.lucide) {
@@ -1314,60 +1339,60 @@
                 const initialPrice = parseFloat(first?.price || 0);
 
                 modal.innerHTML = `
-                                                                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
-                                                                    <div class="p-6 space-y-4">
-                                                                        <div class="flex items-center gap-4">
-                                                                            <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                                                                                <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
-                                                                            </div>
-                                                                            <div>
-                                                                                <p class="text-xs text-muted-foreground">${productCategory}</p>
-                                                                                <h3 class="text-lg font-semibold">${productName}</h3>
-                                                                                <p class="text-blue-600 font-semibold">R$ <span id="variant-price">${initialPrice.toFixed(2).replace('.', ',')}</span></p>
-                                                                            </div>
-                                                                        </div>
+                                                                                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 relative">
+                                                                                            <div class="p-6 space-y-4">
+                                                                                                <div class="flex items-center gap-4">
+                                                                                                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                                                                        <i data-lucide="shopping-cart" class="h-5 w-5 text-blue-600"></i>
+                                                                                                    </div>
+                                                                                                    <div>
+                                                                                                        <p class="text-xs text-muted-foreground">${productCategory}</p>
+                                                                                                        <h3 class="text-lg font-semibold">${productName}</h3>
+                                                                                                        <p class="text-blue-600 font-semibold">R$ <span id="variant-price">${initialPrice.toFixed(2).replace('.', ',')}</span></p>
+                                                                                                    </div>
+                                                                                                </div>
 
-                                                                        <div class="space-y-2">
-                                                                            <p class="text-sm font-semibold">Escolha a variação</p>
-                                                                            <div class="space-y-2">
-                                                                                ${variants.map((v, index) => `
-                                                                                    <label class="flex items-center justify-between gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent">
-                                                                                        <div class="flex items-center gap-3">
-                                                                                            <input type="radio" name="variant_option" value="${v.id}" data-name="${v.name}" data-price="${v.price}" ${index === 0 ? 'checked' : ''}>
-                                                                                            <span class="text-sm font-medium">${v.name}</span>
+                                                                                                <div class="space-y-2">
+                                                                                                    <p class="text-sm font-semibold">Escolha a variação</p>
+                                                                                                    <div class="space-y-2">
+                                                                                                        ${variants.map((v, index) => `
+                                                                                                            <label class="flex items-center justify-between gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent">
+                                                                                                                <div class="flex items-center gap-3">
+                                                                                                                    <input type="radio" name="variant_option" value="${v.id}" data-name="${v.name}" data-price="${v.price}" ${index === 0 ? 'checked' : ''}>
+                                                                                                                    <span class="text-sm font-medium">${v.name}</span>
+                                                                                                                </div>
+                                                                                                                <span class="text-sm font-semibold">R$ ${parseFloat(v.price).toFixed(2).replace('.', ',')}</span>
+                                                                                                            </label>
+                                                                                                        `).join('')}
+                                                                                                    </div>
+                                                                                                </div>
+
+                                                                                                <div class="space-y-2">
+                                                                                                    <p class="text-sm font-semibold">Quantidade</p>
+                                                                                                    <div class="flex items-center gap-3">
+                                                                                                        <button type="button" id="variant-dec" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
+                                                                                                        <span id="variant-qty" class="text-lg font-semibold w-6 text-center">1</span>
+                                                                                                        <button type="button" id="variant-inc" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
+                                                                                                    </div>
+                                                                                                </div>
+
+                                                                                                <div class="space-y-2">
+                                                                                                    <p class="text-sm font-semibold">Observação (opcional)</p>
+                                                                                                    <textarea id="variant-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado..."></textarea>
+                                                                                                </div>
+
+                                                                                                <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
+                                                                                                    <span class="text-sm text-blue-700">Total do item</span>
+                                                                                                    <span id="variant-total" class="text-blue-700 font-semibold">R$ ${initialPrice.toFixed(2).replace('.', ',')}</span>
+                                                                                                </div>
+
+                                                                                                <div class="flex gap-3">
+                                                                                                    <button type="button" id="variant-cancel" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">Cancelar</button>
+                                                                                                    <button type="button" id="variant-add" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">Adicionar</button>
+                                                                                                </div>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        <span class="text-sm font-semibold">R$ ${parseFloat(v.price).toFixed(2).replace('.', ',')}</span>
-                                                                                    </label>
-                                                                                `).join('')}
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div class="space-y-2">
-                                                                            <p class="text-sm font-semibold">Quantidade</p>
-                                                                            <div class="flex items-center gap-3">
-                                                                                <button type="button" id="variant-dec" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">-</button>
-                                                                                <span id="variant-qty" class="text-lg font-semibold w-6 text-center">1</span>
-                                                                                <button type="button" id="variant-inc" class="w-10 h-10 rounded-full border border-gray-300 text-gray-600">+</button>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div class="space-y-2">
-                                                                            <p class="text-sm font-semibold">Observação (opcional)</p>
-                                                                            <textarea id="variant-notes" rows="3" class="w-full rounded-md border border-input bg-background text-sm" placeholder="Ex: Sem açúcar, bem assado..."></textarea>
-                                                                        </div>
-
-                                                                        <div class="flex items-center justify-between rounded-lg border bg-blue-50 px-4 py-3">
-                                                                            <span class="text-sm text-blue-700">Total do item</span>
-                                                                            <span id="variant-total" class="text-blue-700 font-semibold">R$ ${initialPrice.toFixed(2).replace('.', ',')}</span>
-                                                                        </div>
-
-                                                                        <div class="flex gap-3">
-                                                                            <button type="button" id="variant-cancel" class="flex-1 px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium">Cancelar</button>
-                                                                            <button type="button" id="variant-add" class="flex-1 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium">Adicionar</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            `;
+                                                                                    `;
 
                 document.body.appendChild(modal);
                 if (window.lucide) {
@@ -1558,15 +1583,15 @@
 
                 if (pdvState.items.length === 0) {
                     itemsEl.innerHTML = `
-                                                                    <div class="flex flex-col items-center justify-center gap-3 py-8 text-center text-muted-foreground">
-                                                                        <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
-                                                                            <i data-lucide="shopping-cart" class="h-5 w-5"></i>
-                                                                        </span>
-                                                                        <div>
-                                                                            <p class="font-semibold text-foreground text-sm">Nenhum produto adicionado</p>
-                                                                        </div>
-                                                                    </div>
-                                                                `;
+                                                                                            <div class="flex flex-col items-center justify-center gap-3 py-8 text-center text-muted-foreground">
+                                                                                                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
+                                                                                                    <i data-lucide="shopping-cart" class="h-5 w-5"></i>
+                                                                                                </span>
+                                                                                                <div>
+                                                                                                    <p class="font-semibold text-foreground text-sm">Nenhum produto adicionado</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        `;
                     if (window.lucide) {
                         window.lucide.createIcons();
                     }
@@ -1574,25 +1599,25 @@
                 }
 
                 itemsEl.innerHTML = pdvState.items.map((item, index) => `
-                                                                <div class="flex items-center justify-between p-2 border rounded-md">
-                                                                    <div class="flex-1">
-                                                                        <p class="font-medium text-sm">${item.name}</p>
-                                                                        <p class="text-xs text-muted-foreground">R$ ${item.price.toFixed(2).replace('.', ',')} x ${item.quantity}</p>
-                                                                        ${item.special_instructions ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.special_instructions}</p>` : ''}
-                                                                    </div>
-                                                                    <div class="flex items-center gap-2">
-                                                                        <button type="button" class="btn-dec-qty p-1 hover:bg-accent rounded" data-index="${index}">-</button>
-                                                                        <span class="text-sm w-8 text-center">${item.quantity}</span>
-                                                                        <button type="button" class="btn-inc-qty p-1 hover:bg-accent rounded" data-index="${index}">+</button>
-                                                                        <button type="button" class="btn-remove-item text-red-600 p-1 hover:bg-red-50 rounded ml-2" data-index="${index}">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
-                                                                                <path d="M3 6h18"></path>
-                                                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                                            </svg>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            `).join('');
+                                                                                        <div class="flex items-center justify-between p-2 border rounded-md">
+                                                                                            <div class="flex-1">
+                                                                                                <p class="font-medium text-sm">${item.name}</p>
+                                                                                                <p class="text-xs text-muted-foreground">R$ ${item.price.toFixed(2).replace('.', ',')} x ${item.quantity}</p>
+                                                                                                ${item.special_instructions ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.special_instructions}</p>` : ''}
+                                                                                            </div>
+                                                                                            <div class="flex items-center gap-2">
+                                                                                                <button type="button" class="btn-dec-qty p-1 hover:bg-accent rounded" data-index="${index}">-</button>
+                                                                                                <span class="text-sm w-8 text-center">${item.quantity}</span>
+                                                                                                <button type="button" class="btn-inc-qty p-1 hover:bg-accent rounded" data-index="${index}">+</button>
+                                                                                                <button type="button" class="btn-remove-item text-red-600 p-1 hover:bg-red-50 rounded ml-2" data-index="${index}">
+                                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
+                                                                                                        <path d="M3 6h18"></path>
+                                                                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                                                                    </svg>
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    `).join('');
 
                 // Event listeners para botões
                 itemsEl.querySelectorAll('.btn-dec-qty').forEach(btn => {
@@ -1716,6 +1741,8 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ cep: cepClean, subtotal: subtotal }),
                 })
@@ -1870,6 +1897,8 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ code, subtotal }),
                 })
@@ -1879,9 +1908,9 @@
                             pdvState.coupon = data.coupon;
                             pdvState.coupon.discount = data.discount;
                             document.getElementById('coupon-info').innerHTML = `
-                                                                        <p class="font-medium">${data.coupon.code} - ${data.coupon.name}</p>
-                                                                        <p class="text-xs text-muted-foreground">Desconto: R$ ${data.discount.toFixed(2).replace('.', ',')}</p>
-                                                                    `;
+                                                                                                <p class="font-medium">${data.coupon.code} - ${data.coupon.name}</p>
+                                                                                                <p class="text-xs text-muted-foreground">Desconto: R$ ${data.discount.toFixed(2).replace('.', ',')}</p>
+                                                                                            `;
                             document.getElementById('coupon-info').classList.remove('hidden');
                             updateSummary();
                         } else {
@@ -1957,7 +1986,7 @@
             async function loadDeliverySlots() {
                 try {
                     console.log('🔍 Carregando slots de entrega para PDV...');
-                    const response = await fetch('/dashboard/orders/delivery-slots', {
+                    const response = await fetch('/orders/delivery-slots', {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
@@ -2017,609 +2046,21 @@
                 const selectedOption = dateSelect.options[dateSelect.selectedIndex];
 
                 if (!selectedOption || !selectedOption.dataset.slots) {
-                    slotSelect.innerHTML = '<option value="">Selecione primeiro uma data</option>';
-                    slotSelect.disabled = true;
-                    return;
-                }
-
-                const slots = JSON.parse(selectedOption.dataset.slots);
-
-                if (!slots || slots.length === 0) {
-                    slotSelect.innerHTML = '<option value="">Nenhum horário disponível</option>';
-                    slotSelect.disabled = true;
-                    return;
-                }
-
-                slotSelect.innerHTML = '<option value="">Selecione um horário</option>';
-                slots.forEach(slot => {
-                    if (slot.available > 0) {
-                        const option = document.createElement('option');
-                        option.value = slot.value;
-                        option.textContent = `${slot.label} (${slot.available} vagas)`;
-                        slotSelect.appendChild(option);
-                    }
-                });
-
-                slotSelect.disabled = slotSelect.options.length <= 1; // Desabilita se só tem a opção "Selecione"
-            }
-
-            document.getElementById('scheduled_delivery_date')?.addEventListener('change', updateScheduleSlots);
-
-            // Finalizar pedido (abre agendamento)
-            document.getElementById('btn-finalize-order')?.addEventListener('click', async function () {
-                // Garantir que os slots estejam carregados
-                if (!window.availableDates || window.availableDates.length === 0) {
-                    await loadDeliverySlots();
-                }
-
-                const dateSelect = document.getElementById('scheduled_delivery_date');
-                if (dateSelect && !dateSelect.value && window.availableDates && window.availableDates.length > 0) {
-                    dateSelect.value = window.availableDates[0].date;
-                    updateScheduleSlots();
-                }
-                document.getElementById('finalize-modal').classList.remove('hidden');
-            });
-
-            // Atualizar botões de pagamento
-            document.getElementById('payment-method-select')?.addEventListener('change', function () {
-                updatePaymentButtons();
-            });
-
-            function updatePaymentButtons() {
-                const paymentSelect = document.getElementById('payment-method-select');
-                const btnPix = document.getElementById('btn-payment-pix');
-                const btnLink = document.getElementById('btn-payment-link');
-                if (!paymentSelect || !btnPix || !btnLink) {
-                    return;
-                }
-
-                const method = paymentSelect.value;
-                const activeClasses = ['border-blue-600', 'bg-blue-50', 'text-blue-700'];
-                const inactiveClasses = ['border-gray-300', 'bg-white', 'text-gray-700'];
-
-                if (method === 'pix') {
-                    btnPix.classList.remove(...inactiveClasses);
-                    btnPix.classList.add(...activeClasses);
-                    btnLink.classList.remove(...activeClasses);
-                    btnLink.classList.add(...inactiveClasses);
+                    // Recarregar informações do pedido
+                    document.getElementById('btn-search-order').click();
                 } else {
-                    btnLink.classList.remove(...inactiveClasses);
-                    btnLink.classList.add(...activeClasses);
-                    btnPix.classList.remove(...activeClasses);
-                    btnPix.classList.add(...inactiveClasses);
+                    alert('Erro: ' + (data.message || 'Erro ao confirmar pagamento'));
+                    this.disabled = false;
+                    this.textContent = originalText;
                 }
-
-                // Habilitar botões se houver itens no carrinho
-                const hasItems = pdvState.items && pdvState.items.length > 0;
-                if (btnPix) btnPix.disabled = !hasItems;
-                if (btnLink) btnLink.disabled = !hasItems;
-            }
-
-            function setPaymentMethod(method) {
-                const paymentSelect = document.getElementById('payment-method-select');
-                if (paymentSelect) {
-                    paymentSelect.value = method;
-                }
-                updatePaymentButtons();
-            }
-
-            document.getElementById('btn-payment-pix')?.addEventListener('click', function () {
-                setPaymentMethod('pix');
+            })
+                                    .catch (err => {
+                console.error('Erro ao confirmar pagamento:', err);
+                alert('Erro ao confirmar pagamento');
+                this.disabled = false;
+                this.textContent = originalText;
             });
-
-            document.getElementById('btn-payment-link')?.addEventListener('click', function () {
-                setPaymentMethod('credit_card');
-            });
-
-            // Inicializar seleção de pagamento no carregamento
-            updatePaymentButtons();
-
-            // Toggle seção de entrega
-            document.getElementById('btn-toggle-delivery')?.addEventListener('click', function () {
-                const deliverySection = document.getElementById('delivery-section');
-                if (deliverySection) {
-                    deliverySection.classList.toggle('hidden');
-                    if (deliverySection.classList.contains('hidden')) {
-                        this.innerHTML = '<i data-lucide="truck" class="h-4 w-4"></i> Adicionar Entrega';
-                    } else {
-                        this.innerHTML = '<i data-lucide="truck" class="h-4 w-4"></i> Ocultar Entrega';
-                    }
-                    if (window.lucide) {
-                        window.lucide.createIcons();
-                    }
-                }
-            });
-
-            function calculateOrderTotals() {
-                const subtotal = pdvState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-                // Tenta pegar do modal primeiro, senão do sidebar
-                let deliveryFee = 0;
-                const modalFeeInput = document.getElementById('modal-delivery-fee-input');
-                const sidebarFeeInput = document.getElementById('delivery-fee-input');
-
-                if (modalFeeInput && !document.getElementById('finalize-modal').classList.contains('hidden')) {
-                    deliveryFee = parseFloat(modalFeeInput.value) || 0;
-                } else if (sidebarFeeInput) {
-                    deliveryFee = parseFloat(sidebarFeeInput.value) || 0;
-                }
-
-                const couponDiscount = pdvState.coupon ? (pdvState.coupon.discount || 0) : 0;
-                const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
-                const manualDiscountPercent = parseFloat(document.getElementById('manual-discount-percent').value) || 0;
-                const manualDiscountFromPercent = subtotal * (manualDiscountPercent / 100);
-                const totalDiscount = couponDiscount + manualDiscountFixed + manualDiscountFromPercent;
-                const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
-
-                // Atualizar totais no modal se estiver aberto
-                if (!document.getElementById('finalize-modal').classList.contains('hidden')) {
-                    const modalSubtotalEl = document.getElementById('modal-summary-subtotal');
-                    const modalTotalEl = document.getElementById('modal-summary-total');
-                    if (modalSubtotalEl) modalSubtotalEl.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-                    if (modalTotalEl) modalTotalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-                }
-
-                return { subtotal, deliveryFee, total, totalDiscount };
-            }
-
-            function fillPaymentSummary(prefix) {
-                const { subtotal, deliveryFee, total } = calculateOrderTotals();
-                const listEl = document.getElementById(`${prefix}-summary-items`);
-                if (listEl) {
-                    listEl.innerHTML = pdvState.items.map(item => `
-                                                                    <div class="flex justify-between text-sm">
-                                                                        <span>${item.quantity}x ${item.name}</span>
-                                                                        <span>R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
-                                                                    </div>
-                                                                `).join('');
-                }
-                const subtotalEl = document.getElementById(`${prefix}-subtotal`);
-                if (subtotalEl) subtotalEl.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-                const totalEl = document.getElementById(`${prefix}-total`);
-                if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-                const deliveryEl = document.getElementById(`${prefix}-delivery`);
-                if (deliveryEl) deliveryEl.textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
-
-                if (prefix === 'pix') {
-                    const address = document.getElementById('delivery-address')?.value || pdvState.customer?.address || '';
-                    const cep = document.getElementById('destination-cep')?.value || pdvState.customer?.zip_code || '';
-                    const addressEl = document.getElementById('pix-address');
-                    const cepEl = document.getElementById('pix-cep');
-                    if (addressEl) addressEl.textContent = address || 'Endereço não informado';
-                    if (cepEl) cepEl.textContent = cep ? `CEP: ${cep}` : '';
-                }
-            }
-
-            function openPixPaymentModal() {
-                fillPaymentSummary('pix');
-                const radio = document.querySelector('input[name="pix_option"][value="display_qr"]');
-                if (radio) {
-                    radio.checked = true;
-                }
-                const btn = document.getElementById('btn-confirm-pix-payment');
-                if (btn) {
-                    btn.textContent = 'Gerar QR Code';
-                }
-                document.getElementById('pix-payment-modal')?.classList.remove('hidden');
-            }
-
-            function openLinkPaymentModal() {
-                fillPaymentSummary('link');
-                document.getElementById('link-payment-modal')?.classList.remove('hidden');
-            }
-
-            // Listener para atualizar totais quando a taxa muda no modal
-            document.getElementById('modal-delivery-fee-input')?.addEventListener('input', function () {
-                calculateOrderTotals();
-            });
-
-            // Confirmar agendamento e ir para Pagamento
-            document.getElementById('btn-confirm-finalize')?.addEventListener('click', function () {
-                const scheduledDate = document.getElementById('scheduled_delivery_date')?.value || '';
-                const scheduledSlot = document.getElementById('scheduled_delivery_slot')?.value || '';
-                const isOffHours = document.getElementById('delivery-off-hours')?.checked;
-
-                if (!scheduledDate) {
-                    alert('Selecione a data de entrega.');
-                    return;
-                }
-
-                if (!isOffHours && !scheduledSlot) {
-                    alert('Selecione o horário de entrega ou marque "Entrega fora de horário".');
-                    return;
-                }
-
-                // Atualizar pdvState com os dados do modal
-                pdvState.scheduled_delivery_date = scheduledDate;
-                pdvState.scheduled_delivery_slot = isOffHours ? 'off_hours' : scheduledSlot;
-
-                // Capturar endereço e taxa
-                const cep = document.getElementById('modal-destination-cep')?.value || '';
-                const number = document.getElementById('modal-delivery-number')?.value || '';
-                const address = document.getElementById('modal-delivery-address')?.value || '';
-                const obs = document.getElementById('modal-address-observation')?.value || '';
-                const fee = parseFloat(document.getElementById('modal-delivery-fee-input')?.value) || 0;
-
-                // Atualizar dados no objeto customer para persistência na sessão
-                if (pdvState.customer) {
-                    if (address) pdvState.customer.address = address;
-                    if (cep) pdvState.customer.zip_code = cep;
-                    pdvState.customer.number = number;
-                    pdvState.customer.address_observation = obs;
-                }
-
-                // Salvar nas notas do pedido para envio ao backend
-                let addressNotes = [];
-                if (number) addressNotes.push(`Número: ${number}`);
-                if (obs) addressNotes.push(`Obs Endereço: ${obs}`);
-                if (isOffHours) addressNotes.push(`[Entrega Fora de Horário]`);
-
-                // Limpar notas de endereço anteriores para evitar duplicação se clicar várias vezes?
-                // Difícil separar. Vamos apenas anexar de forma simples. 
-                // Idealmente teríamos campos dedicados no backend.
-                if (addressNotes.length > 0) {
-                    const extraNotes = addressNotes.join(' | ');
-                    // Evitar duplicar se já estiver lá? (Complicado fazer regex agora)
-                    // Vamos concatenar.
-                    pdvState.notes = pdvState.notes ? `${pdvState.notes} \n ${extraNotes}` : extraNotes;
-                }
-
-                // Atualizar State Taxa
-                const sidebarFeeInput = document.getElementById('delivery-fee-input');
-                if (sidebarFeeInput) sidebarFeeInput.value = fee.toFixed(2);
-                pdvState.deliveryFee = fee;
-
-                document.getElementById('finalize-modal')?.classList.add('hidden');
-
-                const paymentMethod = document.getElementById('payment-method-select')?.value || 'pix';
-                if (paymentMethod === 'pix') {
-                    openPixPaymentModal();
-                } else {
-                    openLinkPaymentModal();
-                }
-            });
-
-            function submitOrder(paymentMethod, pixOption) {
-                const { totalDiscount } = calculateOrderTotals();
-                // Ler a taxa correta (do modal se foi atualizado via pdvState/sidebar)
-                // O calculateOrderTotals já prioriza o modal se aberto, mas aqui o modal fechou.
-                // Mas atualizamos o sidebarFeeInput no confirm-finalize, então sidebar deve estar certo ou pdvState.deliveryFee.
-                // Vamos usar calculateOrderTotals() que retorna deliveryFee calculado no momento.
-                const totals = calculateOrderTotals();
-                const deliveryFee = totals.deliveryFee;
-
-                const manualDiscountFixed = parseFloat(document.getElementById('manual-discount-fixed').value) || 0;
-
-                const orderData = {
-                    customer_id: pdvState.customer.id,
-                    items: pdvState.items.map(item => ({
-                        product_id: item.product_id,
-                        name: item.name,
-                        price: item.price,
-                        quantity: item.quantity,
-                        special_instructions: item.special_instructions || null,
-                    })),
-                    delivery_type: pdvState.deliveryType,
-                    delivery_fee: deliveryFee,
-                    coupon_code: pdvState.coupon ? pdvState.coupon.code : null,
-                    discount_amount: totalDiscount,
-                    manual_discount_fixed: manualDiscountFixed,
-                    manual_discount_percent: manualDiscountPercent,
-                    notes: pdvState.notes,
-                    send_payment_link: true,
-                    payment_method: paymentMethod,
-                    pix_option: pixOption || null,
-                    address_id: pdvState.customer.address_id || null,
-                    scheduled_delivery_date: pdvState.scheduled_delivery_date || null,
-                    scheduled_delivery_slot: pdvState.scheduled_delivery_slot || null,
-                };
-
-                fetch('{{ route("dashboard.pdv.store") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify(orderData),
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (paymentMethod === 'pix' && pixOption === 'display_qr' && data.order_id) {
-                                fetch(`{{ url("/dashboard/pdv/pix-qr/:id") }}`.replace(':id', data.order_id))
-                                    .then(res => res.json())
-                                    .then(pixData => {
-                                        showPixQrModal(data.order_id, pixData);
-                                        document.getElementById('pix-payment-modal')?.classList.add('hidden');
-                                    });
-                            } else {
-                                alert(data.message);
-                                window.location.reload();
-                            }
-                        } else {
-                            alert('Erro: ' + (data.message || 'Erro ao criar pedido'));
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Erro ao criar pedido:', err);
-                        alert('Erro ao criar pedido');
-                    });
-            }
-
-            // Fechar modais
-            document.getElementById('btn-close-finalize-modal')?.addEventListener('click', () => {
-                document.getElementById('finalize-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-cancel-finalize')?.addEventListener('click', () => {
-                document.getElementById('finalize-modal').classList.add('hidden');
-            });
-
-            document.getElementById('btn-close-pix-payment-modal')?.addEventListener('click', () => {
-                document.getElementById('pix-payment-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-cancel-pix-payment')?.addEventListener('click', () => {
-                document.getElementById('pix-payment-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-confirm-pix-payment')?.addEventListener('click', () => {
-                const pixOption = document.querySelector('input[name="pix_option"]:checked')?.value || 'display_qr';
-                submitOrder('pix', pixOption);
-            });
-            document.querySelectorAll('input[name="pix_option"]').forEach(radio => {
-                radio.addEventListener('change', () => {
-                    const btn = document.getElementById('btn-confirm-pix-payment');
-                    if (!btn) return;
-                    btn.textContent = radio.value === 'send_whatsapp' ? 'Enviar Cobrança' : 'Gerar QR Code';
-                });
-            });
-
-            document.getElementById('btn-close-link-payment-modal')?.addEventListener('click', () => {
-                document.getElementById('link-payment-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-cancel-link-payment')?.addEventListener('click', () => {
-                document.getElementById('link-payment-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-confirm-link-payment')?.addEventListener('click', () => {
-                submitOrder('credit_card', null);
-            });
-
-            // Modal de novo cliente
-            document.getElementById('btn-new-customer')?.addEventListener('click', () => {
-                document.getElementById('new-customer-modal').classList.remove('hidden');
-            });
-
-            document.getElementById('new-customer-form')?.addEventListener('submit', function (e) {
-                e.preventDefault();
-
-                const name = document.getElementById('new-customer-name').value;
-                const phone = document.getElementById('new-customer-phone').value;
-                const email = document.getElementById('new-customer-email').value;
-                const isWholesale = document.getElementById('new-customer-is-wholesale').checked;
-
-                // Coletar dados de endereço
-                const zipCode = document.getElementById('new-customer-zip-code').value.trim();
-                const street = document.getElementById('new-customer-street').value.trim();
-                const number = document.getElementById('new-customer-number').value.trim();
-                const complement = document.getElementById('new-customer-complement').value.trim();
-                const neighborhood = document.getElementById('new-customer-neighborhood').value.trim();
-                const city = document.getElementById('new-customer-city').value.trim();
-                const state = document.getElementById('new-customer-state').value.trim().toUpperCase();
-
-                // Preparar dados do endereço (só enviar se houver pelo menos CEP ou rua)
-                const addressData = {};
-                if (zipCode || street) {
-                    if (zipCode) addressData.zip_code = zipCode.replace(/\D/g, '');
-                    if (street) addressData.street = street;
-                    if (number) addressData.number = number;
-                    if (complement) addressData.complement = complement;
-                    if (neighborhood) addressData.neighborhood = neighborhood;
-                    if (city) addressData.city = city;
-                    if (state) addressData.state = state;
-                }
-
-                const requestData = {
-                    name,
-                    phone,
-                    email,
-                    is_wholesale: isWholesale
-                };
-
-                // Adicionar endereço se houver dados
-                if (Object.keys(addressData).length > 0) {
-                    requestData.address = addressData;
-                }
-
-                fetch('{{ route("api.pdv.customers.store") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify(requestData),
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.customer) {
-                            // Selecionar o novo cliente
-                            const customer = data.customer;
-                            pdvState.customer = {
-                                id: customer.id,
-                                name: customer.name,
-                                phone: customer.phone,
-                                email: customer.email,
-                                zip_code: customer.zip_code || '',
-                                address: customer.address || '',
-                                neighborhood: customer.neighborhood || '',
-                                city: customer.city || '',
-                                state: customer.state || '',
-                                custom_delivery_fee: customer.custom_delivery_fee || null,
-                                is_wholesale: customer.is_wholesale || false,
-                            };
-                            document.getElementById('customer-id').value = customer.id;
-                            document.getElementById('selected-customer-name').textContent = customer.name;
-                            let info = [customer.phone, customer.email].filter(Boolean).join(' • ') || 'Sem informações de contato';
-                            if (customer.is_wholesale) {
-                                info += ' • 🔷 Revenda';
-                            }
-                            document.getElementById('selected-customer-info').textContent = info;
-                            document.getElementById('selected-customer').classList.remove('hidden');
-
-                            // Atualizar preços dos produtos frequentes se for wholesale
-                            if (customer.is_wholesale) {
-                                updateProductPricesForWholesale(customer.id);
-
-                                // Recarregar produtos da busca se houver
-                                const productSearch = document.getElementById('product-search');
-                                if (productSearch && productSearch.value.trim().length >= 2) {
-                                    // Re-disparar busca de produtos para atualizar preços
-                                    productSearch.dispatchEvent(new Event('input'));
-                                }
-                            } else {
-                                // Se não for wholesale, resetar para preços normais
-                                resetProductPricesToNormal();
-                            }
-
-                            // Fechar modal
-                            document.getElementById('new-customer-modal').classList.add('hidden');
-                            document.getElementById('new-customer-form').reset();
-
-                            updateFinalizeButton();
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Erro ao criar cliente:', err);
-                        alert('Erro ao criar cliente');
-                    });
-            });
-
-            document.getElementById('btn-close-new-customer-modal')?.addEventListener('click', () => {
-                document.getElementById('new-customer-modal').classList.add('hidden');
-            });
-            document.getElementById('btn-cancel-new-customer')?.addEventListener('click', () => {
-                document.getElementById('new-customer-modal').classList.add('hidden');
-            });
-
-            // Botão para adicionar mais itens - rola para o topo da lista de produtos
-            document.getElementById('btn-add-more-items')?.addEventListener('click', function () {
-                const productSearch = document.getElementById('product-search');
-                if (productSearch) {
-                    productSearch.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // Focar no campo de busca após um pequeno delay
-                    setTimeout(() => {
-                        productSearch.focus();
-                    }, 300);
-                }
-            });
-
-            // Buscar pedido para confirmação de pagamento
-            let currentOrderId = null;
-
-            document.getElementById('btn-search-order')?.addEventListener('click', function () {
-                const orderNumber = document.getElementById('order-number-search').value.trim();
-
-                if (!orderNumber) {
-                    alert('Digite o número do pedido');
-                    return;
-                }
-
-                this.disabled = true;
-                this.textContent = 'Buscando...';
-
-                fetch('{{ route("dashboard.pdv.searchOrder") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({ order_number: orderNumber }),
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        this.disabled = false;
-                        this.textContent = 'Buscar';
-
-                        if (data.success) {
-                            currentOrderId = data.order.id;
-                            const order = data.order;
-
-                            document.getElementById('order-info').innerHTML = `
-                                                                        <div class="space-y-2">
-                                                                            <p><strong>Pedido:</strong> #${order.order_number}</p>
-                                                                            <p><strong>Cliente:</strong> ${order.customer_name}</p>
-                                                                            <p><strong>Telefone:</strong> ${order.customer_phone}</p>
-                                                                            <p><strong>Valor:</strong> R$ ${parseFloat(order.final_amount).toFixed(2).replace('.', ',')}</p>
-                                                                            <p><strong>Status:</strong> ${order.status}</p>
-                                                                            <p><strong>Pagamento:</strong> ${order.payment_status}</p>
-                                                                            <p><strong>Criado em:</strong> ${order.created_at}</p>
-                                                                        </div>
-                                                                    `;
-
-                            document.getElementById('order-search-result').classList.remove('hidden');
-
-                            // Habilitar botão de confirmar se ainda não estiver pago
-                            const btnConfirm = document.getElementById('btn-confirm-payment-silent');
-                            if (order.payment_status === 'paid') {
-                                btnConfirm.disabled = true;
-                                btnConfirm.textContent = 'Pagamento já confirmado';
-                                btnConfirm.classList.add('opacity-50', 'cursor-not-allowed');
-                            } else {
-                                btnConfirm.disabled = false;
-                                btnConfirm.textContent = 'Confirmar Pagamento (Sem Notificar)';
-                                btnConfirm.classList.remove('opacity-50', 'cursor-not-allowed');
-                            }
-                        } else {
-                            alert(data.message || 'Pedido não encontrado');
-                            document.getElementById('order-search-result').classList.add('hidden');
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Erro ao buscar pedido:', err);
-                        alert('Erro ao buscar pedido');
-                        this.disabled = false;
-                        this.textContent = 'Buscar';
-                    });
-            });
-
-            // Confirmar pagamento sem notificar
-            document.getElementById('btn-confirm-payment-silent')?.addEventListener('click', function () {
-                if (!currentOrderId) {
-                    alert('Busque um pedido primeiro');
-                    return;
-                }
-
-                if (!confirm('Deseja confirmar o pagamento deste pedido SEM enviar notificação ao cliente?\n\nEsta ação é para pedidos migrados entre plataformas.')) {
-                    return;
-                }
-
-                this.disabled = true;
-                const originalText = this.textContent;
-                this.textContent = 'Confirmando...';
-
-                fetch(`/dashboard/pdv/orders/${currentOrderId}/confirm-payment-silent`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert(data.message || 'Pagamento confirmado com sucesso!');
-                            // Recarregar informações do pedido
-                            document.getElementById('btn-search-order').click();
-                        } else {
-                            alert('Erro: ' + (data.message || 'Erro ao confirmar pagamento'));
-                            this.disabled = false;
-                            this.textContent = originalText;
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Erro ao confirmar pagamento:', err);
-                        alert('Erro ao confirmar pagamento');
-                        this.disabled = false;
-                        this.textContent = originalText;
-                    });
-            });
+                            });
 
             // Permitir buscar ao pressionar Enter
             document.getElementById('order-number-search')?.addEventListener('keypress', function (e) {
@@ -2732,13 +2173,13 @@
 
                 if (!pixData || !pixData.qr_code_base64) {
                     content.innerHTML = `
-                                                                    <div class="text-center py-8">
-                                                                        <p class="text-red-600 mb-4">Erro ao gerar QR Code</p>
-                                                                        <button onclick="location.reload()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-                                                                            Fechar
-                                                                        </button>
-                                                                    </div>
-                                                                `;
+                                                                                            <div class="text-center py-8">
+                                                                                                <p class="text-red-600 mb-4">Erro ao gerar QR Code</p>
+                                                                                                <button onclick="location.reload()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                                                                                                    Fechar
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        `;
                     modal.classList.remove('hidden');
                     return;
                 }
@@ -2748,41 +2189,41 @@
                 const amount = pixData.amount || 0;
 
                 content.innerHTML = `
-                                                                <div class="text-center space-y-4">
-                                                                    <div>
-                                                                        <p class="text-lg font-semibold mb-2">Valor: R$ ${parseFloat(amount).toFixed(2).replace('.', ',')}</p>
-                                                                        <p class="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código PIX</p>
-                                                                    </div>
+                                                                                        <div class="text-center space-y-4">
+                                                                                            <div>
+                                                                                                <p class="text-lg font-semibold mb-2">Valor: R$ ${parseFloat(amount).toFixed(2).replace('.', ',')}</p>
+                                                                                                <p class="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código PIX</p>
+                                                                                            </div>
 
-                                                                    ${qrCodeImg ? `
-                                                                        <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-                                                                            <img src="${qrCodeImg}" alt="QR Code PIX" class="w-64 h-64 mx-auto">
-                                                                        </div>
-                                                                    ` : ''}
+                                                                                            ${qrCodeImg ? `
+                                                                                                <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                                                                                                    <img src="${qrCodeImg}" alt="QR Code PIX" class="w-64 h-64 mx-auto">
+                                                                                                </div>
+                                                                                            ` : ''}
 
-                                                                    ${copyPaste ? `
-                                                                        <div class="space-y-2">
-                                                                            <label class="block text-sm font-medium text-left">Código PIX (Copiar e Colar):</label>
-                                                                            <div class="flex gap-2">
-                                                                                <input type="text" id="pix-copy-paste-code" value="${copyPaste}" readonly 
-                                                                                       class="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-sm font-mono">
-                                                                                <button type="button" onclick="copyPixCode()" 
-                                                                                        class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 whitespace-nowrap">
-                                                                                    Copiar
-                                                                                </button>
-                                                                            </div>
-                                                                            <p id="copy-feedback" class="text-xs text-green-600 hidden">Código copiado!</p>
-                                                                        </div>
-                                                                    ` : ''}
+                                                                                            ${copyPaste ? `
+                                                                                                <div class="space-y-2">
+                                                                                                    <label class="block text-sm font-medium text-left">Código PIX (Copiar e Colar):</label>
+                                                                                                    <div class="flex gap-2">
+                                                                                                        <input type="text" id="pix-copy-paste-code" value="${copyPaste}" readonly 
+                                                                                                               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-sm font-mono">
+                                                                                                        <button type="button" onclick="copyPixCode()" 
+                                                                                                                class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 whitespace-nowrap">
+                                                                                                            Copiar
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                    <p id="copy-feedback" class="text-xs text-green-600 hidden">Código copiado!</p>
+                                                                                                </div>
+                                                                                            ` : ''}
 
-                                                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                                        <p class="text-sm text-blue-900">
-                                                                            <strong>Aguardando pagamento...</strong><br>
-                                                                            O pagamento será confirmado automaticamente quando processado.
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            `;
+                                                                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                                                                <p class="text-sm text-blue-900">
+                                                                                                    <strong>Aguardando pagamento...</strong><br>
+                                                                                                    O pagamento será confirmado automaticamente quando processado.
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    `;
 
                 modal.classList.remove('hidden');
 
@@ -2836,7 +2277,7 @@
                         return;
                     }
 
-                    fetch(`/dashboard/orders/${orderId}/payment-status`, {
+                    fetch(`/orders/${orderId}/payment-status`, {
                         headers: {
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest'
@@ -2851,28 +2292,28 @@
                                 const content = document.getElementById('pix-qr-content');
                                 if (content) {
                                     content.innerHTML = `
-                                                                                <div class="text-center space-y-4">
-                                                                                    <div class="inline-block p-4 bg-green-100 rounded-full">
-                                                                                        <svg class="w-16 h-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                                                        </svg>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <p class="text-xl font-semibold text-green-600 mb-2">Pagamento Confirmado!</p>
-                                                                                        <p class="text-sm text-muted-foreground">O pedido foi pago com sucesso.</p>
-                                                                                    </div>
-                                                                                    <div class="flex gap-3 mt-6">
-                                                                                        <button onclick="location.reload()" 
-                                                                                                class="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90">
-                                                                                            Novo Pedido
-                                                                                        </button>
-                                                                                        <button onclick="window.location.href='/dashboard/orders/${orderId}'" 
-                                                                                                class="flex-1 border border-input bg-background px-4 py-2 rounded-lg hover:bg-accent">
-                                                                                            Ver Pedido
-                                                                                        </button>
-                                                                                    </div>
-                                                                                </div>
-                                                                            `;
+                                                                                                        <div class="text-center space-y-4">
+                                                                                                            <div class="inline-block p-4 bg-green-100 rounded-full">
+                                                                                                                <svg class="w-16 h-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                                                                                </svg>
+                                                                                                            </div>
+                                                                                                            <div>
+                                                                                                                <p class="text-xl font-semibold text-green-600 mb-2">Pagamento Confirmado!</p>
+                                                                                                                <p class="text-sm text-muted-foreground">O pedido foi pago com sucesso.</p>
+                                                                                                            </div>
+                                                                                                            <div class="flex gap-3 mt-6">
+                                                                                                                <button onclick="location.reload()" 
+                                                                                                                        class="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90">
+                                                                                                                    Novo Pedido
+                                                                                                                </button>
+                                                                                                                <button onclick="window.location.href='/orders/${orderId}'" 
+                                                                                                                        class="flex-1 border border-input bg-background px-4 py-2 rounded-lg hover:bg-accent">
+                                                                                                                    Ver Pedido
+                                                                                                                </button>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    `;
                                 }
                             }
                         })

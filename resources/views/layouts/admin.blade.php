@@ -117,8 +117,9 @@
             $logoUrl = $themeSettings['theme_logo_url'] ?? null;
         }
 
-        // Nome da marca
+        // Nome da marca e subtítulo
         $brandName = $themeSettings['theme_brand_name'] ?? 'OLIKA';
+        $businessSubtitle = $personalizationSettings['business_subtitle'] ?? 'Gestão profissional';
     @endphp
     <meta name="theme-color" content="{{ $themeColor }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -181,12 +182,17 @@
             ->pluck('value', 'key')
             ->toArray();
 
-        // Atualizar themeSettings com logo e favicon de payment_settings se existirem
+        // Atualizar themeSettings com logo e favicon de payment_settings se existirem e o arquivo for válido
         if (isset($personalizationSettings['logo']) && $personalizationSettings['logo']) {
-            $themeSettings['theme_logo_url'] = asset('storage/' . $personalizationSettings['logo']);
+            // Verificar se o arquivo existe fisicamente para evitar 404 no frontend
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($personalizationSettings['logo'])) {
+                $themeSettings['theme_logo_url'] = asset('storage/' . $personalizationSettings['logo']);
+            }
         }
         if (isset($personalizationSettings['favicon']) && $personalizationSettings['favicon']) {
-            $themeSettings['theme_favicon_url'] = asset('storage/' . $personalizationSettings['favicon']);
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($personalizationSettings['favicon'])) {
+                $themeSettings['theme_favicon_url'] = asset('storage/' . $personalizationSettings['favicon']);
+            }
         }
 
         // Processar favicon após atualizar themeSettings (já foi processado acima)
@@ -255,92 +261,7 @@
         }
     @endphp
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        border: "hsl(0 0% 89%)",
-                        input: "hsl(0 0% 89%)",
-                        ring: "hsl({{ $primaryHsl }})",
-                        background: "hsl(0 0% 99%)",
-                        foreground: "hsl(222 47% 11%)",
-                        primary: {
-                            DEFAULT: "hsl({{ $primaryHsl }})",
-                            foreground: "hsl(0 0% 100%)",
-                            50: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 95%)",
-                            100: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 90%)",
-                            200: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 80%)",
-                            300: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 70%)",
-                            400: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 60%)",
-                            500: "hsl({{ $primaryHsl }})",
-                            600: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 45%)",
-                            700: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 40%)",
-                            800: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 35%)",
-                            900: "hsl({{ explode(' ', $primaryHsl)[0] }} {{ explode(' ', $primaryHsl)[1] }} 30%)"
-                        },
-                        secondary: {
-                            DEFAULT: "hsl({{ $secondaryHsl }})",
-                            foreground: "hsl(0 0% 100%)",
-                            50: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 95%)",
-                            100: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 90%)",
-                            200: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 80%)",
-                            300: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 70%)",
-                            400: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 65%)",
-                            500: "hsl({{ $secondaryHsl }})",
-                            600: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 55%)",
-                            700: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 50%)",
-                            800: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 45%)",
-                            900: "hsl({{ explode(' ', $secondaryHsl)[0] }} {{ explode(' ', $secondaryHsl)[1] }} 40%)"
-                        },
-                        destructive: { DEFAULT: "hsl(0 84% 60%)", foreground: "hsl(0 0% 100%)" },
-                        muted: { DEFAULT: "hsl(0 0% 96%)", foreground: "hsl(215 16% 47%)" },
-                        accent: {
-                            DEFAULT: "hsl({{ $accentHsl }})",
-                            foreground: "hsl(0 0% 100%)",
-                            50: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 95%)",
-                            100: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 90%)",
-                            200: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 80%)",
-                            300: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 70%)",
-                            400: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 60%)",
-                            500: "hsl({{ $accentHsl }})",
-                            600: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 47%)",
-                            700: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 42%)",
-                            800: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 37%)",
-                            900: "hsl({{ explode(' ', $accentHsl)[0] }} {{ explode(' ', $accentHsl)[1] }} 32%)"
-                        },
-                        popover: { DEFAULT: "hsl(0 0% 100%)", foreground: "hsl(222 47% 11%)" },
-                        card: { DEFAULT: "hsl(0 0% 100%)", foreground: "hsl(222 47% 11%)" },
-                        success: { DEFAULT: "hsl(142 76% 36%)", foreground: "hsl(0 0% 100%)" },
-                        sidebar: {
-                            DEFAULT: "hsl(222 47% 11%)",
-                            foreground: "hsl(0 0% 98%)",
-                            primary: "hsl({{ $primaryHsl }})",
-                            "primary-foreground": "hsl(0 0% 100%)",
-                            accent: "hsl({{ $primaryHsl }})",
-                            "accent-foreground": "hsl(0 0% 100%)",
-                            border: "hsl(217 33% 17%)",
-                            ring: "hsl({{ $primaryHsl }})"
-                        }
-                    },
-                    borderRadius: {
-                        lg: "0.75rem",
-                        md: "calc(0.75rem - 2px)",
-                        sm: "calc(0.75rem - 4px)"
-                    },
-                    boxShadow: {
-                        'sweetspot': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        'sweetspot-md': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
-                        'sweetspot-lg': '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                        'card': '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
-                        'card-hover': '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05)',
-                        'sidebar': '4px 0 6px -1px rgb(0 0 0 / 0.1)',
-                    }
-                }
-            }
-        }
-    </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('css/admin-bridge.css') }}">
     <link rel="stylesheet" href="{{ asset('css/lovable-global.css') }}">
     <link rel="stylesheet" href="{{ asset('css/sweetspot-theme.css') }}">
@@ -365,21 +286,78 @@
 
     <style>
         :root {
-            --primary:
-                {{ $primaryHsl }}
-            ;
-            --secondary:
-                {{ $secondaryHsl }}
-            ;
-            --accent:
-                {{ $accentHsl }}
-            ;
-            --radius:
-                {{ $themeSettings['theme_border_radius'] }}
-            ;
-            --font-family:
-                {!! $themeSettings['theme_font_family'] !!}
-            ;
+            /* Helper para extrair componentes do HSL */
+            @php
+                $pH = explode(' ', $primaryHsl)[0] ?? '0';
+                $pS = explode(' ', $primaryHsl)[1] ?? '0%';
+                
+                $sH = explode(' ', $secondaryHsl)[0] ?? '0';
+                $sS = explode(' ', $secondaryHsl)[1] ?? '0%';
+
+                $aH = explode(' ', $accentHsl)[0] ?? '0';
+                $aS = explode(' ', $accentHsl)[1] ?? '0%';
+            @endphp
+
+            --primary: {{ $primaryHsl }};
+            --primary-foreground: 0 0% 100%;
+            --primary-50: {{ $pH }} {{ $pS }} 95%;
+            --primary-100: {{ $pH }} {{ $pS }} 90%;
+            --primary-200: {{ $pH }} {{ $pS }} 80%;
+            --primary-300: {{ $pH }} {{ $pS }} 70%;
+            --primary-400: {{ $pH }} {{ $pS }} 60%;
+            --primary-500: {{ $primaryHsl }};
+            --primary-600: {{ $pH }} {{ $pS }} 45%;
+            --primary-700: {{ $pH }} {{ $pS }} 40%;
+            --primary-800: {{ $pH }} {{ $pS }} 35%;
+            --primary-900: {{ $pH }} {{ $pS }} 30%;
+
+            --secondary: {{ $secondaryHsl }};
+            --secondary-foreground: 0 0% 100%;
+            --secondary-50: {{ $sH }} {{ $sS }} 95%;
+            --secondary-100: {{ $sH }} {{ $sS }} 90%;
+            --secondary-200: {{ $sH }} {{ $sS }} 80%;
+            --secondary-300: {{ $sH }} {{ $sS }} 70%;
+            --secondary-400: {{ $sH }} {{ $sS }} 65%;
+            --secondary-500: {{ $secondaryHsl }};
+            --secondary-600: {{ $sH }} {{ $sS }} 55%;
+            --secondary-700: {{ $sH }} {{ $sS }} 50%;
+            --secondary-800: {{ $sH }} {{ $sS }} 45%;
+            --secondary-900: {{ $sH }} {{ $sS }} 40%;
+
+            --accent: {{ $accentHsl }};
+            --accent-foreground: 0 0% 100%;
+            --accent-50: {{ $aH }} {{ $aS }} 95%;
+            --accent-100: {{ $aH }} {{ $aS }} 90%;
+            --accent-200: {{ $aH }} {{ $aS }} 80%;
+            --accent-300: {{ $aH }} {{ $aS }} 70%;
+            --accent-400: {{ $aH }} {{ $aS }} 60%;
+            --accent-500: {{ $accentHsl }};
+            --accent-600: {{ $aH }} {{ $aS }} 47%;
+            --accent-700: {{ $aH }} {{ $aS }} 42%;
+            --accent-800: {{ $aH }} {{ $aS }} 37%;
+            --accent-900: {{ $aH }} {{ $aS }} 32%;
+
+            --radius: {{ $themeSettings['theme_border_radius'] }};
+            --font-family: {!! $themeSettings['theme_font_family'] !!};
+
+            /* Cores estáticas do sistema */
+            --border: 217 33% 17%;
+            --input: 217 33% 17%;
+            --ring: {{ $primaryHsl }};
+            --background: 0 0% 99%;
+            --foreground: 222 47% 11%;
+            
+            --muted: 0 0% 96%;
+            --muted-foreground: 215 16% 47%;
+            
+            --destructive: 0 84% 60%;
+            --destructive-foreground: 0 0% 100%;
+
+            --popover: 0 0% 100%;
+            --popover-foreground: 222 47% 11%;
+
+            --card: 0 0% 100%;
+            --card-foreground: 222 47% 11%;
         }
 
         body {
@@ -431,15 +409,15 @@
                 'label' => 'Produção',
                 'icon' => 'factory',
                 'children' => [
-                    ['label' => 'Estoque', 'icon' => 'box', 'route' => 'dashboard.producao.estoque-produzidos.index', 'routePattern' => 'dashboard.producao.estoque-produzidos.*'],
-                    ['label' => 'Lista de Compras', 'icon' => 'shopping-cart', 'route' => 'dashboard.producao.lista-compras.index', 'routePattern' => 'dashboard.producao.lista-compras.*'],
-                    ['label' => 'Receitas', 'icon' => 'book-open', 'route' => 'dashboard.producao.receitas.index', 'routePattern' => 'dashboard.producao.receitas.*'],
                     ['label' => 'Dashboard', 'icon' => 'layout-dashboard', 'route' => 'dashboard.producao.index', 'routePattern' => 'dashboard.producao.index'],
+                    ['label' => 'Receitas', 'icon' => 'book-open', 'route' => 'dashboard.producao.receitas.index', 'routePattern' => 'dashboard.producao.receitas.*'],
                     ['label' => 'Ingredientes', 'icon' => 'wheat', 'route' => 'dashboard.producao.ingredientes.index', 'routePattern' => 'dashboard.producao.ingredientes.*'],
+                    ['label' => 'Embalagens', 'icon' => 'package-2', 'route' => 'dashboard.producao.embalagens.index', 'routePattern' => 'dashboard.producao.embalagens.*'],
                     ['label' => 'Lista de Produção', 'icon' => 'list-todo', 'route' => 'dashboard.producao.lista-producao.index', 'routePattern' => 'dashboard.producao.lista-producao.*'],
                     ['label' => 'Estoque Produzidos', 'icon' => 'box', 'route' => 'dashboard.producao.estoque-produzidos.index', 'routePattern' => 'dashboard.producao.estoque-produzidos.*'],
                     ['label' => 'Custos', 'icon' => 'calculator', 'route' => 'dashboard.producao.custos.index', 'routePattern' => 'dashboard.producao.custos.*'],
                     ['label' => 'Configurações de Custos', 'icon' => 'settings', 'route' => 'dashboard.producao.configuracoes-custos.index', 'routePattern' => 'dashboard.producao.configuracoes-custos.*'],
+                    ['label' => 'Lista de Compras', 'icon' => 'shopping-cart', 'route' => 'dashboard.producao.lista-compras.index', 'routePattern' => 'dashboard.producao.lista-compras.*'],
                 ],
             ],
             ['label' => 'Finanças', 'icon' => 'wallet', 'route' => 'dashboard.financas.index', 'routePattern' => 'dashboard.financas.*'],
@@ -526,7 +504,7 @@
                             <div class="sidebar-brand-name font-bold text-lg leading-tight text-foreground">
                                 {{ $themeSettings['theme_brand_name'] }}
                             </div>
-                            <div class="sidebar-sub-brand text-xs text-muted-foreground">Gestão profissional</div>
+                            <div class="sidebar-sub-brand text-xs text-muted-foreground">{{ $businessSubtitle }}</div>
                         </div>
                     </div>
                     <button id="sidebar-close"

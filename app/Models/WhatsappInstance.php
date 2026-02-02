@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class WhatsappInstance extends Model
 {
     use BelongsToClient;
-    
+
     protected $fillable = [
         'client_id',
         'name',
@@ -29,14 +29,14 @@ class WhatsappInstance extends Model
     /**
      * Conecta a instância (Envia o número para o Node configurar)
      */
-    public function connect()
+    public function connect($retry = true)
     {
         // Garantir URL limpa (sem espaços e sem barra no final)
         $url = rtrim(trim($this->api_url), '/');
-        
+
         // Normalizar número de telefone antes de enviar
         $normalizedPhone = $this->normalizePhoneNumber($this->phone_number);
-        
+
         Log::info("WhatsappInstance::connect - Iniciando conexão", [
             'instance_id' => $this->id,
             'target_url' => "{$url}/api/whatsapp/connect",
@@ -47,7 +47,7 @@ class WhatsappInstance extends Model
         try {
             // allow_redirects: false -> Para detectar se o servidor está redirecionando (causa comum do POST virar GET)
             $response = Http::withHeaders($this->getHeaders())
-                ->withOptions(['allow_redirects' => false]) 
+                ->withOptions(['allow_redirects' => false])
                 ->timeout(30)
                 ->post("{$url}/api/whatsapp/connect", [
                     'phone' => $normalizedPhone
@@ -75,6 +75,22 @@ class WhatsappInstance extends Model
                 'body' => $response->body()
             ]);
 
+            // Tentar recuperar de estado travado (429 ou Conexão em andamento)
+            if ($retry && ($response->status() === 429 || str_contains($response->body(), 'Conexão já em andamento'))) {
+                Log::warning('WhatsappInstance::connect - Estado travado detectado. Tentando resetar e reconectar...', [
+                    'instance_id' => $this->id
+                ]);
+
+                // Forçar desconexão para limpar o estado no Node.js
+                $this->disconnect();
+
+                // Aguardar 2 segundos para o Node processar o reset
+                sleep(2);
+
+                // Tentar conectar novamente (sem retry recursivo para evitar loop infinito)
+                return $this->connect(false);
+            }
+
             return ['success' => false, 'error' => 'Erro ao conectar instância: ' . $response->status()];
         } catch (\Exception $e) {
             Log::error('WhatsappInstance::connect - Exceção', [
@@ -93,7 +109,7 @@ class WhatsappInstance extends Model
     {
         // Garantir URL limpa (sem espaços e sem barra no final)
         $url = rtrim(trim($this->api_url), '/');
-        
+
         Log::info("WhatsappInstance::disconnect - Iniciando desconexão", [
             'instance_id' => $this->id,
             'target_url' => "{$url}/api/whatsapp/restart"
@@ -127,7 +143,7 @@ class WhatsappInstance extends Model
                 'instance_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
-            
+
             // Fallback: Se deu erro de conexão, assume que caiu e marca desconectado
             $this->update(['status' => 'DISCONNECTED']);
 
@@ -147,7 +163,7 @@ class WhatsappInstance extends Model
 
             if ($response->successful()) {
                 $status = $response->json();
-                
+
                 // Atualizar status no banco baseado na resposta
                 if (isset($status['connected']) && $status['connected']) {
                     $this->update(['status' => 'CONNECTED']);
@@ -156,7 +172,7 @@ class WhatsappInstance extends Model
                 } else {
                     $this->update(['status' => 'DISCONNECTED']);
                 }
-                
+
                 return $status;
             }
 

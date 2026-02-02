@@ -9,7 +9,7 @@
 
 @section('content')
     <div class="bg-card rounded-xl border border-border animate-fade-in overflow-hidden max-w-full" id="customers-page"
-        x-data="{ ...customersLiveSearch({{ json_encode(request('q') ?? '') }}), newCustomerModalOpen: false, submitting: false }">
+        x-data="{ ...customersLiveSearch(), newCustomerModalOpen: false, submitting: false }">
         <!-- Card Header: Busca, Filtros e Botão -->
         <div class="p-4 sm:p-6 border-b border-border">
             <form id="customers-filter-form" method="GET" action="{{ route('dashboard.customers.index') }}"
@@ -20,9 +20,7 @@
                     <div class="relative flex-1">
                         <i data-lucide="search"
                             class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"></i>
-                        <input type="text" name="q" x-model="search"
-                            @input.debounce.500ms="$event.target.form && $event.target.form.submit()"
-                            placeholder="Buscar por nome ou telefone..."
+                        <input type="text" name="q" x-model="search" placeholder="Buscar por nome ou telefone..."
                             class="form-input pl-10 h-10 bg-muted/30 border-transparent focus:bg-white transition-all text-sm rounded-lg w-full"
                             autocomplete="off">
                     </div>
@@ -219,15 +217,6 @@
                     </div>
                 @endforelse
                 @if($customers->count() > 0)
-                    <div class="customer-filter-no-results col-span-full text-center text-muted-foreground py-8"
-                        x-show="search && showNoResults" x-cloak x-transition>
-                        <div class="flex flex-col items-center gap-2">
-                            <i data-lucide="search-x" class="w-10 h-10 opacity-40"></i>
-                            <p class="text-sm">Nenhum cliente nesta página para "<span x-text="search"></span>"</p>
-                            <p class="text-xs">Use <strong>Filtrar</strong> para buscar em todos ou <strong>Limpar</strong> para
-                                refazer.</p>
-                        </div>
-                    </div>
                 @endif
             </div>
         </div>
@@ -368,46 +357,25 @@
 
         @push('scripts')
             <script>
-                document.addEventListener('alpine:init', function () {
-                    Alpine.data('customersLiveSearch', function (initialQ) {
-                        return {
-                            search: (typeof initialQ === 'string' ? initialQ : '') || '',
-                            showNoResults: false,
-                            newCustomerModalOpen: false,
-                            submitting: false,
+                window.customersLiveSearch = function () {
+                    return {
+                        search: '',
 
-                            init: function () {
-                                var self = this;
-                                function updateNoResults() {
-                                    self.$nextTick(function () {
-                                        var root = document.getElementById('customers-page');
-                                        var cards = root ? root.querySelectorAll('.customer-card') : [];
-                                        var visible = 0;
-                                        cards.forEach(function (el) {
-                                            if (self.matchesCard(el)) visible++;
-                                        });
-                                        self.showNoResults = self.search.trim() !== '' && visible === 0;
-                                    });
-                                }
-                                this.$watch('search', updateNoResults);
-                                updateNoResults();
-                            },
+                        matchesCard(el) {
+                            if (!el) return false;
 
-                            matchesCard: function (el) {
-                                var q = this.search.trim().toLowerCase();
-                                if (!q) return true;
-                                var qDigits = q.replace(/\D/g, '');
-                                var name = (el.getAttribute('data-search-name') || '').toLowerCase();
-                                var phone = (el.getAttribute('data-search-phone') || '').replace(/\D/g, '');
-                                var nameNorm = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                                var qNorm = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                                if (name.includes(q) || nameNorm.includes(qNorm)) return true;
-                                if (qDigits.length >= 2 && phone.indexOf(qDigits) !== -1) return true;
-                                return false;
-                            }
-                        };
-                    });
-                });
+                            const searchLower = this.search.toLowerCase();
+                            if (searchLower === '') return true;
+
+                            const searchTerms = [
+                                el.dataset.searchName || '',
+                                el.dataset.searchPhone || ''
+                            ];
+
+                            return searchTerms.some(term => term.toLowerCase().includes(searchLower));
+                        }
+                    };
+                };
             </script>
         @endpush
 @endsection

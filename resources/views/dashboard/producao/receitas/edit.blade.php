@@ -67,7 +67,8 @@
                     })->toArray()
                 ];
             })->toArray(),
-        ];
+            'product_id' => $recipe->product_id,
+            'variant_id' => $recipe->variant_id,
     @endphp
     <form action="{{ route('dashboard.producao.receitas.update', $recipe) }}" method="POST" id="recipe-form" class="space-y-6"
           x-data="recipeForm({{ json_encode($recipeFormInitial) }})"
@@ -109,35 +110,39 @@
                             </option>
                         @endforeach
                     </select>
+                <div>
+                    <x-ui.searchable-select 
+                        name="product_id" 
+                        label="Produto" 
+                        required="true"
+                        id="product-select"
+                        :options="$products->map(function($p) {
+                            $vars = $p->getRelation('variants');
+                            if (!$vars || is_string($vars) || $vars->isEmpty()) {
+                                $raw = $p->getRawOriginal('variants');
+                                $vars = !empty($raw) ? json_decode($raw, true) : [];
+                            }
+                            return [
+                                'id' => $p->id, 
+                                'name' => $p->name . ($p->category ? ' - ' . $p->category->name : ''),
+                                'category' => $p->category->name ?? '',
+                                'variants' => $vars
+                            ];
+                        })->values()"
+                        wire:model="product_id"
+                        @change="updateVariants($event.detail.value)"
+                    />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-2">Variante *</label>
-                    <select name="variant_id" id="variant-select" required class="form-input">
-                        <option value="">Selecione um produto...</option>
-                        @if($recipe->product && $recipe->product->variants)
-                            @php
-                                $vList = $recipe->product->variants;
-                                if (is_string($vList)) {
-                                    $vList = json_decode($vList, true) ?: [];
-                                }
-                            @endphp
-                            @foreach($vList as $variant)
-                                @php
-                                    $vWeight = 0;
-                                    if (is_object($variant)) {
-                                        $vWeight = $variant->weight_grams ?? $variant->weight ?? 0;
-                                    } elseif (is_array($variant)) {
-                                        $vWeight = $variant['weight_grams'] ?? $variant['weight'] ?? 0;
-                                    }
-                                @endphp
-                                <option value="{{ $variant->id ?? (is_array($variant) ? ($variant['id'] ?? '') : '') }}" 
-                                    data-weight="{{ $vWeight }}" 
-                                    {{ old('variant_id', $recipe->variant_id) == ($variant->id ?? (is_array($variant) ? ($variant['id'] ?? '') : '')) ? 'selected' : '' }}>
-                                    {{ $variant->name ?? (is_array($variant) ? ($variant['name'] ?? '') : '') }}
-                                </option>
-                            @endforeach
-                        @endif
-                    </select>
+                    <x-ui.searchable-select 
+                        name="variant_id" 
+                        label="Variante" 
+                        required="true"
+                        id="variant-select"
+                        alpine-options="availableVariants"
+                        wire:model="variant_id"
+                        @change="updateRecipeNameAndWeight()"
+                    />
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-2">Nome da Receita *</label>
@@ -236,16 +241,12 @@
                                 <div class="grid grid-cols-1 md:grid-cols-[1fr,100px,120px,40px] gap-4 items-end bg-muted/20 p-4 rounded-lg md:bg-transparent md:p-0">
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-muted-foreground md:hidden">Ingrediente</label>
-                                        <select x-model="ing.ingredient_id" 
-                                                :name="'steps[' + stepIndex + '][ingredients][' + ingIndex + '][ingredient_id]'" 
-                                                required 
-                                                class="form-input"
-                                                :id="'ingredient-select-' + stepIndex + '-' + ingIndex">
-                                            <option value="">Selecione...</option>
-                                            @foreach($ingredients as $ingredient)
-                                                <option value="{{ $ingredient->id }}" x-bind:selected="ing.ingredient_id == {{ $ingredient->id }}">{{ $ingredient->name }}</option>
-                                            @endforeach
-                                        </select>
+                                        <x-ui.searchable-select 
+                                            name="'steps[' + stepIndex + '][ingredients][' + ingIndex + '][ingredient_id]'" 
+                                            placeholder="Selecione..."
+                                            :options="$ingredients->map(fn($i) => ['id' => $i->id, 'name' => $i->name])->values()"
+                                            x-model="ing.ingredient_id"
+                                        />
                                     </div>
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-muted-foreground text-center md:hidden">%</label>
@@ -305,7 +306,85 @@ function recipeForm(initial) {
         include_notes_in_print: initial && initial.include_notes_in_print != null ? Boolean(initial.include_notes_in_print) : false,
         uses_baker_percentage: initial && initial.uses_baker_percentage != null ? Boolean(initial.uses_baker_percentage) : true,
         variant_weight: initial && initial.variant_weight != null ? Number(initial.variant_weight) : 0,
+        product_id: initial?.product_id || '',
+        variant_id: initial?.variant_id || '',
         steps: steps,
+
+        products: @json($products->map(function($p) {
+             $vars = $p->getRelation('variants');
+             if (!$vars || is_string($vars) || $vars->isEmpty()) {
+                 $raw = $p->getRawOriginal('variants');
+                 $vars = !empty($raw) ? json_decode($raw, true) : [];
+             }
+             if(is_array($vars)){
+                $vars = array_map(function($v) {
+                    return (object)$v;
+                }, $vars);
+             }
+             return [
+                 'id' => $p->id, 
+                 'name' => $p->name . ($p->category ? ' - ' . $p->category->name : ''),
+                 'category' => $p->category->name ?? '',
+                 'variants' => $vars
+             ];
+        })->values()),
+        availableVariants: [],
+
+        init() {
+            // Initial load of variants if product is selected
+            if (this.product_id) {
+                this.updateVariants(this.product_id, false);
+            }
+        },
+
+        updateVariants(productId, resetVariant = true) {
+            this.product_id = productId;
+            const product = this.products.find(p => p.id == productId);
+            this.availableVariants = [];
+            
+            if (resetVariant) {
+                this.variant_id = ''; 
+            }
+            
+            if (product) {
+                // Update Category only if changed by user (via resetVariant)
+                if(resetVariant && product.category) {
+                    document.getElementById('category-input').value = product.category;
+                }
+                
+                // Detect Bread
+                this.is_bread = product.name.toLowerCase().includes('pão') || 
+                               (product.category && product.category.toLowerCase().includes('pão'));
+
+                // Populate Variants
+                if (product.variants) {
+                    this.availableVariants = Object.values(product.variants).map(v => ({
+                        id: v.id || v.name,
+                        name: (v.name || 'Padrão') + (v.price ? ' (R$ ' + v.price + ')' : ''),
+                        weight: v.weight_grams || 0,
+                        price: v.price
+                    }));
+                }
+            }
+        },
+
+        updateRecipeNameAndWeight() {
+            if(!this.product_id || !this.variant_id) return;
+
+            const product = this.products.find(p => p.id == this.product_id);
+            const variant = this.availableVariants.find(v => v.id == this.variant_id);
+
+            if (product && variant) {
+                this.variant_weight = parseFloat(variant.weight || 0);
+                
+                // Update Name logic (optional for edit, maybe user wants to keep custom name?)
+                // For now, let's only auto-update if the user explicitly changes the variant
+                // But since this function is called on @change, it should be fine.
+                const rawVariantName = variant.name.split('(')[0].trim();
+                const prodNameOnly = product.name.split(' - ')[0].trim();
+                document.getElementById('recipe-name').value = prodNameOnly + ' - ' + rawVariantName;
+            }
+        },
 
         calculateTotalWeight() {
             let total = 0;
@@ -354,96 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.lucide.createIcons();
     }
     
-    // Preencher nome da receita automaticamente quando produto for selecionado
-    const productSelect = document.getElementById('product-select');
-    const variantSelect = document.getElementById('variant-select');
-    const recipeNameInput = document.getElementById('recipe-name');
-    
-    if (productSelect && variantSelect && recipeNameInput) {
-        productSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            variantSelect.innerHTML = '<option value="">Selecione a variante...</option>';
-                        if (selectedOption && selectedOption.value) {
-                    // Category pre-fill
-                    const prodCat = selectedOption.getAttribute('data-category');
-                    const categoryInput = document.getElementById('category-input');
-                    if (prodCat) {
-                        categoryInput.value = prodCat;
-                    }
-
-                    // Auto-detect if it is bread based on name
-                    const prodName = selectedOption.getAttribute('data-name') || '';
-                    const alpineEl = document.getElementById('recipe-form');
-                    if (alpineEl && alpineEl.__x) {
-                        const isBread = prodName.toLowerCase().includes('pão') || (prodCat && prodCat.toLowerCase().includes('pão'));
-                        alpineEl.__x.$data.is_bread = isBread;
-                    }
-
-                    // Clear name when product changes to force re-selection
-                    recipeNameInput.value = '';
-
-                try {
-                    const variantsJson = selectedOption.getAttribute('data-variants');
-                    const variants = JSON.parse(variantsJson || '[]');
-                    
-                    variants.forEach(variant => {
-                        const option = document.createElement('option');
-                        option.value = variant.id || variant.name;
-                        option.textContent = variant.name + (variant.price ? ' (R$ ' + variant.price + ')' : '');
-                        option.setAttribute('data-weight', variant.weight_grams || 0);
-                        
-                        // Manter selecionado se for o valor atual
-                        if (variant.id == "{{ $recipe->variant_id }}" || (typeof variant.id === 'undefined' && variant.name == "{{ $recipe->variant_id }}")) {
-                            option.selected = true;
-                        }
-
-                        variantSelect.appendChild(option);
-                    });
-                    
-                    updateRecipeName();
-                    updateVariantWeight();
-                } catch (e) {
-                    console.error('Error parsing variants:', e);
-                }
-            } else {
-                recipeNameInput.value = '';
-            }
-        });
-
-        variantSelect.addEventListener('change', () => {
-            updateRecipeName();
-            updateVariantWeight();
-        });
-
-        function updateVariantWeight() {
-            const selected = variantSelect.options[variantSelect.selectedIndex];
-            const weight = selected ? parseFloat(selected.getAttribute('data-weight') || 0) : 0;
-            
-            const alpineEl = document.getElementById('recipe-form');
-            if (alpineEl && alpineEl.__x) {
-                alpineEl.__x.$data.variant_weight = weight;
-            } else {
-                window._initial_variant_weight = weight;
-            }
-        }
-
-        function updateRecipeName() {
-            const selectedProduct = productSelect.options[productSelect.selectedIndex];
-            const selectedVariant = variantSelect.options[variantSelect.selectedIndex];
-
-            if (selectedProduct && selectedProduct.value && selectedVariant && selectedVariant.value) {
-                const productName = selectedProduct.getAttribute('data-name');
-                const variantName = selectedVariant.textContent.split('(')[0].trim();
-                recipeNameInput.value = productName + ' - ' + variantName;
-            }
-        }
-
-        // REMOVIDO: dispatchEvent('change') automático que causava troca de variante ao carregar
-        // if (productSelect.value) {
-        //     productSelect.dispatchEvent(new Event('change'));
-        // }
-    }
-});
+                // Removed legacy Vanilla JS listeners. Logic moved to Alpine component.
 </script>
 @endpush
 @endsection

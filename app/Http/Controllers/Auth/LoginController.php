@@ -22,7 +22,7 @@ class LoginController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard.index');
         }
-        
+
         return view('auth.login');
     }
 
@@ -44,22 +44,23 @@ class LoginController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
-            Auth::login($user, $request->has('remember'));
-            
-            // Regenerar session ID por segurança
+            // Regenerar a sessão para evitar Session Fixation
             $request->session()->regenerate();
-            
+
+            Auth::login($user, $request->has('remember'));
+
             // IMPORTANTE: Setar o client_id na sessão para multi-tenant
             // Isso garante que o usuário veja apenas dados do seu estabelecimento
             if ($user->client_id) {
                 session(['client_id' => $user->client_id]);
-                
+                session()->save(); // Forçar a gravação da sessão
+
                 // Também setar no request para middlewares subsequentes
                 $request->attributes->set('client_id', $user->client_id);
             }
-            
+
             // Redirecionar para a URL intencionada ou dashboard
-            return redirect()->intended('/');
+            return redirect()->intended(route('dashboard.index'));
         }
 
         return back()
@@ -74,13 +75,13 @@ class LoginController extends Controller
     {
         // Limpar client_id da sessão antes de invalidar
         session()->forget('client_id');
-        
+
         Auth::logout();
-        
+
         // Invalidar a sessão
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('login')
             ->with('success', 'Logout realizado com sucesso!');
     }

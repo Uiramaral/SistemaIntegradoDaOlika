@@ -1,6 +1,17 @@
 @php
     $navGroups = [
         [
+            'title' => 'Produção',
+            'items' => [
+                ['label' => 'Painel de Produção', 'icon' => 'gauge', 'route' => 'dashboard.producao.index', 'routePattern' => 'dashboard.producao.index'],
+                ['label' => 'Receitas', 'icon' => 'book-open', 'route' => 'dashboard.producao.receitas.index', 'routePattern' => 'dashboard.producao.receitas.*'],
+                ['label' => 'Ingredientes', 'icon' => 'wheat', 'route' => 'dashboard.producao.ingredientes.index', 'routePattern' => 'dashboard.producao.ingredientes.*'],
+                ['label' => 'Embalagens', 'icon' => 'package-2', 'route' => 'dashboard.producao.embalagens.index', 'routePattern' => 'dashboard.producao.embalagens.*'],
+                ['label' => 'Lista de Produção', 'icon' => 'clipboard-list', 'route' => 'dashboard.producao.lista-producao.index', 'routePattern' => 'dashboard.producao.lista-producao.*'],
+                ['label' => 'Análise de Custos', 'icon' => 'calculator', 'route' => 'dashboard.producao.configuracoes-custos.index', 'routePattern' => 'dashboard.producao.configuracoes-custos.*'],
+            ],
+        ],
+        [
             'title' => 'Menu Principal',
             'items' => [
                 ['label' => 'Visão Geral', 'icon' => 'layout-dashboard', 'route' => 'dashboard.index', 'routePattern' => 'dashboard.index'],
@@ -49,14 +60,14 @@
         ->whereIn('key', ['logo'])
         ->pluck('value', 'key')
         ->toArray();
-    
+
     $logoUrl = null;
     $brandName = 'OLIKA';
-    
+
     if (isset($personalizationSettings['logo']) && $personalizationSettings['logo']) {
         $logoUrl = asset('storage/' . $personalizationSettings['logo']) . '?v=' . time();
     }
-    
+
     // Se não encontrado, tentar do Setting model
     if (!$logoUrl) {
         try {
@@ -101,7 +112,7 @@
             <div class="text-logo">{{ $brandName }}</div>
         @endif
     </div>
-    
+
     <nav class="sidebar-nav">
         @foreach ($navGroups as $group)
             <div class="sidebar-nav-group">
@@ -136,4 +147,3 @@
         window.lucide.createIcons();
     }
 </script>
-

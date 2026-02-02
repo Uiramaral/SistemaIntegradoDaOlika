@@ -1,0 +1,1227 @@
+/* ================================================================
+   OLIKA DASHBOARD - PIXEL PERFECT v3.0
+   Padrão visual baseado nas imagens de referência
+   Data: 30/11/2025
+   ================================================================ */
+
+/* ==================== FUNDO GERAL ==================== */
+body {
+  background-color: #faf9f8 !important;
+  color: #1f2937 !important;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
+main,
+.main,
+[class*="main"] {
+  background-color: #faf9f8 !important;
+}
+
+/* ==================== SIDEBAR ==================== */
+#sidebar,
+aside#sidebar,
+.sidebar,
+[class*="bg-sidebar"] {
+  background-color: #0f172a !important;
+  border-right: none !important;
+  color: #e5e7eb !important;
+}
+
+/* Logo da sidebar */
+#sidebar .text-xl,
+aside#sidebar .text-xl,
+#sidebar span[class*="font-bold"] {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+/* Links da sidebar - estado normal */
+#sidebar a,
+aside#sidebar a,
+.sidebar a,
+#sidebar nav a,
+aside#sidebar nav a,
+#sidebar nav ul li a,
+aside#sidebar nav ul li a {
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: all 0.2s ease !important;
+  margin: 0.125rem 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Links da sidebar - hover (não ativos) */
+#sidebar a:hover:not([class*="bg-sidebar-accent"]):not([class*="bg-orange"]),
+aside#sidebar a:hover:not([class*="bg-sidebar-accent"]):not([class*="bg-orange"]),
+.sidebar a:hover:not([class*="bg-sidebar-accent"]):not([class*="bg-orange"]),
+#sidebar nav a:hover:not([class*="bg-sidebar-accent"]):not([class*="bg-orange"]),
+aside#sidebar nav a:hover:not([class*="bg-sidebar-accent"]):not([class*="bg-orange"]) {
+  background-color: rgba(234, 88, 12, 0.1) !important;
+  color: #fff !important;
+}
+
+/* Links da sidebar - estado ativo (com bg-sidebar-accent) */
+#sidebar a[class*="bg-sidebar-accent"],
+aside#sidebar a[class*="bg-sidebar-accent"],
+#sidebar nav a[class*="bg-sidebar-accent"],
+aside#sidebar nav a[class*="bg-sidebar-accent"],
+#sidebar a.bg-sidebar-accent,
+aside#sidebar a.bg-sidebar-accent {
+  background-color: #ea580c !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remover qualquer borda ou sombra de links ativos */
+#sidebar a[class*="bg-sidebar-accent"][class*="shadow"],
+aside#sidebar a[class*="bg-sidebar-accent"][class*="shadow"] {
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Ícones da sidebar - estado normal */
+#sidebar a svg,
+aside#sidebar a svg,
+.sidebar a svg,
+#sidebar a i[data-lucide],
+aside#sidebar a i[data-lucide],
+.sidebar a i[data-lucide],
+#sidebar nav a svg,
+aside#sidebar nav a svg,
+#sidebar nav a i[data-lucide],
+aside#sidebar nav a i[data-lucide] {
+  color: #e5e7eb !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+/* Ícones da sidebar - estado ativo */
+#sidebar a.active svg,
+aside#sidebar a.active svg,
+.sidebar a.active svg,
+#sidebar a.active i[data-lucide],
+aside#sidebar a.active i[data-lucide],
+.sidebar a.active i[data-lucide],
+#sidebar a[class*="bg-sidebar-accent"] svg,
+aside#sidebar a[class*="bg-sidebar-accent"] svg,
+#sidebar a[class*="bg-sidebar-accent"] i[data-lucide],
+aside#sidebar a[class*="bg-sidebar-accent"] i[data-lucide],
+#sidebar nav a[class*="bg-sidebar-accent"] svg,
+aside#sidebar nav a[class*="bg-sidebar-accent"] svg,
+#sidebar nav a[class*="bg-sidebar-accent"] i[data-lucide],
+aside#sidebar nav a[class*="bg-sidebar-accent"] i[data-lucide] {
+  color: #fff !important;
+}
+
+/* Títulos de grupos na sidebar */
+#sidebar p[class*="uppercase"],
+aside#sidebar p[class*="uppercase"],
+#sidebar [class*="text-xs"][class*="uppercase"] {
+  color: rgba(229, 231, 235, 0.7) !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.1em !important;
+  padding: 0.5rem 0.75rem !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Botão Sair */
+#sidebar button[type="submit"],
+aside#sidebar button[type="submit"],
+#sidebar form button {
+  color: #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+#sidebar button[type="submit"]:hover,
+aside#sidebar button[type="submit"]:hover,
+#sidebar form button:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+/* ==================== HEADER ==================== */
+header,
+[role="banner"] {
+  background-color: #fff !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  box-shadow: none !important;
+}
+
+header h1,
+header [class*="text-lg"],
+header [class*="text-2xl"] {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+header p[class*="text-sm"],
+header [class*="text-muted"] {
+  color: #6b7280 !important;
+}
+
+/* Informações do usuário no header */
+header .hidden.flex-col.items-end {
+  color: #1f2937 !important;
+}
+
+header .hidden.flex-col.items-end span:first-child {
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+}
+
+header .hidden.flex-col.items-end span:last-child {
+  color: #6b7280 !important;
+  font-size: 0.75rem !important;
+}
+
+/* Botão de notificações */
+header button[class*="rounded-full"] {
+  border: 1px solid #e5e7eb !important;
+  color: #6b7280 !important;
+}
+
+header button[class*="rounded-full"]:hover {
+  color: #1f2937 !important;
+  background-color: #f9fafb !important;
+}
+
+/* ==================== CARDS DE MÉTRICAS (Visão Geral) ==================== */
+.stat-card,
+.card-metric,
+[class*="stat-card"],
+.grid.gap-4 > div[class*="bg-card"] {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  padding: 16px 20px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  transition: all 0.2s ease-in-out !important;
+  min-height: 70px !important;
+}
+
+.stat-card:hover,
+.card-metric:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Conteúdo dos cards de métricas */
+.stat-card .label,
+.card-metric .label,
+.stat-card p[class*="text-sm"],
+.card-metric p[class*="text-sm"] {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+  margin-bottom: 4px !important;
+}
+
+.stat-card .value,
+.card-metric .value,
+.stat-card [class*="text-2xl"],
+.card-metric [class*="text-2xl"],
+.stat-card [class*="text-3xl"],
+.card-metric [class*="text-3xl"] {
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  margin-top: 4px !important;
+}
+
+/* Ícones nos cards de métricas */
+.stat-card svg,
+.stat-card i[data-lucide],
+.card-metric svg,
+.card-metric i[data-lucide] {
+  color: #ea580c !important;
+  background-color: rgba(234, 88, 12, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 6px !important;
+  font-size: 1rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* ==================== CARDS GERAIS ==================== */
+.card,
+[class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  padding: 1.5rem !important;
+}
+
+.card:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Títulos dentro de cards */
+.card h3,
+.card [class*="text-lg"][class*="font-semibold"],
+.section-card h3 {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  padding-bottom: 0.5rem !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* ==================== BOTÕES ==================== */
+button[class*="bg-primary"],
+a[class*="bg-primary"],
+.btn-primary,
+button.bg-primary,
+a.bg-primary,
+[class*="btn-primary"] {
+  background-color: #ea580c !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 1rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px -2px rgba(234, 88, 12, 0.35) !important;
+  min-height: 2.5rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+}
+
+button[class*="bg-primary"]:hover,
+a[class*="bg-primary"]:hover,
+.btn-primary:hover,
+button.bg-primary:hover,
+a.bg-primary:hover {
+  background-color: #f97316 !important;
+  box-shadow: 0 6px 16px -2px rgba(234, 88, 12, 0.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+button[class*="bg-primary"]:active,
+a[class*="bg-primary"]:active,
+.btn-primary:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px -2px rgba(234, 88, 12, 0.3) !important;
+}
+
+/* Botões secundários (outline) */
+button[class*="border-input"],
+a[class*="border-input"],
+.btn-outline {
+  background-color: transparent !important;
+  color: #ea580c !important;
+  border: 1px solid #ea580c !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 1rem !important;
+  font-weight: 600 !important;
+  min-height: 2.5rem !important;
+}
+
+button[class*="border-input"]:hover,
+a[class*="border-input"]:hover,
+.btn-outline:hover {
+  background-color: #ea580c !important;
+  color: #fff !important;
+}
+
+/* ==================== TABELAS ==================== */
+table,
+.table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important;
+  background: transparent !important;
+}
+
+table thead,
+.table thead {
+  background: transparent !important;
+}
+
+table thead th,
+.table thead th {
+  background-color: transparent !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #6b7280 !important;
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  text-align: left !important;
+}
+
+table tbody tr,
+.table tbody tr {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+table tbody tr:hover,
+.table tbody tr:hover {
+  background: #fff7f3 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+table tbody td,
+.table tbody td {
+  padding: 0.75rem 1rem !important;
+  border: none !important;
+  color: #1f2937 !important;
+  font-size: 0.875rem !important;
+  vertical-align: middle !important;
+}
+
+table tbody tr:first-child td:first-child {
+  border-top-left-radius: 10px !important;
+}
+
+table tbody tr:first-child td:last-child {
+  border-top-right-radius: 10px !important;
+}
+
+table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 10px !important;
+}
+
+table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 10px !important;
+}
+
+/* ==================== BADGES DE STATUS ==================== */
+/* Estilo geral de badges */
+.badge,
+[class*="badge"],
+span[class*="inline-flex"][class*="rounded"],
+span[class*="inline-flex"][class*="rounded-full"],
+.status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.25rem 0.6rem !important;
+  border-radius: 999px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  border: 1px solid transparent !important;
+}
+
+/* Badge Entregue (verde) */
+.badge-success,
+.badge-green,
+[class*="badge-green"],
+.status-delivered,
+.status-badge.status-delivered,
+[class*="status-delivered"],
+span[class*="text-green-600"],
+span[class*="text-green-700"],
+span[class*="bg-green-50"],
+span[class*="bg-green-100"] {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Badge Cancelado (vermelho) */
+.badge-danger,
+.badge-red,
+[class*="badge-red"],
+.status-cancelled,
+.status-badge.status-cancelled,
+[class*="status-cancelled"],
+span[class*="text-red-600"],
+span[class*="text-red-700"],
+span[class*="bg-red-50"],
+span[class*="bg-red-100"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Badge Pago (verde) */
+.status-paid,
+[class*="status-paid"],
+[class*="payment-paid"],
+span[class*="payment-paid"] {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Badge Pendente (cinza) */
+.badge-warning,
+.badge-gray,
+[class*="badge-gray"],
+.status-pending,
+.status-badge.status-pending,
+[class*="status-pending"],
+[class*="payment-pending"],
+span[class*="text-gray-600"],
+span[class*="text-gray-700"],
+span[class*="bg-gray-50"],
+span[class*="bg-gray-100"] {
+  background-color: rgba(107, 114, 128, 0.15) !important;
+  color: #6b7280 !important;
+  border-color: rgba(107, 114, 128, 0.3) !important;
+}
+
+/* Badge Confirmado (azul) */
+.status-confirmed,
+.status-badge.status-confirmed,
+[class*="status-confirmed"],
+.badge-blue,
+[class*="badge-blue"] {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: #2563eb !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Badge Em Preparo (amarelo/laranja) */
+.status-preparing,
+.status-badge.status-preparing,
+[class*="status-preparing"] {
+  background-color: rgba(251, 191, 36, 0.15) !important;
+  color: #d97706 !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+/* Badge Pronto (azul claro) */
+.status-ready,
+.status-badge.status-ready,
+[class*="status-ready"] {
+  background-color: rgba(96, 165, 250, 0.15) !important;
+  color: #3b82f6 !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+/* Badge Falhou (vermelho escuro) */
+.status-failed,
+[class*="status-failed"],
+[class*="payment-failed"],
+span[class*="payment-failed"] {
+  background-color: rgba(220, 38, 38, 0.15) !important;
+  color: #b91c1c !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+/* Badges com classes do Tailwind que podem ser aplicadas */
+[class*="bg-green-50"][class*="text-green-700"],
+[class*="bg-green-100"][class*="text-green-800"] {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+[class*="bg-red-50"][class*="text-red-700"],
+[class*="bg-red-100"][class*="text-red-800"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+[class*="bg-gray-50"][class*="text-gray-700"],
+[class*="bg-gray-100"][class*="text-gray-800"] {
+  background-color: rgba(107, 114, 128, 0.15) !important;
+  color: #6b7280 !important;
+  border-color: rgba(107, 114, 128, 0.3) !important;
+}
+
+/* Badge Ativo em produtos */
+.badge-active,
+[class*="badge-active"],
+span:contains("Ativo") {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+/* ==================== CARDS DE PRODUTOS ==================== */
+.product-card,
+[class*="product-card"],
+.grid[class*="gap"] > div[class*="bg-card"],
+.grid[class*="grid-cols"] > div[class*="bg-card"],
+.grid[class*="grid-cols"] > div[class*="rounded-lg"][class*="border"] {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  padding: 1rem !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.product-card:hover,
+[class*="product-card"]:hover,
+.grid[class*="gap"] > div[class*="bg-card"]:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+.product-card h3,
+.product-card [class*="font-semibold"],
+.product-card [class*="text-lg"][class*="font-semibold"],
+.grid[class*="gap"] > div[class*="bg-card"] h3 {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.25rem !important;
+  font-size: 1rem !important;
+}
+
+.product-card p[class*="text-sm"],
+.product-card [class*="text-muted"],
+.product-card [class*="text-xs"],
+.grid[class*="gap"] > div[class*="bg-card"] p[class*="text-sm"] {
+  color: #6b7280 !important;
+  font-size: 0.875rem !important;
+  margin: 0 !important;
+}
+
+.product-card .price,
+.product-card [class*="text-lg"][class*="font-bold"],
+.grid[class*="gap"] > div[class*="bg-card"] [class*="text-lg"][class*="font-bold"] {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+  font-size: 1.125rem !important;
+  margin-top: auto !important;
+}
+
+/* Grid de produtos */
+.grid[class*="grid-cols-3"],
+.grid[class*="grid-cols-4"] {
+  gap: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .grid[class*="grid-cols-3"],
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid[class*="grid-cols-3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Botões de ação em cards de produtos */
+.product-card .flex.gap-2,
+.product-card [class*="flex"][class*="gap"],
+.grid[class*="gap"] > div[class*="bg-card"] .flex.gap-2 {
+  margin-top: auto !important;
+  padding-top: 0.75rem !important;
+  border-top: 1px solid #f3f4f6 !important;
+}
+
+.product-card button,
+.product-card a,
+.grid[class*="gap"] > div[class*="bg-card"] button,
+.grid[class*="gap"] > div[class*="bg-card"] a {
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+  min-height: 2rem !important;
+}
+
+/* Badge Ativo em produtos */
+.product-card .badge,
+.product-card [class*="badge"],
+.grid[class*="gap"] > div[class*="bg-card"] .badge {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Imagens de produtos */
+.product-card img,
+.grid[class*="gap"] > div[class*="bg-card"] img {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 8px !important;
+  margin-bottom: 0.75rem !important;
+}
+
+/* ==================== INPUTS E FORMULÁRIOS ==================== */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  background-color: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 0.875rem !important;
+  font-size: 0.875rem !important;
+  color: #1f2937 !important;
+  min-height: 2.5rem !important;
+  transition: all 0.2s ease !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1) !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="search"]::placeholder {
+  color: #9ca3af !important;
+}
+
+/* ==================== PAGINAÇÃO ==================== */
+.pagination,
+[class*="pagination"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  margin-top: 1.5rem !important;
+}
+
+.pagination a,
+.pagination button,
+[class*="pagination"] a,
+[class*="pagination"] button {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  min-height: 2.5rem !important;
+}
+
+.pagination a:hover,
+.pagination button:hover,
+[class*="pagination"] a:hover,
+[class*="pagination"] button:hover {
+  background: #fff7f3 !important;
+  color: #ea580c !important;
+  border-color: #ea580c !important;
+}
+
+.pagination a.active,
+.pagination .active,
+.pagination span.active,
+[class*="pagination"] a.active {
+  background: #ea580c !important;
+  color: #fff !important;
+  border-color: #ea580c !important;
+}
+
+/* ==================== SEÇÕES ESPECÍFICAS ==================== */
+/* Seção de Pedidos Recentes */
+.section-title {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.section-subtitle {
+  font-size: 0.875rem !important;
+  color: #6b7280 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Links "Ver todos" */
+a[class*="text-primary"],
+a:contains("Ver todos"),
+a:contains("→") {
+  color: #ea580c !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  text-decoration: none !important;
+}
+
+a[class*="text-primary"]:hover,
+a:contains("Ver todos"):hover {
+  text-decoration: underline !important;
+}
+
+/* ==================== PÁGINAS DE INTEGRAÇÃO ==================== */
+/* Cards de estatísticas de integração */
+.integration-stats,
+.grid.gap-4[class*="grid-cols"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.integration-stat-card,
+.grid.gap-4 > div[class*="bg-card"],
+.grid[class*="grid-cols-4"] > div[class*="bg-card"] {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  padding: 1.25rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+}
+
+.integration-stat-card .value,
+.grid.gap-4 > div[class*="bg-card"] [class*="text-2xl"],
+.grid.gap-4 > div[class*="bg-card"] [class*="text-3xl"],
+.grid[class*="grid-cols-4"] > div[class*="bg-card"] [class*="text-2xl"] {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.integration-stat-card .label,
+.grid.gap-4 > div[class*="bg-card"] p[class*="text-sm"],
+.grid[class*="grid-cols-4"] > div[class*="bg-card"] p[class*="text-sm"] {
+  font-size: 0.875rem !important;
+  color: #6b7280 !important;
+  margin: 0 !important;
+}
+
+.integration-stat-card svg,
+.integration-stat-card i[data-lucide],
+.grid.gap-4 > div[class*="bg-card"] svg,
+.grid.gap-4 > div[class*="bg-card"] i[data-lucide],
+.grid[class*="grid-cols-4"] > div[class*="bg-card"] svg {
+  color: #ea580c !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  align-self: flex-end !important;
+  margin-top: auto !important;
+}
+
+/* Seção de configurações de integração */
+.integration-settings,
+[class*="integration-settings"] {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  padding: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.integration-settings h2,
+[class*="integration-settings"] h2 {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.integration-settings p[class*="text-sm"],
+[class*="integration-settings"] p[class*="text-sm"] {
+  color: #6b7280 !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Campos de formulário de integração */
+.integration-settings .form-group,
+.integration-settings [class*="space-y"],
+[class*="integration-settings"] .form-group {
+  margin-bottom: 1.25rem !important;
+}
+
+.integration-settings label,
+[class*="integration-settings"] label {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.integration-settings input,
+.integration-settings select,
+.integration-settings textarea,
+[class*="integration-settings"] input,
+[class*="integration-settings"] select {
+  width: 100% !important;
+  background-color: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 0.875rem !important;
+  font-size: 0.875rem !important;
+  color: #1f2937 !important;
+  min-height: 2.5rem !important;
+}
+
+.integration-settings input:focus,
+.integration-settings select:focus,
+[class*="integration-settings"] input:focus {
+  outline: none !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1) !important;
+}
+
+.integration-settings .helper-text,
+.integration-settings p[class*="text-xs"],
+[class*="integration-settings"] p[class*="text-xs"] {
+  font-size: 0.75rem !important;
+  color: #6b7280 !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Tabs de navegação */
+.tabs,
+[role="tablist"] {
+  display: flex !important;
+  gap: 0.5rem !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.tab,
+[role="tab"] {
+  padding: 0.75rem 1rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+  border-bottom: 2px solid transparent !important;
+  transition: all 0.2s ease !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+.tab:hover,
+[role="tab"]:hover {
+  color: #1f2937 !important;
+}
+
+.tab.active,
+[role="tab"][aria-selected="true"] {
+  color: #ea580c !important;
+  border-bottom-color: #ea580c !important;
+  font-weight: 600 !important;
+}
+
+/* Status de conexão */
+.connection-status {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 1rem !important;
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.connection-status .status-badge {
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 999px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+}
+
+.connection-status .status-badge.configured {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+}
+
+.connection-status .status-badge.not-configured {
+  background-color: rgba(107, 114, 128, 0.15) !important;
+  color: #6b7280 !important;
+}
+
+/* ==================== AJUSTES GERAIS ==================== */
+/* Divisores */
+hr,
+.border-t,
+.border-b,
+[class*="border-t"],
+[class*="border-b"] {
+  border-color: #f3f4f6 !important;
+}
+
+/* Textos */
+.text-muted,
+[class*="text-muted"],
+p[class*="text-sm"] {
+  color: #6b7280 !important;
+}
+
+.text-foreground,
+[class*="text-foreground"] {
+  color: #1f2937 !important;
+}
+
+/* Espaçamento */
+.space-y-6 > * + * {
+  margin-top: 1.5rem !important;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+/* Grid de métricas responsivo */
+@media (min-width: 640px) {
+  .grid.gap-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid.gap-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ==================== CORREÇÕES ESPECÍFICAS ==================== */
+/* Garantir que todos os elementos usem as cores corretas */
+.bg-card,
+[class*="bg-card"] {
+  background-color: #fff !important;
+}
+
+.bg-background,
+[class*="bg-background"] {
+  background-color: #faf9f8 !important;
+}
+
+.text-primary,
+[class*="text-primary"] {
+  color: #ea580c !important;
+}
+
+.border-border,
+[class*="border-border"] {
+  border-color: #e5e7eb !important;
+}
+
+/* Remover sombras excessivas */
+.shadow-lg,
+[class*="shadow-lg"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.shadow-md,
+[class*="shadow-md"] {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Ajustar padding geral */
+.p-6,
+[class*="p-6"] {
+  padding: 1.5rem !important;
+}
+
+.px-6,
+[class*="px-6"] {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.py-6,
+[class*="py-6"] {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+/* ==================== AJUSTES ESPECÍFICOS POR PÁGINA ==================== */
+/* Página de Pedidos - garantir espaçamento correto */
+.orders-page table tbody tr {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 10px !important;
+}
+
+.orders-page table tbody tr:hover {
+  background: #fff7f3 !important;
+}
+
+/* Página de Produtos - grid responsivo */
+.products-page .grid {
+  gap: 1rem !important;
+}
+
+.products-page .product-card {
+  min-height: auto !important;
+}
+
+/* Página de Visão Geral - cards de métricas */
+.dashboard-page .stat-card {
+  min-height: 70px !important;
+}
+
+/* Páginas de Integração - layout de tabs */
+.integration-page .tabs {
+  margin-bottom: 1.5rem !important;
+}
+
+.integration-page .tab-content {
+  padding-top: 1.5rem !important;
+}
+
+/* ==================== PÁGINA PDV ==================== */
+/* Garantir que produtos apareçam - regras com alta especificidade */
+main .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3,
+main .grid[class*="grid-cols-3"],
+.grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3,
+.grid[class*="grid-cols-3"] {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 1rem !important;
+  row-gap: 1rem !important;
+}
+
+/* Botões de produtos frequentes - alta especificidade */
+button.product-quick-add,
+button[data-product-id],
+button[class*="product-quick-add"],
+.grid button[data-product-id],
+.grid button.product-quick-add {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 1.25rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+  min-height: 8rem !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+button.product-quick-add:hover,
+button[data-product-id]:hover,
+button[class*="product-quick-add"]:hover {
+  background: #fff7f3 !important;
+  border-color: #ea580c !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15) !important;
+}
+
+/* Texto dos produtos */
+button.product-quick-add p,
+button[data-product-id] p {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.75rem !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+button.product-quick-add .product-price-display,
+button[data-product-id] .product-price-display {
+  color: #ea580c !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Garantir que seção de produtos seja visível */
+h4.text-sm.font-medium,
+[class*="Produtos Frequentes"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Garantir que cards do PDV sejam visíveis */
+.rounded-lg.border.bg-card,
+main .rounded-lg.border.bg-card {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Remover qualquer display: none que possa estar escondendo produtos */
+.grid button[data-product-id][style*="display: none"],
+.grid button.product-quick-add[style*="display: none"] {
+  display: flex !important;
+}
+
+/* Garantir que grid de produtos não esteja oculto */
+.grid[class*="grid-cols"][style*="display: none"],
+.grid[class*="grid-cols"][class*="hidden"] {
+  display: grid !important;
+}
+
+/* ==================== RESPONSIVIDADE FINAL ==================== */
+@media (max-width: 767.98px) {
+  .stat-card,
+  .card-metric {
+    min-height: 60px !important;
+    padding: 12px 16px !important;
+  }
+  
+  .stat-card .value,
+  .card-metric .value {
+    font-size: 1.125rem !important;
+  }
+  
+  .integration-stats,
+  .grid.gap-4[class*="grid-cols"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .grid[class*="grid-cols-3"],
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .pdv-page #product-frequent-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .grid[class*="grid-cols-3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .grid[class*="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+

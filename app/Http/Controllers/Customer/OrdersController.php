@@ -37,7 +37,7 @@ class OrdersController extends Controller
 
         cookie()->queue('customer_phone', $phone, 60 * 24 * 30);
 
-        if (!$this->hasVerifiedAccess($phone)) {
+        if (!$this->hasVerifiedAccess($phone, $request)) {
             $otp = $request->get('otp');
 
             if (!$otp) {
@@ -52,8 +52,9 @@ class OrdersController extends Controller
                 return redirect()->route('customer.orders.index', ['phone' => $phone]);
             }
 
-            $this->markPhoneAsVerified($phone);
-            Cache::forget($this->otpCacheKey($phone));
+            $this->markPhoneAsVerified($phone, $request);
+            // Cache::forget($this->otpCacheKey($phone)); // Now using session
+            Session::forget('customer_orders.otp_payload');
         }
 
         $customer = $this->findCustomerByPhone($phone);
@@ -89,12 +90,12 @@ class OrdersController extends Controller
         // Buscar telefone: primeiro da query string, depois do cookie
         $phone = $request->get('phone') ?: $request->cookie('customer_phone');
         $normalized = $this->normalizePhone($phone);
-        
+
         if (!$normalized) {
             return redirect()->route('customer.orders.index')->with('error', 'Telefone necessário para acessar.');
         }
 
-        if (!$this->hasVerifiedAccess($normalized)) {
+        if (!$this->hasVerifiedAccess($normalized, $request)) {
             return redirect()->route('customer.orders.index', ['phone' => $normalized])
                 ->with('error', 'Confirme o código enviado para visualizar seus pedidos.');
         }
@@ -137,12 +138,12 @@ class OrdersController extends Controller
         // Buscar telefone: primeiro da query string, depois do cookie
         $phone = $request->get('phone') ?: $request->cookie('customer_phone');
         $normalized = $this->normalizePhone($phone);
-        
+
         if (!$normalized) {
             return redirect()->back()->with('error', 'Telefone necessário.');
         }
 
-        if (!$this->hasVerifiedAccess($normalized)) {
+        if (!$this->hasVerifiedAccess($normalized, $request)) {
             return redirect()->route('customer.orders.index', ['phone' => $normalized])
                 ->with('error', 'Confirme o código enviado para avaliar seus pedidos.');
         }
@@ -161,7 +162,7 @@ class OrdersController extends Controller
 
         // Verificar se já foi avaliado
         $existingRating = OrderRating::where('order_id', $order->id)->first();
-        
+
         if ($existingRating) {
             $existingRating->update([
                 'rating' => $request->rating,
@@ -203,7 +204,7 @@ class OrdersController extends Controller
             return redirect()->back()->with('error', 'Informe um telefone válido com DDD (ex: (11) 99999-9999).');
         }
 
-        if ($this->hasVerifiedAccess($phone)) {
+        if ($this->hasVerifiedAccess($phone, $request)) {
             Session::flash('customer_orders.status', 'Telefone já autenticado. Listando pedidos.');
             return redirect()->route('customer.orders.index', ['phone' => $phone]);
         }
@@ -221,7 +222,6 @@ class OrdersController extends Controller
 
         $code = (string) random_int(100000, 999999);
         $expiresAt = Carbon::now()->addMinutes(self::OTP_TTL_MINUTES);
-        
         // Adicionar verificação extra: IP e User-Agent
         $payload = [
             'hash' => hash('sha256', $code),
@@ -230,9 +230,13 @@ class OrdersController extends Controller
             'ip' => $ip,
             'user_agent_hash' => hash('sha256', $userAgent ?? ''),
             'created_at' => Carbon::now()->timestamp,
+            'client_id' => $request->get('tenant_id') ?? $request->attributes->get('client_id'),
         ];
 
-        Cache::put($this->otpCacheKey($phone), $payload, $expiresAt);
+        // Usar Session para o payload do OTP em vez de Cache (mais confiável em host compartilhado)
+        Session::put('customer_orders.otp_payload', $payload);
+
+        // Manter Cache apenas para o throttle (limite de tentativas)
         Cache::put($throttleKey, true, Carbon::now()->addSeconds(self::OTP_THROTTLE_SECONDS));
 
         $channel = 'log';
@@ -244,12 +248,12 @@ class OrdersController extends Controller
                 if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
                     $phoneNormalized = '55' . $phoneNormalized;
                 }
-                
+
                 $message = "Seu código para acessar os pedidos na Olika é {$code}. Ele expira em "
                     . self::OTP_TTL_MINUTES . " minutos.";
                 $whatsApp->sendText($phoneNormalized, $message);
                 $channel = 'whatsapp';
-                
+
                 Log::info('OTP enviado com sucesso', [
                     'phone_original' => $phone,
                     'phone_normalized' => $phoneNormalized,
@@ -306,23 +310,31 @@ class OrdersController extends Controller
 
         // Remove todos os caracteres não numéricos
         $digits = preg_replace('/\D+/', '', $value);
-        
-        // Validação: deve ter entre 10 e 11 dígitos (com ou sem DDI)
-        if (strlen($digits) < 10 || strlen($digits) > 11) {
+
+        // Validação: Aceita 10, 11 (nacional) ou 12, 13 (com DDI 55)
+        $len = strlen($digits);
+        if ($len < 10 || $len > 13) {
             return null;
         }
-        
-        // Se tiver 11 dígitos e começar com 0, remover o 0
-        if (strlen($digits) === 11 && $digits[0] === '0') {
+
+        // Se tiver 11 ou 13 dígitos e começar com 0, remover o 0
+        if (($len === 11 || $len === 13) && $digits[0] === '0') {
             $digits = substr($digits, 1);
+            $len = strlen($digits);
         }
-        
-        // Validação de DDD brasileiro (11-99)
-        $ddd = substr($digits, 0, 2);
-        if (!preg_match('/^[1-9][1-9]$/', $ddd)) {
+
+        // Se tiver DDI 55, extrair o DDD e validar
+        if ($len >= 12 && str_starts_with($digits, '55')) {
+            $ddd = substr($digits, 2, 2);
+        } else {
+            $ddd = substr($digits, 0, 2);
+        }
+
+        // Validação básica de DDD (não pode começar com 0)
+        if ($ddd[0] === '0') {
             return null;
         }
-        
+
         return $digits;
     }
 
@@ -336,9 +348,10 @@ class OrdersController extends Controller
         return 'customer_orders:otp_throttle:' . $phone;
     }
 
-    private function hasVerifiedAccess(string $phone): bool
+    private function hasVerifiedAccess(string $phone, Request $request): bool
     {
-        $session = Session::get('customer_orders.auth');
+        $clientId = $request->get('tenant_id') ?? $request->attributes->get('client_id');
+        $session = Session::get("customer_orders.auth.{$clientId}");
         if (!$session) {
             return false;
         }
@@ -350,9 +363,10 @@ class OrdersController extends Controller
         return ($session['expires_at'] ?? 0) > Carbon::now()->timestamp;
     }
 
-    private function markPhoneAsVerified(string $phone): void
+    private function markPhoneAsVerified(string $phone, Request $request): void
     {
-        Session::put('customer_orders.auth', [
+        $clientId = $request->get('tenant_id') ?? $request->attributes->get('client_id');
+        Session::put("customer_orders.auth.{$clientId}", [
             'phone' => $phone,
             'expires_at' => Carbon::now()->addMinutes(self::VERIFIED_SESSION_TTL_MINUTES)->timestamp,
         ]);
@@ -364,11 +378,18 @@ class OrdersController extends Controller
             return false;
         }
 
-        $cacheKey = $this->otpCacheKey($phone);
-        $payload = Cache::get($cacheKey);
+        // Tentar recuperar da Session (novo método)
+        $payload = Session::get('customer_orders.otp_payload');
+
+        // Fallback para Cache (para códigos gerados antes da atualização)
+        if (!$payload) {
+            $cacheKey = $this->otpCacheKey($phone);
+            $payload = Cache::get($cacheKey);
+        }
+
         if (!$payload) {
             if ($request) {
-                Log::warning('Tentativa de verificação OTP sem código válido', [
+                Log::warning('Tentativa de verificação OTP sem payload (Session/Cache vazio)', [
                     'phone' => $phone,
                     'ip' => $request->ip(),
                     'user_agent' => $request->userAgent(),
@@ -377,41 +398,42 @@ class OrdersController extends Controller
             return false;
         }
 
+        // Verificar se o OTP pertence ao tenant atual
+        if ($request) {
+            $currentClientId = $request->get('tenant_id') ?? $request->attributes->get('client_id');
+            $storedClientId = $payload['client_id'] ?? null;
+            if ($storedClientId && (int) $currentClientId !== (int) $storedClientId) {
+                Log::error('Tentativa de verificação OTP de outro estabelecimento', [
+                    'phone' => $phone,
+                    'current_client' => $currentClientId,
+                    'stored_client' => $storedClientId
+                ]);
+                return false;
+            }
+        }
+
         if (($payload['expires_at'] ?? 0) <= Carbon::now()->timestamp) {
-            Cache::forget($cacheKey);
+            Session::forget('customer_orders.otp_payload');
+            Cache::forget($this->otpCacheKey($phone));
             if ($request) {
                 Log::warning('Tentativa de verificação OTP expirado', [
                     'phone' => $phone,
                     'ip' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
                 ]);
             }
             return false;
         }
 
-        // Verificação extra: IP e User-Agent devem corresponder (com tolerância)
+        // Verificação extra: IP deve corresponder
         if ($request) {
             $currentIp = $request->ip();
-            $currentUserAgent = hash('sha256', $request->userAgent() ?? '');
             $storedIp = $payload['ip'] ?? null;
-            $storedUserAgentHash = $payload['user_agent_hash'] ?? null;
-            
-            // Log de tentativa de verificação
-            Log::info('Tentativa de verificação OTP', [
-                'phone' => $phone,
-                'ip_match' => $currentIp === $storedIp,
-                'user_agent_match' => $currentUserAgent === $storedUserAgentHash,
-                'ip' => $currentIp,
-                'stored_ip' => $storedIp,
-            ]);
-            
-            // Aviso se IP ou User-Agent não corresponderem (mas não bloqueia)
+
             if ($storedIp && $currentIp !== $storedIp) {
                 Log::warning('Tentativa de verificação OTP com IP diferente', [
                     'phone' => $phone,
                     'stored_ip' => $storedIp,
                     'current_ip' => $currentIp,
-                    'user_agent' => $request->userAgent(),
                 ]);
             }
         }
@@ -420,40 +442,18 @@ class OrdersController extends Controller
         $provided = hash('sha256', trim($otp));
 
         if (!$expected || !hash_equals($expected, $provided)) {
-            $attempts = (int)($payload['attempts'] ?? 0) + 1;
-            
-            if ($request) {
-                Log::warning('Tentativa de verificação OTP com código inválido', [
-                    'phone' => $phone,
-                    'attempts' => $attempts,
-                    'ip' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ]);
-            }
-            
+            $attempts = (int) ($payload['attempts'] ?? 0) + 1;
+
             if ($attempts >= 5) {
-                Cache::forget($cacheKey);
-                if ($request) {
-                    Log::error('OTP bloqueado após 5 tentativas inválidas', [
-                        'phone' => $phone,
-                        'ip' => $request->ip(),
-                        'user_agent' => $request->userAgent(),
-                    ]);
-                }
+                Session::forget('customer_orders.otp_payload');
+                Cache::forget($this->otpCacheKey($phone));
+                Log::error('OTP bloqueado após 5 tentativas inválidas', ['phone' => $phone]);
             } else {
                 $payload['attempts'] = $attempts;
-                Cache::put($cacheKey, $payload, Carbon::now()->addMinutes(self::OTP_TTL_MINUTES));
+                Session::put('customer_orders.otp_payload', $payload);
+                // No need to update cache as we are migrating
             }
             return false;
-        }
-
-        // OTP válido
-        if ($request) {
-            Log::info('OTP verificado com sucesso', [
-                'phone' => $phone,
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
         }
 
         return true;
@@ -461,8 +461,27 @@ class OrdersController extends Controller
 
     private function findCustomerByPhone(string $normalizedPhone): ?Customer
     {
-        return Customer::whereRaw('REPLACE(REPLACE(REPLACE(phone, "(", ""), ")", ""), "-", "") = ?', [$normalizedPhone])
-            ->orWhere('phone', $normalizedPhone)
+        // Gerar variantes para busca
+        $variants = [$normalizedPhone];
+
+        // Se tem 55 no início e 12/13 dígitos, adicionar versão sem 55
+        if (str_starts_with($normalizedPhone, '55') && strlen($normalizedPhone) >= 12) {
+            $variants[] = substr($normalizedPhone, 2);
+        }
+        // Se tem 10/11 dígitos (nacional), adicionar versão com 55
+        elseif (strlen($normalizedPhone) <= 11) {
+            $variants[] = '55' . $normalizedPhone;
+        }
+
+        // Adicionar variantes formatadas (ex: se no banco estiver (71) 98175-0546)
+        // O MySQL REPLACE cuidará disso na consulta abaixo
+
+        return Customer::whereIn('phone', $variants)
+            ->orWhere(function ($query) use ($variants) {
+                foreach ($variants as $v) {
+                    $query->orWhereRaw('REPLACE(REPLACE(REPLACE(REPLACE(phone, "(", ""), ")", ""), "-", ""), " ", "") = ?', [$v]);
+                }
+            })
             ->first();
     }
 }

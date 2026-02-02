@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Tempo de geração: 30/01/2026 às 15:41
+-- Tempo de geração: 02/02/2026 às 15:24
 -- Versão do servidor: 8.0.44-35
 -- Versão do PHP: 8.3.26
 
@@ -1028,7 +1028,8 @@ CREATE TABLE `production_list_items` (
   `mark_for_print` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Incluir na fila de impressão; padrão true',
   `sort_order` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `order_item_id` bigint UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1283,6 +1284,21 @@ CREATE TABLE `referrals` (
 -- --------------------------------------------------------
 
 --
+-- Estrutura para tabela `sessions`
+--
+
+CREATE TABLE `sessions` (
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint UNSIGNED DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_activity` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura para tabela `settings`
 --
 
@@ -1454,6 +1470,7 @@ CREATE TABLE `users` (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `railway_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `role` enum('super_admin','admin','manager','operator') COLLATE utf8mb4_unicode_ci DEFAULT 'operator',
   `email_verified_at` timestamp NULL DEFAULT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2204,6 +2221,14 @@ ALTER TABLE `referrals`
   ADD KEY `referrals_referred_id_index` (`referred_id`),
   ADD KEY `referrals_code_index` (`code`),
   ADD KEY `referrals_status_index` (`status`);
+
+--
+-- Índices de tabela `sessions`
+--
+ALTER TABLE `sessions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `sessions_user_id_index` (`user_id`),
+  ADD KEY `sessions_last_activity_index` (`last_activity`);
 
 --
 -- Índices de tabela `settings`

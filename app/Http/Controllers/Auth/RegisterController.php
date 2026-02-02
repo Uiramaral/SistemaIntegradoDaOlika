@@ -29,7 +29,7 @@ class RegisterController extends Controller
         } catch (\Exception $e) {
             // Tabela plans ainda não existe
         }
-        
+
         return view('auth.register', compact('plans'));
     }
 
@@ -42,7 +42,7 @@ class RegisterController extends Controller
         $validator = Validator::make($request->all(), [
             'business_name' => 'required|string|max:100',
             'phone' => 'required|string|max:20',
-            'slug' => 'required|string|max:50|regex:/^[a-z0-9-]+$/|unique:clients,slug',
+            'slug' => 'required|string|max:50|regex:/^[a-z0-9-]+$/|unique:clients,slug|not_in:admin,dashboard,sistema-pedidos,api,mail,smtp,ftp,webmail,cpanel',
             'admin_name' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
@@ -54,6 +54,7 @@ class RegisterController extends Controller
             'slug.required' => 'O slug (URL) é obrigatório.',
             'slug.regex' => 'O slug deve conter apenas letras minúsculas, números e hífens.',
             'slug.unique' => 'Este slug já está em uso. Escolha outro.',
+            'slug.not_in' => 'Este slug é reservado pelo sistema.',
             'admin_name.required' => 'O nome do administrador é obrigatório.',
             'email.required' => 'O e-mail é obrigatório.',
             'email.email' => 'Digite um e-mail válido.',
@@ -80,8 +81,8 @@ class RegisterController extends Controller
             $defaultCommission = \App\Models\MasterSetting::getRegistrationDefaultCommission();
             $commissionEnabled = \App\Models\MasterSetting::isRegistrationCommissionEnabled();
             $requireApproval = \App\Models\MasterSetting::isRegistrationApprovalRequired();
-            
-            $selectedPlan = $request->input('plan') 
+
+            $selectedPlan = $request->input('plan')
                 ?? \App\Models\MasterSetting::getRegistrationDefaultPlan();
 
             // 1. Criar o cliente (estabelecimento)
@@ -105,7 +106,7 @@ class RegisterController extends Controller
                 $planModel = Plan::where('slug', $selectedPlan)
                     ->orWhere('name', 'LIKE', '%' . ucfirst($selectedPlan) . '%')
                     ->first();
-                
+
                 // Se não encontrou, buscar o básico como fallback
                 if (!$planModel) {
                     $planModel = Plan::where('is_active', true)->orderBy('sort_order')->first();
@@ -157,11 +158,11 @@ class RegisterController extends Controller
 
             // Logar o usuário automaticamente
             auth()->login($user);
-            
+
             // IMPORTANTE: Setar o client_id na sessão para o novo cliente!
             // Isso garante que o usuário veja seu próprio estabelecimento, não a Olika
             session(['client_id' => $client->id]);
-            
+
             // Também setar no request para middlewares subsequentes
             if (request()) {
                 request()->attributes->set('client_id', $client->id);
@@ -177,7 +178,7 @@ class RegisterController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Erro ao criar estabelecimento. Tente novamente.');

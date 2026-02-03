@@ -9,7 +9,7 @@
     init() {
         if(window.location.hash) {
             const hash = window.location.hash.substring(1);
-            if(['geral', 'personalizacao', 'pwa', 'impressao'].includes(hash)) {
+            if(['geral', 'loja', 'entrega', 'personalizacao', 'pwa', 'impressao'].includes(hash)) {
                 this.activeTab = hash;
             }
         }
@@ -44,6 +44,18 @@
                 class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
             <i data-lucide="settings" class="w-4 h-4"></i>
             Geral
+        </button>
+        <button @click="setTab('loja')" 
+                :class="activeTab === 'loja' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
+            <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+            Loja
+        </button>
+        <button @click="setTab('entrega')" 
+                :class="activeTab === 'entrega' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
+                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
+            <i data-lucide="truck" class="w-4 h-4"></i>
+            Entrega
         </button>
         <button @click="setTab('personalizacao')" 
                 :class="activeTab === 'personalizacao' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:bg-white/50 hover:text-foreground'"
@@ -160,6 +172,210 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo: Loja -->
+    <div x-show="activeTab === 'loja'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
+        <div class="grid gap-6 md:grid-cols-2">
+            <!-- Configurações de Pedidos -->
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <i data-lucide="shopping-basket" class="w-4 h-4"></i>
+                        </div>
+                        Pedidos & Vendas
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Numeração e frete grátis</p>
+                </div>
+                <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="order_number_prefix">Prefixo dos Pedidos</label>
+                            <input name="order_number_prefix" id="order_number_prefix" 
+                                   value="{{ $apiSettings['order_number_prefix'] ?? 'OLK-' }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   placeholder="Ex.: OLK-">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="next_order_number">Próximo Número</label>
+                            <input type="number" name="next_order_number" id="next_order_number" 
+                                   value="{{ (int)($apiSettings['next_order_number'] ?? 1) }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   min="1">
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium" for="free_shipping_min_total">Frete Grátis a partir de (R$)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
+                            <input type="number" step="0.01" name="free_shipping_min_total" id="free_shipping_min_total" 
+                                   value="{{ isset($apiSettings['free_shipping_min_total']) ? (float)$apiSettings['free_shipping_min_total'] : 200 }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm" 
+                                   placeholder="0.00">
+                        </div>
+                        <p class="text-[11px] text-muted-foreground">Valor zero desativa o frete grátis automático</p>
+                    </div>
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Salvar Loja
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Mercado Pago -->
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
+                            <i data-lucide="credit-card" class="w-4 h-4"></i>
+                        </div>
+                        Pagamentos
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Integração com Mercado Pago</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center gap-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50">
+                        <img src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadopago/logo__large.png" alt="Mercado Pago" class="h-6 object-contain">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium">Configurações do Mercado Pago</p>
+                            <p class="text-xs text-muted-foreground">Configure suas chaves de API e métodos de pagamento aceitos.</p>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <a href="{{ route('dashboard.settings.mp') }}" class="flex w-full items-center justify-center gap-2 rounded-md bg-white border border-input px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-accent transition-colors">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                            Gerenciar Mercado Pago
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assistente IA -->
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                            <i data-lucide="bot" class="w-4 h-4"></i>
+                        </div>
+                        Assistente IA
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Personalize seu assistente virtual</p>
+                </div>
+                <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium" for="assistente_ia_nome">Nome do Assistente</label>
+                        <input name="assistente_ia_nome" id="assistente_ia_nome" 
+                               value="{{ old('assistente_ia_nome', $assistenteIaNome ?? 'ChefIA') }}" 
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                               placeholder="Ex.: ChefIA">
+                        <p class="text-[11px] text-muted-foreground">Nome exibido durante o atendimento automático</p>
+                    </div>
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Salvar Assistente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo: Entrega -->
+    <div x-show="activeTab === 'entrega'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
+        <div class="grid gap-6 md:grid-cols-2">
+            <!-- Agendamento e Prazos -->
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <i data-lucide="truck" class="w-4 h-4"></i>
+                        </div>
+                        Regras de Entrega
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Prazos, capacidade e horários limite</p>
+                </div>
+                <form action="{{ route('dashboard.settings.apis.save') }}" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="delivery_slot_capacity">Capacidade por Slot (30min)</label>
+                            <input type="number" name="delivery_slot_capacity" id="delivery_slot_capacity" 
+                                   value="{{ $apiSettings['delivery_slot_capacity'] ?? 2 }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   min="1" max="50">
+                            <p class="text-[10px] text-muted-foreground">Máximo de pedidos por janela de tempo</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium" for="advance_order_days">Antecedência Mínima (Dias)</label>
+                            <input type="number" name="advance_order_days" id="advance_order_days" 
+                                   value="{{ $apiSettings['advance_order_days'] ?? 2 }}" 
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
+                                   min="0" max="30">
+                            <p class="text-[10px] text-muted-foreground">Diferença mínima entre pedido e entrega</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium" for="default_cutoff_time">Horário Limite diário (Cutoff)</label>
+                        <input type="time" name="default_cutoff_time" id="default_cutoff_time" 
+                               value="{{ $apiSettings['default_cutoff_time'] ?? '' }}" 
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <p class="text-[10px] text-muted-foreground">Pedidos após este horário contam para o próximo dia útil</p>
+                    </div>
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="btn-primary w-full sm:w-auto gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Salvar Regras
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Atalhos de Logística -->
+            <div class="bg-card rounded-xl border border-border shadow-sm h-full">
+                <div class="p-6 border-b border-border bg-muted/10">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <div class="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600">
+                            <i data-lucide="map-pin" class="w-4 h-4"></i>
+                        </div>
+                        Configurações Detalhadas
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1 ml-10">Dias de entrega e taxas por distância</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <a href="{{ route('dashboard.settings.delivery.schedules.index') }}" class="flex items-center justify-between p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                <i data-lucide="calendar-clock" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm">Dias e Horários de Entrega</p>
+                                <p class="text-xs text-muted-foreground">Defina janelas de entrega por dia da semana</p>
+                            </div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors"></i>
+                    </a>
+
+                    <a href="{{ route('dashboard.delivery-pricing.index') }}" class="flex items-center justify-between p-4 rounded-xl border border-border hover:border-orange-500/50 hover:bg-orange-50/50 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                                <i data-lucide="truck" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm">Taxas por Distância / Região</p>
+                                <p class="text-xs text-muted-foreground">Configure valores de frete baseado na localização</p>
+                            </div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-5 h-5 text-muted-foreground group-hover:text-orange-600 transition-colors"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

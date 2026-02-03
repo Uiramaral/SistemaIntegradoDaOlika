@@ -59,105 +59,32 @@ class SetClientFromSubdomain
         $host = $request->getHost();
 
         // =====================================================================
-        // PRIORIDADE 1: Sessão (setado no login/registro)
-        // Se já existe client_id na sessão, usar esse (usuário já identificado)
+        // SIMPLIFICAÇÃO: Usar cliente padrão se estiver no domínio menuolika.com.br
         // =====================================================================
-        if (session()->has('client_id')) {
-            $sessionClientId = session('client_id');
-            $client = Client::find($sessionClientId);
-            
+        $baseDomain = 'menuolika.com.br';
+        $defaultClientId = config('olika.default_client_id', 1);
+
+        if (str_ends_with($host, $baseDomain)) {
+            $client = Client::find($defaultClientId);
             if ($client) {
-                \Log::debug('SetClientFromSubdomain: Cliente identificado pela sessão', [
-                    'session_client_id' => $sessionClientId,
-                    'client_id' => $client->id,
-                    'client_name' => $client->name,
+                \Log::debug('SetClientFromSubdomain: Simplificado para cliente padrão no domínio base', [
+                    'host' => $host,
+                    'client_id' => $client->id
                 ]);
             }
         }
 
-        // =====================================================================
-        // PRIORIDADE 2: Usuário autenticado (fallback se sessão não tem)
-        // Se o usuário está logado mas sessão não tem, usar o client_id DELE
-        // =====================================================================
+        // Se ainda não encontrou (ex: acesso via IP ou domínio desconhecido), tenta fallbacks antigos
+        if (!$client) {
+            if (session()->has('client_id')) {
+                $client = Client::find(session('client_id'));
+            }
+        }
+
         if (!$client) {
             $user = auth()->user();
             if ($user && $user->client_id) {
                 $client = Client::find($user->client_id);
-                
-                if ($client) {
-                    // Setar na sessão para próximos requests
-                    session(['client_id' => $client->id]);
-                    
-                    \Log::debug('SetClientFromSubdomain: Cliente identificado pelo usuário logado', [
-                        'user_id' => $user->id,
-                        'user_email' => $user->email,
-                        'client_id' => $client->id,
-                        'client_name' => $client->name,
-                    ]);
-                }
-            }
-        }
-
-        // =====================================================================
-        // PRIORIDADE 3: Subdomínio (para cardápio público)
-        // =====================================================================
-        if (!$client) {
-            $subdomain = $this->extractSubdomain($host);
-            
-            if ($subdomain && !in_array($subdomain, $this->reservedSubdomains)) {
-                $client = Client::where('slug', $subdomain)
-                               ->where('active', true)
-                               ->first();
-                
-                if ($client) {
-                    \Log::debug('SetClientFromSubdomain: Cliente identificado pelo subdomínio', [
-                        'subdomain' => $subdomain,
-                        'client_id' => $client->id,
-                        'client_name' => $client->name,
-                    ]);
-                }
-            }
-        }
-
-        // =====================================================================
-        // PRIORIDADE 4: Header X-Client-Id (para API)
-        // =====================================================================
-        if (!$client && $request->hasHeader('X-Client-Id')) {
-            $clientId = (int) $request->header('X-Client-Id');
-            $client = Client::where('id', $clientId)
-                           ->where('active', true)
-                           ->first();
-            
-            if ($client) {
-                \Log::debug('SetClientFromSubdomain: Cliente identificado pelo header', [
-                    'header_client_id' => $clientId,
-                    'client_id' => $client->id,
-                ]);
-            }
-        }
-
-        // =====================================================================
-        // PRIORIDADE 5: Parâmetro de query (para testes/debug)
-        // =====================================================================
-        if (!$client && $request->has('_client_id')) {
-            $clientId = (int) $request->get('_client_id');
-            $client = Client::where('id', $clientId)
-                           ->where('active', true)
-                           ->first();
-        }
-
-        // =====================================================================
-        // PRIORIDADE 6: Cliente padrão (para ambiente local/admin)
-        // =====================================================================
-        if (!$client && $this->isLocalOrAdmin($host)) {
-            $defaultClientId = config('olika.default_client_id');
-            if ($defaultClientId) {
-                $client = Client::find($defaultClientId);
-                
-                \Log::debug('SetClientFromSubdomain: Usando cliente padrão', [
-                    'default_client_id' => $defaultClientId,
-                    'client_name' => $client?->name,
-                ]);
             }
         }
 
@@ -166,11 +93,11 @@ class SetClientFromSubdomain
             // Setar no request para o ClientScope acessar
             $request->attributes->set('client_id', $client->id);
             $request->attributes->set('client', $client);
-            
+
             // NOTA: Não sobrescrever a sessão aqui!
             // A sessão deve ser setada apenas no login/registro
             // para evitar que o usuário seja redirecionado para outro cliente
-            
+
             // Verificar se o cliente pode operar (não expirado, ativo)
             if (!$client->canOperate()) {
                 \Log::warning('SetClientFromSubdomain: Cliente não pode operar', [
@@ -237,7 +164,7 @@ class SetClientFromSubdomain
             // Se o host termina com .baseDomain, extrair subdomínio
             if (str_ends_with($host, '.' . $baseDomain)) {
                 $subdomain = str_replace('.' . $baseDomain, '', $host);
-                
+
                 // Se ainda contiver pontos, pegar apenas o primeiro nível
                 if (str_contains($subdomain, '.')) {
                     $subdomain = explode('.', $subdomain)[0];
@@ -296,7 +223,7 @@ class SetClientFromSubdomain
         ];
 
         $path = $request->path();
-        
+
         foreach ($publicPaths as $publicPath) {
             if (str_starts_with($path, $publicPath)) {
                 return true;

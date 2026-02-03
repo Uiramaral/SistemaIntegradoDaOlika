@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Client;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Log;
 
 class IdentifyTenant
 {
@@ -34,48 +35,83 @@ class IdentifyTenant
      */
     public function handle(Request $request, Closure $next): Response
     {
+        Log::info('IdentifyTenant: handle direct start - host: ' . $request->getHost());
         $host = $request->getHost();
-        $parts = explode('.', $host);
+        $baseDomains = config('olika.base_domains', ['menuolika.com.br', 'cozinhapro.app.br', 'gastroflow.online']);
+        $defaultClientId = config('olika.default_client_id', 1);
 
-        // Verifica se tem pelo menos 3 partes (subdominio.dominio.tld)
-        if (count($parts) >= 3) {
-            $slug = strtolower($parts[0]);
+        $matchedBase = null;
+        foreach ($baseDomains as $bd) {
+            if (str_ends_with($host, $bd)) {
+                $matchedBase = $bd;
+                break;
+            }
+        }
 
-            // Ignora subdomínios reservados
-            if (!in_array($slug, self::RESERVED_SUBDOMAINS)) {
-                // Busca o cliente pelo slug (usando tabela clients)
-                // O tenant agora é a entidade Client, não mais User
-                $tenant = Client::where('slug', $slug)
-                    ->active() // Scope do model Client
-                    ->first();
+        if (!$matchedBase || !str_contains($host, '.')) {
+            // Fallback total para o cliente padrÃ£o se nÃ£o for um domÃnio conhecido com subdomÃnio
+            $tenant = Client::find($defaultClientId);
+            $baseDomain = $matchedBase ?: 'menuolika.com.br';
+        } else {
+            $baseDomain = $matchedBase;
+            $parts = explode('.', str_replace($baseDomain, '', $host));
+            $slug = trim($parts[0] ?? '', '.');
 
-                if (!$tenant) {
-                    abort(404, 'Estabelecimento não encontrado. Verifique se o endereço está correto.');
+            // Se o host for exatamente o domÃnio base (sem subdomÃnio), ou subdomÃnio reservado
+            if (empty($slug) || in_array($slug, ['dashboard', 'www', 'admin', 'api', 'painel', 'cozinha', 'pedido']) || $host === $baseDomain) {
+                // Para o dashboard central e domÃnios base, tentamos identificar via autenticaÃ§Ã£o ou sessÃ£o
+                $tenant = null;
+
+                // 1. Tenta pegar do usuário logado (se houver)
+                if (auth()->check()) {
+                    $user = auth()->user();
+                    if (isset($user->client_id) && $user->client_id) {
+                        $tenant = Client::find($user->client_id);
+                    }
                 }
 
-                // Adiciona o tenant ao request para uso posterior
-                $request->merge(['tenant_id' => $tenant->id]);
-                $request->attributes->set('tenant', $tenant);
-                $request->attributes->set('client', $tenant); // Compatibilidade com helper
-                $request->attributes->set('client_id', $tenant->id); // Compatibilidade com helper
+                // 2. Tenta pegar da sessão (se houver)
+                if (!$tenant && session()->has('client_id')) {
+                    $tenant = Client::find(session('client_id'));
+                }
 
-                // Compartilha com todas as views
-                View::share('tenant', $tenant);
+                // Se ainda for null, é um acesso anônimo ao domínio reservado (ex: tela de login)
+            } else {
+                // Tenta buscar pelo slug (ex: loja1.menuolika...)
+                $tenant = Client::where('slug', $slug)->active()->first();
 
-                // Injeta _client_id na requisição (para Trait, se usar input)
-                $request->merge(['_client_id' => $tenant->id]);
-
-                // Define parâmetros padrão para rotas (slug e tenant_domain)
-                // Isso corrige erro "Missing required parameters" ao usar route()
-                $domainParts = explode('.', $host);
-                array_shift($domainParts); // Remove o slug
-                $tenantDomain = implode('.', $domainParts);
-
-                \Illuminate\Support\Facades\URL::defaults([
-                    'slug' => $slug,
-                    'tenant_domain' => $tenantDomain,
-                ]);
+                // Fallback para o padrão se não encontrar (garante que nada quebre)
+                if (!$tenant) {
+                    $tenant = Client::find($defaultClientId);
+                }
             }
+        }
+
+        if ($tenant) {
+            $request->merge(['tenant_id' => $tenant->id]);
+            $request->attributes->set('tenant', $tenant);
+            $request->attributes->set('client', $tenant);
+            $request->attributes->set('client_id', $tenant->id);
+            $request->merge(['_client_id' => $tenant->id]);
+
+            View::share('tenant', $tenant);
+
+            // Parâmetros padrão para rotas
+            \Illuminate\Support\Facades\URL::defaults([
+                'slug' => $tenant->slug ?? 'pedido',
+                'tenant_domain' => $baseDomain,
+            ]);
+
+        } else {
+            Log::warning('IdentifyTenant: Tenant not found for host ' . $host);
+        }
+
+        // Remover parâmetros de rota de domínio para não quebrar a injeção de dependência nos controllers
+        // Fazemos isso mesmo sem tenant, se a rota existir, para garantir segurança na assinatura dos métodos
+        if ($request->route()) {
+            $request->route()->forgetParameter('slug');
+            $request->route()->forgetParameter('tenant_domain');
+            $request->route()->forgetParameter('dashboard_domain');
         }
 
         return $next($request);

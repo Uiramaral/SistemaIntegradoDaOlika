@@ -27,13 +27,15 @@ class VerifyCsrfToken extends Middleware
         'stripe/*',
         'webhook/*',
         'bot-conversa/*',
-        // Exceptions for PDV to avoid 419 on session mismatch
-        'pdv/*',
-        'dashboard/pdv/*',
-        'api/pdv/*',
-        // Exceptions for Order Actions (due to same session domain issue)
+        // Subdomain-based paths (without dashboard/ prefix)
+        'customers',
+        'customers/*',
+        'orders',
         'orders/*',
-        'dashboard/orders/*',
+        'pdv',
+        'pdv/*',
+        'logout',
+        'login',
     ];
 
     /**

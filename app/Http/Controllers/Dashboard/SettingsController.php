@@ -7,11 +7,26 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
+use App\Models\Client;
+use App\Models\Setting;
+use App\Models\PaymentSetting;
+use App\Models\WhatsappInstance;
+use App\Models\WhatsappInstanceUrl;
 
 class SettingsController extends Controller
 {
     public function index()
     {
+        // Debug de Tenant
+        Log::info('SettingsController: Identificando cliente', [
+            'currentClientId' => currentClientId(),
+            'auth_check' => auth()->check(),
+            'user_client_id' => auth()->check() ? auth()->user()->client_id : 'guest',
+            'session_client_id' => session('client_id'),
+            'host' => request()->getHost(),
+        ]);
+
         // Buscar configurações do WhatsApp filtradas por cliente
         $clientId = currentClientId();
         $whatsappSettings = DB::table('whatsapp_settings')
@@ -1312,7 +1327,7 @@ class SettingsController extends Controller
     /**
      * Exibir dados de uma instância específica (JSON)
      */
-    public function whatsappInstanceShow($domain, $instance)
+    public function whatsappInstanceShow($instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1337,7 +1352,7 @@ class SettingsController extends Controller
     /**
      * Atualizar instância WhatsApp
      */
-    public function whatsappInstanceUpdate(Request $request, $domain, $instance)
+    public function whatsappInstanceUpdate(Request $request, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1381,7 +1396,7 @@ class SettingsController extends Controller
     /**
      * Deletar instância WhatsApp
      */
-    public function whatsappInstanceDestroy($domain, $instance)
+    public function whatsappInstanceDestroy($instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1408,7 +1423,7 @@ class SettingsController extends Controller
     /**
      * Status de uma instância específica
      */
-    public function whatsappInstanceStatus($domain, $instance)
+    public function whatsappInstanceStatus($instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1423,7 +1438,7 @@ class SettingsController extends Controller
     /**
      * Conectar instância WhatsApp
      */
-    public function whatsappInstanceConnect(Request $request, $domain, $instance)
+    public function whatsappInstanceConnect(Request $request, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);
@@ -1464,7 +1479,7 @@ class SettingsController extends Controller
     /**
      * Desconectar instância WhatsApp
      */
-    public function whatsappInstanceDisconnect(Request $request, $domain, $instance)
+    public function whatsappInstanceDisconnect(Request $request, $instance)
     {
         try {
             $inst = \App\Models\WhatsappInstance::findOrFail($instance);

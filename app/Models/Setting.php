@@ -87,9 +87,9 @@ class Setting extends Model
      */
     public static function getSettings(?int $clientId = null): static
     {
-        // Se não informou client_id, usar o do contexto atual
+        // Se não informou client_id, usar o do contexto atual (helper centralizado)
         if ($clientId === null) {
-            $clientId = session('client_id') ?? config('olika.default_client_id');
+            $clientId = currentClientId();
         }
 
         // Buscar settings do cliente específico

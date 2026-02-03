@@ -18,10 +18,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use App\Models\Setting;
+use App\Models\Client;
+use App\Models\Scopes\ClientScope;
+use App\Services\FiscalPrinterService;
+use App\Services\OrderStatusService;
 
 class OrdersController extends Controller
 {
-    public function index(Request $request, $domain = null)
+    public function index(Request $request)
     {
         // Filtrar por client_id do estabelecimento atual
         $clientId = currentClientId();
@@ -146,7 +151,7 @@ class OrdersController extends Controller
      * ?customer_id= opcional. Sem cliente ou cliente não-revenda → só não wholesale_only.
      * Cliente is_wholesale=1 → todos.
      */
-    public function modalProducts(Request $request, $domain = null)
+    public function modalProducts(Request $request)
     {
         $customerId = $request->get('customer_id');
         $includeWholesale = false;
@@ -165,7 +170,7 @@ class OrdersController extends Controller
     /**
      * API: dias e horários de entrega disponíveis (regras em configurações / delivery_schedules).
      */
-    public function deliverySlots(Request $request, $domain = null)
+    public function deliverySlots(Request $request)
     {
         try {
             $clientId = currentClientId();
@@ -307,7 +312,7 @@ class OrdersController extends Controller
      * Buscar novos pedidos via AJAX para atualização automática
      * Também retorna pedidos atualizados (mudança de status/pagamento)
      */
-    public function getNewOrders(Request $request, $domain = null)
+    public function getNewOrders(Request $request)
     {
         try {
             // Filtrar por client_id do estabelecimento atual
@@ -495,7 +500,7 @@ class OrdersController extends Controller
     /**
      * Força a sincronização manual do status de pagamento via Mercado Pago
      */
-    public function confirmMercadoPagoStatus(Request $request, $domain, Order $order)
+    public function confirmMercadoPagoStatus(Request $request, Order $order)
     {
         if ($order->payment_provider && $order->payment_provider !== 'mercadopago') {
             return redirect()->back()->with('error', 'Este pedido não está vinculado ao Mercado Pago.');
@@ -566,7 +571,7 @@ class OrdersController extends Controller
     /**
      * Envia o recibo do pedido pago via WhatsApp
      */
-    public function sendReceipt(Request $request, $domain, Order $order)
+    public function sendReceipt(Request $request, Order $order)
     {
         try {
             // Permite enviar recibo para qualquer status exceto estornado
@@ -645,7 +650,7 @@ class OrdersController extends Controller
     /**
      * Endpoint JSON para verificar status de pagamento (usado pelo polling)
      */
-    public function paymentStatus($domain, Order $order)
+    public function paymentStatus(Order $order)
     {
         // Verificar se o pedido pertence ao estabelecimento atual
         $clientId = currentClientId();
@@ -657,7 +662,7 @@ class OrdersController extends Controller
         $wasPaid = in_array(strtolower((string) $order->payment_status), ['approved', 'paid']);
         if (!$wasPaid && !empty($order->payment_id)) {
             try {
-                $svc = new \App\Services\MercadoPagoApiService();
+                $svc = new MercadoPagoApiService();
                 $res = $svc->getPaymentStatus((string) $order->payment_id);
                 if (!empty($res['success']) && !empty($res['payment'])) {
                     $payment = $res['payment'];
@@ -709,7 +714,7 @@ class OrdersController extends Controller
         ]);
     }
 
-    public function show($domain, $id)
+    public function show($id)
     {
         \Log::info('OrdersController@show Debug', ['id' => $id, 'clientId' => currentClientId()]);
 
@@ -753,7 +758,7 @@ class OrdersController extends Controller
             ->get();
 
         // Status disponíveis - usar OrderStatusService como no edit
-        $availableStatuses = \App\Services\OrderStatusService::getAvailableStatuses($order);
+        $availableStatuses = OrderStatusService::getAvailableStatuses($order);
 
         // Cupons disponíveis - usar mesma lógica do edit
         $availableCoupons = Coupon::where('client_id', $clientId)
@@ -792,7 +797,7 @@ class OrdersController extends Controller
         ]));
     }
 
-    public function edit($domain, $id)
+    public function edit($id)
     {
         $order = Order::with([
             'customer' => function ($q) {
@@ -817,7 +822,7 @@ class OrdersController extends Controller
         }
 
         // Status disponíveis
-        $availableStatuses = \App\Services\OrderStatusService::getAvailableStatuses($order);
+        $availableStatuses = OrderStatusService::getAvailableStatuses($order);
 
         // Cupons disponíveis
         $availableCoupons = Coupon::where('client_id', $clientId)
@@ -856,7 +861,7 @@ class OrdersController extends Controller
     /**
      * Registrar pedido como débito (fiado)
      */
-    public function registerAsDebit(Request $request, $domain, Order $order)
+    public function registerAsDebit(Request $request, Order $order)
     {
         try {
             DB::beginTransaction();
@@ -904,7 +909,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function updateStatus(Request $request, $domain, Order $order)
+    public function updateStatus(Request $request, Order $order)
     {
         $request->validate([
             'status' => 'required|string',
@@ -962,7 +967,7 @@ class OrdersController extends Controller
             }
 
             // Usar OrderStatusService para atualizar status, histórico e notificações
-            $orderStatusService = new \App\Services\OrderStatusService();
+            $orderStatusService = new OrderStatusService();
 
             // Primeiro atualizar o status no pedido manualmente para garantir mapeamento correto
             $order->status = $enumStatus;
@@ -1010,7 +1015,7 @@ class OrdersController extends Controller
     /**
      * Alterar status em lote (ações rápidas na lista). Nunca envia notificação WhatsApp.
      */
-    public function batchStatus(Request $request, $domain = null)
+    public function batchStatus(Request $request)
     {
         $request->validate([
             'order_ids' => 'required|array',
@@ -1081,7 +1086,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function update(Request $request, $domain, Order $order)
+    public function update(Request $request, Order $order)
     {
         $request->validate([
             'notes' => 'nullable|string',
@@ -1411,7 +1416,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function applyCoupon(Request $request, $domain, Order $order)
+    public function applyCoupon(Request $request, Order $order)
     {
         $request->validate([
             'coupon_code' => 'required|string|exists:coupons,code',
@@ -1542,7 +1547,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function removeCoupon($domain, Order $order)
+    public function removeCoupon(Order $order)
     {
         try {
             DB::beginTransaction();
@@ -1587,7 +1592,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function adjustDeliveryFee(Request $request, $domain, Order $order)
+    public function adjustDeliveryFee(Request $request, Order $order)
     {
         $request->validate([
             'delivery_fee' => 'required|numeric|min:0',
@@ -1672,7 +1677,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function applyDiscount(Request $request, $domain, Order $order)
+    public function applyDiscount(Request $request, Order $order)
     {
         $request->validate([
             'discount_type' => 'required|in:percentage,fixed',
@@ -1726,7 +1731,7 @@ class OrdersController extends Controller
         }
     }
 
-    public function removeDiscount($domain, Order $order)
+    public function removeDiscount(Order $order)
     {
         try {
             DB::beginTransaction();
@@ -1762,7 +1767,7 @@ class OrdersController extends Controller
     /**
      * Atualizar quantidade de um item do pedido
      */
-    public function updateItemQuantity(Request $request, $domain, Order $order, OrderItem $item)
+    public function updateItemQuantity(Request $request, Order $order, OrderItem $item)
     {
         $request->validate([
             'quantity' => 'required|integer|min:1',
@@ -1789,7 +1794,7 @@ class OrdersController extends Controller
     /**
      * Atualizar quantidade de um item via AJAX
      */
-    public function updateItemQuantityAjax(Request $request, $domain, Order $order, OrderItem $item)
+    public function updateItemQuantityAjax(Request $request, Order $order, OrderItem $item)
     {
         try {
             DB::beginTransaction();
@@ -1840,7 +1845,7 @@ class OrdersController extends Controller
     /**
      * Adicionar quantidade a um item existente
      */
-    public function addItemQuantity($domain, Order $order, OrderItem $item)
+    public function addItemQuantity(Order $order, OrderItem $item)
     {
         try {
             DB::beginTransaction();
@@ -1887,7 +1892,7 @@ class OrdersController extends Controller
     /**
      * Reduzir quantidade de um item (remove 1 unidade)
      */
-    public function reduceItemQuantity($domain, Order $order, OrderItem $item)
+    public function reduceItemQuantity(Order $order, OrderItem $item)
     {
         try {
             DB::beginTransaction();
@@ -1943,7 +1948,7 @@ class OrdersController extends Controller
     /**
      * Remover item completamente do pedido
      */
-    public function removeItem($domain, Order $order, OrderItem $item)
+    public function removeItem(Order $order, OrderItem $item)
     {
         try {
             DB::beginTransaction();
@@ -1986,7 +1991,7 @@ class OrdersController extends Controller
     /**
      * Adicionar novo item ao pedido
      */
-    public function addItem(Request $request, $domain, Order $order)
+    public function addItem(Request $request, Order $order)
     {
         try {
             // Debug: Log todos os dados recebidos com mais detalhes
@@ -2204,7 +2209,7 @@ class OrdersController extends Controller
     /**
      * Exibe recibo/resumo do pedido
      */
-    public function receipt($domain, Order $order)
+    public function receipt(Order $order)
     {
         $order->load([
             'customer',
@@ -2235,7 +2240,7 @@ class OrdersController extends Controller
     /**
      * Exibe recibo fiscal para impressão
      */
-    public function fiscalReceipt($domain, Order $order)
+    public function fiscalReceipt(Order $order)
     {
         $order->load([
             'customer',
@@ -2255,7 +2260,7 @@ class OrdersController extends Controller
     /**
      * Exibe recibo de conferência (sem valores, apenas produtos e quantidades)
      */
-    public function checkReceipt($domain, Order $order)
+    public function checkReceipt(Order $order)
     {
         $order->load([
             'customer',
@@ -2296,7 +2301,7 @@ class OrdersController extends Controller
 
             return null;
         } catch (\Exception $e) {
-            \Log::error('Erro ao gerar QR code do WhatsApp', [
+            Log::error('Erro ao gerar QR code do WhatsApp', [
                 'error' => $e->getMessage()
             ]);
             return null;
@@ -2306,7 +2311,7 @@ class OrdersController extends Controller
     /**
      * Gera comandos ESC/POS para impressão fiscal
      */
-    public function fiscalReceiptEscPos($domain, Order $order)
+    public function fiscalReceiptEscPos(Order $order)
     {
         $order->load([
             'customer',
@@ -2316,7 +2321,7 @@ class OrdersController extends Controller
             'orderDeliveryFee'
         ]);
 
-        $printerService = new \App\Services\FiscalPrinterService();
+        $printerService = new FiscalPrinterService();
         $result = $printerService->sendToPrinter($order, 'thermal');
 
         if (!$result['success']) {
@@ -2336,7 +2341,7 @@ class OrdersController extends Controller
     /**
      * Gera comandos ESC/POS para impressão do RECIBO DE CONFERÊNCIA (sem preços)
      */
-    public function checkReceiptEscPos($domain, Order $order)
+    public function checkReceiptEscPos(Order $order)
     {
         $order->load([
             'customer',
@@ -2344,7 +2349,7 @@ class OrdersController extends Controller
             'items.variant'
         ]);
 
-        $printerService = new \App\Services\FiscalPrinterService();
+        $printerService = new FiscalPrinterService();
         // Usar modo 'check' para gerar recibo sem preços
         $result = $printerService->sendToPrinter($order, 'thermal', 'check');
 
@@ -2365,7 +2370,7 @@ class OrdersController extends Controller
     /**
      * Exibe página de monitor de impressão
      */
-    public function printerMonitor($domain = null)
+    public function printerMonitor()
     {
         return view('dashboard.orders.printer-monitor');
     }
@@ -2373,11 +2378,11 @@ class OrdersController extends Controller
     /**
      * API para monitor de impressão buscar pedidos não impressos
      */
-    public function getOrdersForPrint(Request $request, $domain = null)
+    public function getOrdersForPrint(Request $request)
     {
         try {
             Log::info('getOrdersForPrint called', [
-                'domain' => $domain,
+                'domain' => request()->route('dashboard_domain'),
                 'request_all' => $request->all(),
                 'dashboard_domain' => $request->route('dashboard_domain')
             ]);
@@ -2451,7 +2456,7 @@ class OrdersController extends Controller
     /**
      * Solicita impressão de um pedido (usado pelo celular para adicionar à fila)
      */
-    public function requestPrint(Request $request, $domain, Order $order)
+    public function requestPrint(Request $request, Order $order)
     {
         try {
             // Marcar pedido como solicitado para impressão NORMAL
@@ -2482,7 +2487,7 @@ class OrdersController extends Controller
     /**
      * Solicita impressão do recibo de conferência (igual ao recibo normal, adiciona à fila)
      */
-    public function requestPrintCheck(Request $request, $domain, Order $order)
+    public function requestPrintCheck(Request $request, Order $order)
     {
         try {
             // Marcar pedido como solicitado para impressão DE CONFERÊNCIA
@@ -2513,7 +2518,7 @@ class OrdersController extends Controller
     /**
      * Marca pedido como impresso (chamado após impressão bem-sucedida)
      */
-    public function markAsPrinted(Request $request, $domain, Order $order)
+    public function markAsPrinted(Request $request, Order $order)
     {
         try {
             $order->printed_at = now();
@@ -2541,7 +2546,7 @@ class OrdersController extends Controller
      * Limpa solicitações de impressão antigas (mais de 24h) para evitar reimpressões acidentais
      * Chamado automaticamente quando o monitor é ativado
      */
-    public function clearOldPrintRequests(Request $request, $domain = null)
+    public function clearOldPrintRequests(Request $request)
     {
         try {
             $timeLimit = now()->subHours(24);
@@ -2685,7 +2690,7 @@ class OrdersController extends Controller
     /**
      * Estornar pedido - cancelar venda e reverter tudo relacionado
      */
-    public function refund(Request $request, $domain, Order $order)
+    public function refund(Request $request, Order $order)
     {
         $request->validate([
             'reason' => 'nullable|string|max:500',
@@ -2911,7 +2916,7 @@ class OrdersController extends Controller
 
             // 7. Enviar notificação via OrderStatusService (que já envia WhatsApp)
             try {
-                $orderStatusService = new \App\Services\OrderStatusService();
+                $orderStatusService = new OrderStatusService();
                 $orderStatusService->changeStatus($order, 'cancelled', $reason, auth()->check() ? auth()->id() : null, false);
             } catch (\Exception $e) {
                 \Log::warning('Estorno: Erro ao enviar notificação via OrderStatusService', [
@@ -2946,7 +2951,7 @@ class OrdersController extends Controller
     /**
      * Duplicar pedido cancelado - cria um novo pedido baseado no pedido cancelado
      */
-    public function duplicate($domain, Order $order)
+    public function duplicate(Order $order)
     {
         try {
             DB::beginTransaction();
@@ -3041,7 +3046,7 @@ class OrdersController extends Controller
     /**
      * Enviar cobrança de pagamento diretamente via WhatsApp
      */
-    public function sendPaymentCharge($domain, Order $order)
+    public function sendPaymentCharge(Order $order)
     {
         try {
             // Verificar se o pedido tem pagamento pendente

@@ -31,103 +31,53 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Log::info('AppServiceProvider: boot start');
         // Usar a view de paginação personalizada (Tailwind traduzido)
         Paginator::defaultView('vendor.pagination.tailwind');
         Paginator::defaultSimpleView('vendor.pagination.tailwind');
 
-        // Detectar URL base dinamicamente baseado no host atual
-        // IMPORTANTE: Isso deve ser feito ANTES de qualquer uso de asset() ou url()
-        $request = request();
-        if ($request && $request->getHost()) {
-            $currentHost = $request->getHost();
-            $scheme = $request->isSecure() || app()->environment('production') ? 'https' : 'http';
+        $host = request()->getHost();
+        $baseDomains = config('olika.base_domains', ['menuolika.com.br', 'cozinhapro.app.br', 'gastroflow.online']);
 
-            // Detectar se é ambiente de desenvolvimento
-            $isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
-
-            // Forçar HTTPS em produção e desenvolvimento (se disponível)
-            if (app()->environment('production') || $isDevDomain) {
-                URL::forceScheme('https');
-                $scheme = 'https';
+        $matchedBase = null;
+        foreach ($baseDomains as $bd) {
+            if (str_ends_with($host, $bd)) {
+                $matchedBase = $bd;
+                break;
             }
-
-            // Forçar URL base baseada no host atual
-            // Isso garante que asset() e url() usem o domínio correto (ex: menuolika.com.br vs cozinhapro.app.br)
-            $rootUrl = $scheme . '://' . $currentHost;
-            URL::forceRootUrl($rootUrl);
-
-            // Configurar o domínio do cookie de sessão dinamicamente
-            // Para permitir sessões entre subdomínios, usamos o domínio principal (ex: .menuolika.com.br)
-            $hostParts = explode('.', $currentHost);
-            if (count($hostParts) >= 2) {
-                // Se for IP ou localhost, não altera
-                if (!filter_var($currentHost, FILTER_VALIDATE_IP) && $currentHost !== 'localhost') {
-                    // Lista de domínios base conhecidos do sistema
-                    $knownDomains = ['menuolika.com.br', 'cozinhapro.app.br', 'gastroflow.online'];
-                    $baseDomain = null;
-
-                    foreach ($knownDomains as $kd) {
-                        if (str_ends_with($currentHost, $kd)) {
-                            $baseDomain = $kd;
-                            break;
-                        }
-                    }
-
-                    // Se for um domínio desconhecido, tenta pegar os últimos 2 ou 3 componentes
-                    if (!$baseDomain) {
-                        if (str_ends_with($currentHost, '.com.br') || str_ends_with($currentHost, '.app.br') || str_ends_with($currentHost, '.net.br')) {
-                            $baseDomain = implode('.', array_slice($hostParts, -3));
-                        } else {
-                            $baseDomain = implode('.', array_slice($hostParts, -2));
-                        }
-                    }
-
-                    if ($baseDomain) {
-                        Config::set('session.domain', '.' . $baseDomain);
-
-                        // Definir default para o parâmetro {dashboard_domain} nas rotas
-                        // Isso garante que route('dashboard.index') gere a URL correta para o domínio atual
-                        $dashboardDefault = 'dashboard.' . $baseDomain;
-
-                        if ($baseDomain === 'gastroflow.online') {
-                            $dashboardDefault = 'gastroflow.online';
-                        } elseif ($isDevDomain) {
-                            $dashboardDefault = 'devdashboard.' . $baseDomain;
-                        }
-
-                        // Se estamos acessando diretamente um dashboard, usar o host atual
-                        // (Isso corrige o problema de cache de rotas gerando URLs cruzadas)
-                        if (
-                            str_starts_with($currentHost, 'dashboard.') ||
-                            str_starts_with($currentHost, 'devdashboard.') ||
-                            $currentHost === 'gastroflow.online'
-                        ) {
-                            $dashboardDefault = $currentHost;
-                        }
-
-                        URL::defaults(['dashboard_domain' => $dashboardDefault]);
-
-                        // Fortalecer a configuração da sessão para evitar 419
-                        if ($scheme === 'https') {
-                            Config::set('session.secure', true);
-                            Config::set('session.same_site', 'lax');
-                        }
-                    }
-                }
-            }
-
-            // Configurar URL do storage público dinamicamente
-            Config::set('filesystems.disks.public.url', $rootUrl . '/storage');
-
-            // Garantir que ASSET_URL também use o domínio atual (se configurado)
-            if (config('app.asset_url')) {
-                Config::set('app.asset_url', $rootUrl);
-            }
-        } elseif (app()->environment('production')) {
-            // Fallback para produção se não houver request
-            URL::forceScheme('https');
-            URL::forceRootUrl(config('app.url'));
         }
+
+        // Se nÃ£o encontrar na lista, tenta pegar os dois últimos segmentos como fallback
+        if (!$matchedBase && strpos($host, '.') !== false) {
+            $parts = explode('.', $host);
+            if (count($parts) >= 2) {
+                $matchedBase = implode('.', array_slice($parts, -2));
+            }
+        }
+
+        $baseDomain = $matchedBase ?: 'menuolika.com.br';
+        $dashboardDomain = 'dashboard.' . $baseDomain;
+
+        // ForÃ§ar HTTPS em produÃ§Ã£o
+        if (!app()->isLocal()) {
+            URL::forceScheme('https');
+        }
+
+        // ParÃ¢metros padrÃ£o para rotas do dashboard
+        URL::defaults(['dashboard_domain' => $dashboardDomain]);
+
+        // ConfiguraÃ§Ã£o de sessÃ£o (CSRF FIX)
+        // ConfiguraÃ§Ã£o de sessÃ£o (CSRF FIX)
+        // Alterado para NULL para evitar problemas de loop de login e garantir que o cookie
+        // seja setado para o domínio/host exato da requisição.
+        Config::set('session.domain', null);
+
+        if (!app()->isLocal()) {
+            Config::set('session.secure', true);
+            Config::set('session.same_site', 'lax');
+        }
+
+        \Illuminate\Support\Facades\Schema::defaultStringLength(191);
 
         // Helper Blade @role
         Blade::if('role', function (...$roles) {

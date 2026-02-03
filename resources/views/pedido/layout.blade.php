@@ -364,6 +364,32 @@
             cartRemove: '{{ route('pedido.cart.remove') }}',
             cartCount: '{{ route('pedido.cart.count') }}'
         };
+
+        // Função global de notificação (Toast)
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            // Padronizado para marrom conforme pedido do usuário
+            notification.className = `fixed bottom-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[9999] bg-[#7A5230] text-white text-sm font-semibold animate-fade-in flex items-center gap-3`;
+            
+            // Ícone baseado no tipo (opcional, mas mantido o check para sucesso)
+            let icon = '';
+            if (type === 'success') {
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+            } else {
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+            }
+
+            notification.innerHTML = `${icon}<span>${message}</span>`;
+            document.body.appendChild(notification);
+            
+            // Remover após 3 segundos com transição suave
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, 20px)';
+                notification.style.transition = 'all 0.4s ease-in';
+                setTimeout(() => notification.remove(), 400);
+            }, 3000);
+        }
     </script>
     <script src="{{ asset('js/pedido-layout.js') }}" defer></script>
 

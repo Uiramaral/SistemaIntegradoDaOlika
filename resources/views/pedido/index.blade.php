@@ -777,7 +777,7 @@ function addToCart(productId, productName, price, buttonElement = null) {
             
             // Mostrar notificação rápida
             if (typeof showNotification === 'function') {
-                showNotification('Produto adicionado!', productName, price);
+                showNotification('Produto adicionado: ' + productName, 'success');
             }
             
             // Recarregar drawer e dar feedback visual

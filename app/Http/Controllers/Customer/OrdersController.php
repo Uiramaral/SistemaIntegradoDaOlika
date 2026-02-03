@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Customer;
 use App\Models\OrderRating;
 use App\Services\WhatsAppService;
+use App\Models\Scopes\ClientScope; // Added import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -60,6 +61,14 @@ class OrdersController extends Controller
         $customer = $this->findCustomerByPhone($phone);
 
         if (!$customer) {
+            // Debug Log
+            Log::error('OrdersController: Cliente não encontrado', [
+                'phone_input' => $rawPhone,
+                'phone_normalized' => $phone,
+                'client_id' => \App\Models\Traits\BelongsToClient::getCurrentClientId(),
+                'url' => $request->fullUrl(),
+            ]);
+
             cookie()->queue(cookie()->forget('customer_phone'));
             return view('customer.orders.login', array_merge($otpState, [
                 'phoneValue' => $rawPhone ?? $phone,
@@ -67,9 +76,23 @@ class OrdersController extends Controller
             ]));
         }
 
-        // Buscar pedidos do cliente
-        $orders = Order::where('customer_id', $customer->id)
-            ->with(['items.product', 'payment'])
+        // Buscar TODOS os IDs de cliente deste telefone (Multi-Tenant Aggregation)
+        $variants = $this->getPhoneVariants($phone);
+        $allCustomerIds = Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+            ->where(function ($query) use ($variants) {
+                $query->whereIn('phone', $variants)
+                    ->orWhere(function ($q) use ($variants) {
+                        foreach ($variants as $v) {
+                            $q->orWhereRaw('REPLACE(REPLACE(REPLACE(REPLACE(phone, "(", ""), ")", ""), "-", ""), " ", "") = ?', [$v]);
+                        }
+                    });
+            })
+            ->pluck('id');
+
+        // Buscar pedidos de QUALQUER cliente associado a este telefone (ignorando scope de tenant)
+        $orders = Order::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+            ->whereIn('customer_id', $allCustomerIds)
+            ->with(['items.product', 'payment', 'client']) // Incluir client para mostrar a loja
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -461,28 +484,67 @@ class OrdersController extends Controller
 
     private function findCustomerByPhone(string $normalizedPhone): ?Customer
     {
+        Log::info('OrdersController::findCustomerByPhone Start', ['phone' => $normalizedPhone]);
+
         // Gerar variantes para busca
-        $variants = [$normalizedPhone];
+        $variants = $this->getPhoneVariants($normalizedPhone);
 
-        // Se tem 55 no início e 12/13 dígitos, adicionar versão sem 55
-        if (str_starts_with($normalizedPhone, '55') && strlen($normalizedPhone) >= 12) {
-            $variants[] = substr($normalizedPhone, 2);
+        Log::info('OrdersController::findCustomerByPhone Variants', ['variants' => $variants]);
+
+        // 1. Busca no Tenant atual
+        $customer = Customer::where(function ($query) use ($variants) {
+            $query->whereIn('phone', $variants)
+                ->orWhere(function ($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhereRaw('REPLACE(REPLACE(REPLACE(REPLACE(phone, "(" , ""), ")", ""), "-", ""), " ", "") = ?', [$v]);
+                    }
+                });
+        })->first();
+
+        if ($customer) {
+            Log::info('OrdersController::findCustomerByPhone Found Local', ['id' => $customer->id, 'client_id' => $customer->client_id]);
+            return $customer;
         }
-        // Se tem 10/11 dígitos (nacional), adicionar versão com 55
-        elseif (strlen($normalizedPhone) <= 11) {
-            $variants[] = '55' . $normalizedPhone;
-        }
 
-        // Adicionar variantes formatadas (ex: se no banco estiver (71) 98175-0546)
-        // O MySQL REPLACE cuidará disso na consulta abaixo
+        Log::info('OrdersController::findCustomerByPhone Local Not Found. Trying Global...');
 
-        return Customer::whereIn('phone', $variants)
-            ->orWhere(function ($query) use ($variants) {
-                foreach ($variants as $v) {
-                    $query->orWhereRaw('REPLACE(REPLACE(REPLACE(REPLACE(phone, "(", ""), ")", ""), "-", ""), " ", "") = ?', [$v]);
-                }
+        // 2. Se não encontrou, busca GLOBALMENTE (qualquer tenant)
+        // Isso permite o acesso ("login") mesmo se o cliente for de outra loja
+        // CRITICAL: Ensure ClientScope is imported correctly for this to work
+        $globalCustomer = Customer::withoutGlobalScope(\App\Models\Scopes\ClientScope::class)
+            ->where(function ($query) use ($variants) {
+                $query->whereIn('phone', $variants)
+                    ->orWhere(function ($q) use ($variants) {
+                        foreach ($variants as $v) {
+                            $q->orWhereRaw('REPLACE(REPLACE(REPLACE(REPLACE(phone, "(" , ""), ")", ""), "-", ""), " ", "") = ?', [$v]);
+                        }
+                    });
             })
+            ->orderBy('updated_at', 'desc')
             ->first();
+
+        if ($globalCustomer) {
+            Log::info('OrdersController::findCustomerByPhone Found Global', ['id' => $globalCustomer->id, 'client_id' => $globalCustomer->client_id]);
+        } else {
+            Log::warning('OrdersController::findCustomerByPhone Global Not Found', ['phone' => $normalizedPhone]);
+
+            // Debug: Check if ANY customer exists with this phone using raw query to bypass ALL scopes
+            $rawCheck = DB::select("SELECT id, client_id, phone FROM customers WHERE phone LIKE ?", ["%" . substr($normalizedPhone, -8) . "%"]);
+            Log::info('OrdersController::findCustomerByPhone Raw DB Check', ['matches' => $rawCheck]);
+        }
+
+        return $globalCustomer;
+    }
+
+    private function getPhoneVariants(string $phone): array
+    {
+        $variants = [$phone];
+        if (str_starts_with($phone, '55') && strlen($phone) >= 12) {
+            $variants[] = substr($phone, 2);
+        } elseif (strlen($phone) <= 11) {
+            $variants[] = '55' . $phone;
+        }
+        return $variants;
     }
 }
 

@@ -28,12 +28,12 @@ class ClientScope implements Scope
                 $clientId = session('client_id');
             }
 
-            if (!$clientId) {
-                $clientId = config('olika.default_client_id');
-            }
-
             if (!$clientId && auth()->check() && isset(auth()->user()->client_id)) {
                 $clientId = auth()->user()->client_id;
+            }
+
+            if (!$clientId) {
+                $clientId = config('olika.default_client_id');
             }
         }
 

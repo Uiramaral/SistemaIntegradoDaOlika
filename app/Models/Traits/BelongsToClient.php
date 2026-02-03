@@ -64,12 +64,12 @@ trait BelongsToClient
         // 1. Verificar se está no contexto de request (web/api)
         if (app()->bound('request')) {
             $request = app('request');
-            
+
             // Middleware pode ter setado
             if ($request->has('_client_id')) {
                 return (int) $request->get('_client_id');
             }
-            
+
             // Ou pode estar no header (API)
             if ($request->hasHeader('X-Client-Id')) {
                 return (int) $request->header('X-Client-Id');
@@ -81,14 +81,18 @@ trait BelongsToClient
             return (int) session('client_id');
         }
 
-        // 3. Verificar configuração global (cliente padrão)
-        if (config('olika.default_client_id')) {
-            return (int) config('olika.default_client_id');
+        // 3. Se estiver autenticado, tentar pegar do user
+        // Prioridade maior que o config pois o user logado define o contexto real
+        if (auth()->check()) {
+            $user = auth()->user();
+            if (isset($user->client_id) && $user->client_id) {
+                return (int) $user->client_id;
+            }
         }
 
-        // 4. Se estiver autenticado, tentar pegar do user
-        if (auth()->check() && method_exists(auth()->user(), 'client_id')) {
-            return auth()->user()->client_id;
+        // 4. Verificar configuração global (cliente padrão - fallback final)
+        if (config('olika.default_client_id')) {
+            return (int) config('olika.default_client_id');
         }
 
         return null;
@@ -110,7 +114,7 @@ trait BelongsToClient
     public function scopeForClient($query, int $clientId)
     {
         return $query->withoutGlobalScope(ClientScope::class)
-                     ->where('client_id', $clientId);
+            ->where('client_id', $clientId);
     }
 
     /**
@@ -131,7 +135,7 @@ trait BelongsToClient
     public function scopeGlobal($query)
     {
         return $query->withoutGlobalScope(ClientScope::class)
-                     ->whereNull('client_id');
+            ->whereNull('client_id');
     }
 
     /**
@@ -142,11 +146,11 @@ trait BelongsToClient
     public function scopeWithGlobal($query)
     {
         $clientId = static::getCurrentClientId();
-        
+
         return $query->withoutGlobalScope(ClientScope::class)
-                     ->where(function ($q) use ($clientId) {
-                         $q->where('client_id', $clientId)
-                           ->orWhereNull('client_id');
-                     });
+            ->where(function ($q) use ($clientId) {
+                $q->where('client_id', $clientId)
+                    ->orWhereNull('client_id');
+            });
     }
 }

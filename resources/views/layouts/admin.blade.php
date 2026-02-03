@@ -430,6 +430,15 @@
                 ],
             ],
             [
+                'label' => 'Logística',
+                'icon' => 'truck',
+                'children' => [
+                    ['label' => 'Entregas', 'icon' => 'truck', 'route' => 'dashboard.deliveries.index', 'routePattern' => 'dashboard.deliveries.*'],
+                    ['label' => 'Dias e Horários', 'icon' => 'calendar-clock', 'route' => 'dashboard.settings.delivery.schedules.index', 'routePattern' => 'dashboard.settings.delivery.schedules.*'],
+                    ['label' => 'Taxas de Entrega', 'icon' => 'map-pin', 'route' => 'dashboard.delivery-pricing.index', 'routePattern' => 'dashboard.delivery-pricing.*'],
+                ],
+            ],
+            [
                 'label' => 'Integrações',
                 'icon' => 'plug',
                 'children' => [

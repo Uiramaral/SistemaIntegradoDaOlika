@@ -22,11 +22,11 @@ class WhatsAppService
         Log::info('WhatsAppService::getInstanceForPhone - Início', [
             'phone_received_for_routing' => $phone,
         ]);
-        
+
         // IMPORTANTE: Buscar cliente pelo telefone exato primeiro, sem criar novo
         // Isso evita criar clientes duplicados ou com números errados
         $customer = Customer::where('phone', $phone)->first();
-        
+
         // Se não encontrou, tentar buscar por variações do número (com/sem código do país)
         if (!$customer) {
             // Tentar sem código do país
@@ -37,24 +37,24 @@ class WhatsAppService
                     $customer = Customer::where('phone', '55' . $phoneWithoutCountry)->first();
                 }
             }
-            
+
             // Se ainda não encontrou, tentar com código do país
             if (!$customer && !str_starts_with($phone, '55') && strlen($phone) >= 10) {
                 $customer = Customer::where('phone', '55' . $phone)->first();
             }
         }
-        
+
         // Se ainda não encontrou cliente, usar roteamento padrão SEM criar cliente
         if (!$customer) {
             Log::warning("WhatsAppService: Cliente não encontrado para o telefone {$phone}. Usando roteamento padrão.");
             // Buscar instância padrão sem cliente
             $instance = WhatsappInstance::where('status', 'CONNECTED')
-                ->orWhere(function($q) {
+                ->orWhere(function ($q) {
                     $q->whereNotNull('api_url');
                 })
                 ->orderBy('id')
                 ->first();
-            
+
             if ($instance) {
                 Log::info('WhatsAppService: Usando instância padrão (cliente não encontrado)', [
                     'instance_name' => $instance->name,
@@ -62,10 +62,10 @@ class WhatsAppService
                 ]);
                 return ['instance' => $instance, 'correct_phone' => null];
             }
-            
+
             return ['instance' => null, 'correct_phone' => null];
         }
-        
+
         // Log do cliente encontrado - IMPORTANTE: verificar se o telefone bate
         Log::info('WhatsAppService: Cliente encontrado para roteamento', [
             'customer_id' => $customer->id,
@@ -74,13 +74,13 @@ class WhatsAppService
             'phone_requested_for_routing' => $phone,
             'phones_match' => ($customer->phone === $phone),
         ]);
-        
+
         // IMPORTANTE: Se o telefone do cliente no banco for diferente, usar o telefone do banco
         // O telefone do banco é o que está cadastrado no WhatsApp Business
         $correctPhone = $customer->phone;
         $phoneNormalized = preg_replace('/\D/', '', $correctPhone);
         $originalPhoneNormalized = $phoneNormalized;
-        
+
         // Normalizar o telefone do banco para formato internacional (com 55)
         // A API do WhatsApp precisa do formato internacional para números brasileiros
         // Se o número não começa com 55 e tem 10 ou 11 dígitos, adicionar 55
@@ -112,7 +112,7 @@ class WhatsAppService
                 'phone_normalized' => $phoneNormalized,
             ]);
         }
-        
+
         if ($customer->phone !== $phone) {
             Log::warning('WhatsAppService: Telefone do cliente no banco difere do solicitado - usando telefone do banco normalizado', [
                 'customer_id' => $customer->id,
@@ -127,15 +127,15 @@ class WhatsAppService
                 'phone' => $phoneNormalized,
             ]);
         }
-        
+
         // Usa o roteador para decidir qual instância usar
         $instance = WhatsAppRouter::getInstanceForCustomer($customer);
-        
+
         if (!$instance) {
             Log::warning("WhatsAppService: Nenhuma instância disponível para o telefone {$phone} (cliente ID: {$customer->id})");
             return ['instance' => null, 'correct_phone' => $phoneNormalized];
         }
-        
+
         Log::info('WhatsAppService: Instância selecionada para roteamento', [
             'instance_name' => $instance->name,
             'instance_phone' => $instance->phone_number,
@@ -143,7 +143,7 @@ class WhatsAppService
             'phone_requested' => $phone,
             'phone_will_be_sent' => $phoneNormalized, // Usar telefone do banco normalizado
         ]);
-        
+
         return ['instance' => $instance, 'correct_phone' => $phoneNormalized];
     }
 
@@ -154,7 +154,7 @@ class WhatsAppService
     {
         $baseUrl = rtrim($instance->api_url, '/');
         $token = $instance->api_token ?? env('API_SECRET');
-        
+
         return [
             'baseUrl' => $baseUrl,
             'headers' => ['X-Olika-Token' => $token]
@@ -169,7 +169,8 @@ class WhatsAppService
     {
         // 1. Verificação rápida no banco
         $count = WhatsappInstance::where('status', 'CONNECTED')->count();
-        if ($count > 0) return true;
+        if ($count > 0)
+            return true;
 
         // 2. Se banco diz que não, verificar API de cada instância (Auto-Recovery)
         $instances = WhatsappInstance::whereNotNull('api_url')->get();
@@ -179,12 +180,12 @@ class WhatsAppService
             try {
                 $url = rtrim($instance->api_url, '/');
                 $token = $instance->api_token ?? env('API_SECRET');
-                
+
                 // Timeout curto para não travar o request
                 $response = Http::timeout(2)
                     ->withHeaders(['X-Olika-Token' => $token])
                     ->get("{$url}/api/whatsapp/status");
-                
+
                 if ($response->successful()) {
                     $data = $response->json();
                     if (isset($data['connected']) && $data['connected'] === true) {
@@ -199,17 +200,18 @@ class WhatsAppService
             }
         }
 
-        if ($foundConnected) return true;
+        if ($foundConnected)
+            return true;
 
         // 3. Último recurso: permitir tentar enviar mesmo desconectado se houver config
         // Isso garante que o erro apareça no envio e não aqui
         $anyInstance = $instances->count() > 0;
-        
+
         if ($anyInstance) {
             Log::info("WhatsAppService::isEnabled - Nenhuma instância confirmada como CONNECTED, mas forçando tentativa.");
             return true;
         }
-        
+
         Log::warning("WhatsAppService::isEnabled - Nenhuma instância configurada encontrada.");
         return false;
     }
@@ -252,15 +254,15 @@ class WhatsAppService
             'phone_length' => strlen($phone),
             'phone_digits_only' => preg_replace('/\D/', '', $phone),
         ]);
-        
+
         // IMPORTANTE: Guardar o número original que será enviado
         // Este número NÃO deve ser alterado
         $phoneToSend = preg_replace('/\D/', '', $phone);
-        
+
         $result = $this->getInstanceForPhone($phoneToSend);
         $instance = $result['instance'] ?? null;
         $correctPhone = $result['correct_phone'] ?? null;
-        
+
         // Se encontrou um telefone correto no banco, usar ele em vez do normalizado
         if ($correctPhone) {
             $phoneToSend = $correctPhone;
@@ -270,7 +272,7 @@ class WhatsAppService
                 'phone_will_send' => $phoneToSend,
             ]);
         }
-        
+
         if (!$instance) {
             Log::warning("WhatsAppService: Nenhuma instância disponível para o telefone {$phoneToSend}. Verifique se há instâncias cadastradas no banco.");
             return ['success' => false, 'error' => 'Nenhuma instância disponível'];
@@ -297,7 +299,7 @@ class WhatsAppService
                 'number' => $phoneToSend, // Número correto do destinatário
                 'message' => $text
             ];
-            
+
             Log::info('WhatsAppService: Payload que será enviado', [
                 'target_url' => $targetUrl,
                 'phone_received_original' => $phone,
@@ -305,7 +307,7 @@ class WhatsAppService
                 'payload_number' => $payload['number'],
                 'payload' => $payload,
             ]);
-            
+
             $response = Http::withHeaders($config['headers'])
                 ->timeout(30)
                 ->post($targetUrl, $payload);
@@ -314,7 +316,7 @@ class WhatsAppService
             if (!$response->successful()) {
                 $errorBody = $response->body();
                 $errorMessage = 'Erro HTTP ' . $response->status();
-                
+
                 // Tentar extrair mensagem de erro do JSON
                 try {
                     $errorJson = $response->json();
@@ -323,7 +325,7 @@ class WhatsAppService
                     // Se não for JSON, usar o body como está
                     $errorMessage = $errorBody ?: $errorMessage;
                 }
-                
+
                 Log::error('WhatsAppService: Erro na resposta HTTP', [
                     'phone_received' => $phone,
                     'phone_sent' => $phoneToSend,
@@ -332,7 +334,7 @@ class WhatsAppService
                     'error_message' => $errorMessage,
                     'target_url' => $targetUrl,
                 ]);
-                
+
                 return [
                     'success' => false,
                     'error' => $errorMessage,
@@ -341,7 +343,7 @@ class WhatsAppService
             }
 
             $result = $response->json();
-            
+
             // Verificar se a resposta JSON é válida
             if (!is_array($result)) {
                 Log::error('WhatsAppService: Resposta JSON inválida', [
@@ -350,13 +352,13 @@ class WhatsAppService
                     'response_status' => $response->status(),
                     'response_body' => $response->body(),
                 ]);
-                
+
                 return [
                     'success' => false,
                     'error' => 'Resposta inválida do gateway WhatsApp',
                 ];
             }
-            
+
             // Log da resposta com mais detalhes
             Log::info('WhatsAppService: Resposta da API', [
                 'phone_received' => $phone,
@@ -367,7 +369,7 @@ class WhatsAppService
                 'message_id' => $result['messageId'] ?? null,
                 'response_body' => $result,
             ]);
-            
+
             // Verificar se há algum indicador de problema na entrega
             if (isset($result['success']) && $result['success'] === true) {
                 // Mensagem foi aceita pela API
@@ -433,12 +435,12 @@ class WhatsAppService
         $result = $this->getInstanceForPhone($phoneNormalized);
         $instance = $result['instance'] ?? null;
         $correctPhone = $result['correct_phone'] ?? null;
-        
+
         // Se encontrou um telefone correto no banco, usar ele em vez do normalizado
         if ($correctPhone) {
             $phoneNormalized = $correctPhone;
         }
-        
+
         if (!$instance) {
             Log::warning('WhatsAppService::sendOrderUpdate - Nenhuma instância disponível', [
                 'order_id' => $order->id ?? $order['id'] ?? null,
@@ -476,7 +478,7 @@ class WhatsAppService
                 ->post("{$config['baseUrl']}/api/notify", $payload);
 
             $result = $response->json();
-            
+
             Log::info('WhatsAppService::sendOrderUpdate - Resposta', [
                 'order_id' => $order->id ?? $order['id'] ?? null,
                 'success' => $result['success'] ?? false,
@@ -509,7 +511,8 @@ class WhatsAppService
     public function sendTemplate(string $phone, string $template, array $vars = [])
     {
         $msg = $template;
-        foreach($vars as $k=>$v) $msg = str_replace('{'.$k.'}', $v, $msg);
+        foreach ($vars as $k => $v)
+            $msg = str_replace('{' . $k . '}', $v, $msg);
         return $this->sendText($phone, $msg);
     }
 
@@ -519,13 +522,13 @@ class WhatsAppService
         if (!$order->customer || empty($order->customer->phone)) {
             return ['success' => false, 'error' => 'Cliente não possui telefone cadastrado'];
         }
-        
+
         // Normalizar telefone
         $phoneNormalized = preg_replace('/\D/', '', $order->customer->phone);
         if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
             $phoneNormalized = '55' . $phoneNormalized;
         }
-        
+
         $msg = "✅ *Pagamento confirmado!*\n\nOlá, {$order->customer->name}!\nSeu pedido *#{$order->order_number}* foi confirmado.\n\n📦 Em breve entraremos em contato.";
         return $this->sendText($phoneNormalized, $msg);
     }
@@ -535,13 +538,13 @@ class WhatsAppService
         if (!$order->customer || empty($order->customer->phone)) {
             return ['success' => false, 'error' => 'Cliente não possui telefone cadastrado'];
         }
-        
+
         // Normalizar telefone
         $phoneNormalized = preg_replace('/\D/', '', $order->customer->phone);
         if (strlen($phoneNormalized) >= 10 && !str_starts_with($phoneNormalized, '55')) {
             $phoneNormalized = '55' . $phoneNormalized;
         }
-        
+
         $msg = "🎉 *Pedido entregue!*\n\nOlá, {$order->customer->name}!\nSeu pedido *#{$order->order_number}* chegou.\n" . ($note ? "\n📝 Obs: $note" : "") . "\n\nObrigado pela preferência! 😋";
         return $this->sendText($phoneNormalized, $msg);
     }
@@ -549,10 +552,11 @@ class WhatsAppService
     public function notifyAdmin(string $orderNumber, string $customerName, float $total, string $paymentMethod)
     {
         $adminPhone = env('WHATSAPP_ADMIN_NUMBER');
-        if (!$adminPhone) return false;
-        
-        $msg = "💰 Pedido *#{$orderNumber}* pago.\nCliente: {$customerName}\nTotal: R$ " . number_format($total,2,',','.') . "\nForma: " . strtoupper($paymentMethod);
-        
+        if (!$adminPhone)
+            return false;
+
+        $msg = "💰 Pedido *#{$orderNumber}* pago.\nCliente: {$customerName}\nTotal: R$ " . number_format($total, 2, ',', '.') . "\nForma: " . strtoupper($paymentMethod);
+
         // Envia pela instância principal (ou qualquer uma disponível)
         return $this->sendText($adminPhone, $msg);
     }
@@ -581,7 +585,7 @@ class WhatsAppService
 
         // Normalizar telefone (adicionar código do país se necessário)
         $phoneNormalized = preg_replace('/\D/', '', $order->customer->phone);
-        
+
         // Se já começar com 55, usar como está
         if (str_starts_with($phoneNormalized, '55')) {
             // Já está normalizado
@@ -603,7 +607,7 @@ class WhatsAppService
         ]);
 
         $message = $this->formatReceiptMessage($order);
-        
+
         // IMPORTANTE: Usar o número normalizado, não o original
         return $this->sendText($phoneNormalized, $message);
     }
@@ -613,13 +617,13 @@ class WhatsAppService
      */
     public function formatReceiptMessage(Order $order): string
     {
-        $customerName = trim((string)($order->customer->name ?? ''));
-        $orderNum = (string)($order->order_number ?? $order->id);
+        $customerName = trim((string) ($order->customer->name ?? ''));
+        $orderNum = (string) ($order->order_number ?? $order->id);
         $deliveryType = $order->delivery_method === 'pickup' ? 'Retirada' : 'Entrega';
         $paymentLabel = match ($order->payment_method) {
             'pix' => 'PIX',
             'credit', 'debit', 'card' => 'Crédito/Débito',
-            default => ucfirst((string)$order->payment_method)
+            default => ucfirst((string) $order->payment_method)
         };
 
         $addressLine = null;
@@ -627,18 +631,18 @@ class WhatsAppService
             $addr = $order->address;
             $streetParts = array_filter([
                 $addr->street ?? null,
-                isset($addr->number) ? (string)$addr->number : null,
+                isset($addr->number) ? (string) $addr->number : null,
             ]);
             $locationParts = array_filter([
                 $addr->city ?? null,
                 $addr->state ?? null,
             ]);
-            
+
             $streetLine = !empty($streetParts) ? implode(', ', $streetParts) : null;
             $locationLine = !empty($locationParts) ? implode(', ', $locationParts) : null;
-            
+
             if ($streetLine && $locationLine) {
-                $addressLine = $streetLine.' – '.$locationLine;
+                $addressLine = $streetLine . ' – ' . $locationLine;
             } elseif ($streetLine) {
                 $addressLine = $streetLine;
             }
@@ -647,48 +651,52 @@ class WhatsAppService
         // Monta o resumo de itens
         $items = [];
         foreach (($order->items ?? []) as $it) {
-            $q = (int)($it->quantity ?? $it->qty ?? 1);
+            $q = (int) ($it->quantity ?? $it->qty ?? 1);
             $name = $it->custom_name ?? ($it->product->name ?? 'Item');
-            $total = (float)($it->total_price ?? (($it->unit_price ?? $it->price ?? 0) * $q));
+            $total = (float) ($it->total_price ?? (($it->unit_price ?? $it->price ?? 0) * $q));
             $items[] = sprintf('👉 %dx %s  R$ %s', $q, $name, number_format($total, 2, ',', '.'));
         }
 
-        $deliveryFee = (float)($order->delivery_fee ?? 0);
-        $final = (float)($order->final_amount ?? $order->total_amount ?? 0);
-        $cashbackEarned = (float)($order->cashback_earned ?? 0);
+        $deliveryFee = (float) ($order->delivery_fee ?? 0);
+        $final = (float) ($order->final_amount ?? $order->total_amount ?? 0);
+        $cashbackEarned = (float) ($order->cashback_earned ?? 0);
 
         // Link de acompanhamento
         $trackingUrl = null;
         try {
             if ($order->customer && $order->customer->phone) {
+                // Tenta obter o slug do cliente (loja) ou usa 'pedido' como fallback
+                $slug = $order->client->slug ?? 'pedido';
+                $baseDomain = 'menuolika.com.br'; // Poderia vir de config, mas mantendo padrão atual
+
                 $phoneParam = urlencode(preg_replace('/\D/', '', $order->customer->phone));
-                $trackingUrl = 'https://pedido.menuolika.com.br/customer/orders/' . $order->order_number . '?phone=' . $phoneParam;
+                $trackingUrl = "https://{$slug}.{$baseDomain}/customer/orders/" . $order->order_number . '?phone=' . $phoneParam;
             }
         } catch (\Throwable $e) {
-            Log::warning('Erro ao gerar link de acompanhamento', ['order_id' => $order->id]);
+            Log::warning('Erro ao gerar link de acompanhamento', ['order_id' => $order->id, 'error' => $e->getMessage()]);
         }
 
         // Template padrão
         $lines = [];
         $lines[] = '✅ PAGAMENTO CONFIRMADO! ✅';
         $lines[] = '';
-        $lines[] = 'Olá, '.($customerName ?: 'Cliente').'! 😄';
+        $lines[] = 'Olá, ' . ($customerName ?: 'Cliente') . '! 😄';
         $lines[] = '';
         $lines[] = 'Seu pedido foi confirmado e já está na nossa produção artesanal! 🥖✨';
         $lines[] = '';
 
-        $lines[] = '📦 PEDIDO: '.$orderNum;
-        
+        $lines[] = '📦 PEDIDO: ' . $orderNum;
+
         if ($addressLine) {
-            $lines[] = '📍 Entrega: '.$addressLine;
+            $lines[] = '📍 Entrega: ' . $addressLine;
         }
-        
+
         if ($order->scheduled_delivery_at) {
             $scheduledDate = $order->scheduled_delivery_at->format('d/m/Y');
             $scheduledTime = $order->scheduled_delivery_at->format('H\hi');
-            $lines[] = '📅 Agendado para: '.$scheduledDate.' às '.$scheduledTime;
+            $lines[] = '📅 Agendado para: ' . $scheduledDate . ' às ' . $scheduledTime;
         }
-        
+
         $lines[] = '';
         $lines[] = '🧾 Resumo do Pedido';
         $lines[] = '';
@@ -698,17 +706,17 @@ class WhatsAppService
                 $lines[] = $item;
             }
         }
-        
+
         $lines[] = '';
-        $lines[] = '💳 Pagamento via '.$paymentLabel;
-        $lines[] = '💰 Total: R$ '.number_format($final, 2, ',', '.');
+        $lines[] = '💳 Pagamento via ' . $paymentLabel;
+        $lines[] = '💰 Total: R$ ' . number_format($final, 2, ',', '.');
 
         if ($cashbackEarned > 0) {
-            $lines[] = '🔁 Cashback liberado: R$ '.number_format($cashbackEarned, 2, ',', '.');
+            $lines[] = '🔁 Cashback liberado: R$ ' . number_format($cashbackEarned, 2, ',', '.');
         }
 
         $lines[] = '';
-        
+
         if ($trackingUrl) {
             $lines[] = '📲 Acompanhe seu pedido:';
             $lines[] = $trackingUrl;
@@ -716,7 +724,7 @@ class WhatsAppService
         }
 
         $lines[] = 'Obrigado por escolher nossos produtos — feitos à mão e com muito carinho! 💚';
-        
+
         return implode("\n", $lines);
     }
 }

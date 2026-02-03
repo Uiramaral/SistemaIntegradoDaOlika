@@ -13,22 +13,31 @@ if (!function_exists('currentClientId')) {
         // 1. Request attributes (setado pelo middleware)
         if (app()->bound('request')) {
             $request = app('request');
-            
+
             if ($request->attributes->has('client_id')) {
                 return (int) $request->attributes->get('client_id');
             }
-            
+
             if ($request->hasHeader('X-Client-Id')) {
                 return (int) $request->header('X-Client-Id');
             }
         }
-        
+
         // 2. Session
         if (session()->has('client_id')) {
             return (int) session('client_id');
         }
-        
-        // 3. Config default
+
+        // 3. Auth (User context)
+        // Prioridade maior que o config default
+        if (auth()->check()) {
+            $user = auth()->user();
+            if (isset($user->client_id) && $user->client_id) {
+                return (int) $user->client_id;
+            }
+        }
+
+        // 4. Config default (Fallback final)
         $default = config('olika.default_client_id');
         return $default ? (int) $default : null;
     }
@@ -45,19 +54,19 @@ if (!function_exists('currentClient')) {
         // Primeiro verificar se já está no request (cached pelo middleware)
         if (app()->bound('request')) {
             $request = app('request');
-            
+
             if ($request->attributes->has('client')) {
                 return $request->attributes->get('client');
             }
         }
-        
+
         // Senão, buscar pelo ID
         $clientId = currentClientId();
-        
+
         if (!$clientId) {
             return null;
         }
-        
+
         return Client::find($clientId);
     }
 }
@@ -72,13 +81,13 @@ if (!function_exists('setCurrentClient')) {
     function setCurrentClient($client): void
     {
         $clientId = $client instanceof Client ? $client->id : (int) $client;
-        
+
         session(['client_id' => $clientId]);
-        
+
         if (app()->bound('request')) {
             $request = app('request');
             $request->attributes->set('client_id', $clientId);
-            
+
             if ($client instanceof Client) {
                 $request->attributes->set('client', $client);
             }
@@ -97,9 +106,9 @@ if (!function_exists('withClient')) {
     function withClient($client, callable $callback)
     {
         $previousClientId = currentClientId();
-        
+
         setCurrentClient($client);
-        
+
         try {
             return $callback();
         } finally {
@@ -149,7 +158,7 @@ if (!function_exists('currentClientHasFeature')) {
             case 'whatsapp':
                 // Verifica campo has_whatsapp do plano OU se tem addon de WhatsApp ativo
                 $hasPlanWhatsapp = (bool) ($plan->has_whatsapp ?? false);
-                
+
                 $hasAddonWhatsapp = false;
                 if (method_exists($subscription, 'addons')) {
                     $hasAddonWhatsapp = $subscription->addons()

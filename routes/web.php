@@ -18,69 +18,27 @@ if (app()->environment('production')) {
     URL::forceScheme('https');
 }
 
-$primaryDomain = 'cozinhapro.app.br'; // O novo principal
-$oldDomain = 'menuolika.com.br';      // O atual que deve se manter
-$gastroDomain = 'gastroflow.online';  // O dashboard
+$baseDomains = config('olika.base_domains', ['menuolika.com.br', 'cozinhapro.app.br', 'gastroflow.online']);
+$domainRegex = '(' . implode('|', array_map(fn($d) => str_replace('.', '\\.', $d), $baseDomains)) . ')';
 
-// Agora o sistema aceita subdomínios em qualquer um dos três
-$tenantDomains = [$primaryDomain, $oldDomain, $gastroDomain];
+Route::pattern('tenant_domain', $domainRegex);
+Route::pattern('dashboard_domain', 'dashboard\.' . $domainRegex);
 
-$domainPattern = '(' . implode('|', array_map(function ($d) {
-    return str_replace('.', '\\.', $d);
-}, $tenantDomains)) . ')';
-
-Route::pattern('tenant_domain', $domainPattern);
-
-// Detectar ambiente e base de domínio baseado no host acessado
+// Detectar o domínio base atual para uso nas rotas de fallback e redirecionamentos
 $currentHost = request()->getHost();
-
-// Identificar qual dos domínios base está sendo usado
-$activeBaseDomain = $primaryDomain;
-foreach ($tenantDomains as $td) {
-    if (str_ends_with($currentHost, $td)) {
-        $activeBaseDomain = $td;
+$activeBaseDomain = 'menuolika.com.br';
+foreach ($baseDomains as $bd) {
+    if (str_ends_with($currentHost, $bd)) {
+        $activeBaseDomain = $bd;
         break;
     }
 }
 
-// Detectar se estamos em ambiente de dev
-$isDevDomain = str_contains($currentHost, 'devpedido.') || str_contains($currentHost, 'devdashboard.');
+$primaryDomain = $activeBaseDomain;
+$pedidoDomain = 'pedido.' . $activeBaseDomain;
+$dashboardDomain = 'dashboard.' . $activeBaseDomain;
 
-// Tentar detectar o prefixo do subdomínio atual para mantê-lo
-$currentPrefix = explode('.', $currentHost)[0];
-$isDashboard = str_contains($currentPrefix, 'dashboard');
-
-if ($isDevDomain) {
-    $pedidoDomain = 'devpedido.' . $activeBaseDomain;
-    $dashboardDomain = 'devdashboard.' . $activeBaseDomain;
-} else {
-    // Se o usuário está acessando via 'pedido.', manter 'pedido.'. Se for 'sistema-pedidos.', manter 'sistema-pedidos.'
-    $pPrefix = (str_contains($currentHost, 'sistema-pedidos.')) ? 'sistema-pedidos.' : 'pedido.';
-    $pedidoDomain = $pPrefix . $activeBaseDomain;
-    // Suporte para o domínio dedicado do dashboard (gastroflow.online)
-    if ($activeBaseDomain === $gastroDomain && !str_starts_with($currentHost, 'dashboard.')) {
-        $dashboardDomain = $activeBaseDomain;
-    } else {
-        $dashboardDomain = 'dashboard.' . $activeBaseDomain;
-    }
-}
-
-// Regex para todos os domínios de dashboard permitidos (production e dev)
-// Isso permite que as rotas sejam cacheadas corretamente sem "travar" em um único domínio
-$dashboardDomainsList = [
-    'dashboard.' . $primaryDomain,
-    'dashboard.' . $oldDomain,
-    'gastroflow.online',
-    // Dev domains
-    'devdashboard.' . $primaryDomain,
-    'devdashboard.' . $oldDomain,
-];
-
-$dashboardDomainPattern = '(' . implode('|', array_map(function ($d) {
-    return str_replace('.', '\\.', $d);
-}, $dashboardDomainsList)) . ')';
-
-Route::pattern('dashboard_domain', $dashboardDomainPattern);
+// Domínios simplificados para menuolika.com.br
 
 // Debug (opcional)
 // \Log::info('Domínios Detectados', ['host' => $currentHost, 'base' => $activeBaseDomain, 'pedido' => $pedidoDomain]);
@@ -520,7 +478,7 @@ Route::domain('{dashboard_domain}')->group(function () {
 });
 
 // Rotas do dashboard COM autenticação
-Route::domain('{dashboard_domain}')->middleware('auth')->group(function () {
+Route::domain('{dashboard_domain}')->middleware(['auth'])->group(function () {
     Route::get('/', [\App\Http\Controllers\Dashboard\DashboardController::class, 'home'])->name('dashboard.index');
     Route::get('/compact', [\App\Http\Controllers\Dashboard\DashboardController::class, 'compact'])->name('dashboard.compact');
 
@@ -1155,7 +1113,7 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
 // ESTA ROTA DEVE VIR ANTES DA ROTA GENÉRICA {slug}.{tenant_domain}
 // CASO CONTRÁRIO, O "dashboard" SERÁ INTERPRETADO COMO UM SLUG DE CLIENTE
 // *******************************************
-Route::domain('dashboard.{tenant_domain}')->group(function () {
+Route::domain('dashboard.{tenant_domain}')->middleware(['identify.tenant'])->group(function () {
     // Rotas públicas
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('cozinha.dashboard.login');
     Route::post('/login', [LoginController::class, 'login'])->name('cozinha.dashboard.auth.login');

@@ -353,12 +353,6 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 });
 
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
-}
+
 </script>
 @endpush
